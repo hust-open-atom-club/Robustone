@@ -310,7 +310,7 @@ mod tests {
 
     #[test]
     fn test_format_memory_operand() {
-        let printer = RiscVPrinter::new();
+        let printer = RiscVPrinter::new().with_alias_regs(true);
 
         // 只有基址寄存器
         assert_eq!(printer.format_memory_operand(2, 0), "(sp)");
@@ -324,7 +324,7 @@ mod tests {
 
     #[test]
     fn test_format_operand() {
-        let printer = RiscVPrinter::new();
+        let printer = RiscVPrinter::new().with_alias_regs(true);
 
         // 寄存器操作数
         let reg_op = RiscVOperand {
@@ -332,7 +332,7 @@ mod tests {
             access: Access::read(),
             value: RiscVOperandValue::Register(10),
         };
-        assert_eq!(printer.format_operand(&reg_op), "x10");
+        assert_eq!(printer.format_operand(&reg_op), "a0");
 
         // 立即数操作数
         let imm_op = RiscVOperand {
