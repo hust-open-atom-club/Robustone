@@ -39,7 +39,7 @@ impl Iterator for DisassemblyResult {
 pub fn process_input(config: &DisasmConfig) -> Result<DisassemblyResult, DisasmError> {
     let mut result = DisassemblyResult::new();
     for word in &config.hex_words {
-        let instr = DISPATCHER.disassemble(word);
+        let instr = DISPATCHER.disassemble(word, config.arch_spec.arch.name().to_string());
         result.add_instruction(instr);
     }
     Ok(result)
