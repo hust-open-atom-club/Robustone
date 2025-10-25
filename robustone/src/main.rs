@@ -1,3 +1,10 @@
+mod cli;
+
+use cli::executor::run;
+
 fn main() {
-    println!("Hello, Robustone!");
+    if let Err(e) = run() {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
+    }
 }
