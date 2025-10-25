@@ -63,6 +63,18 @@ impl ArchitectureDispatcher {
                     i += 2;
                 }
 
+                // 对于RISC-V架构，十六进制字符串表示指令值，需要转换为小端字节序
+                if handler.name() == "riscv" && bytes.len() == 4 {
+                    // 将指令值转换为小端字节序
+                    let instruction_value = u32::from_str_radix(no_prefix, 16).unwrap_or(0);
+                    bytes = instruction_value.to_le_bytes().to_vec();
+                } else if handler.name() == "riscv" && bytes.len() == 2 {
+                    // 16位指令也需要转换为小端字节序
+                    let instruction_value = u16::from_str_radix(no_prefix, 16).unwrap_or(0);
+                    bytes = instruction_value.to_le_bytes().to_vec();
+                }
+
+    
                 // 尝试反汇编
                 if let Ok((instruction, _size)) = handler.disassemble(&bytes, 0) {
                     return instruction;

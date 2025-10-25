@@ -11,7 +11,7 @@ pub mod printer;
 
 use crate::{ArchitectureHandler, Instruction, DisasmError};
 use types::*;
-use decoder::RiscVDecoder;
+use decoder::{RiscVDecoder, Xlen};
 
 /// RISC-V架构处理器
 pub struct RiscVHandler {
@@ -20,19 +20,33 @@ pub struct RiscVHandler {
 }
 
 impl RiscVHandler {
-    /// 创建新的RISC-V处理器
+    /// 创建新的RISC-V处理器 (默认64位)
     pub fn new() -> Self {
-        // 默认支持 I, M, A, F, D, C 扩展，64位模式
-        let extensions = 0b0011111; // I + M + A + F + D + C
+        // 默认支持 I 基础扩展，64位模式
+        let extensions = 0b001; // I扩展
         Self {
-            decoder: RiscVDecoder::new(extensions, true),
+            decoder: RiscVDecoder::new(Xlen::X64, extensions),
+        }
+    }
+
+    /// 创建32位RISC-V处理器
+    pub fn rv32() -> Self {
+        Self {
+            decoder: RiscVDecoder::rv32(),
+        }
+    }
+
+    /// 创建64位RISC-V处理器
+    pub fn rv64() -> Self {
+        Self {
+            decoder: RiscVDecoder::rv64(),
         }
     }
 
     /// 创建支持特定扩展的RISC-V处理器
-    pub fn with_extensions(extensions: u32, is_64bit: bool) -> Self {
+    pub fn with_extensions(xlen: Xlen, extensions: u32) -> Self {
         Self {
-            decoder: RiscVDecoder::new(extensions, is_64bit),
+            decoder: RiscVDecoder::new(xlen, extensions),
         }
     }
 }
@@ -121,9 +135,9 @@ mod tests {
 
     #[test]
     fn test_riscv_register_from_id() {
-        assert_eq!(RiscVRegister::from_id(1), RiscVRegister::X0);
-        assert_eq!(RiscVRegister::from_id(2), RiscVRegister::X1);
-        assert_eq!(RiscVRegister::from_id(0), RiscVRegister::Invalid);
+        assert_eq!(RiscVRegister::from_id(0), RiscVRegister::X0);
+        assert_eq!(RiscVRegister::from_id(1), RiscVRegister::X1);
+        assert_eq!(RiscVRegister::from_id(32), RiscVRegister::Invalid);
         assert_eq!(RiscVRegister::from_id(100), RiscVRegister::Invalid);
     }
 
