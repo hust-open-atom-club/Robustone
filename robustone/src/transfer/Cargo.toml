@@ -1,6 +1,11 @@
 [package]
 name = "transfer"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
+hex = "0.4"
+
+[features]
+default = ["riscv"]
+riscv = []
