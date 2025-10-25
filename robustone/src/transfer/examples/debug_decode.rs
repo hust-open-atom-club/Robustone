@@ -17,7 +17,10 @@ fn main() {
     for hex in test_instructions {
         println!("Testing: {}", hex);
         let instruction = dispatcher.disassemble(hex, "riscv32".to_string());
-        println!("  Result: {} {}", instruction.mnemonic, instruction.operands);
+        println!(
+            "  Result: {} {}",
+            instruction.mnemonic, instruction.operands
+        );
         println!("  Bytes: {:02x?}", instruction.bytes);
         println!("  Size: {}", instruction.size);
 
@@ -32,12 +35,16 @@ fn main() {
             println!("  Opcode: 0x{:02x}", opcode);
 
             // Decode fields for I-type instructions
-            if opcode == 0x03 {  // load instructions
+            if opcode == 0x03 {
+                // load instructions
                 let rd = (instr_value >> 7) & 0x1F;
                 let funct3 = (instr_value >> 12) & 0x7;
                 let rs1 = (instr_value >> 15) & 0x1F;
                 let imm = (instr_value >> 20) & 0xFFF;
-                println!("  I-type: rd={}, funct3={}, rs1={}, imm={}", rd, funct3, rs1, imm);
+                println!(
+                    "  I-type: rd={}, funct3={}, rs1={}, imm={}",
+                    rd, funct3, rs1, imm
+                );
             }
         }
         println!();

@@ -1,20 +1,20 @@
-//! RISC-V指令格式化输出器
+//! RISC-V instruction formatting helpers.
 //!
-//! 基于Capstone RISC-V打印机实现的指令格式化功能
+//! Inspired by Capstone's printer to maintain compatible output formatting.
 
 use super::types::*;
 use crate::Instruction;
 
-/// RISC-V指令打印机
+/// Pretty-printer for RISC-V instructions.
 pub struct RiscVPrinter {
-    /// 是否显示详细寄存器信息
+    /// Whether register aliases should be printed instead of canonical names.
     alias_regs: bool,
-    /// 是否显示无符号立即数
+    /// Whether immediates should be rendered as unsigned values when possible.
     unsigned_immediate: bool,
 }
 
 impl RiscVPrinter {
-    /// 创建新的RISC-V打印机
+    /// Creates a printer with default formatting behaviour.
     pub fn new() -> Self {
         Self {
             alias_regs: false,
@@ -22,19 +22,19 @@ impl RiscVPrinter {
         }
     }
 
-    /// 设置是否使用寄存器别名
+    /// Enables or disables register alias printing.
     pub fn with_alias_regs(mut self, alias_regs: bool) -> Self {
         self.alias_regs = alias_regs;
         self
     }
 
-    /// 设置是否显示无符号立即数
+    /// Enables or disables unsigned immediate formatting.
     pub fn with_unsigned_immediate(mut self, unsigned_immediate: bool) -> Self {
         self.unsigned_immediate = unsigned_immediate;
         self
     }
 
-    /// 格式化立即数
+    /// Formats an immediate according to the active configuration.
     fn format_immediate(&self, imm: i64) -> String {
         if self.unsigned_immediate {
             if imm >= 0 && imm > 0xFF {
@@ -59,13 +59,13 @@ impl RiscVPrinter {
         }
     }
 
-    /// 格式化寄存器
+    /// Formats a register operand.
     fn format_register(&self, reg_id: u32) -> String {
         let reg = RiscVRegister::from_id(reg_id);
         if self.alias_regs {
             reg.name().to_string()
         } else {
-            // 使用x0-x31格式
+            // Use the x0-x31 naming scheme when aliases are disabled.
             if reg_id <= 31 {
                 format!("x{}", reg_id)
             } else {
@@ -74,33 +74,35 @@ impl RiscVPrinter {
         }
     }
 
-    /// 格式化内存操作数
+    /// Formats a memory operand using `offset(base)` syntax.
     fn format_memory_operand(&self, base: u32, disp: i64) -> String {
         if disp == 0 {
             format!("({})", self.format_register(base))
         } else if disp > 0 {
-            format!("{}({})", self.format_immediate(disp), self.format_register(base))
+            format!(
+                "{}({})",
+                self.format_immediate(disp),
+                self.format_register(base)
+            )
         } else {
-            format!("-{}({})", self.format_immediate(-disp), self.format_register(base))
+            format!(
+                "-{}({})",
+                self.format_immediate(-disp),
+                self.format_register(base)
+            )
         }
     }
 
-    /// 格式化操作数
+    /// Formats a single operand into its textual form.
     pub fn format_operand(&self, operand: &RiscVOperand) -> String {
         match &operand.value {
-            RiscVOperandValue::Register(reg_id) => {
-                self.format_register(*reg_id)
-            }
-            RiscVOperandValue::Immediate(imm) => {
-                self.format_immediate(*imm)
-            }
-            RiscVOperandValue::Memory(mem) => {
-                self.format_memory_operand(mem.base, mem.disp)
-            }
+            RiscVOperandValue::Register(reg_id) => self.format_register(*reg_id),
+            RiscVOperandValue::Immediate(imm) => self.format_immediate(*imm),
+            RiscVOperandValue::Memory(mem) => self.format_memory_operand(mem.base, mem.disp),
         }
     }
 
-    /// 格式化指令操作数字符串
+    /// Formats a sequence of operands into a comma-separated string.
     pub fn format_operands(&self, operands: &[RiscVOperand]) -> String {
         if operands.is_empty() {
             String::new()
@@ -113,16 +115,16 @@ impl RiscVPrinter {
         }
     }
 
-    /// 打印指令基本信息
+    /// Renders the instruction mnemonic and operand list.
     pub fn print_basic(&self, instruction: &Instruction) -> String {
         format!("{} {}", instruction.mnemonic, instruction.operands)
     }
 
-    /// 打印指令详细信息
+    /// Renders the detailed instruction representation including metadata.
     pub fn print_detailed(&self, instruction: &Instruction) -> String {
         let mut result = Vec::new();
 
-        // 基本信息
+        // Basic summary line.
         result.push(format!(
             "0x{:016x}: {} {}",
             instruction.address,
@@ -130,14 +132,14 @@ impl RiscVPrinter {
             self.print_basic(instruction)
         ));
 
-        // 如果有详细信息，打印详细内容
+        // Emit detailed sections when available.
         if let Some(detail) = &instruction.detail {
-            // ID信息 (如果有的话)
+            // Group identifiers (if present).
             if !detail.groups.is_empty() {
                 result.push(format!("\tGroups: {}", detail.groups.join(", ")));
             }
 
-            // 操作数信息
+            // Operand breakdown.
             if !detail.operands.is_empty() {
                 result.push(format!("\tOperand count: {}", detail.operands.len()));
                 for (i, operand) in detail.operands.iter().enumerate() {
@@ -163,22 +165,27 @@ impl RiscVPrinter {
                             format!("{} ({})", self.format_immediate(*imm), imm)
                         }
                         RiscVOperandValue::Memory(mem) => {
-                            format!("{} (base={}, disp={})",
+                            format!(
+                                "{} (base={}, disp={})",
                                 self.format_memory_operand(mem.base, mem.disp),
                                 mem.base,
-                                mem.disp)
+                                mem.disp
+                            )
                         }
                     };
 
-                    result.push(format!("\toperands[{}].type: {} = {}",
-                        i, operand_type_str, value_str));
+                    result.push(format!(
+                        "\toperands[{}].type: {} = {}",
+                        i, operand_type_str, value_str
+                    ));
                     result.push(format!("\toperands[{}].access: {}", i, access_str));
                 }
             }
 
-            // 寄存器访问信息
+            // Register access lists.
             if !detail.regs_read.is_empty() {
-                let regs_read: Vec<String> = detail.regs_read
+                let regs_read: Vec<String> = detail
+                    .regs_read
                     .iter()
                     .map(|&reg| format!("{} ({})", self.format_register(reg), reg))
                     .collect();
@@ -186,7 +193,8 @@ impl RiscVPrinter {
             }
 
             if !detail.regs_write.is_empty() {
-                let regs_write: Vec<String> = detail.regs_write
+                let regs_write: Vec<String> = detail
+                    .regs_write
                     .iter()
                     .map(|&reg| format!("{} ({})", self.format_register(reg), reg))
                     .collect();
@@ -197,7 +205,7 @@ impl RiscVPrinter {
         result.join("\n")
     }
 
-    /// 打印指令的十六进制字节
+    /// Formats instruction bytes as a hex string and pads to the requested width.
     pub fn print_hex_bytes(&self, instruction: &Instruction, align_width: usize) -> String {
         let hex_str = hex::encode(&instruction.bytes);
         let padding = if hex_str.len() < align_width {
@@ -215,23 +223,23 @@ impl Default for RiscVPrinter {
     }
 }
 
-/// RISC-V指令格式化工具函数
+/// Helper functions for common RISC-V printing scenarios.
 pub mod format {
     use super::*;
 
-    /// 格式化RISC-V指令为基本格式
+    /// Returns the basic printable form for a single instruction.
     pub fn basic_format(instruction: &Instruction) -> String {
         let printer = RiscVPrinter::new();
         printer.print_basic(instruction)
     }
 
-    /// 格式化RISC-V指令为详细格式
+    /// Returns the fully detailed printable form for a single instruction.
     pub fn detailed_format(instruction: &Instruction) -> String {
         let printer = RiscVPrinter::new();
         printer.print_detailed(instruction)
     }
 
-    /// 格式化指令列表
+    /// Renders a list of instructions using either basic or detailed mode.
     pub fn instruction_list(instructions: &[Instruction], detailed: bool) -> String {
         let printer = RiscVPrinter::new();
         let mut result = Vec::new();
@@ -252,11 +260,12 @@ pub mod format {
         result.join("\n")
     }
 
-    /// 格式化操作数列表
+    /// Formats a list of operands using default printer settings.
     pub fn operands_list(operands: &[RiscVOperand]) -> String {
         let printer = RiscVPrinter::new();
         printer.format_operands(operands)
     }
+
 }
 
 #[cfg(test)]
@@ -280,15 +289,15 @@ mod tests {
     fn test_format_immediate() {
         let printer = RiscVPrinter::new();
 
-        // 正数
+        // Positive values
         assert_eq!(printer.format_immediate(10), "10");
         assert_eq!(printer.format_immediate(0x1000), "0x1000");
 
-        // 负数
+        // Negative values
         assert_eq!(printer.format_immediate(-10), "-10");
         assert_eq!(printer.format_immediate(-0x1000), "-0x1000");
 
-        // 零
+        // Zero
         assert_eq!(printer.format_immediate(0), "0");
     }
 
@@ -296,12 +305,12 @@ mod tests {
     fn test_format_register() {
         let printer = RiscVPrinter::new();
 
-        // 普通格式
+        // Canonical register formatting
         assert_eq!(printer.format_register(0), "x0");
         assert_eq!(printer.format_register(1), "x1");
         assert_eq!(printer.format_register(10), "x10");
 
-        // 别名格式
+        // Alias-based formatting
         let printer_with_alias = printer.with_alias_regs(true);
         assert_eq!(printer_with_alias.format_register(0), "zero");
         assert_eq!(printer_with_alias.format_register(1), "ra");
@@ -312,13 +321,13 @@ mod tests {
     fn test_format_memory_operand() {
         let printer = RiscVPrinter::new().with_alias_regs(true);
 
-        // 只有基址寄存器
+        // Base register only
         assert_eq!(printer.format_memory_operand(2, 0), "(sp)");
 
-        // 正偏移
+        // Positive offset
         assert_eq!(printer.format_memory_operand(10, 100), "100(a0)");
 
-        // 负偏移
+        // Negative offset
         assert_eq!(printer.format_memory_operand(10, -100), "-100(a0)");
     }
 
@@ -326,7 +335,7 @@ mod tests {
     fn test_format_operand() {
         let printer = RiscVPrinter::new().with_alias_regs(true);
 
-        // 寄存器操作数
+        // Register operand
         let reg_op = RiscVOperand {
             op_type: RiscVOperandType::Register,
             access: Access::read(),
@@ -334,7 +343,7 @@ mod tests {
         };
         assert_eq!(printer.format_operand(&reg_op), "a0");
 
-        // 立即数操作数
+        // Immediate operand
         let imm_op = RiscVOperand {
             op_type: RiscVOperandType::Immediate,
             access: Access::read(),
@@ -342,7 +351,7 @@ mod tests {
         };
         assert_eq!(printer.format_operand(&imm_op), "42");
 
-        // 内存操作数
+        // Memory operand
         let mem_op = RiscVOperand {
             op_type: RiscVOperandType::Memory,
             access: Access::read(),

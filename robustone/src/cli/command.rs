@@ -10,45 +10,45 @@ use std::str::FromStr;
 #[command(version = "0.1.0")]
 #[command(disable_version_flag = true)]
 pub struct Cli {
-    /// 目标架构和模式 (例如: riscv32, riscv64, arm, x86+intel)
+    /// Target architecture plus optional mode modifiers (e.g., `riscv32`, `arm+thumb`, `x86+intel`).
     #[arg(help = "Target architecture with optional modes (e.g., riscv32, arm+thumb, x86+intel)")]
     #[arg(value_parser = validate_architecture)]
     pub arch_mode: Option<String>,
 
-    /// 要反汇编的十六进制机器码 (例如: "00100093")
+    /// Hexadecimal machine code to disassemble (for example `"00100093"`).
     #[arg(help = "Hexadecimal machine code to disassemble")]
     pub hex_code: Option<String>,
 
-    /// 起始地址 (十六进制格式，默认: 0)
+    /// Starting address in hexadecimal notation (defaults to zero when omitted).
     #[arg(help = "Start address in hex format (default: 0)")]
     pub address: Option<String>,
 
-    /// -d: 显示指令的详细信息
+    /// `-d`: emit detailed instruction metadata alongside the mnemonic.
     #[arg(short = 'd', long = "detailed")]
     #[arg(help = "Show detailed instruction information")]
     pub detailed: bool,
 
-    /// -a: 使用Capstone寄存器别名
+    /// `-a`: render register names using Capstone's alias list.
     #[arg(short = 'a', long = "alias-regs")]
     #[arg(help = "Use Capstone register aliases instead of LLVM names")]
     pub alias_regs: bool,
 
-    /// -r: 显示真实指令的详细信息（包括别名）
+    /// `-r`: request detailed instruction information including alias resolutions.
     #[arg(short = 'r', long = "real-detail")]
     #[arg(help = "Show detailed real instruction information (including aliases)")]
     pub real_detail: bool,
 
-    /// -s: 在SKIPDATA模式下解码（跳过无法识别的数据）
+    /// `-s`: enable SKIPDATA mode to step past undecodable bytes.
     #[arg(short = 's', long = "skip-data")]
     #[arg(help = "Decode in SKIPDATA mode (skip unrecognizable data)")]
     pub skip_data: bool,
 
-    /// -u: 以无符号格式显示立即数
+    /// `-u`: format immediates as unsigned values.
     #[arg(short = 'u', long = "unsigned-immediate")]
     #[arg(help = "Display immediates in unsigned format")]
     pub unsigned_immediate: bool,
 
-    /// -v: 显示版本和构建信息
+    /// `-v`: print version and build metadata instead of disassembling input.
     #[arg(short = 'v', long = "version")]
     #[arg(help = "Show version and build information")]
     pub version: bool,

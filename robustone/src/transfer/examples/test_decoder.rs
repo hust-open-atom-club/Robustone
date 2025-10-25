@@ -3,7 +3,10 @@ use transfer::*;
 fn main() {
     let dispatcher = ArchitectureDispatcher::new();
 
-    println!("Supported architectures: {:?}", dispatcher.supported_architectures());
+    println!(
+        "Supported architectures: {:?}",
+        dispatcher.supported_architectures()
+    );
 
     // 测试AUIPC指令 - 0x97000000 (小端序字节)
     let instruction = dispatcher.disassemble("97000000", "riscv32".to_string());

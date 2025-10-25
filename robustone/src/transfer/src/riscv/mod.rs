@@ -1,49 +1,49 @@
-//! RISC-V架构反汇编模块
+//! RISC-V disassembly module.
 //!
-//! 提供RISC-V架构的指令反汇编功能，支持：
-//! - RISC-V 32位和64位
-//! - 压缩指令(RVC)和标准指令
-//! - 基础指令集扩展 (I, M, A, F, D, C)
+//! Provides instruction decoding for RISC-V, including:
+//! - 32-bit and 64-bit profiles
+//! - Standard and compressed (RVC) encodings
+//! - Core ISA extensions (I, M, A, F, D, C)
 
-pub mod types;
 pub mod decoder;
 pub mod printer;
+pub mod types;
 
-use crate::{ArchitectureHandler, Instruction, DisasmError};
-use types::*;
+use crate::{ArchitectureHandler, DisasmError, Instruction};
 use decoder::{RiscVDecoder, Xlen};
+use types::*;
 
-/// RISC-V架构处理器
+/// Architecture handler implementation for RISC-V targets.
 pub struct RiscVHandler {
-    /// RISC-V指令解码器
+    /// Decoder used to translate raw bytes into structured instructions.
     decoder: RiscVDecoder,
 }
 
 impl RiscVHandler {
-    /// 创建新的RISC-V处理器 (默认64位)
+    /// Creates a new handler configured for 64-bit RISC-V with the base extension set.
     pub fn new() -> Self {
-        // 默认支持 I 基础扩展，64位模式
-        let extensions = 0b001; // I扩展
+        // Default to the base I extension in 64-bit mode.
+        let extensions = 0b001; // I extension
         Self {
             decoder: RiscVDecoder::new(Xlen::X64, extensions),
         }
     }
 
-    /// 创建32位RISC-V处理器
+    /// Creates a handler targeting RV32.
     pub fn rv32() -> Self {
         Self {
             decoder: RiscVDecoder::rv32(),
         }
     }
 
-    /// 创建64位RISC-V处理器
+    /// Creates a handler targeting RV64.
     pub fn rv64() -> Self {
         Self {
             decoder: RiscVDecoder::rv64(),
         }
     }
 
-    /// 创建支持特定扩展的RISC-V处理器
+    /// Creates a handler with custom XLEN and extension flags.
     pub fn with_extensions(xlen: Xlen, extensions: u32) -> Self {
         Self {
             decoder: RiscVDecoder::new(xlen, extensions),
@@ -58,18 +58,15 @@ impl Default for RiscVHandler {
 }
 
 impl ArchitectureHandler for RiscVHandler {
-    fn disassemble(
-        &self,
-        bytes: &[u8],
-        addr: u64,
-    ) -> Result<(Instruction, usize), DisasmError> {
-        // 使用RISC-V解码器解码指令
+    fn disassemble(&self, bytes: &[u8], addr: u64) -> Result<(Instruction, usize), DisasmError> {
+    // Decode the instruction with the dedicated RISC-V decoder.
         let decoded = self.decoder.decode(bytes, addr)?;
 
-        // 构建指令详细信息
+    // Assemble the high-level instruction detail payload.
         let instruction_detail = crate::InstructionDetail {
             operands: decoded.operands_detail.clone(),
-            regs_read: decoded.operands_detail
+            regs_read: decoded
+                .operands_detail
                 .iter()
                 .filter(|op| matches!(op.op_type, RiscVOperandType::Register) && op.access.read)
                 .map(|op| match op.value {
@@ -77,7 +74,8 @@ impl ArchitectureHandler for RiscVHandler {
                     _ => 0,
                 })
                 .collect(),
-            regs_write: decoded.operands_detail
+            regs_write: decoded
+                .operands_detail
                 .iter()
                 .filter(|op| matches!(op.op_type, RiscVOperandType::Register) && op.access.write)
                 .map(|op| match op.value {

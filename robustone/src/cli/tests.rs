@@ -147,7 +147,7 @@ fn test_config_creation() {
     let config = DisasmConfig::config_from_cli(&cli).expect("Should create config");
 
     assert!(matches!(config.arch_spec.arch, Architecture::Riscv32));
-    assert!(config.hex_words == vec!["0x00100093"]);
+    assert_eq!(config.hex_words, vec!["0x00100093"]);
     assert_eq!(config.start_address, 0);
     assert!(!config.detailed);
 }
@@ -169,7 +169,7 @@ fn test_config_with_complex_options() {
 
     assert!(matches!(config.arch_spec.arch, Architecture::Riscv32));
     assert!(config.arch_spec.options.contains(&"intel".to_string()));
-    assert_eq!(config.hex_words, vec!["0xff010113", "80000000"]);
+    assert_eq!(config.hex_words, vec!["0xff010113"]);
     assert_eq!(config.start_address, 0x80000000);
     assert!(config.detailed);
     assert!(config.unsigned_immediate);

@@ -4,39 +4,39 @@ use crate::cli::error::ParseError;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Architecture {
-    // RISC-V
+    // RISC-V variants
     Riscv32,
     Riscv64,
     Riscv32E,
 
-    // ARM
+    // 32-bit ARM variants
     Arm,
     ArmLE,
     ArmBE,
     Thumb,
 
-    // AArch64
+    // 64-bit ARM variants
     Aarch64,
     Aarch64BE,
 
-    // x86
+    // x86 family
     X86_16,
     X86_32,
     X86_64,
 
-    // MIPS
+    // MIPS family
     Mips,
     MipsEL,
     Mips64,
     MipsEL64,
 
-    // PowerPC
+    // PowerPC family
     PowerPC32,
     PowerPC32BE,
     PowerPC64,
     PowerPC64BE,
 
-    // SPARC
+    // SPARC family
     Sparc,
     SparcLE,
     Sparc64,
@@ -51,16 +51,16 @@ pub enum Architecture {
     Bpf,
 }
 
-/// 架构规范，包含架构、模式和选项
+/// Architecture specification holding the resolved architecture, mode flags, and modifiers.
 #[derive(Clone)]
 pub struct ArchitectureSpec {
     pub arch: Architecture,
-    pub mode: u32,            // Capstone模式标志
-    pub options: Vec<String>, // 架构特定选项
+    pub mode: u32,            // Capstone mode bitmask
+    pub options: Vec<String>, // Architecture-specific option modifiers
 }
 
 impl ArchitectureSpec {
-    /// 解析架构字符串，支持+修饰符
+    /// Parses an architecture string, supporting `+`-separated modifiers.
     pub fn parse(input: &str) -> std::result::Result<Self, ParseError> {
         if input.trim().is_empty() {
             return Err(ParseError::EmptyInput);
@@ -71,42 +71,42 @@ impl ArchitectureSpec {
             return Err(ParseError::EmptyInput);
         }
 
-        // 解析基础架构
+        // Interpret the base architecture token.
         let arch = Architecture::from_str(parts[0])
             .map_err(|_| ParseError::UnknownArchitecture(parts[0].to_string()))?;
 
         let mut mode = arch.default_mode();
         let mut options = Vec::new();
 
-        // 处理修饰符 - 基于Capstone支持
+        // Apply modifiers according to Capstone semantics.
         for modifier in &parts[1..] {
             match modifier.to_lowercase().as_str() {
-                // x86语法选项
+                // x86 syntax options
                 "att" | "at&t" => options.push("att".to_string()),
                 "intel" => options.push("intel".to_string()),
                 "masm" => options.push("masm".to_string()),
                 "nasm" => options.push("nasm".to_string()),
 
-                // 通用语法选项
+                // Common syntax toggles
                 "noregname" => options.push("noregname".to_string()),
                 "regalias" => options.push("regalias".to_string()),
                 "moto" => options.push("moto".to_string()),
                 "percentage" => options.push("percentage".to_string()),
                 "nodollar" => options.push("nodollar".to_string()),
 
-                // ARM模式选项
+                // ARM mode options
                 "thumb" => options.push("thumb".to_string()),
                 "m" | "micro" => options.push("m".to_string()),
                 "v8" => options.push("v8".to_string()),
 
-                // AArch64选项
+                // AArch64 options
                 "apple" => options.push("apple".to_string()),
 
-                // MIPS选项
+                // MIPS options
                 "nofloat" => options.push("nofloat".to_string()),
                 "ptr64" => options.push("ptr64".to_string()),
 
-                // PowerPC选项
+                // PowerPC options
                 "aix" => options.push("aix".to_string()),
                 "booke" => options.push("booke".to_string()),
                 "maix" => options.push("maix".to_string()),
@@ -115,10 +115,10 @@ impl ArchitectureSpec {
                 "ps" => options.push("ps".to_string()),
                 "spe" => options.push("spe".to_string()),
 
-                // SPARC选项
+                // SPARC options
                 "v9" => options.push("v9".to_string()),
 
-                // 端序选项
+                // Endianness modifiers
                 "little" | "le" => mode |= 0x0, // CS_MODE_LITTLE_ENDIAN
                 "big" | "be" => mode |= 0x100,  // CS_MODE_BIG_ENDIAN
 
@@ -291,7 +291,11 @@ impl Architecture {
     }
 
     pub fn implementation_status(&self) -> &'static str {
-        if self.is_implemented() { "✅" } else { "🚧" }
+        if self.is_implemented() {
+            "✅"
+        } else {
+            "🚧"
+        }
     }
 
     pub fn category(&self) -> &'static str {
