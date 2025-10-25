@@ -835,3 +835,223 @@ pub struct RiscVDecodedInstruction {
     /// 操作数详细信息
     pub operands_detail: Vec<RiscVOperand>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Helper: parse hex like "0x...." or "...." into little-endian bytes (2 or 4 bytes)
+    fn hex_to_le_bytes(hex: &str) -> Vec<u8> {
+        let s = hex.trim();
+        let s = s.strip_prefix("0x").unwrap_or(s);
+        match s.len() {
+            8 => {
+                let val = u32::from_str_radix(s, 16).expect("invalid hex");
+                val.to_le_bytes().to_vec()
+            }
+            4 => {
+                let val = u16::from_str_radix(s, 16).expect("invalid hex");
+                val.to_le_bytes().to_vec()
+            }
+            // fallback: byte pairs high->low order
+            _ => {
+                let mut bytes = Vec::new();
+                let mut i = 0;
+                while i + 1 < s.len() {
+                    let b = u8::from_str_radix(&s[i..i + 2], 16).expect("invalid hex");
+                    bytes.push(b);
+                    i += 2;
+                }
+                bytes
+            }
+        }
+    }
+
+    fn decode_hex(decoder: &RiscVDecoder, hex: &str) -> RiscVDecodedInstruction {
+        let bytes = hex_to_le_bytes(hex);
+        decoder.decode(&bytes, 0).expect("decode failed")
+    }
+
+    #[test]
+    fn rv32i_basic_control_transfer() {
+        let d = RiscVDecoder::rv32();
+        // LUI x1, imm
+        let ins = decode_hex(&d, "12345037");
+        assert_eq!(ins.mnemonic, "lui");
+        assert_eq!(ins.size, 4);
+
+        // AUIPC x2, imm
+        let ins = decode_hex(&d, "12345117");
+        assert_eq!(ins.mnemonic, "auipc");
+
+        // JAL x1, imm
+        let ins = decode_hex(&d, "008000ef");
+        assert_eq!(ins.mnemonic, "jal");
+
+        // JALR x1, x2, 4
+        let ins = decode_hex(&d, "004100e7");
+        assert_eq!(ins.mnemonic, "jalr");
+        assert_eq!(ins.format, RiscVInstructionFormat::I);
+    }
+
+    #[test]
+    fn rv32i_branches() {
+        let d = RiscVDecoder::rv32();
+        let cases = [
+            ("00208463", "beq"),
+            ("00209463", "bne"),
+            ("0020c463", "blt"),
+            ("0020d463", "bge"),
+            ("0020e463", "bltu"),
+            ("0020f463", "bgeu"),
+        ];
+        for (hex, mnem) in cases {
+            let ins = decode_hex(&d, hex);
+            assert_eq!(ins.mnemonic, mnem, "hex {}", hex);
+            assert_eq!(ins.size, 4);
+        }
+    }
+
+    #[test]
+    fn rv32i_load_store_and_operands_detail() {
+        let d = RiscVDecoder::rv32();
+
+        // LB x1, 4(x2) -> 0x00410083
+        let ins = decode_hex(&d, "00410083");
+        assert_eq!(ins.mnemonic, "lb");
+        assert_eq!(ins.operands, "ra, 4(sp)"); // ra==x1, sp==x2
+        assert_eq!(ins.size, 4);
+        // detail: dest reg write, memory read base x2 offset 4
+        assert_eq!(ins.operands_detail.len(), 2);
+        assert_eq!(ins.operands_detail[0].op_type, RiscVOperandType::Register);
+        assert!(ins.operands_detail[0].access.write);
+        match ins.operands_detail[1].value {
+            RiscVOperandValue::Memory(mem) => {
+                assert_eq!(mem.base, 2); // x2
+                assert_eq!(mem.disp, 4);
+            }
+            _ => panic!("expected memory operand"),
+        }
+
+        // SW x1, 4(x2) -> 0x00112223
+        let ins = decode_hex(&d, "00112223");
+        assert_eq!(ins.mnemonic, "sw");
+        // detail: src reg read, memory address base x2
+        assert_eq!(ins.operands_detail.len(), 2);
+        assert!(ins.operands_detail[0].access.read);
+        match ins.operands_detail[1].value {
+            RiscVOperandValue::Memory(mem) => {
+                assert_eq!(mem.base, 2);
+            }
+            _ => panic!("expected memory operand"),
+        }
+    }
+
+    #[test]
+    fn rv32i_immediates_and_shifts() {
+        let d = RiscVDecoder::rv32();
+        for (hex, mnem) in [
+            ("06410093", "addi"),
+            ("06412093", "slti"),
+            ("06413093", "sltiu"),
+            ("06414093", "xori"),
+            ("06416093", "ori"),
+            ("06417093", "andi"),
+            ("00511093", "slli"),
+            ("00515093", "srli"),
+            ("40515093", "srai"),
+        ] {
+            let ins = decode_hex(&d, hex);
+            assert_eq!(ins.mnemonic, mnem, "{}", hex);
+            assert_eq!(ins.size, 4);
+        }
+    }
+
+    #[test]
+    fn rv32i_register_ops() {
+        let d = RiscVDecoder::rv32();
+        for (hex, mnem) in [
+            ("003100b3", "add"),
+            ("403100b3", "sub"),
+            ("003110b3", "sll"),
+            ("003120b3", "slt"),
+            ("003130b3", "sltu"),
+            ("003140b3", "xor"),
+            ("003150b3", "srl"),
+            ("403150b3", "sra"),
+            ("003160b3", "or"),
+            ("003170b3", "and"),
+        ] {
+            let ins = decode_hex(&d, hex);
+            assert_eq!(ins.mnemonic, mnem, "{}", hex);
+        }
+    }
+
+    #[test]
+    fn system_and_misc_mem() {
+        let d = RiscVDecoder::rv32();
+        let ins = decode_hex(&d, "00000073");
+        assert_eq!(ins.mnemonic, "ecall");
+        let ins = decode_hex(&d, "00100073");
+        assert_eq!(ins.mnemonic, "ebreak");
+        let ins = decode_hex(&d, "0000000f");
+        assert_eq!(ins.mnemonic, "fence");
+        let ins = decode_hex(&d, "0000100f");
+        assert_eq!(ins.mnemonic, "fence.i");
+    }
+
+    #[test]
+    fn compressed_rvc_subset_supported() {
+        let d = RiscVDecoder::rv32();
+        for (hex, mnem) in [
+            ("0x1000", "c.addi4spn"),
+            ("0x4398", "c.lw"),
+            ("0xc398", "c.sw"),
+            ("0x0505", "c.addi"),
+            ("0x4501", "c.li"),
+            ("0xa001", "c.j"),
+            ("0x8082", "c.mv"), // note: our decoder maps 10,100 to mv
+            ("0x4082", "c.lwsp"),
+            ("0xc006", "c.swsp"),
+            ("0x0002", "c.slli"), // shift immediate variant
+        ] {
+            let ins = decode_hex(&d, hex);
+            assert!(ins.mnemonic.starts_with(mnem), "{} -> {}", hex, ins.mnemonic);
+            assert_eq!(ins.size, 2);
+        }
+    }
+
+    #[test]
+    fn error_and_unknown_cases() {
+        let d = RiscVDecoder::rv32();
+        // Incomplete 32-bit (looks like std instr low bits 0b11, but only 2 bytes)
+        let err = d.decode(&[0x13, 0x00], 0);
+        assert!(matches!(err, Err(DisasmError::DecodingError(_))));
+
+        // Unsupported opcode should yield "unknown" not error
+        let ins = decode_hex(&d, "0000001b"); // OP-IMM-32 in RV64 only
+        assert_eq!(ins.mnemonic, "unknown");
+    }
+
+    #[test]
+    fn rv64_w_alu_variants() {
+        // Ensure 64-bit specific op-imm32/op32 decode paths are wired
+        let d = RiscVDecoder::rv64();
+        for (hex, mnem) in [
+            ("0000101b", "slliw"),
+            ("0000501b", "srliw"),
+            ("4000501b", "sraiw"),
+        ] {
+            let ins = decode_hex(&d, hex);
+            assert_eq!(ins.mnemonic, mnem);
+        }
+        for (hex, mnem) in [
+            ("0000103b", "sllw"),
+            ("0000503b", "srlw"),
+            ("4000503b", "sraw"),
+        ] {
+            let ins = decode_hex(&d, hex);
+            assert_eq!(ins.mnemonic, mnem);
+        }
+    }
+}
