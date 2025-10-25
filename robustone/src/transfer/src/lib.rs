@@ -1,43 +1,39 @@
-//! Transfer库 - 反汇编引擎核心库
+//! Transfer crate – core of the disassembly engine.
 //!
-//! 基于Capstone架构设计的Rust反汇编引擎，支持多架构指令集。
+//! Rust-based engine inspired by Capstone’s design, with multi-architecture support.
 
 pub mod error;
 pub mod instruction;
 
-// 重新导出核心类型
+// Re-export frequently used types.
 pub use error::DisasmError;
 pub use instruction::{Instruction, InstructionDetail};
 
 use core::str;
 
-/// 架构处理接口
+/// Trait implemented by architecture-specific disassemblers.
 pub trait ArchitectureHandler: Sync {
-    /// 反汇编一条指令，返回(指令, 消耗的字节数)
-    fn disassemble(
-        &self,
-        bytes: &[u8],
-        addr: u64,
-    ) -> Result<(Instruction, usize), DisasmError>;
+    /// Disassembles a single instruction and returns the decoded instruction plus the byte count consumed.
+    fn disassemble(&self, bytes: &[u8], addr: u64) -> Result<(Instruction, usize), DisasmError>;
 
-    /// 获取架构名称
+    /// Returns the canonical architecture name.
     fn name(&self) -> &'static str;
 
-    /// 检查是否支持该架构（用字符串匹配，避免对上层的依赖）
+    /// Checks whether the handler supports the requested architecture name without leaking dependencies upward.
     fn supports(&self, arch_name: &str) -> bool;
 }
 
-/// 架构分发器
+/// Dispatcher that selects the correct architecture handler at runtime.
 pub struct ArchitectureDispatcher {
     handlers: Vec<Box<dyn ArchitectureHandler>>,
 }
 
 impl ArchitectureDispatcher {
-    /// 创建新的分发器并注册所有架构处理器
+    /// Creates a dispatcher instance and registers all available handlers.
     pub fn new() -> Self {
         let mut handlers: Vec<Box<dyn ArchitectureHandler>> = Vec::new();
 
-        // 注册RISC-V处理器
+    // Register the RISC-V handler when the feature is enabled.
         #[cfg(feature = "riscv")]
         {
             use crate::riscv::RiscVHandler;
@@ -47,46 +43,12 @@ impl ArchitectureDispatcher {
         Self { handlers }
     }
 
-    /// 反汇编单个指令
+    /// Legacy helper that accepts a hex string and returns the decoded instruction.
     pub fn disassemble(&self, hex: &str, arch: String) -> Instruction {
-        // 查找支持该架构的处理器
-        for handler in &self.handlers {
-            if handler.supports(&arch) {
-                // 解析 0x 前缀并转换为字节
-                let s = hex.trim().to_lowercase();
-                let no_prefix = if s.starts_with("0x") { &s[2..] } else { &s };
-                let mut bytes = Vec::new();
-                let mut i = 0;
-                while i + 1 < no_prefix.len() {
-                    let b = u8::from_str_radix(&no_prefix[i..i + 2], 16).unwrap_or(0);
-                    bytes.push(b);
-                    i += 2;
-                }
-
-                // 对于RISC-V架构，十六进制字符串表示指令值，需要转换为小端字节序
-                if handler.name() == "riscv" && bytes.len() == 4 {
-                    // 将指令值转换为小端字节序
-                    let instruction_value = u32::from_str_radix(no_prefix, 16).unwrap_or(0);
-                    bytes = instruction_value.to_le_bytes().to_vec();
-                } else if handler.name() == "riscv" && bytes.len() == 2 {
-                    // 16位指令也需要转换为小端字节序
-                    let instruction_value = u16::from_str_radix(no_prefix, 16).unwrap_or(0);
-                    bytes = instruction_value.to_le_bytes().to_vec();
-                }
-
-    
-                // 尝试反汇编
-                if let Ok((instruction, _size)) = handler.disassemble(&bytes, 0) {
-                    return instruction;
-                }
-                break;
-            }
-        }
-
-        // 如果没有找到支持的处理器或反汇编失败，返回基础指令
         let s = hex.trim().to_lowercase();
         let no_prefix = if s.starts_with("0x") { &s[2..] } else { &s };
-        let mut bytes = Vec::new();
+
+        let mut bytes: Vec<u8> = Vec::new();
         let mut i = 0;
         while i + 1 < no_prefix.len() {
             let b = u8::from_str_radix(&no_prefix[i..i + 2], 16).unwrap_or(0);
@@ -94,15 +56,38 @@ impl ArchitectureDispatcher {
             i += 2;
         }
 
-        let size = bytes.len();
-        Instruction {
-            address: 0,
-            bytes,
-            mnemonic: "unknown".to_string(),
-            operands: "".to_string(),
-            size,
-            detail: None,
+        if arch.starts_with("riscv") {
+            bytes.reverse();
         }
+
+        if let Ok((instruction, _)) = self.disassemble_bytes(&bytes, &arch, 0) {
+            instruction
+        } else {
+            let size = bytes.len();
+            Instruction {
+                address: 0,
+                bytes,
+                mnemonic: "unknown".to_string(),
+                operands: "".to_string(),
+                size,
+                detail: None,
+            }
+        }
+    }
+
+    pub fn disassemble_bytes(
+        &self,
+        bytes: &[u8],
+        arch: &str,
+        address: u64,
+    ) -> Result<(Instruction, usize), DisasmError> {
+        for handler in &self.handlers {
+            if handler.supports(arch) {
+                return handler.disassemble(bytes, address);
+            }
+        }
+
+        Err(DisasmError::UnsupportedArchitecture(arch.to_string()))
     }
 
     /// 获取所有支持的架构
@@ -130,7 +115,7 @@ mod tests {
         let dispatcher = ArchitectureDispatcher::new();
         let archs = dispatcher.supported_architectures();
 
-        // 应该至少包含RISC-V (如果启用)
+    // Ensure RISC-V is present whenever the feature flag is enabled.
         #[cfg(feature = "riscv")]
         assert!(archs.contains(&"riscv"));
     }
@@ -139,13 +124,13 @@ mod tests {
     fn test_hex_parsing() {
         let dispatcher = ArchitectureDispatcher::new();
 
-        // 测试十六进制解析
+    // Hex parsing should succeed for bare strings.
         let instruction = dispatcher.disassemble("deadbeef", "unknown".to_string());
         assert_eq!(instruction.mnemonic, "unknown");
         assert_eq!(instruction.bytes, vec![0xde, 0xad, 0xbe, 0xef]);
         assert_eq!(instruction.size, 4);
 
-        // 测试带0x前缀
+    // Hex parsing should also accept a `0x` prefix.
         let instruction = dispatcher.disassemble("0x1234", "unknown".to_string());
         assert_eq!(instruction.bytes, vec![0x12, 0x34]);
         assert_eq!(instruction.size, 2);

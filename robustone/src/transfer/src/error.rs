@@ -1,4 +1,4 @@
-/// 反汇编错误
+/// Errors produced by the architecture-agnostic disassembly layer.
 #[derive(Debug)]
 pub enum DisasmError {
     UnsupportedArchitecture(String),

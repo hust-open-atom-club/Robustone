@@ -1,21 +1,21 @@
-//! 指令相关的核心数据结构
+//! Core data structures shared by decoded instructions.
 
 use crate::riscv::types::RiscVOperand;
 
-/// 反汇编结果
+/// Decoded instruction returned by the disassembler.
 #[derive(Debug, Clone)]
 pub struct Instruction {
-    /// 指令地址
+    /// Instruction address.
     pub address: u64,
-    /// 指令字节
+    /// Raw instruction bytes in execution order.
     pub bytes: Vec<u8>,
-    /// 指令助记符
+    /// Instruction mnemonic.
     pub mnemonic: String,
-    /// 操作数字符串
+    /// Formatted operand string.
     pub operands: String,
-    /// 指令大小
+    /// Size of the instruction in bytes.
     pub size: usize,
-    /// 详细信息
+    /// Optional architecture-specific detail payload.
     pub detail: Option<InstructionDetail>,
 }
 
@@ -32,16 +32,16 @@ impl Default for Instruction {
     }
 }
 
-/// 指令详细信息
+/// Expanded instruction metadata for architectures that provide it.
 #[derive(Debug, Clone)]
 pub struct InstructionDetail {
-    /// 操作数列表
+    /// Normalized operands as structured data.
     pub operands: Vec<RiscVOperand>,
-    /// 读取的寄存器
+    /// Registers read by the instruction.
     pub regs_read: Vec<u32>,
-    /// 写入的寄存器
+    /// Registers written by the instruction.
     pub regs_write: Vec<u32>,
-    /// 指令分组
+    /// Group tags describing semantic categories.
     pub groups: Vec<String>,
 }
 

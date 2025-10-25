@@ -1,81 +1,101 @@
-//! RISC-V数据类型定义
+//! RISC-V data types used by the transfer crate.
 //!
-//! 基于Capstone RISC-V架构定义的数据结构
+//! These structures mirror Capstone's RISC-V bindings to ease interoperability.
 
-/// RISC-V指令操作数类型
+/// Kinds of operands that can appear in a RISC-V instruction.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum RiscVOperandType {
-    /// 无效操作数
+    /// Placeholder for invalid operands.
     Invalid,
-    /// 寄存器操作数
+    /// Register operand.
     Register,
-    /// 立即数操作数
+    /// Immediate operand.
     Immediate,
-    /// 内存操作数
+    /// Memory operand.
     Memory,
 }
 
-/// 内存操作数 (对应 RISCV_OP_MEM)
+/// Memory operand descriptor (matches `RISCV_OP_MEM`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RiscVMemoryOperand {
-    /// 基址寄存器
+    /// Base register.
     pub base: u32,
-    /// 位移/偏移值
+    /// Displacement relative to the base register.
     pub disp: i64,
 }
 
-/// RISC-V操作数 (对应 cs_riscv_op)
+/// Fully described operand (aligned with `cs_riscv_op`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct RiscVOperand {
-    /// 操作数类型
+    /// Operand classification.
     pub op_type: RiscVOperandType,
-    /// 访问权限
+    /// Access behaviour for the operand.
     pub access: Access,
-    /// 操作数值
+    /// Encoded operand payload.
     pub value: RiscVOperandValue,
 }
 
-/// 操作数值
+/// Concrete value carried by an operand.
 #[derive(Debug, Clone, PartialEq)]
 pub enum RiscVOperandValue {
-    /// 寄存器值
+    /// Register identifier.
     Register(u32),
-    /// 立即数
+    /// Immediate literal.
     Immediate(i64),
-    /// 内存引用
+    /// Memory addressing mode.
     Memory(RiscVMemoryOperand),
 }
 
-/// 寄存器访问权限 (对应 cs_ac_type)
+/// Register access flags (mirrors `cs_ac_type`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Access {
-    /// 可读
+    /// Indicates the register is read.
     pub read: bool,
-    /// 可写
+    /// Indicates the register is written.
     pub write: bool,
 }
 
 impl Access {
-    pub fn read() -> Self { Self { read: true, write: false } }
-    pub fn write() -> Self { Self { read: false, write: true } }
-    pub fn read_write() -> Self { Self { read: true, write: true } }
-    pub fn none() -> Self { Self { read: false, write: false } }
+    pub fn read() -> Self {
+        Self {
+            read: true,
+            write: false,
+        }
+    }
+    pub fn write() -> Self {
+        Self {
+            read: false,
+            write: true,
+        }
+    }
+    pub fn read_write() -> Self {
+        Self {
+            read: true,
+            write: true,
+        }
+    }
+    pub fn none() -> Self {
+        Self {
+            read: false,
+            write: false,
+        }
+    }
 }
 
-/// RISC-V指令详细信息 (对应 cs_riscv)
+/// Instruction-level detail (mirrors `cs_riscv`).
 #[derive(Debug, Clone)]
 pub struct RiscVInstructionDetail {
-    /// 是否需要有效地址
+    /// Whether an effective address is required.
     pub need_effective_addr: bool,
-    /// 操作数数量
+    /// Number of populated operands.
     pub op_count: u8,
-    /// 操作数列表 (最多8个)
+    /// Operand list (up to eight entries).
     pub operands: [RiscVOperand; 8],
-    /// 读取的寄存器列表
+    /// Registers read by the instruction.
     pub regs_read: Vec<u32>,
-    /// 写入的寄存器列表
+    /// Registers written by the instruction.
     pub regs_write: Vec<u32>,
-    /// 指令分组
+    /// Instruction group tags.
     pub groups: Vec<String>,
 }
 
@@ -84,39 +104,48 @@ impl Default for RiscVInstructionDetail {
         Self {
             need_effective_addr: false,
             op_count: 0,
-            operands: [RiscVOperand {
-                op_type: RiscVOperandType::Invalid,
-                access: Access::none(),
-                value: RiscVOperandValue::Immediate(0),
-            }, RiscVOperand {
-                op_type: RiscVOperandType::Invalid,
-                access: Access::none(),
-                value: RiscVOperandValue::Immediate(0),
-            }, RiscVOperand {
-                op_type: RiscVOperandType::Invalid,
-                access: Access::none(),
-                value: RiscVOperandValue::Immediate(0),
-            }, RiscVOperand {
-                op_type: RiscVOperandType::Invalid,
-                access: Access::none(),
-                value: RiscVOperandValue::Immediate(0),
-            }, RiscVOperand {
-                op_type: RiscVOperandType::Invalid,
-                access: Access::none(),
-                value: RiscVOperandValue::Immediate(0),
-            }, RiscVOperand {
-                op_type: RiscVOperandType::Invalid,
-                access: Access::none(),
-                value: RiscVOperandValue::Immediate(0),
-            }, RiscVOperand {
-                op_type: RiscVOperandType::Invalid,
-                access: Access::none(),
-                value: RiscVOperandValue::Immediate(0),
-            }, RiscVOperand {
-                op_type: RiscVOperandType::Invalid,
-                access: Access::none(),
-                value: RiscVOperandValue::Immediate(0),
-            }],
+            operands: [
+                RiscVOperand {
+                    op_type: RiscVOperandType::Invalid,
+                    access: Access::none(),
+                    value: RiscVOperandValue::Immediate(0),
+                },
+                RiscVOperand {
+                    op_type: RiscVOperandType::Invalid,
+                    access: Access::none(),
+                    value: RiscVOperandValue::Immediate(0),
+                },
+                RiscVOperand {
+                    op_type: RiscVOperandType::Invalid,
+                    access: Access::none(),
+                    value: RiscVOperandValue::Immediate(0),
+                },
+                RiscVOperand {
+                    op_type: RiscVOperandType::Invalid,
+                    access: Access::none(),
+                    value: RiscVOperandValue::Immediate(0),
+                },
+                RiscVOperand {
+                    op_type: RiscVOperandType::Invalid,
+                    access: Access::none(),
+                    value: RiscVOperandValue::Immediate(0),
+                },
+                RiscVOperand {
+                    op_type: RiscVOperandType::Invalid,
+                    access: Access::none(),
+                    value: RiscVOperandValue::Immediate(0),
+                },
+                RiscVOperand {
+                    op_type: RiscVOperandType::Invalid,
+                    access: Access::none(),
+                    value: RiscVOperandValue::Immediate(0),
+                },
+                RiscVOperand {
+                    op_type: RiscVOperandType::Invalid,
+                    access: Access::none(),
+                    value: RiscVOperandValue::Immediate(0),
+                },
+            ],
             regs_read: Vec::new(),
             regs_write: Vec::new(),
             groups: Vec::new(),
@@ -124,12 +153,12 @@ impl Default for RiscVInstructionDetail {
     }
 }
 
-/// RISC-V寄存器枚举 (对应 riscv_reg)
+/// Comprehensive RISC-V register enumeration (compatible with `riscv_reg`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RiscVRegister {
     Invalid = 0,
 
-    // 通用寄存器
+    // General-purpose registers
     X0 = 1,   // "zero"
     X1 = 2,   // "ra"
     X2 = 3,   // "sp"
@@ -163,7 +192,7 @@ pub enum RiscVRegister {
     X30 = 31, // "t5"
     X31 = 32, // "t6"
 
-    // 浮点寄存器 (32位)
+    // 32-bit floating-point registers
     F0_32 = 33,
     F1_32 = 34,
     F2_32 = 35,
@@ -197,7 +226,7 @@ pub enum RiscVRegister {
     F30_32 = 63,
     F31_32 = 64,
 
-    // 浮点寄存器 (64位)
+    // 64-bit floating-point registers
     F0_64 = 65,
     F1_64 = 66,
     F2_64 = 67,
@@ -233,12 +262,12 @@ pub enum RiscVRegister {
 }
 
 impl RiscVRegister {
-    /// 获取寄存器名称
+    /// Returns the canonical register name.
     pub fn name(self) -> &'static str {
         match self {
             RiscVRegister::Invalid => "invalid",
 
-            // 通用寄存器
+            // General-purpose registers
             RiscVRegister::X0 => "zero",
             RiscVRegister::X1 => "ra",
             RiscVRegister::X2 => "sp",
@@ -272,7 +301,7 @@ impl RiscVRegister {
             RiscVRegister::X30 => "t5",
             RiscVRegister::X31 => "t6",
 
-            // 浮点寄存器名称
+            // 32-bit floating-point aliases
             RiscVRegister::F0_32 => "ft0",
             RiscVRegister::F1_32 => "ft1",
             RiscVRegister::F2_32 => "ft2",
@@ -306,7 +335,7 @@ impl RiscVRegister {
             RiscVRegister::F30_32 => "ft10",
             RiscVRegister::F31_32 => "ft11",
 
-            // 64位浮点寄存器
+            // 64-bit floating-point aliases
             RiscVRegister::F0_64 => "ft0",
             RiscVRegister::F1_64 => "ft1",
             RiscVRegister::F2_64 => "ft2",
@@ -342,7 +371,7 @@ impl RiscVRegister {
         }
     }
 
-    /// 从数字ID获取寄存器 (RISC-V寄存器编码：x0=0, x1=1, ..., x31=31)
+    /// Converts a raw register ID (x0=0, x1=1, …, x31=31) into the enum representation.
     pub fn from_id(id: u32) -> Self {
         match id {
             0 => RiscVRegister::X0,
@@ -382,40 +411,48 @@ impl RiscVRegister {
     }
 }
 
-/// RISC-V指令集扩展
+/// Supported RISC-V ISA extensions.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum RiscVExtension {
-    /// 基础整数指令集
+    /// Base integer ISA.
     I,
-    /// 乘法和除法扩展
+    /// Multiply/divide extension.
     M,
-    /// 原子操作扩展
+    /// Atomic operations extension.
     A,
-    /// 单精度浮点扩展
+    /// Single-precision floating-point extension.
     F,
-    /// 双精度浮点扩展
+    /// Double-precision floating-point extension.
     D,
-    /// 压缩指令扩展
+    /// Compressed instruction extension.
     C,
 }
 
-/// RISC-V指令格式
+/// Instruction encoding formats available in RISC-V.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum RiscVInstructionFormat {
-    /// R型指令 (寄存器-寄存器操作)
+    /// R-type (register-register) format.
     R,
-    /// I型指令 (立即数操作)
+    /// I-type (immediate) format.
     I,
-    /// S型指令 (存储操作)
+    /// S-type (store) format.
     S,
-    /// B型指令 (分支操作)
+    /// B-type (branch) format.
     B,
-    /// U型指令 (上位立即数)
+    /// U-type (upper immediate) format.
     U,
-    /// J型指令 (跳转和链接)
+    /// J-type (jump and link) format.
     J,
-    /// R4型指令 (浮点融合乘加)
+    /// R4-type (fused floating multiply-add) format.
     R4,
-    /// 压缩指令格式
-    CR, CI, CSS, CIW, CL, CS, CA, CB, CJ,
+    /// Compressed instruction formats.
+    CR,
+    CI,
+    CSS,
+    CIW,
+    CL,
+    CS,
+    CA,
+    CB,
+    CJ,
 }
