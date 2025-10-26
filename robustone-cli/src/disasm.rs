@@ -1,4 +1,3 @@
-use crate::arch::Architecture;
 use crate::config::{DisasmConfig, OutputConfig};
 use robustone_core::{ArchitectureDispatcher, error::DisasmError, instruction::Instruction};
 
@@ -82,6 +81,7 @@ impl<'a> IntoIterator for &'a DisassemblyResult {
 }
 
 /// High-level disassembly engine that processes byte sequences.
+#[derive(Default)]
 pub struct DisassemblyEngine {
     dispatcher: ArchitectureDispatcher,
 }
@@ -186,7 +186,7 @@ impl DisassemblyFormatter {
 
         // Print errors if any occurred
         for error in &result.errors {
-            output.push_str(&format!("; Error: {}\n", error));
+            output.push_str(&format!("; Error: {error}\n"));
         }
 
         output
@@ -210,7 +210,7 @@ impl DisassemblyFormatter {
                 instr
                     .bytes
                     .iter()
-                    .map(|b| format!("{:02x}", b))
+                    .map(|b| format!("{b:02x}"))
                     .collect::<Vec<_>>()
                     .join(" "),
                 width = self.output_config.hex_width
@@ -236,7 +236,6 @@ impl DisassemblyFormatter {
 }
 
 /// Convenience functions for backward compatibility.
-
 /// Disassembles the supplied byte tokens using the provided configuration.
 pub fn process_input(config: &DisasmConfig) -> Result<DisassemblyResult, DisasmError> {
     let engine = DisassemblyEngine::new();
@@ -254,36 +253,6 @@ pub fn print_instructions(result: &DisassemblyResult, config: &DisasmConfig) {
     let output_config = OutputConfig::from_display_options(&config.display_options);
     let formatter = DisassemblyFormatter::new(output_config);
     formatter.print(result);
-}
-
-/// Legacy hex conversion function for backward compatibility.
-fn hex_words_to_arch_bytes(words: &[String], _arch: &Architecture) -> Result<Vec<u8>, String> {
-    let mut bytes: Vec<u8> = Vec::new();
-    for word in words {
-        let token = word.trim().to_lowercase();
-        if token.is_empty() {
-            continue;
-        }
-
-        let no_prefix = token.strip_prefix("0x").unwrap_or(&token);
-        if no_prefix.is_empty() {
-            return Err("empty hex token".into());
-        }
-        if no_prefix.len() % 2 != 0 {
-            return Err(format!("odd-length hex token: {}", word));
-        }
-
-        let mut token_bytes: Vec<u8> = Vec::new();
-        for i in (0..no_prefix.len()).step_by(2) {
-            let byte = u8::from_str_radix(&no_prefix[i..i + 2], 16)
-                .map_err(|_| format!("invalid hex byte in token: {}", word))?;
-            token_bytes.push(byte);
-        }
-
-        bytes.extend(token_bytes);
-    }
-
-    Ok(bytes)
 }
 
 #[cfg(test)]

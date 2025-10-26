@@ -29,8 +29,7 @@ fn print_architecture_summary() {
     let archs = Architecture::all_architectures();
     let total = archs.len();
     let implemented = archs.iter().filter(|a| a.is_implemented()).count();
-
-    println!("Architecture Support: {}/{}", implemented, total);
+    println!("Architecture Support: {implemented}/{total}");
 
     // Dedicated breakdown for the RISC-V family.
     let riscv_count = archs.iter().filter(|a| a.category() == "RISC-V").count();
@@ -41,13 +40,10 @@ fn print_architecture_summary() {
 
     match riscv_implemented {
         count if count == riscv_count && riscv_count > 0 => {
-            println!(
-                "RISC-V: ✅ Complete ({}/{})",
-                riscv_implemented, riscv_count
-            );
+            println!("RISC-V: ✅ Complete ({riscv_implemented}/{riscv_count})");
         }
         count if count > 0 => {
-            println!("RISC-V: ⚠️ Partial ({}/{})", riscv_implemented, riscv_count);
+            println!("RISC-V: ⚠️ Partial ({riscv_implemented}/{riscv_count})");
         }
         _ => {
             println!("RISC-V: ❌ Not supported");
@@ -65,10 +61,7 @@ fn print_implementation_status() {
     let mut categories: HashMap<&str, Vec<&Architecture>> = HashMap::new();
 
     for arch in &archs {
-        categories
-            .entry(arch.category())
-            .or_insert_with(Vec::new)
-            .push(arch);
+        categories.entry(arch.category()).or_default().push(arch);
     }
 
     // Display entries grouped by category for readability.
@@ -101,7 +94,7 @@ fn print_detailed_status() {
     let percentage = (implemented * 100) / total;
 
     println!("Implementation Progress:");
-    println!("  {}% Complete ({}/{})", percentage, implemented, total);
+    println!("  {percentage}% Complete ({implemented}/{total})");
     println!();
     println!("Status Legend:");
     println!("  ✅ Implemented and tested");

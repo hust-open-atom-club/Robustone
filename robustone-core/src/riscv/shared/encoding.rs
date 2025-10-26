@@ -354,6 +354,12 @@ impl DefaultSignExtender {
     }
 }
 
+impl Default for DefaultSignExtender {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Shamt (shift amount) extraction utilities.
 pub struct ShamtExtractor;
 

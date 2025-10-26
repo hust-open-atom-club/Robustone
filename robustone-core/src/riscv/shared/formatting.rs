@@ -7,6 +7,7 @@ use super::super::decoder::RiscVDecodedInstruction;
 use super::super::types::*;
 
 /// Trait for formatting decoded RISC-V instructions.
+#[allow(clippy::too_many_arguments)]
 pub trait InstructionFormatter {
     /// Create a decoded instruction with the given parameters.
     fn create_decoded_instruction(
@@ -21,7 +22,7 @@ pub trait InstructionFormatter {
     /// Create a decoded instruction using the operand builder.
     fn create_instruction_from_parts(
         &self,
-        mnemonic: &str,
+        _mnemonic: &str,
         rd: u8,
         rs1: u8,
         rs2: u8,
@@ -150,12 +151,12 @@ impl InstructionFormatter for DefaultInstructionFormatter {
                 let imm_str = if imm_val == 0 {
                     "0".to_string()
                 } else {
-                    format!("0x{:x}", imm_val)
+                    format!("0x{imm_val:x}")
                 };
                 let ops = format!("{}, {}", get_register_name(rd), imm_str);
                 let details = vec![
                     convenience::register(rd, rd_access),
-                    convenience::immediate(imm_val as i64),
+                    convenience::immediate(imm_val),
                 ];
                 (ops, details)
             }
@@ -173,7 +174,7 @@ impl InstructionFormatter for DefaultInstructionFormatter {
                 (ops, details)
             }
             _ => {
-                let ops = format!("unknown format");
+                let ops = "unknown format".to_string();
                 let details = vec![];
                 (ops, details)
             }
@@ -190,9 +191,9 @@ impl ImmediateFormatter for DefaultInstructionFormatter {
 
     fn format_immediate_hex(&self, value: i64) -> String {
         if value < 0 {
-            format!("-0x{:x}", -value)
+            format!("-0x{value:x}")
         } else {
-            format!("0x{:x}", value)
+            format!("0x{value:x}")
         }
     }
 
@@ -240,18 +241,24 @@ impl DefaultInstructionFormatter {
 
     /// Create an unknown instruction placeholder.
     pub fn unknown_instruction(value: u32) -> RiscVDecodedInstruction {
-        Self::simple_instruction("unknown", &format!("0x{:08x}", value))
+        Self::simple_instruction("unknown", &format!("0x{value:08x}"))
     }
 
     /// Create an unknown compressed instruction placeholder.
     pub fn unknown_compressed_instruction(value: u16) -> RiscVDecodedInstruction {
         Self::instance().create_decoded_instruction(
             "c.unknown",
-            format!("0x{:04x}", value),
+            format!("0x{value:04x}"),
             RiscVInstructionFormat::CI,
             2,
             vec![],
         )
+    }
+}
+
+impl Default for DefaultInstructionFormatter {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -260,7 +267,7 @@ pub struct InstructionFormatHelper;
 
 impl InstructionFormatHelper {
     /// Format an R-type instruction (register-register).
-    pub fn format_r_type(mnemonic: &str, rd: u8, rs1: u8, rs2: u8) -> String {
+    pub fn format_r_type(_mnemonic: &str, rd: u8, rs1: u8, rs2: u8) -> String {
         use super::registers::get_register_name;
         format!(
             "{}, {}, {}",
@@ -271,7 +278,7 @@ impl InstructionFormatHelper {
     }
 
     /// Format an I-type instruction (register-immediate).
-    pub fn format_i_type(mnemonic: &str, rd: u8, rs1: u8, imm: i64) -> String {
+    pub fn format_i_type(_mnemonic: &str, rd: u8, rs1: u8, imm: i64) -> String {
         use super::operands::convenience;
         use super::registers::get_register_name;
         format!(
@@ -283,7 +290,7 @@ impl InstructionFormatHelper {
     }
 
     /// Format an S-type instruction (store).
-    pub fn format_s_type(mnemonic: &str, rs2: u8, rs1: u8, imm: i64) -> String {
+    pub fn format_s_type(_mnemonic: &str, rs2: u8, rs1: u8, imm: i64) -> String {
         use super::operands::convenience;
         use super::registers::get_register_name;
         format!(
@@ -295,11 +302,11 @@ impl InstructionFormatHelper {
     }
 
     /// Format a B-type instruction (branch).
-    pub fn format_b_type(mnemonic: &str, rs1: u8, rs2: u8, imm: i64) -> String {
+    pub fn format_b_type(_mnemonic: &str, rs1: u8, rs2: u8, imm: i64) -> String {
         use super::operands::convenience;
         use super::registers::get_register_name;
         let offset_str = convenience::format_immediate(imm);
-        if (mnemonic == "beqz" || mnemonic == "bnez") && rs2 == 0 {
+        if (_mnemonic == "beqz" || _mnemonic == "bnez") && rs2 == 0 {
             format!("{}, {}", get_register_name(rs1), offset_str)
         } else {
             format!(
@@ -312,23 +319,23 @@ impl InstructionFormatHelper {
     }
 
     /// Format a U-type instruction (upper immediate).
-    pub fn format_u_type(mnemonic: &str, rd: u8, imm: i64) -> String {
+    pub fn format_u_type(_mnemonic: &str, rd: u8, imm: i64) -> String {
         use super::registers::get_register_name;
         let imm_val = imm >> 12;
         let imm_str = if imm_val == 0 {
             "0".to_string()
         } else {
-            format!("0x{:x}", imm_val)
+            format!("0x{imm_val:x}")
         };
         format!("{}, {}", get_register_name(rd), imm_str)
     }
 
     /// Format a J-type instruction (jump).
-    pub fn format_j_type(mnemonic: &str, rd: u8, imm: i64) -> String {
+    pub fn format_j_type(_mnemonic: &str, rd: u8, imm: i64) -> String {
         use super::operands::convenience;
         use super::registers::get_register_name;
         let offset_str = convenience::format_immediate(imm);
-        match (mnemonic, rd) {
+        match (_mnemonic, rd) {
             ("j", _) => offset_str,
             ("jal", 1) => offset_str,
             _ => format!("{}, {}", get_register_name(rd), offset_str),
@@ -346,7 +353,7 @@ impl CsrFormatter {
         if let Some(name) = Self::csr_name_lookup(csr_id) {
             name.to_string()
         } else {
-            format!("0x{:x}", csr)
+            format!("0x{csr:x}")
         }
     }
 

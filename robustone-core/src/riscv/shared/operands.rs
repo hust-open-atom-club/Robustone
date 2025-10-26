@@ -83,14 +83,14 @@ impl OperandFormatter for DefaultOperandFactory {
 
         if use_hex {
             if value < 0 {
-                format!("-0x{:x}", abs)
+                format!("-0x{abs:x}")
             } else {
-                format!("0x{:x}", abs)
+                format!("0x{abs:x}")
             }
         } else if value < 0 {
-            format!("-{}", abs)
+            format!("-{abs}")
         } else {
-            format!("{}", value)
+            format!("{value}")
         }
     }
 
@@ -99,13 +99,13 @@ impl OperandFormatter for DefaultOperandFactory {
         if let Some(name) = csr_name_lookup(csr_id) {
             name.to_string()
         } else {
-            format!("0x{:x}", csr)
+            format!("0x{csr:x}")
         }
     }
 
     fn format_memory_operand(&self, offset: i64, base_reg: &str) -> String {
         let offset_str = self.format_immediate(offset);
-        format!("{}({})", offset_str, base_reg)
+        format!("{offset_str}({base_reg})")
     }
 }
 
@@ -136,6 +136,12 @@ impl DefaultOperandFactory {
     }
 }
 
+impl Default for DefaultOperandFactory {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Combined operand factory and formatter for convenience.
 pub struct OperandBuilder {
     factory: DefaultOperandFactory,
@@ -155,7 +161,7 @@ impl OperandBuilder {
     }
 
     /// Format instruction operands for common instruction formats.
-    pub fn format_r_type(&self, mnemonic: &str, rd: u8, rs1: u8, rs2: u8) -> String {
+    pub fn format_r_type(&self, _mnemonic: &str, rd: u8, rs1: u8, rs2: u8) -> String {
         format!(
             "{}, {}, {}",
             super::registers::get_register_name(rd),
@@ -164,7 +170,7 @@ impl OperandBuilder {
         )
     }
 
-    pub fn format_i_type(&self, mnemonic: &str, rd: u8, rs1: u8, imm: i64) -> String {
+    pub fn format_i_type(&self, _mnemonic: &str, rd: u8, rs1: u8, imm: i64) -> String {
         format!(
             "{}, {}, {}",
             super::registers::get_register_name(rd),
@@ -173,7 +179,7 @@ impl OperandBuilder {
         )
     }
 
-    pub fn format_s_type(&self, mnemonic: &str, rs2: u8, rs1: u8, imm: i64) -> String {
+    pub fn format_s_type(&self, _mnemonic: &str, rs2: u8, rs1: u8, imm: i64) -> String {
         format!(
             "{}, {}({})",
             super::registers::get_register_name(rs2),
@@ -200,12 +206,12 @@ impl OperandBuilder {
         }
     }
 
-    pub fn format_u_type(&self, mnemonic: &str, rd: u8, imm: i64) -> String {
+    pub fn format_u_type(&self, _mnemonic: &str, rd: u8, imm: i64) -> String {
         let imm_val = imm >> 12;
         let imm_str = if imm_val == 0 {
             "0".to_string()
         } else {
-            format!("0x{:x}", imm_val)
+            format!("0x{imm_val:x}")
         };
         format!("{}, {}", super::registers::get_register_name(rd), imm_str)
     }
@@ -221,7 +227,7 @@ impl OperandBuilder {
 
     pub fn format_load_type(
         &self,
-        mnemonic: &str,
+        _mnemonic: &str,
         rd: u8,
         rs1: u8,
         imm: i64,
@@ -242,7 +248,7 @@ impl OperandBuilder {
 
     pub fn format_store_type(
         &self,
-        mnemonic: &str,
+        _mnemonic: &str,
         rs2: u8,
         rs1: u8,
         imm: i64,
@@ -259,6 +265,12 @@ impl OperandBuilder {
             self.factory.format_immediate(imm),
             super::registers::get_register_name(rs1)
         )
+    }
+}
+
+impl Default for OperandBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
