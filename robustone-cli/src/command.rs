@@ -131,9 +131,9 @@ impl Cli {
                     ));
                 }
 
-                hex::decode(&clean_code).map(Some).map_err(|e| {
-                    CliError::validation("hex_code", format!("Invalid hex code: {}", e))
-                })
+                hex::decode(&clean_code)
+                    .map(Some)
+                    .map_err(|e| CliError::validation("hex_code", format!("Invalid hex code: {e}")))
             }
             None => Ok(None),
         }

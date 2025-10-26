@@ -74,14 +74,13 @@ pub fn validate_architecture(arch_str: &str) -> Result<String> {
 
     // Ensure the base architecture is supported before considering modifiers.
     let base_arch = parts[0];
-    let is_valid = valid_prefixes.iter().any(|&prefix| base_arch == prefix);
+    let is_valid = valid_prefixes.contains(&base_arch);
 
     if !is_valid {
         return Err(CliError::validation(
             "architecture",
             format!(
-                "Invalid architecture: {}. Supported: riscv32, riscv64, arm, aarch64, x86, mips, ppc, sparc, systemz, and others",
-                base_arch
+                "Invalid architecture: {base_arch}. Supported: riscv32, riscv64, arm, aarch64, x86, mips, ppc, sparc, systemz, and others",
             ),
         ));
     }
@@ -145,7 +144,7 @@ pub fn hex_words_to_bytes(words: &[String]) -> Result<Vec<u8>> {
         for i in (0..hex_part.len()).step_by(2) {
             let byte_str = &hex_part[i..i + 2];
             let byte = u8::from_str_radix(byte_str, 16).map_err(|_| {
-                CliError::validation("hex_code", format!("Invalid hex byte: {}", byte_str))
+                CliError::validation("hex_code", format!("Invalid hex byte: {byte_str}"))
             })?;
             bytes.push(byte);
         }
@@ -168,7 +167,7 @@ fn normalize_hex_token(token: &str) -> Result<String> {
         return Err(CliError::validation("hex_token", "Empty hex token"));
     }
 
-    let hex_part = if trimmed.starts_with("0x") {
+    let hex_part = if trimmed.strip_prefix("0x").is_some() {
         &trimmed[2..]
     } else {
         &trimmed
@@ -190,12 +189,12 @@ fn normalize_hex_token(token: &str) -> Result<String> {
         if !c.is_ascii_hexdigit() {
             return Err(CliError::validation(
                 "hex_token",
-                format!("Invalid hex character: {}", c),
+                format!("Invalid hex character: {c}"),
             ));
         }
     }
 
-    Ok(format!("0x{}", hex_part))
+    Ok(format!("0x{hex_part}"))
 }
 
 /// Format bytes as a hex string with optional spaces.
@@ -203,7 +202,7 @@ pub fn format_bytes_as_hex(bytes: &[u8], with_spaces: bool) -> String {
     if with_spaces {
         bytes
             .iter()
-            .map(|b| format!("{:02x}", b))
+            .map(|b| format!("{b:02x}"))
             .collect::<Vec<_>>()
             .join(" ")
     } else {

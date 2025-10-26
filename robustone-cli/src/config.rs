@@ -62,7 +62,7 @@ impl DisasmConfig {
                     .iter()
                     .rev()
                     .fold(0u32, |acc, &byte| (acc << 8) | byte as u32);
-                format!("{:08x}", word)
+                format!("{word:08x}")
             })
             .collect()
     }

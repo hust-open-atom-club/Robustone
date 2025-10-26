@@ -159,7 +159,7 @@ impl RvdExtension {
 
         Ok(RiscVDecodedInstruction {
             mnemonic: mnemonic.to_string(),
-            operands: format!("{}, {}", rd_name, rs1_name),
+            operands: format!("{rd_name}, {rs1_name}"),
             format: RiscVInstructionFormat::R,
             size: 4,
             operands_detail: vec![
@@ -205,19 +205,19 @@ impl InstructionExtension for RvdExtension {
             }
             Self::OPCODE_FMADD => {
                 let rs3 = (funct7 >> 2) & 0x1F;
-                Some(self.decode_fp_r4_type("fmadd.d", rd, rs1, rs2, rs3 as u8))
+                Some(self.decode_fp_r4_type("fmadd.d", rd, rs1, rs2, rs3))
             }
             Self::OPCODE_FMSUB => {
                 let rs3 = (funct7 >> 2) & 0x1F;
-                Some(self.decode_fp_r4_type("fmsub.d", rd, rs1, rs2, rs3 as u8))
+                Some(self.decode_fp_r4_type("fmsub.d", rd, rs1, rs2, rs3))
             }
             Self::OPCODE_FNMSUB => {
                 let rs3 = (funct7 >> 2) & 0x1F;
-                Some(self.decode_fp_r4_type("fnmsub.d", rd, rs1, rs2, rs3 as u8))
+                Some(self.decode_fp_r4_type("fnmsub.d", rd, rs1, rs2, rs3))
             }
             Self::OPCODE_FNMADD => {
                 let rs3 = (funct7 >> 2) & 0x1F;
-                Some(self.decode_fp_r4_type("fnmadd.d", rd, rs1, rs2, rs3 as u8))
+                Some(self.decode_fp_r4_type("fnmadd.d", rd, rs1, rs2, rs3))
             }
             Self::OPCODE_FP => {
                 let funct5 = funct7 >> 2;
@@ -336,5 +336,11 @@ impl InstructionExtension for RvdExtension {
     ) -> Option<Result<RiscVDecodedInstruction, DisasmError>> {
         // RVD extension doesn't handle compressed instructions in this implementation
         None
+    }
+}
+
+impl Default for RvdExtension {
+    fn default() -> Self {
+        Self::new()
     }
 }
