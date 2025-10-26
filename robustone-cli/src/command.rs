@@ -3,10 +3,13 @@ use clap::Parser;
 
 /// Robustone - Capstone-compatible disassembly engine CLI tool (cstool style)
 #[derive(Parser, Debug)]
-#[command(name = "robustone")]
-#[command(about = "Robustone - Capstone-compatible disassembly engine CLI tool")]
-#[command(version = "0.1.0")]
-#[command(disable_version_flag = true)]
+#[command(
+    name = "robustone",
+    about = "Robustone - Capstone-compatible disassembly engine CLI tool",
+    version = clap::crate_version!(),
+    author = clap::crate_authors!(),
+    disable_version_flag = true
+)]
 pub struct Cli {
     /// Target architecture plus optional mode modifiers (e.g., `riscv32`, `arm+thumb`, `x86+intel`).
     #[arg(help = "Target architecture with optional modes (e.g., riscv32, arm+thumb, x86+intel)")]
