@@ -150,7 +150,8 @@ dependencies = [
 name = "robustone"
 version = "0.0.0"
 dependencies = [
- "hex",
+ "robustone-cli",
+ "robustone-core",
 ]
 
 [[package]]
@@ -160,7 +161,14 @@ dependencies = [
  "clap",
  "hex",
  "lazy_static",
- "robustone",
+ "robustone-core",
+]
+
+[[package]]
+name = "robustone-core"
+version = "0.0.0"
+dependencies = [
+ "hex",
 ]
 
 [[package]]
