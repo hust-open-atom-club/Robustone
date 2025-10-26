@@ -4,16 +4,16 @@
 //! which includes all the fundamental integer operations, control flow instructions,
 //! memory operations, and system instructions that form the core of RISC-V.
 
-use super::InstructionExtension;
-use super::super::types::*;
 use super::super::decoder::{RiscVDecodedInstruction, Xlen};
 use super::super::shared::{
-    operands::{DefaultOperandFactory, OperandFormatter, OperandBuilder},
-    formatting::DefaultInstructionFormatter,
-    registers::RegisterManager,
+    InstructionFormatter, OperandFactory, RegisterNameProvider,
     encoding::ShamtExtractor,
-    OperandFactory, InstructionFormatter, RegisterNameProvider,
+    formatting::DefaultInstructionFormatter,
+    operands::{DefaultOperandFactory, OperandBuilder, OperandFormatter},
+    registers::RegisterManager,
 };
+use super::super::types::*;
+use super::InstructionExtension;
 use crate::error::DisasmError;
 
 /// RV32I/RV64I Base Integer Extension
@@ -109,7 +109,8 @@ impl RviExtension {
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         let operands = self.operand_builder.format_u_type(mnemonic, rd, imm);
         let operands_detail = vec![
-            self.operand_factory.make_register_operand(rd, Access::write()),
+            self.operand_factory
+                .make_register_operand(rd, Access::write()),
             self.operand_factory.make_immediate_operand(imm >> 12),
         ];
         Ok(self.formatter.create_decoded_instruction(
@@ -129,7 +130,8 @@ impl RviExtension {
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         let operands = self.operand_builder.format_j_type(mnemonic, rd, imm);
         let operands_detail = vec![
-            self.operand_factory.make_register_operand(rd, Access::read_write()),
+            self.operand_factory
+                .make_register_operand(rd, Access::read_write()),
             self.operand_factory.make_immediate_operand(imm),
         ];
         Ok(self.formatter.create_decoded_instruction(
@@ -150,8 +152,10 @@ impl RviExtension {
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         let operands = self.operand_builder.format_i_type(mnemonic, rd, rs1, imm);
         let operands_detail = vec![
-            self.operand_factory.make_register_operand(rd, Access::write()),
-            self.operand_factory.make_register_operand(rs1, Access::read()),
+            self.operand_factory
+                .make_register_operand(rd, Access::write()),
+            self.operand_factory
+                .make_register_operand(rs1, Access::read()),
             self.operand_factory.make_immediate_operand(imm),
         ];
         Ok(self.formatter.create_decoded_instruction(
@@ -172,9 +176,12 @@ impl RviExtension {
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         let operands = self.operand_builder.format_r_type(mnemonic, rd, rs1, rs2);
         let operands_detail = vec![
-            self.operand_factory.make_register_operand(rd, Access::write()),
-            self.operand_factory.make_register_operand(rs1, Access::read()),
-            self.operand_factory.make_register_operand(rs2, Access::read()),
+            self.operand_factory
+                .make_register_operand(rd, Access::write()),
+            self.operand_factory
+                .make_register_operand(rs1, Access::read()),
+            self.operand_factory
+                .make_register_operand(rs2, Access::read()),
         ];
         Ok(self.formatter.create_decoded_instruction(
             mnemonic,
@@ -194,7 +201,8 @@ impl RviExtension {
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         let operands = self.operand_builder.format_s_type(mnemonic, rs2, rs1, imm);
         let operands_detail = vec![
-            self.operand_factory.make_register_operand(rs2, Access::read()),
+            self.operand_factory
+                .make_register_operand(rs2, Access::read()),
             self.operand_factory.make_memory_operand(rs1, imm),
         ];
         Ok(self.formatter.create_decoded_instruction(
@@ -215,8 +223,10 @@ impl RviExtension {
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         let operands = self.operand_builder.format_b_type(mnemonic, rs1, rs2, imm);
         let operands_detail = vec![
-            self.operand_factory.make_register_operand(rs1, Access::read()),
-            self.operand_factory.make_register_operand(rs2, Access::read()),
+            self.operand_factory
+                .make_register_operand(rs1, Access::read()),
+            self.operand_factory
+                .make_register_operand(rs2, Access::read()),
             self.operand_factory.make_immediate_operand(imm),
         ];
         Ok(self.formatter.create_decoded_instruction(
@@ -242,11 +252,22 @@ impl RviExtension {
         self.decode_j_type(mnemonic, rd, imm_j)
     }
 
-    fn decode_jalr(&self, rd: u8, rs1: u8, imm_i: i64) -> Result<RiscVDecodedInstruction, DisasmError> {
+    fn decode_jalr(
+        &self,
+        rd: u8,
+        rs1: u8,
+        imm_i: i64,
+    ) -> Result<RiscVDecodedInstruction, DisasmError> {
         self.decode_i_type("jalr", rd, rs1, imm_i)
     }
 
-    fn decode_branch(&self, funct3: u8, rs1: u8, rs2: u8, imm_b: i64) -> Result<RiscVDecodedInstruction, DisasmError> {
+    fn decode_branch(
+        &self,
+        funct3: u8,
+        rs1: u8,
+        rs2: u8,
+        imm_b: i64,
+    ) -> Result<RiscVDecodedInstruction, DisasmError> {
         match funct3 {
             Self::FUNCT3_BRANCH_BEQ => {
                 let mnemonic = if rs2 == 0 { "beqz" } else { "beq" };
@@ -260,11 +281,20 @@ impl RviExtension {
             Self::FUNCT3_BRANCH_BGE => self.decode_b_type("bge", rs1, rs2, imm_b),
             Self::FUNCT3_BRANCH_BLTU => self.decode_b_type("bltu", rs1, rs2, imm_b),
             Self::FUNCT3_BRANCH_BGEU => self.decode_b_type("bgeu", rs1, rs2, imm_b),
-            _ => Err(DisasmError::DecodingError("Invalid branch funct3".to_string())),
+            _ => Err(DisasmError::DecodingError(
+                "Invalid branch funct3".to_string(),
+            )),
         }
     }
 
-    fn decode_load(&self, funct3: u8, rd: u8, rs1: u8, imm_i: i64, xlen: Xlen) -> Result<RiscVDecodedInstruction, DisasmError> {
+    fn decode_load(
+        &self,
+        funct3: u8,
+        rd: u8,
+        rs1: u8,
+        imm_i: i64,
+        xlen: Xlen,
+    ) -> Result<RiscVDecodedInstruction, DisasmError> {
         let mnemonic = match funct3 {
             Self::FUNCT3_LOAD_LB => "lb",
             Self::FUNCT3_LOAD_LH => "lh",
@@ -273,12 +303,19 @@ impl RviExtension {
             Self::FUNCT3_LOAD_LBU => "lbu",
             Self::FUNCT3_LOAD_LHU => "lhu",
             Self::FUNCT3_LOAD_LWU if xlen == Xlen::X64 => "lwu",
-            _ => return Err(DisasmError::DecodingError("Invalid load funct3".to_string())),
+            _ => {
+                return Err(DisasmError::DecodingError(
+                    "Invalid load funct3".to_string(),
+                ));
+            }
         };
 
-        let operands = self.operand_builder.format_load_type(mnemonic, rd, rs1, imm_i, false);
+        let operands = self
+            .operand_builder
+            .format_load_type(mnemonic, rd, rs1, imm_i, false);
         let operands_detail = vec![
-            self.operand_factory.make_register_operand(rd, Access::write()),
+            self.operand_factory
+                .make_register_operand(rd, Access::write()),
             self.operand_factory.make_memory_operand(rs1, imm_i),
         ];
         Ok(self.formatter.create_decoded_instruction(
@@ -290,18 +327,37 @@ impl RviExtension {
         ))
     }
 
-    fn decode_store(&self, funct3: u8, rs2: u8, rs1: u8, imm_s: i64, xlen: Xlen) -> Result<RiscVDecodedInstruction, DisasmError> {
+    fn decode_store(
+        &self,
+        funct3: u8,
+        rs2: u8,
+        rs1: u8,
+        imm_s: i64,
+        xlen: Xlen,
+    ) -> Result<RiscVDecodedInstruction, DisasmError> {
         let mnemonic = match funct3 {
             Self::FUNCT3_STORE_SB => "sb",
             Self::FUNCT3_STORE_SH => "sh",
             Self::FUNCT3_STORE_SW => "sw",
             Self::FUNCT3_STORE_SD if xlen == Xlen::X64 => "sd",
-            _ => return Err(DisasmError::DecodingError("Invalid store funct3".to_string())),
+            _ => {
+                return Err(DisasmError::DecodingError(
+                    "Invalid store funct3".to_string(),
+                ));
+            }
         };
         self.decode_s_type(mnemonic, rs2, rs1, imm_s)
     }
 
-    fn decode_op_imm(&self, funct3: u8, funct7: u8, rd: u8, rs1: u8, imm_i: i64, xlen: Xlen) -> Result<RiscVDecodedInstruction, DisasmError> {
+    fn decode_op_imm(
+        &self,
+        funct3: u8,
+        funct7: u8,
+        rd: u8,
+        rs1: u8,
+        imm_i: i64,
+        xlen: Xlen,
+    ) -> Result<RiscVDecodedInstruction, DisasmError> {
         match funct3 {
             Self::FUNCT3_OP_ADD_SUB => self.decode_i_type("addi", rd, rs1, imm_i),
             Self::FUNCT3_OP_SLT => self.decode_i_type("slti", rd, rs1, imm_i),
@@ -314,7 +370,9 @@ impl RviExtension {
                     let shamt = ShamtExtractor::extract_shamt(imm_i, xlen);
                     self.decode_i_type("slli", rd, rs1, shamt)
                 } else {
-                    Err(DisasmError::DecodingError("Invalid slli funct7".to_string()))
+                    Err(DisasmError::DecodingError(
+                        "Invalid slli funct7".to_string(),
+                    ))
                 }
             }
             Self::FUNCT3_OP_SRL_SRA => match funct7 {
@@ -326,81 +384,157 @@ impl RviExtension {
                     let shamt = ShamtExtractor::extract_shamt(imm_i, xlen);
                     self.decode_i_type("srai", rd, rs1, shamt)
                 }
-                _ => Err(DisasmError::DecodingError("Invalid shift funct7".to_string())),
+                _ => Err(DisasmError::DecodingError(
+                    "Invalid shift funct7".to_string(),
+                )),
             },
-            _ => Err(DisasmError::DecodingError("Invalid op-imm funct3".to_string())),
+            _ => Err(DisasmError::DecodingError(
+                "Invalid op-imm funct3".to_string(),
+            )),
         }
     }
 
-    fn decode_op(&self, funct3: u8, funct7: u8, rd: u8, rs1: u8, rs2: u8) -> Result<RiscVDecodedInstruction, DisasmError> {
+    fn decode_op(
+        &self,
+        funct3: u8,
+        funct7: u8,
+        rd: u8,
+        rs1: u8,
+        rs2: u8,
+    ) -> Result<RiscVDecodedInstruction, DisasmError> {
         // Skip M-extension instructions (funct7 == 0b0000001)
         if funct7 == Self::FUNCT7_OP_MUL {
-            return Err(DisasmError::DecodingError("M-extension instruction".to_string()));
+            return Err(DisasmError::DecodingError(
+                "M-extension instruction".to_string(),
+            ));
         }
 
         match (funct3, funct7) {
-            (Self::FUNCT3_OP_ADD_SUB, Self::FUNCT7_OP_ADD) => self.decode_r_type("add", rd, rs1, rs2),
-            (Self::FUNCT3_OP_ADD_SUB, Self::FUNCT7_OP_SUB) => self.decode_r_type("sub", rd, rs1, rs2),
+            (Self::FUNCT3_OP_ADD_SUB, Self::FUNCT7_OP_ADD) => {
+                self.decode_r_type("add", rd, rs1, rs2)
+            }
+            (Self::FUNCT3_OP_ADD_SUB, Self::FUNCT7_OP_SUB) => {
+                self.decode_r_type("sub", rd, rs1, rs2)
+            }
             (Self::FUNCT3_OP_SLL, Self::FUNCT7_OP_ADD) => self.decode_r_type("sll", rd, rs1, rs2),
             (Self::FUNCT3_OP_SLT, Self::FUNCT7_OP_ADD) => self.decode_r_type("slt", rd, rs1, rs2),
             (Self::FUNCT3_OP_SLTU, Self::FUNCT7_OP_ADD) => self.decode_r_type("sltu", rd, rs1, rs2),
             (Self::FUNCT3_OP_XOR, Self::FUNCT7_OP_ADD) => self.decode_r_type("xor", rd, rs1, rs2),
-            (Self::FUNCT3_OP_SRL_SRA, Self::FUNCT7_OP_SRL) => self.decode_r_type("srl", rd, rs1, rs2),
-            (Self::FUNCT3_OP_SRL_SRA, Self::FUNCT7_OP_SRA) => self.decode_r_type("sra", rd, rs1, rs2),
+            (Self::FUNCT3_OP_SRL_SRA, Self::FUNCT7_OP_SRL) => {
+                self.decode_r_type("srl", rd, rs1, rs2)
+            }
+            (Self::FUNCT3_OP_SRL_SRA, Self::FUNCT7_OP_SRA) => {
+                self.decode_r_type("sra", rd, rs1, rs2)
+            }
             (Self::FUNCT3_OP_OR, Self::FUNCT7_OP_ADD) => self.decode_r_type("or", rd, rs1, rs2),
             (Self::FUNCT3_OP_AND, Self::FUNCT7_OP_ADD) => self.decode_r_type("and", rd, rs1, rs2),
-            _ => Err(DisasmError::DecodingError("Invalid op instruction encoding".to_string())),
+            _ => Err(DisasmError::DecodingError(
+                "Invalid op instruction encoding".to_string(),
+            )),
         }
     }
 
-    fn decode_op_imm_32(&self, funct3: u8, funct7: u8, rd: u8, rs1: u8, imm_i: i64) -> Result<RiscVDecodedInstruction, DisasmError> {
+    fn decode_op_imm_32(
+        &self,
+        funct3: u8,
+        funct7: u8,
+        rd: u8,
+        rs1: u8,
+        imm_i: i64,
+    ) -> Result<RiscVDecodedInstruction, DisasmError> {
         match funct3 {
             Self::FUNCT3_OP_ADD_SUB => self.decode_i_type("addiw", rd, rs1, imm_i),
             Self::FUNCT3_OP_SLL => {
                 if funct7 == 0 {
                     self.decode_i_type("slliw", rd, rs1, imm_i)
                 } else {
-                    Err(DisasmError::DecodingError("Invalid slliw funct7".to_string()))
+                    Err(DisasmError::DecodingError(
+                        "Invalid slliw funct7".to_string(),
+                    ))
                 }
             }
             Self::FUNCT3_OP_SRL_SRA => match funct7 {
                 Self::FUNCT7_OP_SRL => self.decode_i_type("srliw", rd, rs1, imm_i),
                 Self::FUNCT7_OP_SRA => self.decode_i_type("sraiw", rd, rs1, imm_i),
-                _ => Err(DisasmError::DecodingError("Invalid 32-bit shift funct7".to_string())),
+                _ => Err(DisasmError::DecodingError(
+                    "Invalid 32-bit shift funct7".to_string(),
+                )),
             },
-            _ => Err(DisasmError::DecodingError("Invalid op-imm32 funct3".to_string())),
+            _ => Err(DisasmError::DecodingError(
+                "Invalid op-imm32 funct3".to_string(),
+            )),
         }
     }
 
-    fn decode_op_32(&self, funct3: u8, funct7: u8, rd: u8, rs1: u8, rs2: u8) -> Result<RiscVDecodedInstruction, DisasmError> {
+    fn decode_op_32(
+        &self,
+        funct3: u8,
+        funct7: u8,
+        rd: u8,
+        rs1: u8,
+        rs2: u8,
+    ) -> Result<RiscVDecodedInstruction, DisasmError> {
         match (funct3, funct7) {
-            (Self::FUNCT3_OP_ADD_SUB, Self::FUNCT7_OP_ADD) => self.decode_r_type("addw", rd, rs1, rs2),
-            (Self::FUNCT3_OP_ADD_SUB, Self::FUNCT7_OP_SUB) => self.decode_r_type("subw", rd, rs1, rs2),
+            (Self::FUNCT3_OP_ADD_SUB, Self::FUNCT7_OP_ADD) => {
+                self.decode_r_type("addw", rd, rs1, rs2)
+            }
+            (Self::FUNCT3_OP_ADD_SUB, Self::FUNCT7_OP_SUB) => {
+                self.decode_r_type("subw", rd, rs1, rs2)
+            }
             (Self::FUNCT3_OP_SLL, Self::FUNCT7_OP_ADD) => self.decode_r_type("sllw", rd, rs1, rs2),
-            (Self::FUNCT3_OP_SRL_SRA, Self::FUNCT7_OP_SRL) => self.decode_r_type("srlw", rd, rs1, rs2),
-            (Self::FUNCT3_OP_SRL_SRA, Self::FUNCT7_OP_SRA) => self.decode_r_type("sraw", rd, rs1, rs2),
-            _ => Err(DisasmError::DecodingError("Invalid op-32 instruction encoding".to_string())),
+            (Self::FUNCT3_OP_SRL_SRA, Self::FUNCT7_OP_SRL) => {
+                self.decode_r_type("srlw", rd, rs1, rs2)
+            }
+            (Self::FUNCT3_OP_SRL_SRA, Self::FUNCT7_OP_SRA) => {
+                self.decode_r_type("sraw", rd, rs1, rs2)
+            }
+            _ => Err(DisasmError::DecodingError(
+                "Invalid op-32 instruction encoding".to_string(),
+            )),
         }
     }
 
     fn decode_misc_mem(&self, funct3: u8) -> Result<RiscVDecodedInstruction, DisasmError> {
         match funct3 {
-            Self::FUNCT3_MISC_MEM_FENCE => Ok(DefaultInstructionFormatter::simple_instruction("fence", "")),
-            Self::FUNCT3_MISC_MEM_FENCE_I => Ok(DefaultInstructionFormatter::simple_instruction("fence.i", "")),
-            _ => Err(DisasmError::DecodingError("Invalid misc mem funct3".to_string())),
+            Self::FUNCT3_MISC_MEM_FENCE => {
+                Ok(DefaultInstructionFormatter::simple_instruction("fence", ""))
+            }
+            Self::FUNCT3_MISC_MEM_FENCE_I => Ok(DefaultInstructionFormatter::simple_instruction(
+                "fence.i", "",
+            )),
+            _ => Err(DisasmError::DecodingError(
+                "Invalid misc mem funct3".to_string(),
+            )),
         }
     }
 
-    fn decode_system(&self, funct3: u8, rd: u8, rs1: u8, _imm_i: i64, funct12: u32) -> Result<RiscVDecodedInstruction, DisasmError> {
+    fn decode_system(
+        &self,
+        funct3: u8,
+        rd: u8,
+        rs1: u8,
+        _imm_i: i64,
+        funct12: u32,
+    ) -> Result<RiscVDecodedInstruction, DisasmError> {
         match funct3 {
             Self::FUNCT3_SYSTEM_PRIV => match funct12 {
-                Self::FUNCT12_SYSTEM_ECALL => Ok(DefaultInstructionFormatter::simple_instruction("ecall", "")),
-                Self::FUNCT12_SYSTEM_EBREAK => Ok(DefaultInstructionFormatter::simple_instruction("ebreak", "")),
+                Self::FUNCT12_SYSTEM_ECALL => {
+                    Ok(DefaultInstructionFormatter::simple_instruction("ecall", ""))
+                }
+                Self::FUNCT12_SYSTEM_EBREAK => Ok(DefaultInstructionFormatter::simple_instruction(
+                    "ebreak", "",
+                )),
                 _ => self.decode_csr_instruction("csrrw", rd, rs1, funct12 as i64),
             },
-            Self::FUNCT3_SYSTEM_CSRRW => self.decode_csr_instruction("csrrw", rd, rs1, funct12 as i64),
-            Self::FUNCT3_SYSTEM_CSRRS => self.decode_csr_instruction("csrrs", rd, rs1, funct12 as i64),
-            Self::FUNCT3_SYSTEM_CSRRC => self.decode_csr_instruction("csrrc", rd, rs1, funct12 as i64),
+            Self::FUNCT3_SYSTEM_CSRRW => {
+                self.decode_csr_instruction("csrrw", rd, rs1, funct12 as i64)
+            }
+            Self::FUNCT3_SYSTEM_CSRRS => {
+                self.decode_csr_instruction("csrrs", rd, rs1, funct12 as i64)
+            }
+            Self::FUNCT3_SYSTEM_CSRRC => {
+                self.decode_csr_instruction("csrrc", rd, rs1, funct12 as i64)
+            }
             Self::FUNCT3_SYSTEM_CSRRWI => {
                 self.decode_csr_instruction_imm("csrrwi", rd, rs1 as i64, funct12 as i64)
             }
@@ -410,7 +544,9 @@ impl RviExtension {
             Self::FUNCT3_SYSTEM_CSRRCI => {
                 self.decode_csr_instruction_imm("csrrci", rd, rs1 as i64, funct12 as i64)
             }
-            _ => Err(DisasmError::DecodingError("Invalid system funct3".to_string())),
+            _ => Err(DisasmError::DecodingError(
+                "Invalid system funct3".to_string(),
+            )),
         }
     }
 
@@ -422,15 +558,18 @@ impl RviExtension {
         csr: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         let csr_str = self.operand_factory.format_csr(csr);
-        let operands = format!("{}, {}, {}",
+        let operands = format!(
+            "{}, {}, {}",
             self.register_manager.int_register_name(rd),
             csr_str,
             self.register_manager.int_register_name(rs1)
         );
         let operands_detail = vec![
-            self.operand_factory.make_register_operand(rd, Access::write()),
+            self.operand_factory
+                .make_register_operand(rd, Access::write()),
             self.operand_factory.make_immediate_operand(csr),
-            self.operand_factory.make_register_operand(rs1, Access::read()),
+            self.operand_factory
+                .make_register_operand(rs1, Access::read()),
         ];
         Ok(self.formatter.create_decoded_instruction(
             mnemonic,
@@ -449,13 +588,15 @@ impl RviExtension {
         csr: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         let csr_str = self.operand_factory.format_csr(csr);
-        let operands = format!("{}, {}, {}",
+        let operands = format!(
+            "{}, {}, {}",
             self.register_manager.int_register_name(rd),
             csr_str,
             zimm
         );
         let operands_detail = vec![
-            self.operand_factory.make_register_operand(rd, Access::write()),
+            self.operand_factory
+                .make_register_operand(rd, Access::write()),
             self.operand_factory.make_immediate_operand(csr),
             self.operand_factory.make_immediate_operand(zimm),
         ];
@@ -505,13 +646,11 @@ impl InstructionExtension for RviExtension {
             Self::OPCODE_STORE => Some(self.decode_store(funct3, rs2, rs1, imm_s, xlen)),
             Self::OPCODE_MISC_MEM => Some(self.decode_misc_mem(funct3)),
             Self::OPCODE_OP_IMM => Some(self.decode_op_imm(funct3, funct7, rd, rs1, imm_i, xlen)),
-            Self::OPCODE_OP => {
-                match self.decode_op(funct3, funct7, rd, rs1, rs2) {
-                    Ok(inst) => Some(Ok(inst)),
-                    Err(DisasmError::DecodingError(msg)) if msg.contains("M-extension") => None,
-                    Err(e) => Some(Err(e)),
-                }
-            }
+            Self::OPCODE_OP => match self.decode_op(funct3, funct7, rd, rs1, rs2) {
+                Ok(inst) => Some(Ok(inst)),
+                Err(DisasmError::DecodingError(msg)) if msg.contains("M-extension") => None,
+                Err(e) => Some(Err(e)),
+            },
             Self::OPCODE_OP_IMM_32 if xlen == Xlen::X64 => {
                 Some(self.decode_op_imm_32(funct3, funct7, rd, rs1, imm_i))
             }
@@ -600,7 +739,25 @@ mod tests {
 
         // RVI extension shouldn't handle compressed instructions
         let result = extension.try_decode_compressed(
-            0x0001, 0b01, 0b000, Xlen::X32, 1, 2, 3, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0x0001,
+            0b01,
+            0b000,
+            Xlen::X32,
+            1,
+            2,
+            3,
+            0,
+            1,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
         );
         assert!(result.is_none());
     }

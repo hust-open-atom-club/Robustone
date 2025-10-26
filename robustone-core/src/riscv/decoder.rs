@@ -4,8 +4,8 @@
 //! is implemented as a separate module, making the codebase more maintainable
 //! and easier to extend with new instructions.
 
+use super::extensions::{InstructionExtension, create_extensions, extension_masks};
 use super::types::*;
-use super::extensions::{create_extensions, extension_masks, InstructionExtension};
 use crate::error::DisasmError;
 
 /// RISC-V XLEN (register width) indicator.
@@ -48,8 +48,11 @@ impl RiscVDecoder {
     pub fn rv32gc() -> Self {
         Self::new(
             Xlen::X32,
-            extension_masks::I | extension_masks::M | extension_masks::A |
-            extension_masks::F | extension_masks::C,
+            extension_masks::I
+                | extension_masks::M
+                | extension_masks::A
+                | extension_masks::F
+                | extension_masks::C,
         )
     }
 
@@ -57,8 +60,12 @@ impl RiscVDecoder {
     pub fn rv64gc() -> Self {
         Self::new(
             Xlen::X64,
-            extension_masks::I | extension_masks::M | extension_masks::A |
-            extension_masks::F | extension_masks::D | extension_masks::C,
+            extension_masks::I
+                | extension_masks::M
+                | extension_masks::A
+                | extension_masks::F
+                | extension_masks::D
+                | extension_masks::C,
         )
     }
 
@@ -138,18 +145,7 @@ impl RiscVDecoder {
             }
 
             if let Some(result) = extension.try_decode_standard(
-                opcode,
-                funct3,
-                funct7,
-                rd,
-                rs1,
-                rs2,
-                funct12,
-                imm_i,
-                imm_s,
-                imm_b,
-                imm_u,
-                imm_j,
+                opcode, funct3, funct7, rd, rs1, rs2, funct12, imm_i, imm_s, imm_b, imm_u, imm_j,
                 self.xlen,
             ) {
                 return result;

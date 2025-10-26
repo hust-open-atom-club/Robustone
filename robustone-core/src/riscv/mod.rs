@@ -6,10 +6,10 @@
 //! - Core ISA extensions (I, M, A, F, D, C)
 
 pub mod decoder;
-pub mod printer;
-pub mod types;
 pub mod extensions;
+pub mod printer;
 pub mod shared;
+pub mod types;
 
 use crate::{
     ArchitectureHandler,

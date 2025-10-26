@@ -3,13 +3,13 @@
 //! This module implements the RISC-V single-precision floating-point extension (F extension),
 //! which provides IEEE 754 single-precision floating-point operations.
 
-use super::InstructionExtension;
-use super::super::types::*;
 use super::super::decoder::{RiscVDecodedInstruction, Xlen};
 use super::super::shared::{
     operands::convenience,
     registers::{RegisterManager, RegisterNameProvider},
 };
+use super::super::types::*;
+use super::InstructionExtension;
 use crate::error::DisasmError;
 
 /// RVF Single-Precision Floating-Point Extension
@@ -223,8 +223,11 @@ impl InstructionExtension for RvfExtension {
                 let funct5 = funct7 >> 2;
                 let fmt = funct7 & 0b11;
 
-                if fmt != 0b00 { // Only single-precision (fmt=00)
-                    return Some(Err(DisasmError::DecodingError("Invalid F-extension fmt".to_string())));
+                if fmt != 0b00 {
+                    // Only single-precision (fmt=00)
+                    return Some(Err(DisasmError::DecodingError(
+                        "Invalid F-extension fmt".to_string(),
+                    )));
                 }
 
                 match (funct5, funct3) {
@@ -238,17 +241,33 @@ impl InstructionExtension for RvfExtension {
                     (0b00100, 0b010) => Some(self.decode_fp_r_type("fsgnjx.s", rd, rs1, rs2)),
                     (0b00101, 0b000) => Some(self.decode_fp_r_type("fmin.s", rd, rs1, rs2)),
                     (0b00101, 0b001) => Some(self.decode_fp_r_type("fmax.s", rd, rs1, rs2)),
-                    (0b11000, 0b000) => Some(self.decode_fp_int_type("fcvt.w.s", rd, rs1, rs2, false, true)), // rs2 ignored
-                    (0b11000, 0b001) => Some(self.decode_fp_int_type("fcvt.wu.s", rd, rs1, rs2, false, true)), // rs2 ignored
-                    (0b11100, 0b000) => Some(self.decode_fp_int_type("fmv.x.w", rd, rs1, rs2, false, true)), // rs2 ignored
+                    (0b11000, 0b000) => {
+                        Some(self.decode_fp_int_type("fcvt.w.s", rd, rs1, rs2, false, true))
+                    } // rs2 ignored
+                    (0b11000, 0b001) => {
+                        Some(self.decode_fp_int_type("fcvt.wu.s", rd, rs1, rs2, false, true))
+                    } // rs2 ignored
+                    (0b11100, 0b000) => {
+                        Some(self.decode_fp_int_type("fmv.x.w", rd, rs1, rs2, false, true))
+                    } // rs2 ignored
                     (0b10100, 0b010) => Some(self.decode_fp_r_type("feq.s", rd, rs1, rs2)),
                     (0b10100, 0b001) => Some(self.decode_fp_r_type("flt.s", rd, rs1, rs2)),
                     (0b10100, 0b000) => Some(self.decode_fp_r_type("fle.s", rd, rs1, rs2)),
-                    (0b11100, 0b001) => Some(self.decode_fp_int_type("fclass.s", rd, rs1, rs2, false, true)), // rs2 ignored
-                    (0b11010, 0b000) => Some(self.decode_fp_int_type("fcvt.s.w", rd, rs1, rs2, true, false)), // rs2 ignored
-                    (0b11010, 0b001) => Some(self.decode_fp_int_type("fcvt.s.wu", rd, rs1, rs2, true, false)), // rs2 ignored
-                    (0b11110, 0b000) => Some(self.decode_fp_int_type("fmv.w.x", rd, rs1, rs2, true, false)), // rs2 ignored
-                    _ => Some(Err(DisasmError::DecodingError("Invalid F-extension encoding".to_string()))),
+                    (0b11100, 0b001) => {
+                        Some(self.decode_fp_int_type("fclass.s", rd, rs1, rs2, false, true))
+                    } // rs2 ignored
+                    (0b11010, 0b000) => {
+                        Some(self.decode_fp_int_type("fcvt.s.w", rd, rs1, rs2, true, false))
+                    } // rs2 ignored
+                    (0b11010, 0b001) => {
+                        Some(self.decode_fp_int_type("fcvt.s.wu", rd, rs1, rs2, true, false))
+                    } // rs2 ignored
+                    (0b11110, 0b000) => {
+                        Some(self.decode_fp_int_type("fmv.w.x", rd, rs1, rs2, true, false))
+                    } // rs2 ignored
+                    _ => Some(Err(DisasmError::DecodingError(
+                        "Invalid F-extension encoding".to_string(),
+                    ))),
                 }
             }
             _ => None,

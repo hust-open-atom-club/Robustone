@@ -58,7 +58,9 @@ impl CliExecutor {
         config.validate_for_disassembly()?;
 
         // Perform the disassembly
-        let result = self.engine.disassemble(config)
+        let result = self
+            .engine
+            .disassemble(config)
             .map_err(|e| CliError::Disassembly(e.to_string()))?;
 
         // Format and output the results
@@ -86,7 +88,9 @@ impl CliExecutor {
     ) -> Result<()> {
         config.validate_for_disassembly()?;
 
-        let result = self.engine.disassemble(config)
+        let result = self
+            .engine
+            .disassemble(config)
             .map_err(|e| CliError::Disassembly(e.to_string()))?;
 
         formatter.print(&result);
@@ -113,7 +117,9 @@ impl CliExecutor {
     pub fn execute_to_string(&self, config: &DisasmConfig) -> Result<String> {
         config.validate_for_disassembly()?;
 
-        let result = self.engine.disassemble(config)
+        let result = self
+            .engine
+            .disassemble(config)
             .map_err(|e| CliError::Disassembly(e.to_string()))?;
 
         let output_config = OutputConfig::from_display_options(&config.display_options);
@@ -126,7 +132,9 @@ impl CliExecutor {
     pub fn execute_minimal(&self, config: &DisasmConfig) -> Result<String> {
         config.validate_for_disassembly()?;
 
-        let result = self.engine.disassemble(config)
+        let result = self
+            .engine
+            .disassemble(config)
             .map_err(|e| CliError::Disassembly(e.to_string()))?;
 
         let output_config = OutputConfig::minimal();
@@ -146,7 +154,7 @@ impl CliExecutor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_executor_creation() {
         let _executor = CliExecutor::new();

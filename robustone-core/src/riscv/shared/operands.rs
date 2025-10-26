@@ -185,7 +185,11 @@ impl OperandBuilder {
     pub fn format_b_type(&self, mnemonic: &str, rs1: u8, rs2: u8, imm: i64) -> String {
         let offset_str = self.factory.format_immediate(imm);
         if (mnemonic == "beqz" || mnemonic == "bnez") && rs2 == 0 {
-            format!("{}, {}", super::registers::get_register_name(rs1), offset_str)
+            format!(
+                "{}, {}",
+                super::registers::get_register_name(rs1),
+                offset_str
+            )
         } else {
             format!(
                 "{}, {}, {}",
@@ -215,7 +219,14 @@ impl OperandBuilder {
         }
     }
 
-    pub fn format_load_type(&self, mnemonic: &str, rd: u8, rs1: u8, imm: i64, is_fp: bool) -> String {
+    pub fn format_load_type(
+        &self,
+        mnemonic: &str,
+        rd: u8,
+        rs1: u8,
+        imm: i64,
+        is_fp: bool,
+    ) -> String {
         let rd_name = if is_fp {
             super::registers::get_fp_register_name(rd)
         } else {
@@ -229,7 +240,14 @@ impl OperandBuilder {
         )
     }
 
-    pub fn format_store_type(&self, mnemonic: &str, rs2: u8, rs1: u8, imm: i64, is_fp: bool) -> String {
+    pub fn format_store_type(
+        &self,
+        mnemonic: &str,
+        rs2: u8,
+        rs1: u8,
+        imm: i64,
+        is_fp: bool,
+    ) -> String {
         let rs2_name = if is_fp {
             super::registers::get_fp_register_name(rs2)
         } else {
