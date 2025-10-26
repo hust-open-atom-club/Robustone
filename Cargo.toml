@@ -3,4 +3,5 @@ resolver = "3"
 members = [
     "robustone",
     "robustone-cli",
+    "robustone-core",
 ]

@@ -1,0 +1,11 @@
+[package]
+name = "robustone-core"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+hex = "0.4"
+
+[features]
+default = ["riscv"]
+riscv = []
