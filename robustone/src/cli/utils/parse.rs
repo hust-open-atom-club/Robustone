@@ -19,7 +19,7 @@ pub fn parse_hex_code(input: &str) -> std::result::Result<Vec<String>, Validatio
             continue;
         }
 
-    // Normalise the prefix and force lowercase for consistent downstream parsing.
+        // Normalise the prefix and force lowercase for consistent downstream parsing.
         let lower = raw.to_lowercase();
         let no_prefix = if lower.starts_with("0x") || lower.starts_with("0X") {
             &lower[2..]
@@ -31,19 +31,19 @@ pub fn parse_hex_code(input: &str) -> std::result::Result<Vec<String>, Validatio
             return Err(ValidationError::EmptyHexCode);
         }
 
-    // Validate that every character is a hexadecimal digit.
+        // Validate that every character is a hexadecimal digit.
         for c in no_prefix.chars() {
             if !c.is_ascii_hexdigit() {
                 return Err(ValidationError::InvalidHexChar(c));
             }
         }
 
-    // Require an even number of digits so each token expands to whole bytes.
+        // Require an even number of digits so each token expands to whole bytes.
         if no_prefix.len() % 2 != 0 {
             return Err(ValidationError::OddHexLength);
         }
 
-    // Canonical form: lowercase with a `0x` prefix.
+        // Canonical form: lowercase with a `0x` prefix.
         words.push(format!("0x{}", no_prefix));
     }
 

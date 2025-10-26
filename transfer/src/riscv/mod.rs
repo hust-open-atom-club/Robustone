@@ -59,10 +59,10 @@ impl Default for RiscVHandler {
 
 impl ArchitectureHandler for RiscVHandler {
     fn disassemble(&self, bytes: &[u8], addr: u64) -> Result<(Instruction, usize), DisasmError> {
-    // Decode the instruction with the dedicated RISC-V decoder.
+        // Decode the instruction with the dedicated RISC-V decoder.
         let decoded = self.decoder.decode(bytes, addr)?;
 
-    // Assemble the high-level instruction detail payload.
+        // Assemble the high-level instruction detail payload.
         let instruction_detail = crate::InstructionDetail {
             operands: decoded.operands_detail.clone(),
             regs_read: decoded

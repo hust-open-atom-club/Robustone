@@ -265,7 +265,6 @@ pub mod format {
         let printer = RiscVPrinter::new();
         printer.format_operands(operands)
     }
-
 }
 
 #[cfg(test)]

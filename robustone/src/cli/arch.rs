@@ -291,11 +291,7 @@ impl Architecture {
     }
 
     pub fn implementation_status(&self) -> &'static str {
-        if self.is_implemented() {
-            "✅"
-        } else {
-            "🚧"
-        }
+        if self.is_implemented() { "✅" } else { "🚧" }
     }
 
     pub fn category(&self) -> &'static str {

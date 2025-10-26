@@ -148,7 +148,7 @@ dependencies = [
 
 [[package]]
 name = "robustone"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "clap",
  "hex",
@@ -175,7 +175,7 @@ dependencies = [
 
 [[package]]
 name = "transfer"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "hex",
 ]
