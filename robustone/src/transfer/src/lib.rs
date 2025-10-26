@@ -90,7 +90,7 @@ impl ArchitectureDispatcher {
         Err(DisasmError::UnsupportedArchitecture(arch.to_string()))
     }
 
-    /// 获取所有支持的架构
+    /// Return all registered architectures.
     pub fn supported_architectures(&self) -> Vec<&'static str> {
         self.handlers.iter().map(|h| h.name()).collect()
     }
@@ -102,7 +102,7 @@ impl Default for ArchitectureDispatcher {
     }
 }
 
-// RISC-V模块 (默认包含)
+// Default RISC-V module inclusion when the feature flag is enabled.
 #[cfg(feature = "riscv")]
 pub mod riscv;
 
