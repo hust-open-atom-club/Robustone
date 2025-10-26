@@ -7,15 +7,32 @@
 use super::InstructionExtension;
 use super::super::types::*;
 use super::super::decoder::{RiscVDecodedInstruction, Xlen};
+use super::super::shared::{
+    operands::{DefaultOperandFactory, OperandFormatter, OperandBuilder},
+    formatting::DefaultInstructionFormatter,
+    registers::RegisterManager,
+    encoding::ShamtExtractor,
+    OperandFactory, InstructionFormatter, RegisterNameProvider,
+};
 use crate::error::DisasmError;
 
 /// RV32I/RV64I Base Integer Extension
-pub struct RviExtension;
+pub struct RviExtension {
+    operand_factory: DefaultOperandFactory,
+    formatter: DefaultInstructionFormatter,
+    register_manager: RegisterManager,
+    operand_builder: OperandBuilder,
+}
 
 impl RviExtension {
     /// Create a new RV32I/RV64I extension instance.
-    pub const fn new() -> Self {
-        Self
+    pub fn new() -> Self {
+        Self {
+            operand_factory: DefaultOperandFactory::new(),
+            formatter: DefaultInstructionFormatter::new(),
+            register_manager: RegisterManager::new(),
+            operand_builder: OperandBuilder::new(),
+        }
     }
 
     // Opcode constants for base integer instructions
@@ -83,29 +100,25 @@ impl RviExtension {
     const FUNCT3_MISC_MEM_FENCE: u8 = 0b000;
     const FUNCT3_MISC_MEM_FENCE_I: u8 = 0b001;
 
-    // Instruction format decoding methods
+    // Instruction format decoding methods using shared utilities
     fn decode_u_type(
         &self,
         mnemonic: &str,
         rd: u8,
         imm: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let imm_val = imm >> 12;
-        let imm_str = if imm_val == 0 {
-            "0".to_string()
-        } else {
-            format!("0x{:x}", imm_val)
-        };
-        Ok(RiscVDecodedInstruction {
-            mnemonic: mnemonic.to_string(),
-            operands: format!("{}, {}", self.reg_name(rd), imm_str),
-            format: RiscVInstructionFormat::U,
-            size: 4,
-            operands_detail: vec![
-                self.make_register_operand(rd, Access::write()),
-                self.make_immediate_operand(imm >> 12),
-            ],
-        })
+        let operands = self.operand_builder.format_u_type(mnemonic, rd, imm);
+        let operands_detail = vec![
+            self.operand_factory.make_register_operand(rd, Access::write()),
+            self.operand_factory.make_immediate_operand(imm >> 12),
+        ];
+        Ok(self.formatter.create_decoded_instruction(
+            mnemonic,
+            operands,
+            RiscVInstructionFormat::U,
+            4,
+            operands_detail,
+        ))
     }
 
     fn decode_j_type(
@@ -114,22 +127,18 @@ impl RviExtension {
         rd: u8,
         imm: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let imm_str = self.format_imm(imm);
-        let operands = match (mnemonic, rd) {
-            ("j", _) => imm_str.clone(),
-            ("jal", 1) => imm_str.clone(),
-            _ => format!("{}, {}", self.reg_name(rd), imm_str),
-        };
-        Ok(RiscVDecodedInstruction {
-            mnemonic: mnemonic.to_string(),
+        let operands = self.operand_builder.format_j_type(mnemonic, rd, imm);
+        let operands_detail = vec![
+            self.operand_factory.make_register_operand(rd, Access::read_write()),
+            self.operand_factory.make_immediate_operand(imm),
+        ];
+        Ok(self.formatter.create_decoded_instruction(
+            mnemonic,
             operands,
-            format: RiscVInstructionFormat::J,
-            size: 4,
-            operands_detail: vec![
-                self.make_register_operand(rd, Access::read_write()),
-                self.make_immediate_operand(imm),
-            ],
-        })
+            RiscVInstructionFormat::J,
+            4,
+            operands_detail,
+        ))
     }
 
     fn decode_i_type(
@@ -139,18 +148,19 @@ impl RviExtension {
         rs1: u8,
         imm: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let imm_str = self.format_imm(imm);
-        Ok(RiscVDecodedInstruction {
-            mnemonic: mnemonic.to_string(),
-            operands: format!("{}, {}, {}", self.reg_name(rd), self.reg_name(rs1), imm_str),
-            format: RiscVInstructionFormat::I,
-            size: 4,
-            operands_detail: vec![
-                self.make_register_operand(rd, Access::write()),
-                self.make_register_operand(rs1, Access::read()),
-                self.make_immediate_operand(imm),
-            ],
-        })
+        let operands = self.operand_builder.format_i_type(mnemonic, rd, rs1, imm);
+        let operands_detail = vec![
+            self.operand_factory.make_register_operand(rd, Access::write()),
+            self.operand_factory.make_register_operand(rs1, Access::read()),
+            self.operand_factory.make_immediate_operand(imm),
+        ];
+        Ok(self.formatter.create_decoded_instruction(
+            mnemonic,
+            operands,
+            RiscVInstructionFormat::I,
+            4,
+            operands_detail,
+        ))
     }
 
     fn decode_r_type(
@@ -160,22 +170,19 @@ impl RviExtension {
         rs1: u8,
         rs2: u8,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: mnemonic.to_string(),
-            operands: format!(
-                "{}, {}, {}",
-                self.reg_name(rd),
-                self.reg_name(rs1),
-                self.reg_name(rs2)
-            ),
-            format: RiscVInstructionFormat::R,
-            size: 4,
-            operands_detail: vec![
-                self.make_register_operand(rd, Access::write()),
-                self.make_register_operand(rs1, Access::read()),
-                self.make_register_operand(rs2, Access::read()),
-            ],
-        })
+        let operands = self.operand_builder.format_r_type(mnemonic, rd, rs1, rs2);
+        let operands_detail = vec![
+            self.operand_factory.make_register_operand(rd, Access::write()),
+            self.operand_factory.make_register_operand(rs1, Access::read()),
+            self.operand_factory.make_register_operand(rs2, Access::read()),
+        ];
+        Ok(self.formatter.create_decoded_instruction(
+            mnemonic,
+            operands,
+            RiscVInstructionFormat::R,
+            4,
+            operands_detail,
+        ))
     }
 
     fn decode_s_type(
@@ -185,17 +192,18 @@ impl RviExtension {
         rs1: u8,
         imm: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let offset = self.format_imm(imm);
-        Ok(RiscVDecodedInstruction {
-            mnemonic: mnemonic.to_string(),
-            operands: format!("{}, {}({})", self.reg_name(rs2), offset, self.reg_name(rs1)),
-            format: RiscVInstructionFormat::S,
-            size: 4,
-            operands_detail: vec![
-                self.make_register_operand(rs2, Access::read()),
-                self.make_memory_operand(rs1, imm),
-            ],
-        })
+        let operands = self.operand_builder.format_s_type(mnemonic, rs2, rs1, imm);
+        let operands_detail = vec![
+            self.operand_factory.make_register_operand(rs2, Access::read()),
+            self.operand_factory.make_memory_operand(rs1, imm),
+        ];
+        Ok(self.formatter.create_decoded_instruction(
+            mnemonic,
+            operands,
+            RiscVInstructionFormat::S,
+            4,
+            operands_detail,
+        ))
     }
 
     fn decode_b_type(
@@ -205,23 +213,19 @@ impl RviExtension {
         rs2: u8,
         imm: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let offset = self.format_imm(imm);
-        let operands = match (mnemonic, rs2) {
-            ("beqz", _) => format!("{}, {}", self.reg_name(rs1), offset),
-            ("bnez", _) => format!("{}, {}", self.reg_name(rs1), offset),
-            _ => format!("{}, {}, {}", self.reg_name(rs1), self.reg_name(rs2), offset),
-        };
-        Ok(RiscVDecodedInstruction {
-            mnemonic: mnemonic.to_string(),
+        let operands = self.operand_builder.format_b_type(mnemonic, rs1, rs2, imm);
+        let operands_detail = vec![
+            self.operand_factory.make_register_operand(rs1, Access::read()),
+            self.operand_factory.make_register_operand(rs2, Access::read()),
+            self.operand_factory.make_immediate_operand(imm),
+        ];
+        Ok(self.formatter.create_decoded_instruction(
+            mnemonic,
             operands,
-            format: RiscVInstructionFormat::B,
-            size: 4,
-            operands_detail: vec![
-                self.make_register_operand(rs1, Access::read()),
-                self.make_register_operand(rs2, Access::read()),
-                self.make_immediate_operand(imm),
-            ],
-        })
+            RiscVInstructionFormat::B,
+            4,
+            operands_detail,
+        ))
     }
 
     // Specific instruction type decoders
@@ -272,17 +276,18 @@ impl RviExtension {
             _ => return Err(DisasmError::DecodingError("Invalid load funct3".to_string())),
         };
 
-        let offset = self.format_imm(imm_i);
-        Ok(RiscVDecodedInstruction {
-            mnemonic: mnemonic.to_string(),
-            operands: format!("{}, {}({})", self.reg_name(rd), offset, self.reg_name(rs1)),
-            format: RiscVInstructionFormat::I,
-            size: 4,
-            operands_detail: vec![
-                self.make_register_operand(rd, Access::write()),
-                self.make_memory_operand(rs1, imm_i),
-            ],
-        })
+        let operands = self.operand_builder.format_load_type(mnemonic, rd, rs1, imm_i, false);
+        let operands_detail = vec![
+            self.operand_factory.make_register_operand(rd, Access::write()),
+            self.operand_factory.make_memory_operand(rs1, imm_i),
+        ];
+        Ok(self.formatter.create_decoded_instruction(
+            mnemonic,
+            operands,
+            RiscVInstructionFormat::I,
+            4,
+            operands_detail,
+        ))
     }
 
     fn decode_store(&self, funct3: u8, rs2: u8, rs1: u8, imm_s: i64, xlen: Xlen) -> Result<RiscVDecodedInstruction, DisasmError> {
@@ -306,7 +311,7 @@ impl RviExtension {
             Self::FUNCT3_OP_AND => self.decode_i_type("andi", rd, rs1, imm_i),
             Self::FUNCT3_OP_SLL => {
                 if funct7 == 0 {
-                    let shamt = self.extract_shamt(imm_i, xlen);
+                    let shamt = ShamtExtractor::extract_shamt(imm_i, xlen);
                     self.decode_i_type("slli", rd, rs1, shamt)
                 } else {
                     Err(DisasmError::DecodingError("Invalid slli funct7".to_string()))
@@ -314,11 +319,11 @@ impl RviExtension {
             }
             Self::FUNCT3_OP_SRL_SRA => match funct7 {
                 Self::FUNCT7_OP_SRL => {
-                    let shamt = self.extract_shamt(imm_i, xlen);
+                    let shamt = ShamtExtractor::extract_shamt(imm_i, xlen);
                     self.decode_i_type("srli", rd, rs1, shamt)
                 }
                 Self::FUNCT7_OP_SRA => {
-                    let shamt = self.extract_shamt(imm_i, xlen);
+                    let shamt = ShamtExtractor::extract_shamt(imm_i, xlen);
                     self.decode_i_type("srai", rd, rs1, shamt)
                 }
                 _ => Err(DisasmError::DecodingError("Invalid shift funct7".to_string())),
@@ -380,20 +385,8 @@ impl RviExtension {
 
     fn decode_misc_mem(&self, funct3: u8) -> Result<RiscVDecodedInstruction, DisasmError> {
         match funct3 {
-            Self::FUNCT3_MISC_MEM_FENCE => Ok(RiscVDecodedInstruction {
-                mnemonic: "fence".to_string(),
-                operands: String::new(),
-                format: RiscVInstructionFormat::I,
-                size: 4,
-                operands_detail: vec![],
-            }),
-            Self::FUNCT3_MISC_MEM_FENCE_I => Ok(RiscVDecodedInstruction {
-                mnemonic: "fence.i".to_string(),
-                operands: String::new(),
-                format: RiscVInstructionFormat::I,
-                size: 4,
-                operands_detail: vec![],
-            }),
+            Self::FUNCT3_MISC_MEM_FENCE => Ok(DefaultInstructionFormatter::simple_instruction("fence", "")),
+            Self::FUNCT3_MISC_MEM_FENCE_I => Ok(DefaultInstructionFormatter::simple_instruction("fence.i", "")),
             _ => Err(DisasmError::DecodingError("Invalid misc mem funct3".to_string())),
         }
     }
@@ -401,20 +394,8 @@ impl RviExtension {
     fn decode_system(&self, funct3: u8, rd: u8, rs1: u8, _imm_i: i64, funct12: u32) -> Result<RiscVDecodedInstruction, DisasmError> {
         match funct3 {
             Self::FUNCT3_SYSTEM_PRIV => match funct12 {
-                Self::FUNCT12_SYSTEM_ECALL => Ok(RiscVDecodedInstruction {
-                    mnemonic: "ecall".to_string(),
-                    operands: String::new(),
-                    format: RiscVInstructionFormat::I,
-                    size: 4,
-                    operands_detail: vec![],
-                }),
-                Self::FUNCT12_SYSTEM_EBREAK => Ok(RiscVDecodedInstruction {
-                    mnemonic: "ebreak".to_string(),
-                    operands: String::new(),
-                    format: RiscVInstructionFormat::I,
-                    size: 4,
-                    operands_detail: vec![],
-                }),
+                Self::FUNCT12_SYSTEM_ECALL => Ok(DefaultInstructionFormatter::simple_instruction("ecall", "")),
+                Self::FUNCT12_SYSTEM_EBREAK => Ok(DefaultInstructionFormatter::simple_instruction("ebreak", "")),
                 _ => self.decode_csr_instruction("csrrw", rd, rs1, funct12 as i64),
             },
             Self::FUNCT3_SYSTEM_CSRRW => self.decode_csr_instruction("csrrw", rd, rs1, funct12 as i64),
@@ -440,18 +421,24 @@ impl RviExtension {
         rs1: u8,
         csr: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let csr_str = self.format_csr(csr);
-        Ok(RiscVDecodedInstruction {
-            mnemonic: mnemonic.to_string(),
-            operands: format!("{}, {}, {}", self.reg_name(rd), csr_str, self.reg_name(rs1)),
-            format: RiscVInstructionFormat::I,
-            size: 4,
-            operands_detail: vec![
-                self.make_register_operand(rd, Access::write()),
-                self.make_immediate_operand(csr),
-                self.make_register_operand(rs1, Access::read()),
-            ],
-        })
+        let csr_str = self.operand_factory.format_csr(csr);
+        let operands = format!("{}, {}, {}",
+            self.register_manager.int_register_name(rd),
+            csr_str,
+            self.register_manager.int_register_name(rs1)
+        );
+        let operands_detail = vec![
+            self.operand_factory.make_register_operand(rd, Access::write()),
+            self.operand_factory.make_immediate_operand(csr),
+            self.operand_factory.make_register_operand(rs1, Access::read()),
+        ];
+        Ok(self.formatter.create_decoded_instruction(
+            mnemonic,
+            operands,
+            RiscVInstructionFormat::I,
+            4,
+            operands_detail,
+        ))
     }
 
     fn decode_csr_instruction_imm(
@@ -461,174 +448,24 @@ impl RviExtension {
         zimm: i64,
         csr: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let csr_str = self.format_csr(csr);
-        Ok(RiscVDecodedInstruction {
-            mnemonic: mnemonic.to_string(),
-            operands: format!("{}, {}, {}", self.reg_name(rd), csr_str, zimm),
-            format: RiscVInstructionFormat::I,
-            size: 4,
-            operands_detail: vec![
-                self.make_register_operand(rd, Access::write()),
-                self.make_immediate_operand(csr),
-                self.make_immediate_operand(zimm),
-            ],
-        })
-    }
-
-    // Utility methods
-    fn format_imm(&self, value: i64) -> String {
-        if value == 0 {
-            return "0".to_string();
-        }
-
-        let abs = value.abs();
-        let use_hex = abs >= 10;
-
-        if use_hex {
-            if value < 0 {
-                format!("-0x{:x}", abs)
-            } else {
-                format!("0x{:x}", abs)
-            }
-        } else if value < 0 {
-            format!("-{}", abs)
-        } else {
-            format!("{}", value)
-        }
-    }
-
-    fn format_csr(&self, csr: i64) -> String {
-        let csr_id = csr as u16;
-        if let Some(name) = self.csr_name(csr_id) {
-            name.to_string()
-        } else {
-            format!("0x{:x}", csr)
-        }
-    }
-
-    fn csr_name(&self, csr: u16) -> Option<&'static str> {
-        match csr {
-            0x000 => Some("ustatus"),
-            0x001 => Some("fflags"),
-            0x002 => Some("frm"),
-            0x003 => Some("fcsr"),
-            0x100 => Some("sstatus"),
-            0x102 => Some("sedeleg"),
-            0x103 => Some("sideleg"),
-            0x104 => Some("sie"),
-            0x105 => Some("stvec"),
-            0x106 => Some("scounteren"),
-            0x140 => Some("sscratch"),
-            0x141 => Some("sepc"),
-            0x142 => Some("scause"),
-            0x143 => Some("stval"),
-            0x144 => Some("sip"),
-            0x180 => Some("satp"),
-            0x300 => Some("mstatus"),
-            0x301 => Some("misa"),
-            0x302 => Some("medeleg"),
-            0x303 => Some("mideleg"),
-            0x304 => Some("mie"),
-            0x305 => Some("mtvec"),
-            0x306 => Some("mcounteren"),
-            0x320 => Some("mcountinhibit"),
-            0x321 => Some("mhpmevent3"),
-            0x340 => Some("mscratch"),
-            0x341 => Some("mepc"),
-            0x342 => Some("mcause"),
-            0x343 => Some("mtval"),
-            0x344 => Some("mip"),
-            0x34A => Some("mtinst"),
-            0x34B => Some("mtval2"),
-            0x7A0 => Some("tselect"),
-            0x7A1 => Some("tdata1"),
-            0x7A2 => Some("tdata2"),
-            0x7A3 => Some("tdata3"),
-            0x7B0 => Some("dcsr"),
-            0x7B1 => Some("dpc"),
-            0x7B2 => Some("dscratch0"),
-            0x7B3 => Some("dscratch1"),
-            0xC00 => Some("cycle"),
-            0xC01 => Some("time"),
-            0xC02 => Some("instret"),
-            0xC80 => Some("cycleh"),
-            0xC81 => Some("timeh"),
-            0xC82 => Some("instreth"),
-            _ => None,
-        }
-    }
-
-    fn reg_name(&self, reg: u8) -> &'static str {
-        match reg {
-            0 => "zero",
-            1 => "ra",
-            2 => "sp",
-            3 => "gp",
-            4 => "tp",
-            5 => "t0",
-            6 => "t1",
-            7 => "t2",
-            8 => "s0",
-            9 => "s1",
-            10 => "a0",
-            11 => "a1",
-            12 => "a2",
-            13 => "a3",
-            14 => "a4",
-            15 => "a5",
-            16 => "a6",
-            17 => "a7",
-            18 => "s2",
-            19 => "s3",
-            20 => "s4",
-            21 => "s5",
-            22 => "s6",
-            23 => "s7",
-            24 => "s8",
-            25 => "s9",
-            26 => "s10",
-            27 => "s11",
-            28 => "t3",
-            29 => "t4",
-            30 => "t5",
-            31 => "t6",
-            _ => "invalid",
-        }
-    }
-
-    fn extract_shamt(&self, imm: i64, xlen: Xlen) -> i64 {
-        let mask = match xlen {
-            Xlen::X64 => 0x3f,
-            Xlen::X32 => 0x1f,
-        } as u64;
-        (imm as u64 & mask) as i64
-    }
-
-    fn make_register_operand(&self, reg: u8, access: Access) -> RiscVOperand {
-        RiscVOperand {
-            op_type: RiscVOperandType::Register,
-            access,
-            value: RiscVOperandValue::Register(reg as u32),
-        }
-    }
-
-    fn make_immediate_operand(&self, imm: i64) -> RiscVOperand {
-        RiscVOperand {
-            op_type: RiscVOperandType::Immediate,
-            access: Access::read(),
-            value: RiscVOperandValue::Immediate(imm),
-        }
-    }
-
-    fn make_memory_operand(&self, base: u8, disp: i64) -> RiscVOperand {
-        RiscVOperand {
-            op_type: RiscVOperandType::Memory,
-            access: Access::read(),
-            value: RiscVOperandValue::Memory(RiscVMemoryOperand {
-                base: base as u32,
-                disp,
-            }),
-        }
+        let csr_str = self.operand_factory.format_csr(csr);
+        let operands = format!("{}, {}, {}",
+            self.register_manager.int_register_name(rd),
+            csr_str,
+            zimm
+        );
+        let operands_detail = vec![
+            self.operand_factory.make_register_operand(rd, Access::write()),
+            self.operand_factory.make_immediate_operand(csr),
+            self.operand_factory.make_immediate_operand(zimm),
+        ];
+        Ok(self.formatter.create_decoded_instruction(
+            mnemonic,
+            operands,
+            RiscVInstructionFormat::I,
+            4,
+            operands_detail,
+        ))
     }
 }
 
@@ -710,5 +547,61 @@ impl InstructionExtension for RviExtension {
     ) -> Option<Result<RiscVDecodedInstruction, DisasmError>> {
         // RV32I/RV64I extension doesn't handle compressed instructions
         None
+    }
+}
+
+impl Default for RviExtension {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_rvi_extension_creation() {
+        let extension = RviExtension::new();
+        assert_eq!(extension.name(), "I");
+        assert!(extension.is_enabled(0b001));
+        assert!(!extension.is_enabled(0b010));
+    }
+
+    #[test]
+    fn test_rvi_instruction_decoding() {
+        let extension = RviExtension::new();
+
+        // Test ADDI x1, x2, 10 -> 0x00000513
+        let result = extension.try_decode_standard(
+            0b0010011, // opcode
+            0b000,     // funct3
+            0b0000000, // funct7
+            1,         // rd
+            2,         // rs1
+            10,        // rs2
+            0,         // funct12
+            10,        // imm_i
+            0,         // imm_s
+            0,         // imm_b
+            0,         // imm_u
+            0,         // imm_j
+            Xlen::X32,
+        );
+
+        assert!(result.is_some());
+        let instruction = result.unwrap().unwrap();
+        assert_eq!(instruction.mnemonic, "addi");
+    }
+
+    #[test]
+    fn test_rvi_compressed_instructions() {
+        let extension = RviExtension::new();
+
+        // RVI extension shouldn't handle compressed instructions
+        let result = extension.try_decode_compressed(
+            0x0001, 0b01, 0b000, Xlen::X32, 1, 2, 3, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        );
+        assert!(result.is_none());
     }
 }
