@@ -1,21 +1,21 @@
 use std::fmt;
 
-/// 统一的CLI错误类型
+/// Unified CLI error type.
 #[derive(Debug)]
 pub enum CliError {
-    /// 架构解析错误
+    /// Architecture parsing failure.
     Architecture(String),
-    /// 配置错误
+    /// Configuration validation failure.
     Configuration(String),
-    /// 反汇编错误
+    /// Disassembly backend failure.
     Disassembly(String),
-    /// 无效的十六进制代码
+    /// Invalid hexadecimal payload.
     InvalidHex(String),
-    /// 无效的地址
+    /// Invalid start address.
     InvalidAddress(String),
-    /// 参数缺失
+    /// Missing required argument.
     MissingArgument(String),
-    /// 无效的命令
+    /// Invalid command request.
     InvalidCommand(String),
 }
 
@@ -35,7 +35,7 @@ impl fmt::Display for CliError {
 
 impl std::error::Error for CliError {}
 
-/// 输入验证相关错误
+/// Detailed validation error variants used by the CLI.
 #[derive(Debug)]
 pub enum ValidationError {
     EmptyHexCode,
@@ -61,7 +61,7 @@ impl fmt::Display for ValidationError {
 
 impl std::error::Error for ValidationError {}
 
-/// 解析错误
+/// Architecture parsing errors.
 #[derive(Debug)]
 pub enum ParseError {
     EmptyInput,

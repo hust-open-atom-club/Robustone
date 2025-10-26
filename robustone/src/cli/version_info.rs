@@ -1,15 +1,15 @@
-//! 版本信息模块
+//! Version information presenter.
 //!
-//! 这个模块提供版本信息的显示功能，支持：
-//! - 动态架构支持统计
-//! - 分类显示
-//! - 实现状态可视化
-//! - 简洁的配置化管理
+//! Provides the `-v/--version` CLI output with:
+//! - dynamic architecture coverage statistics
+//! - category breakdowns
+//! - implementation status indicators
+//! - dedicated helper functions for maintainability
 
 use crate::cli::Architecture;
 use std::collections::HashMap;
 
-/// 打印版本信息
+/// Print the full version banner along with implementation stats.
 pub fn print_version_info() {
     print_basic_info();
     print_architecture_summary();
@@ -17,14 +17,14 @@ pub fn print_version_info() {
     print_detailed_status();
 }
 
-/// 打印基本信息
+/// Print the basic banner headline.
 fn print_basic_info() {
     println!("Robustone v0.1.0");
     println!("Capstone-compatible disassembly engine");
     println!();
 }
 
-/// 打印架构支持概要
+/// Print the high-level architecture support summary.
 fn print_architecture_summary() {
     let archs = Architecture::all_architectures();
     let total = archs.len();
@@ -32,7 +32,7 @@ fn print_architecture_summary() {
 
     println!("Architecture Support: {}/{}", implemented, total);
 
-    // RISC-V专门状态
+    // Dedicated breakdown for the RISC-V family.
     let riscv_count = archs.iter().filter(|a| a.category() == "RISC-V").count();
     let riscv_implemented = archs
         .iter()
@@ -57,7 +57,7 @@ fn print_architecture_summary() {
     println!();
 }
 
-/// 打印实现状态
+/// Print architecture categories and their readiness.
 fn print_implementation_status() {
     println!("Supported Architectures:");
 
@@ -71,7 +71,7 @@ fn print_implementation_status() {
             .push(arch);
     }
 
-    // 按类别显示
+    // Display entries grouped by category for readability.
     let category_order = ["RISC-V", "ARM", "x86", "MIPS", "PowerPC", "SPARC", "Other"];
 
     for category in category_order {
@@ -93,7 +93,7 @@ fn print_implementation_status() {
     println!();
 }
 
-/// 打印详细状态
+/// Print coverage percentages and status legend.
 fn print_detailed_status() {
     let archs = Architecture::all_architectures();
     let total = archs.len();
@@ -115,7 +115,7 @@ mod tests {
 
     #[test]
     fn test_version_info_display() {
-        // 确保版本信息可以正常显示
+        // Ensure the version banner prints without panicking.
         print_version_info();
     }
 
@@ -131,7 +131,7 @@ mod tests {
                 .push(arch);
         }
 
-        // 验证RISC-V类别存在
+        // Ensure key architecture categories are present in the summary.
         assert!(categories.contains_key("RISC-V"));
         assert!(categories.contains_key("ARM"));
         assert!(categories.contains_key("x86"));
@@ -143,7 +143,7 @@ mod tests {
         let implemented = archs.iter().filter(|a| a.is_implemented()).count();
         let total = archs.len();
 
-        // 应该至少有RISC-V 32和64两个实现
+        // At least the two RISC-V variants should be implemented.
         assert!(implemented >= 2);
         assert!(total > implemented);
     }

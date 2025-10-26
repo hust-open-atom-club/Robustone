@@ -1,7 +1,5 @@
-use crate::cli::error::{ParseError, ValidationError};
 use crate::cli::utils::validate_architecture;
 use clap::Parser;
-use std::str::FromStr;
 
 /// Robustone - Capstone-compatible disassembly engine CLI tool (cstool style)
 #[derive(Parser, Debug)]

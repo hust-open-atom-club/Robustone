@@ -4,13 +4,13 @@ use clap::Parser;
 
 #[test]
 fn test_cli_basic_parsing() {
-    // 测试基本的CLI解析
+    // Verify that the minimal CLI invocation parses successfully.
     let args = vec!["robustone", "riscv32", "00100093"];
     let cli = Cli::try_parse_from(args).expect("Should parse successfully");
 
     assert_eq!(cli.arch_mode.as_deref().unwrap(), "riscv32");
     assert_eq!(cli.hex_code.as_deref().unwrap(), "00100093");
-    // 地址为可选参数，未提供时应为None（后续从Cli创建配置时默认使用0）
+    // Address is optional; when omitted it should remain `None` (defaulting to zero later).
     assert_eq!(cli.address.as_deref().unwrap_or(""), "");
     assert!(!cli.detailed);
     assert!(!cli.version);
@@ -18,8 +18,7 @@ fn test_cli_basic_parsing() {
 
 #[test]
 fn test_cli_with_options() {
-    // 测试带选项的CLI解析
-    // -a: 使用别名寄存器（遵循cstool风格）
+    // Ensure options and modifiers are forwarded correctly (e.g. alias register flag).
     let args = vec![
         "robustone",
         "-d",
@@ -39,7 +38,7 @@ fn test_cli_with_options() {
 
 #[test]
 fn test_cli_version_option() {
-    // 测试版本选项
+    // The version flag should be recognised without additional arguments.
     let args = vec!["robustone", "-v"];
     let cli = Cli::try_parse_from(args).expect("Should parse successfully");
 
@@ -48,30 +47,30 @@ fn test_cli_version_option() {
 
 #[test]
 fn test_architecture_parsing() {
-    // 测试基础架构解析
+    // Baseline architecture parsing should accept supported names.
     assert!(Architecture::parse("riscv32").is_ok());
     assert!(Architecture::parse("riscv64").is_ok());
     assert!(Architecture::parse("arm").is_ok());
     assert!(Architecture::parse("x86").is_ok());
     assert!(Architecture::parse("x86-64").is_ok());
 
-    // 测试别名
+    // Aliases should resolve to the same architectures.
     assert!(Architecture::parse("x86_64").is_ok());
     assert!(Architecture::parse("x64").is_ok());
     assert!(Architecture::parse("ppc").is_ok());
     assert!(Architecture::parse("s390x").is_ok());
 
-    // 测试无效架构
+    // Invalid inputs should be rejected.
     assert!(Architecture::parse("invalid").is_err());
 }
 
 #[test]
 fn test_architecture_spec_parsing() {
-    // 测试基础架构规范
+    // Base architecture specifications should parse without modifiers.
     let spec = ArchitectureSpec::parse("riscv32").unwrap();
     assert!(matches!(spec.arch, Architecture::Riscv32));
 
-    // 测试带修饰符的架构规范
+    // Specifications with modifiers should populate the option list.
     let spec = ArchitectureSpec::parse("riscv32+intel").unwrap();
     assert!(matches!(spec.arch, Architecture::Riscv32));
     assert!(spec.options.contains(&"intel".to_string()));
@@ -80,7 +79,7 @@ fn test_architecture_spec_parsing() {
     assert!(matches!(spec.arch, Architecture::Arm));
     assert!(spec.options.contains(&"thumb".to_string()));
 
-    // 测试无效架构规范
+    // Invalid modifiers or architectures should fail fast.
     assert!(ArchitectureSpec::parse("invalid_arch").is_err());
     assert!(ArchitectureSpec::parse("riscv32+invalid_mod").is_err());
 }
@@ -89,16 +88,16 @@ fn test_architecture_spec_parsing() {
 fn test_hex_validation() {
     use crate::cli::parse_hex_code;
 
-    // 测试有效十六进制代码
+    // Valid hexadecimal payloads should parse successfully.
     assert!(parse_hex_code("00100093").is_ok());
     assert!(parse_hex_code("ff010113").is_ok());
     assert!(parse_hex_code("1a2b3c4d").is_ok());
 
-    // 测试带非十六进制字符的输入
-    assert!(parse_hex_code("00 10 00 93").is_ok()); // 应该过滤空格
-    assert!(parse_hex_code("0x00100093").is_ok()); // 应该过滤0x前缀
+    // Inputs with whitespace or prefixes are normalised automatically.
+    assert!(parse_hex_code("00 10 00 93").is_ok());
+    assert!(parse_hex_code("0x00100093").is_ok());
 
-    // 测试无效十六进制代码
+    // Malformed input should surface validation errors.
     assert!(matches!(
         parse_hex_code(""),
         Err(ValidationError::EmptyHexCode)
@@ -117,13 +116,13 @@ fn test_hex_validation() {
 fn test_address_validation() {
     use crate::cli::parse_address;
 
-    // 测试有效地址
+    // Accept canonical and prefixed hexadecimal addresses.
     assert_eq!(parse_address("0").unwrap(), 0);
     assert_eq!(parse_address("80000000").unwrap(), 0x80000000);
     assert_eq!(parse_address("0x80000000").unwrap(), 0x80000000);
     assert_eq!(parse_address("0X80000000").unwrap(), 0x80000000);
 
-    // 测试无效地址
+    // Reject empty and malformed addresses.
     assert!(matches!(
         parse_address(""),
         Err(ValidationError::EmptyAddress)
@@ -140,7 +139,7 @@ fn test_address_validation() {
 
 #[test]
 fn test_config_creation() {
-    // 测试从CLI创建配置
+    // Building a configuration from minimal arguments should succeed.
     let args = vec!["robustone", "riscv32", "00100093"];
     let cli = Cli::try_parse_from(args).expect("Should parse successfully");
 
@@ -154,7 +153,7 @@ fn test_config_creation() {
 
 #[test]
 fn test_config_with_complex_options() {
-    // 测试复杂配置创建
+    // Complex combinations of flags and modifiers should be preserved.
     let args = vec![
         "robustone",
         "-d",
@@ -177,10 +176,10 @@ fn test_config_with_complex_options() {
 
 #[test]
 fn test_config_missing_required_args() {
-    // 测试缺少必需参数的错误处理
+    // Missing required arguments should return a descriptive error.
     let args = vec!["robustone"];
     let cli = Cli::try_parse_from(args).expect("Should parse successfully");
-    // 由于缺少必要参数，创建配置应失败
+    // Configuration creation must fail when required arguments are absent.
     let cfg = DisasmConfig::config_from_cli(&cli);
     assert!(cfg.is_err());
 }
@@ -189,7 +188,7 @@ fn test_config_missing_required_args() {
 fn test_error_handling() {
     use crate::cli::error::Result;
 
-    // 测试错误类型转换
+    // Ensure canonical error variants propagate through the Result alias.
     let result: Result<()> = Err(CliError::InvalidHex("Invalid hex code".to_string()));
     assert!(result.is_err());
 
@@ -202,7 +201,7 @@ fn test_error_handling() {
 
 #[test]
 fn test_architecture_categories() {
-    // 测试架构分类
+    // Category helper should map each architecture into the expected group.
     assert_eq!(Architecture::Riscv32.category(), "RISC-V");
     assert_eq!(Architecture::Riscv64.category(), "RISC-V");
     assert_eq!(Architecture::Arm.category(), "ARM");
@@ -214,7 +213,7 @@ fn test_architecture_categories() {
 
 #[test]
 fn test_architecture_names() {
-    // 测试架构名称
+    // Name helper should return canonical identifiers.
     assert_eq!(Architecture::Riscv32.name(), "riscv32");
     assert_eq!(Architecture::Riscv64.name(), "riscv64");
     assert_eq!(Architecture::Arm.name(), "arm");
@@ -224,7 +223,7 @@ fn test_architecture_names() {
 
 #[test]
 fn test_architecture_implementation_status() {
-    // 测试实现状态
+    // Implementation status should distinguish supported and pending targets.
     assert!(Architecture::Riscv32.is_implemented());
     assert!(Architecture::Riscv64.is_implemented());
     assert!(!Architecture::Arm.is_implemented());
@@ -233,28 +232,28 @@ fn test_architecture_implementation_status() {
 
 #[test]
 fn test_all_architectures() {
-    // 测试架构列表
+    // The global architecture registry should list representative entries.
     let archs = Architecture::all_architectures();
 
-    // 确保包含基本架构
+    // Confirm that key architectures are always present.
     assert!(archs.iter().any(|a| matches!(a, Architecture::Riscv32)));
     assert!(archs.iter().any(|a| matches!(a, Architecture::Riscv64)));
     assert!(archs.iter().any(|a| matches!(a, Architecture::Arm)));
     assert!(archs.iter().any(|a| matches!(a, Architecture::X86_32)));
     assert!(archs.iter().any(|a| matches!(a, Architecture::X86_64)));
 
-    // 确保数量合理（大于10）
+    // Ensure the registry contains a sufficiently broad selection.
     assert!(archs.len() > 10);
 }
 
 #[test]
 fn test_disasm_config_debug() {
-    // 测试配置的Debug输出
+    // The Debug implementation should include salient configuration details.
     let args = vec!["robustone", "riscv32", "00100093"];
     let cli = Cli::try_parse_from(args).expect("Should parse successfully");
     let config = DisasmConfig::config_from_cli(&cli).expect("Should create config");
 
-    // 测试Debug实现
+    // Rendered string should mention the type name and selected architecture.
     let debug_str = format!("{:?}", config);
     assert!(debug_str.contains("DisasmConfig"));
     assert!(debug_str.contains("riscv32"));
@@ -262,7 +261,7 @@ fn test_disasm_config_debug() {
 
 #[test]
 fn test_architecture_spec_debug() {
-    // 测试架构规范的Debug输出
+    // Debug output for architecture specs should embed the base name.
     let spec = ArchitectureSpec::parse("riscv32+intel").unwrap();
 
     let debug_str = format!("{:?}", spec);
@@ -272,7 +271,7 @@ fn test_architecture_spec_debug() {
 
 #[test]
 fn test_error_display() {
-    // 测试错误显示
+    // Human-readable formatting should embed variant context.
     let error = CliError::InvalidHex("Invalid hex".to_string());
     let display_str = format!("{}", error);
     assert!(display_str.contains("Invalid hex"));
@@ -294,14 +293,14 @@ mod integration_tests {
 
     #[test]
     fn test_full_cli_workflow() {
-        // 测试完整的CLI工作流程
+        // The full CLI workflow should disassemble a simple program without errors.
         let args = vec!["robustone", "riscv32", "00100093"];
         let cli = Cli::try_parse_from(args).expect("Should parse successfully");
 
-        // 测试配置创建
+    // Building the configuration should succeed.
         let config = DisasmConfig::config_from_cli(&cli).expect("Should create config");
 
-        // 测试反汇编（这会调用实际的disasm模块）
+    // Disassembly should return at least one decoded instruction.
         let result = process_input(&config);
         assert!(result.is_ok());
 
@@ -311,14 +310,14 @@ mod integration_tests {
 
     #[test]
     fn test_error_scenarios() {
-        // 测试各种错误场景
+        // Validate representative error scenarios.
 
-        // 无效架构
+        // Invalid architectures should be rejected during argument parsing.
         let args = vec!["robustone", "invalid_arch", "00100093"];
         let cli = Cli::try_parse_from(args);
         assert!(cli.is_err());
 
-        // 无效十六进制
+    // Invalid hex input should be caught during configuration creation.
         let args = vec!["robustone", "riscv32", "invalid_hex"];
         let cli = Cli::try_parse_from(args).expect("Should parse successfully");
         let config_result = DisasmConfig::config_from_cli(&cli);

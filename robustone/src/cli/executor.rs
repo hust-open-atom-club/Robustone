@@ -1,6 +1,7 @@
-//! 命令执行器模块
+//! Command executor module.
 //!
-//! 这个模块负责命令分发和执行逻辑。
+//! This module wires together argument parsing, configuration building,
+//! and the actual disassembly pipeline exposed through the CLI.
 
 use crate::cli::disasm::print_instructions;
 use crate::cli::disasm::process_input;
@@ -12,17 +13,17 @@ use crate::cli::DisasmConfig;
 
 use clap::Parser;
 
-/// 主要的CLI运行函数，使用安全的错误处理
+/// Top-level CLI entry point with structured error handling.
 pub fn run() -> Result<()> {
     let cli = Cli::parse();
 
     if cli.version {
-        // 打印版本与支持信息
+        // Print version and supported architecture information on demand.
         print_version_info();
         return Ok(());
     }
 
-    // 构建反汇编配置并执行
+    // Build the disassembly configuration and execute the requested action.
     let config = DisasmConfig::config_from_cli(&cli)?;
     let result = process_input(&config).map_err(|e| Disassembly(e.to_string()))?;
     print_instructions(&result, &config);

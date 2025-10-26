@@ -1,7 +1,23 @@
 CARGO ?= cargo
+PYTHON ?= python3
+
 MANIFEST := robustone/Cargo.toml
 CAPSTONE_REPO := https://github.com/capstone-engine/capstone.git
 CAPSTONE_DIR := third_party/capstone
+CAPSTONE_BUILD_SCRIPT := test/build_cstool.sh
+PARITY_SCRIPT := test/riscv32/test_vs_cstool.py
+
+ifeq ($(firstword $(MAKECMDGOALS)),run)
+RUN_EXTRA := $(filter-out --,$(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS)))
+ifneq ($(RUN_EXTRA),)
+ifeq ($(origin RUN_ARGS),undefined)
+RUN_ARGS := $(RUN_EXTRA)
+endif
+$(foreach target,$(RUN_EXTRA),$(eval $(target): ; @:))
+endif
+endif
+
+RUN_ARGS ?=
 
 .PHONY: format run build check test
 
@@ -10,6 +26,9 @@ format:
 
 build:
 	$(CARGO) build --manifest-path $(MANIFEST)
+
+run:
+	$(CARGO) run --manifest-path $(MANIFEST) -- $(RUN_ARGS)
 
 check:
 	$(CARGO) check --manifest-path $(MANIFEST)
@@ -22,6 +41,6 @@ test:
 	else \
 		echo "Capstone already present at $(CAPSTONE_DIR)."; \
 	fi
-	@bash test/build_cstool.sh $(CAPSTONE_DIR)
-	@python3 test/riscv32/compare_with_cstool.py $(CAPSTONE_DIR)
+	@bash $(CAPSTONE_BUILD_SCRIPT) $(CAPSTONE_DIR)
+	@$(PYTHON) $(PARITY_SCRIPT)
 	$(CARGO) test --manifest-path $(MANIFEST)

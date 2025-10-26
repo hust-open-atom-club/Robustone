@@ -10,12 +10,14 @@ lazy_static::lazy_static! {
 #[derive(Debug)]
 pub struct DisassemblyResult {
     pub instructions: Vec<Instruction>,
+    next_index: usize,
 }
 
 impl DisassemblyResult {
     pub fn new() -> Self {
         Self {
             instructions: Vec::new(),
+            next_index: 0,
         }
     }
 
@@ -28,10 +30,12 @@ impl Iterator for DisassemblyResult {
     type Item = Instruction;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.instructions.is_empty() {
+        if self.next_index >= self.instructions.len() {
             None
         } else {
-            Some(self.instructions.remove(0))
+            let item = self.instructions[self.next_index].clone();
+            self.next_index += 1;
+            Some(item)
         }
     }
 }
@@ -39,7 +43,7 @@ impl Iterator for DisassemblyResult {
 /// Disassembles the supplied byte tokens using the provided configuration.
 pub fn process_input(config: &DisasmConfig) -> Result<DisassemblyResult, DisasmError> {
     let bytes = hex_words_to_arch_bytes(&config.hex_words, &config.arch_spec.arch)
-        .map_err(|msg| DisasmError::InvalidHexCode(msg))?;
+        .map_err(DisasmError::InvalidHexCode)?;
 
     let mut result = DisassemblyResult::new();
     let mut offset: usize = 0;
@@ -64,6 +68,7 @@ pub fn process_input(config: &DisasmConfig) -> Result<DisassemblyResult, DisasmE
 }
 
 /// Backwards-compatible wrapper that keeps the legacy function name.
+#[allow(dead_code)]
 pub fn disassemble(config: &DisasmConfig) -> Result<DisassemblyResult, DisasmError> {
     process_input(config)
 }
@@ -92,7 +97,7 @@ pub fn print_instructions(result: &DisassemblyResult, _config: &DisasmConfig) {
     }
 }
 
-fn hex_words_to_arch_bytes(words: &[String], arch: &Architecture) -> Result<Vec<u8>, String> {
+fn hex_words_to_arch_bytes(words: &[String], _arch: &Architecture) -> Result<Vec<u8>, String> {
     let mut bytes: Vec<u8> = Vec::new();
     for word in words {
         let token = word.trim().to_lowercase();
@@ -115,12 +120,9 @@ fn hex_words_to_arch_bytes(words: &[String], arch: &Architecture) -> Result<Vec<
             token_bytes.push(byte);
         }
 
-        match arch {
-            Architecture::Riscv32 | Architecture::Riscv64 => {
-                token_bytes.reverse();
-            }
-            _ => {}
-        }
+        // For RISC-V we mirror cstool by treating the hex string as a direct byte sequence in
+        // little-endian order (no word swapping). The generic conversion above already behaves
+        // that way, so the note is only documentation for future readers.
 
         bytes.extend(token_bytes);
     }
