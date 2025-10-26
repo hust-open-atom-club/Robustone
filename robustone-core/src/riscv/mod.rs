@@ -9,7 +9,11 @@ pub mod decoder;
 pub mod printer;
 pub mod types;
 
-use crate::{ArchitectureHandler, DisasmError, Instruction};
+use crate::{
+    ArchitectureHandler,
+    error::DisasmError,
+    instruction::{Instruction, InstructionDetail},
+};
 use decoder::{RiscVDecoder, Xlen};
 use types::*;
 
@@ -63,7 +67,7 @@ impl ArchitectureHandler for RiscVHandler {
         let decoded = self.decoder.decode(bytes, addr)?;
 
         // Assemble the high-level instruction detail payload.
-        let instruction_detail = crate::InstructionDetail {
+        let instruction_detail = InstructionDetail {
             operands: decoded.operands_detail.clone(),
             regs_read: decoded
                 .operands_detail

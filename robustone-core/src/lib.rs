@@ -5,10 +5,16 @@
 pub mod error;
 pub mod instruction;
 
-// Re-export frequently used types.
-pub use error::DisasmError;
-pub use instruction::{Instruction, InstructionDetail};
+/// Robustone prelude.
+///
+/// Re-export frequently used types.
+pub mod prelude {
+    pub use crate::error::DisasmError;
+    pub use crate::instruction::{Instruction, InstructionDetail};
+}
 
+use crate::error::DisasmError;
+use crate::instruction::Instruction;
 use core::str;
 
 /// Trait implemented by architecture-specific disassemblers.
