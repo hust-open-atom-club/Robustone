@@ -11,15 +11,14 @@ Robustone is an experimental disassembly engine written in Rust by the HUST Open
 ## Project layout
 
 ```
-robustone/
-	src/
-		cli/         # Command-line parsing, input validation, and presentation logic
-	Cargo.toml     # Primary crate manifest
+robustone/         # Metadata crate including both library and binary
+robustone-core/    # Architecture-specific decoding and formatting (Rust port of Capstone)
+robustone-cli/     # Command-line parsing, input validation, and presentation logic
 test/
 	riscv32/       # Python scripts and fixtures for RISC-V parity checks
-transfer/    # Architecture-specific decoding and formatting (Rust port of Capstone)
 third_party/
 	capstone/      # Optional checkout of the original Capstone project (used by tests)
+Cargo.toml     	   # Workspace manifest
 ```
 
 ## Getting started
