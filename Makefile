@@ -5,7 +5,7 @@ MANIFEST := robustone/Cargo.toml
 CAPSTONE_REPO := https://github.com/capstone-engine/capstone.git
 CAPSTONE_DIR := third_party/capstone
 CAPSTONE_BUILD_SCRIPT := test/build_cstool.sh
-PARITY_SCRIPT := test/riscv32/test_vs_cstool.py
+PARITY_SCRIPT := test/run_parity.py
 
 ifeq ($(firstword $(MAKECMDGOALS)),run)
 RUN_EXTRA := $(filter-out --,$(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS)))
@@ -42,5 +42,5 @@ test:
 		echo "Capstone already present at $(CAPSTONE_DIR)."; \
 	fi
 	@bash $(CAPSTONE_BUILD_SCRIPT) $(CAPSTONE_DIR)
-	@$(PYTHON) $(PARITY_SCRIPT)
+	@$(PYTHON) $(PARITY_SCRIPT) --all
 	$(CARGO) test --manifest-path $(MANIFEST)
