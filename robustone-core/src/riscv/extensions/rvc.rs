@@ -3,14 +3,14 @@
 //! This module implements the RISC-V compressed instruction extension (C extension),
 //! which provides 16-bit compressed versions of common instructions to improve code density.
 
-use super::InstructionExtension;
-use super::super::types::*;
 use super::super::decoder::{RiscVDecodedInstruction, Xlen};
 use super::super::shared::{
+    encoding::convenience as encoding_conv,
     operands::convenience,
     registers::{RegisterManager, RegisterNameProvider},
-    encoding::convenience as encoding_conv,
 };
+use super::super::types::*;
+use super::InstructionExtension;
 use crate::error::DisasmError;
 
 /// RVC Compressed Instructions Extension
@@ -250,7 +250,11 @@ impl RvcExtension {
             (0b11, 0b01) => "c.xor",
             (0b11, 0b10) => "c.or",
             (0b11, 0b11) => "c.and",
-            _ => return Err(DisasmError::DecodingError("Invalid C.ALU encoding".to_string())),
+            _ => {
+                return Err(DisasmError::DecodingError(
+                    "Invalid C.ALU encoding".to_string(),
+                ));
+            }
         };
 
         Ok(RiscVDecodedInstruction {

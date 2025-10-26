@@ -125,12 +125,15 @@ impl Cli {
                     return Err(CliError::validation("hex_code", "Empty hex code provided"));
                 }
                 if clean_code.len() % 2 != 0 {
-                    return Err(CliError::validation("hex_code", "Hex code must have even number of characters"));
+                    return Err(CliError::validation(
+                        "hex_code",
+                        "Hex code must have even number of characters",
+                    ));
                 }
 
-                hex::decode(&clean_code)
-                    .map(Some)
-                    .map_err(|e| CliError::validation("hex_code", format!("Invalid hex code: {}", e)))
+                hex::decode(&clean_code).map(Some).map_err(|e| {
+                    CliError::validation("hex_code", format!("Invalid hex code: {}", e))
+                })
             }
             None => Ok(None),
         }
@@ -145,9 +148,9 @@ impl Cli {
                     return Err(CliError::validation("address", "Empty address provided"));
                 }
 
-                u64::from_str_radix(&clean_addr, 16)
-                    .map(Some)
-                    .map_err(|_| CliError::validation("address", "Invalid hexadecimal address format"))
+                u64::from_str_radix(&clean_addr, 16).map(Some).map_err(|_| {
+                    CliError::validation("address", "Invalid hexadecimal address format")
+                })
             }
             None => Ok(None),
         }

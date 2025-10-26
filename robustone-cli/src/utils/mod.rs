@@ -10,31 +10,66 @@ pub fn validate_architecture(arch_str: &str) -> Result<String> {
     // Expanded list of architecture prefixes derived from Capstone support.
     let valid_prefixes = [
         // RISC-V
-        "riscv32", "riscv64", "riscv32e",
+        "riscv32",
+        "riscv64",
+        "riscv32e",
         // ARM
-        "arm", "armle", "armbe", "thumb",
+        "arm",
+        "armle",
+        "armbe",
+        "thumb",
         // AArch64
-        "aarch64", "aarch64be",
+        "aarch64",
+        "aarch64be",
         // x86
-        "x16", "x32", "x86", "x64", "x86-64", "x86_64",
+        "x16",
+        "x32",
+        "x86",
+        "x64",
+        "x86-64",
+        "x86_64",
         // MIPS
-        "mips", "mipsel", "mips64", "mips64el",
+        "mips",
+        "mipsel",
+        "mips64",
+        "mips64el",
         // PowerPC
-        "ppc", "powerpc", "ppc32", "powerpc32",
-        "ppcbe", "powerpcbe", "ppc32be", "powerpc32be",
-        "ppc64", "powerpc64", "ppc64be", "powerpc64be",
+        "ppc",
+        "powerpc",
+        "ppc32",
+        "powerpc32",
+        "ppcbe",
+        "powerpcbe",
+        "ppc32be",
+        "powerpc32be",
+        "ppc64",
+        "powerpc64",
+        "ppc64be",
+        "powerpc64be",
         // SPARC
-        "sparc", "sparcle", "sparc64",
+        "sparc",
+        "sparcle",
+        "sparc64",
         // Other
-        "systemz", "s390x", "xcore", "m68k", "tms320c64x", "c64x",
-        "m680x", "evm", "bpf",
+        "systemz",
+        "s390x",
+        "xcore",
+        "m68k",
+        "tms320c64x",
+        "c64x",
+        "m680x",
+        "evm",
+        "bpf",
     ];
 
     let arch_str_lower = arch_str.to_lowercase();
     let parts: Vec<&str> = arch_str_lower.split('+').collect();
 
     if parts.is_empty() {
-        return Err(CliError::validation("architecture", "Empty architecture string"));
+        return Err(CliError::validation(
+            "architecture",
+            "Empty architecture string",
+        ));
     }
 
     // Ensure the base architecture is supported before considering modifiers.
@@ -78,7 +113,10 @@ pub fn parse_hex_code(input: &str) -> Result<Vec<String>> {
     }
 
     if words.is_empty() {
-        return Err(CliError::validation("hex_code", "No valid hex tokens found"));
+        return Err(CliError::validation(
+            "hex_code",
+            "No valid hex tokens found",
+        ));
     }
 
     Ok(words)
@@ -106,8 +144,9 @@ pub fn hex_words_to_bytes(words: &[String]) -> Result<Vec<u8>> {
 
         for i in (0..hex_part.len()).step_by(2) {
             let byte_str = &hex_part[i..i + 2];
-            let byte = u8::from_str_radix(byte_str, 16)
-                .map_err(|_| CliError::validation("hex_code", format!("Invalid hex byte: {}", byte_str)))?;
+            let byte = u8::from_str_radix(byte_str, 16).map_err(|_| {
+                CliError::validation("hex_code", format!("Invalid hex byte: {}", byte_str))
+            })?;
             bytes.push(byte);
         }
     }
@@ -140,13 +179,19 @@ fn normalize_hex_token(token: &str) -> Result<String> {
     }
 
     if hex_part.len() % 2 != 0 {
-        return Err(CliError::validation("hex_token", "Hex token must have even number of digits"));
+        return Err(CliError::validation(
+            "hex_token",
+            "Hex token must have even number of digits",
+        ));
     }
 
     // Validate all characters are hexadecimal
     for c in hex_part.chars() {
         if !c.is_ascii_hexdigit() {
-            return Err(CliError::validation("hex_token", format!("Invalid hex character: {}", c)));
+            return Err(CliError::validation(
+                "hex_token",
+                format!("Invalid hex character: {}", c),
+            ));
         }
     }
 
@@ -156,7 +201,8 @@ fn normalize_hex_token(token: &str) -> Result<String> {
 /// Format bytes as a hex string with optional spaces.
 pub fn format_bytes_as_hex(bytes: &[u8], with_spaces: bool) -> String {
     if with_spaces {
-        bytes.iter()
+        bytes
+            .iter()
             .map(|b| format!("{:02x}", b))
             .collect::<Vec<_>>()
             .join(" ")
@@ -228,7 +274,6 @@ mod tests {
 
 // Legacy re-exports for backward compatibility
 pub use self::{
+    parse_address as parse_address_legacy, parse_hex_code as parse_hex_code_legacy,
     validate_architecture as validate_architecture_legacy,
-    parse_address as parse_address_legacy,
-    parse_hex_code as parse_hex_code_legacy,
 };
