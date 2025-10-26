@@ -1,6 +1,6 @@
 use crate::DisasmConfig;
 use crate::arch::Architecture;
-use robustone_core::{ArchitectureDispatcher, DisasmError, Instruction};
+use robustone_core::{ArchitectureDispatcher, error::DisasmError, instruction::Instruction};
 
 // Shared dispatcher instance reused to avoid repeated initialisation costs.
 lazy_static::lazy_static! {
@@ -74,8 +74,9 @@ pub fn disassemble(config: &DisasmConfig) -> Result<DisassemblyResult, DisasmErr
 }
 
 /// Prints the disassembly result in the cstool-compatible layout.
-pub fn print_instructions(result: &DisassemblyResult, _config: &DisasmConfig) {
-    let mut offset: usize = 0;
+pub fn print_instructions(result: &DisassemblyResult, config: &DisasmConfig) {
+    let base = config.start_address;
+    let mut offset = 0;
     for instr in &result.instructions {
         let bytes_str = instr
             .bytes
@@ -84,16 +85,17 @@ pub fn print_instructions(result: &DisassemblyResult, _config: &DisasmConfig) {
             .collect::<Vec<_>>()
             .join(" ");
 
+        let address = base.wrapping_add(offset);
         if instr.operands.is_empty() {
-            println!("{:>2}  {}  {}", offset, bytes_str, instr.mnemonic);
+            println!("{:>2x}  {}  {}", address, bytes_str, instr.mnemonic);
         } else {
             println!(
-                "{:>2}  {}  {}\t{}",
-                offset, bytes_str, instr.mnemonic, instr.operands
+                "{:>2x}  {}  {}\t{}",
+                address, bytes_str, instr.mnemonic, instr.operands
             );
         }
 
-        offset += instr.size as usize;
+        offset += instr.size as u64;
     }
 }
 
