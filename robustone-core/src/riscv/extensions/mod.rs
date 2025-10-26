@@ -86,12 +86,12 @@ use rvc::RvcExtension;
 /// Create all available standard RISC-V extensions.
 pub fn create_extensions() -> Vec<Box<dyn InstructionExtension>> {
     vec![
-        Box::new(RviExtension),
-        Box::new(RvaExtension),
-        Box::new(RvmExtension),
-        Box::new(RvfExtension),
-        Box::new(RvdExtension),
-        Box::new(RvcExtension),
+        Box::new(RviExtension::new()),
+        Box::new(RvaExtension::new()),
+        Box::new(RvmExtension::new()),
+        Box::new(RvfExtension::new()),
+        Box::new(RvdExtension::new()),
+        Box::new(RvcExtension::new()),
     ]
 }
 
