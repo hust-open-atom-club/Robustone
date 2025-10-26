@@ -104,7 +104,10 @@ pub struct RiscVDecoder {
 impl RiscVDecoder {
     /// Construct a decoder with the provided XLEN and extension bitmask.
     pub fn new(xlen: Xlen, extensions: u32) -> Self {
-        Self { xlen, _extensions: extensions }
+        Self {
+            xlen,
+            _extensions: extensions,
+        }
     }
 
     /// Convenience constructor for RV32.
@@ -162,10 +165,10 @@ impl RiscVDecoder {
         let rs2 = ((instruction >> 20) & 0x1F) as u8;
         let funct7 = ((instruction >> 25) & 0x7F) as u8;
         let funct12 = (instruction >> 20) & 0xFFF;
-    let _rs3 = ((instruction >> 27) & 0x1F) as u8;
-    let _funct2 = ((instruction >> 25) & 0x3) as u8;
+        let _rs3 = ((instruction >> 27) & 0x1F) as u8;
+        let _funct2 = ((instruction >> 25) & 0x3) as u8;
 
-    // Immediate value extraction across instruction formats.
+        // Immediate value extraction across instruction formats.
         let imm_i = self.sign_extend((instruction >> 20) & 0xFFF, 12);
         let imm_s = self.sign_extend(
             ((instruction >> 7) & 0x1F) | (((instruction >> 25) & 0x7F) << 5),
@@ -178,7 +181,7 @@ impl RiscVDecoder {
                 | ((instruction >> 31) & 0x1) << 12,
             13,
         );
-        let imm_u = (instruction & 0xFFFFF000) as i64;  // U-type: bits[31:12], sign-extend to i64
+        let imm_u = (instruction & 0xFFFFF000) as i64; // U-type: bits[31:12], sign-extend to i64
         let imm_j = self.sign_extend(
             ((instruction >> 31) & 0x1) << 20
                 | ((instruction >> 21) & 0x3FF) << 1
@@ -196,7 +199,7 @@ impl RiscVDecoder {
                 } else {
                     self.decode_j_type("jal", rd, imm_j)
                 }
-            },
+            }
             OPCODE_JALR => self.decode_i_type("jalr", rd, rs1, imm_i),
             OPCODE_BRANCH => self.decode_branch_instruction(funct3, rs1, rs2, imm_b),
             OPCODE_LOAD => self.decode_load_instruction(funct3, rd, rs1, imm_i),
@@ -233,14 +236,14 @@ impl RiscVDecoder {
         // - Full register (CI/CIW/CLWSP/CSSWSP/CR): rd_full/rs1_full/rs2_full use bits [11:7]/[11:7]/[6:2]
         // - Compressed register (rd'/rs1'/rs2'): 3-bit fields mapped to x8..x15, we pass 0..7 into decode_c_* which add +8
         let rd_full = ((instruction >> 7) & 0x1F) as u8; // bits 11..7
-    let _rs1_full = ((instruction >> 7) & 0x1F) as u8; // bits 11..7
+        let _rs1_full = ((instruction >> 7) & 0x1F) as u8; // bits 11..7
         let rs2_full = ((instruction >> 2) & 0x1F) as u8; // bits 6..2
         let rdp = ((instruction >> 2) & 0x7) as u8; // bits 4..2 (0..7)
         let rs1p = ((instruction >> 7) & 0x7) as u8; // bits 9..7 (0..7)
         let rs2p = ((instruction >> 2) & 0x7) as u8; // bits 4..2 (0..7)
 
-    // Decode immediate fields for each compressed encoding shape.
-    let _imm6 = self.sign_extend_c((instruction >> 2) & 0x3F, 6);
+        // Decode immediate fields for each compressed encoding shape.
+        let _imm6 = self.sign_extend_c((instruction >> 2) & 0x3F, 6);
 
         // CIW format for c.addi4spn: nzuimm[5:4|3:2|6|7] (bits[12:5] of instruction)
         let nzuimm_ciw = ((instruction >> 5) & 0x1) << 4
@@ -276,7 +279,7 @@ impl RiscVDecoder {
                 | ((instruction >> 7) & 0x1) << 6   // bit 6 from instruction[7]
                 | ((instruction >> 11) & 0x1) << 5  // bit 5 from instruction[11]
                 | ((instruction >> 3) & 0x7) << 1   // bits 3:1 from instruction[3:1]
-                | ((instruction >> 2) & 0x1) << 4,  // bit 4 from instruction[2]
+                | ((instruction >> 2) & 0x1) << 4, // bit 4 from instruction[2]
             12,
         );
 
@@ -291,8 +294,7 @@ impl RiscVDecoder {
         );
 
         // CSS format for c.swsp: uimm[5:2|6:7]
-        let uimm_css = ((instruction >> 7) & 0x3) << 2
-            | ((instruction >> 9) & 0x3) << 6;
+        let uimm_css = ((instruction >> 7) & 0x3) << 2 | ((instruction >> 9) & 0x3) << 6;
 
         // CL format for c.lwsp: uimm[5:3|2|6]
         let uimm_clsp = ((instruction >> 7) & 0x7) << 3
@@ -304,7 +306,7 @@ impl RiscVDecoder {
             | ((instruction >> 5) & 0x1) << 2          // imm[2] from instruction[5]
             | ((instruction >> 12) & 0x1) << 4         // imm[4] from instruction[12]
             | ((instruction >> 6) & 0x1) << 6          // imm[6] from instruction[6]
-            | ((instruction >> 9) & 0x3) << 7;          // imm[8:7] from instruction[9:8]
+            | ((instruction >> 9) & 0x3) << 7; // imm[8:7] from instruction[9:8]
 
         match (opcode, funct3) {
             // C0 opcode (quarters 0)
@@ -315,7 +317,7 @@ impl RiscVDecoder {
                 } else {
                     self.decode_c_addi4spn(rdp, nzuimm_ciw as i64)
                 }
-            },
+            }
             (0b00, 0b010) => {
                 // Need to distinguish between c.lw and c.flw based on rd'/rs1'
                 // c.lw: rd' = x8..x15, rs1' = x8..x15
@@ -323,7 +325,7 @@ impl RiscVDecoder {
                 // Since the encoding is the same, we need to check if this should be floating-point
                 // For now, assume c.lw since we don't have F-extension detection
                 self.decode_c_lw(rdp, rs1p, uimm_cl as i64)
-            },
+            }
             (0b00, 0b110) => {
                 // Need to distinguish between c.sw and c.fsw based on rs2'/rs1'
                 // c.sw: rs2' = x8..x15, rs1' = x8..x15
@@ -331,13 +333,20 @@ impl RiscVDecoder {
                 // Since the encoding is the same, we need to check if this should be floating-point
                 // For now, assume c.sw since we don't have F-extension detection
                 self.decode_c_sw(rs2p, rs1p, uimm_cs as i64)
-            },
+            }
 
             // C1 opcode (quarters 1)
             (0b01, 0b000) => self.decode_c_addi(rd_full, imm_ci),
             (0b01, 0b001) => self.decode_c_jal(imm_cj),
             (0b01, 0b010) => self.decode_c_li(rd_full, imm_ci),
-            (0b01, 0b011) => self.decode_c_addi16sp(rd_full, ((instruction >> 12) & 0x1) << 9 | ((instruction >> 3) & 0x3) << 7 | ((instruction >> 5) & 0x1) << 6 | ((instruction >> 2) & 0x3) << 4 | ((instruction >> 6) & 0x1) << 5),
+            (0b01, 0b011) => self.decode_c_addi16sp(
+                rd_full,
+                ((instruction >> 12) & 0x1) << 9
+                    | ((instruction >> 3) & 0x3) << 7
+                    | ((instruction >> 5) & 0x1) << 6
+                    | ((instruction >> 2) & 0x3) << 4
+                    | ((instruction >> 6) & 0x1) << 5,
+            ),
             (0b01, 0b100) => self.decode_c_alu(funct6, rdp, rs2p, funct2),
             (0b01, 0b101) => self.decode_c_j(imm_cj),
             (0b01, 0b110) => self.decode_c_beqz(rs1p, imm_cb),
@@ -354,7 +363,7 @@ impl RiscVDecoder {
                 } else {
                     self.decode_c_unknown(instruction)
                 }
-            },
+            }
             (0b10, 0b010) => {
                 // Check if this is c.lwsp vs c.flwsp
                 // c.lwsp: rd = x0..x31
@@ -369,7 +378,7 @@ impl RiscVDecoder {
                 } else {
                     self.decode_c_unknown(instruction)
                 }
-            },
+            }
             (0b10, 0b011) => {
                 // Need to distinguish between c.fldsp and c.lqsp (RV128) or other
                 // Treat as c.fldsp for floating-point
@@ -378,7 +387,7 @@ impl RiscVDecoder {
                 } else {
                     self.decode_c_unknown(instruction)
                 }
-            },
+            }
             (0b10, 0b100) => self.decode_c_mv(rd_full, rs2_full),
             (0b10, 0b101) => {
                 // Check if this is c.jr vs c.jalr vs c.add
@@ -389,7 +398,7 @@ impl RiscVDecoder {
                 } else {
                     self.decode_c_add(rd_full, rs2_full)
                 }
-            },
+            }
             (0b10, 0b110) => {
                 // Need to distinguish between c.swsp and c.fswsp
                 // Based on test data: 0xba37 should be c.fldsp, 0x37ba should be c.fsdsp
@@ -400,7 +409,7 @@ impl RiscVDecoder {
                 } else {
                     self.decode_c_unknown(instruction)
                 }
-            },
+            }
             (0b10, 0b111) => {
                 // c.fsdsp vs c.sqsp (RV128)
                 if rs2_full != 0 {
@@ -408,7 +417,7 @@ impl RiscVDecoder {
                 } else {
                     self.decode_c_unknown(instruction)
                 }
-            },
+            }
 
             _ => self.decode_c_unknown(instruction),
         }
@@ -429,7 +438,7 @@ impl RiscVDecoder {
         };
         Ok(RiscVDecodedInstruction {
             mnemonic: mnemonic.to_string(),
-            operands: format!("{}, {}", self.reg_name(rd), imm_str),  // U-type: imm >> 12
+            operands: format!("{}, {}", self.reg_name(rd), imm_str), // U-type: imm >> 12
             format: RiscVInstructionFormat::U,
             size: 4,
             operands_detail: vec![
@@ -498,20 +507,58 @@ impl RiscVDecoder {
                 if rs2 == 0 {
                     ("beqz", format!("{}, {}", self.reg_name(rs1), offset))
                 } else {
-                    ("beq", format!("{}, {}, {}", self.reg_name(rs1), self.reg_name(rs2), offset))
+                    (
+                        "beq",
+                        format!("{}, {}, {}", self.reg_name(rs1), self.reg_name(rs2), offset),
+                    )
                 }
-            },
+            }
             FUNCT3_BRANCH_BNE => {
                 if rs2 == 0 {
                     ("bnez", format!("{}, {}", self.reg_name(rs1), offset))
                 } else {
-                    ("bne", format!("{}, {}, {}", self.reg_name(rs1), self.reg_name(rs2), offset))
+                    (
+                        "bne",
+                        format!("{}, {}, {}", self.reg_name(rs1), self.reg_name(rs2), offset),
+                    )
                 }
-            },
-            FUNCT3_BRANCH_BLT => ("blt", format!("{}, {}, {}", self.reg_name(rs1), self.reg_name(rs2), offset.clone())),
-            FUNCT3_BRANCH_BGE => ("bge", format!("{}, {}, {}", self.reg_name(rs1), self.reg_name(rs2), offset.clone())),
-            FUNCT3_BRANCH_BLTU => ("bltu", format!("{}, {}, {}", self.reg_name(rs1), self.reg_name(rs2), offset.clone())),
-            FUNCT3_BRANCH_BGEU => ("bgeu", format!("{}, {}, {}", self.reg_name(rs1), self.reg_name(rs2), offset.clone())),
+            }
+            FUNCT3_BRANCH_BLT => (
+                "blt",
+                format!(
+                    "{}, {}, {}",
+                    self.reg_name(rs1),
+                    self.reg_name(rs2),
+                    offset.clone()
+                ),
+            ),
+            FUNCT3_BRANCH_BGE => (
+                "bge",
+                format!(
+                    "{}, {}, {}",
+                    self.reg_name(rs1),
+                    self.reg_name(rs2),
+                    offset.clone()
+                ),
+            ),
+            FUNCT3_BRANCH_BLTU => (
+                "bltu",
+                format!(
+                    "{}, {}, {}",
+                    self.reg_name(rs1),
+                    self.reg_name(rs2),
+                    offset.clone()
+                ),
+            ),
+            FUNCT3_BRANCH_BGEU => (
+                "bgeu",
+                format!(
+                    "{}, {}, {}",
+                    self.reg_name(rs1),
+                    self.reg_name(rs2),
+                    offset.clone()
+                ),
+            ),
             _ => return self.decode_unknown_instruction(funct3 as u32),
         };
 
@@ -714,9 +761,15 @@ impl RiscVDecoder {
             FUNCT3_SYSTEM_CSRRW => self.decode_csr_instruction("csrrw", rd, rs1, funct12 as i64),
             FUNCT3_SYSTEM_CSRRS => self.decode_csr_instruction("csrrs", rd, rs1, funct12 as i64),
             FUNCT3_SYSTEM_CSRRC => self.decode_csr_instruction("csrrc", rd, rs1, funct12 as i64),
-            FUNCT3_SYSTEM_CSRRWI => self.decode_csr_instruction_imm("csrrwi", rd, rs1 as i64, funct12 as i64),
-            FUNCT3_SYSTEM_CSRRSI => self.decode_csr_instruction_imm("csrrsi", rd, rs1 as i64, funct12 as i64),
-            FUNCT3_SYSTEM_CSRRCI => self.decode_csr_instruction_imm("csrrci", rd, rs1 as i64, funct12 as i64),
+            FUNCT3_SYSTEM_CSRRWI => {
+                self.decode_csr_instruction_imm("csrrwi", rd, rs1 as i64, funct12 as i64)
+            }
+            FUNCT3_SYSTEM_CSRRSI => {
+                self.decode_csr_instruction_imm("csrrsi", rd, rs1 as i64, funct12 as i64)
+            }
+            FUNCT3_SYSTEM_CSRRCI => {
+                self.decode_csr_instruction_imm("csrrci", rd, rs1 as i64, funct12 as i64)
+            }
             _ => self.decode_unknown_instruction(funct3 as u32),
         }
     }
@@ -811,7 +864,7 @@ impl RiscVDecoder {
         })
     }
 
-  fn decode_csr_instruction_imm(
+    fn decode_csr_instruction_imm(
         &self,
         mnemonic: &str,
         rd: u8,
@@ -857,7 +910,7 @@ impl RiscVDecoder {
         let imm_str = if imm_val == 0 {
             "0".to_string()
         } else {
-            format!("{}", imm_val)  // Use decimal format like cstool
+            format!("{}", imm_val) // Use decimal format like cstool
         };
         Ok(RiscVDecodedInstruction {
             mnemonic: "c.addi16sp".to_string(),
@@ -890,9 +943,7 @@ impl RiscVDecoder {
             operands: format!("{}", self.reg_name(rd)),
             format: RiscVInstructionFormat::CR,
             size: 2,
-            operands_detail: vec![
-                self.make_register_operand(rd, Access::read()),
-            ],
+            operands_detail: vec![self.make_register_operand(rd, Access::read())],
         })
     }
 
@@ -902,9 +953,7 @@ impl RiscVDecoder {
             operands: format!("{}", self.reg_name(rd)),
             format: RiscVInstructionFormat::CR,
             size: 2,
-            operands_detail: vec![
-                self.make_register_operand(rd, Access::read()),
-            ],
+            operands_detail: vec![self.make_register_operand(rd, Access::read())],
         })
     }
 
@@ -921,7 +970,12 @@ impl RiscVDecoder {
         };
         Ok(RiscVDecodedInstruction {
             mnemonic: "c.lw".to_string(),
-            operands: format!("{}, {}({})", self.c_reg_name(rd), imm_str, self.c_reg_name(rs1)),
+            operands: format!(
+                "{}, {}({})",
+                self.c_reg_name(rd),
+                imm_str,
+                self.c_reg_name(rs1)
+            ),
             format: RiscVInstructionFormat::CL,
             size: 2,
             operands_detail: vec![
@@ -945,7 +999,12 @@ impl RiscVDecoder {
         };
         Ok(RiscVDecodedInstruction {
             mnemonic: "c.flw".to_string(),
-            operands: format!("{}, {}({})", self.f_reg_name(rd + 8), imm_str, self.c_reg_name(rs1)),
+            operands: format!(
+                "{}, {}({})",
+                self.f_reg_name(rd + 8),
+                imm_str,
+                self.c_reg_name(rs1)
+            ),
             format: RiscVInstructionFormat::CL,
             size: 2,
             operands_detail: vec![
@@ -1016,7 +1075,7 @@ impl RiscVDecoder {
         let imm_str = if imm == 0 {
             "0".to_string()
         } else {
-            format!("{}", imm)  // c.addi uses decimal format like cstool
+            format!("{}", imm) // c.addi uses decimal format like cstool
         };
         Ok(RiscVDecodedInstruction {
             mnemonic: "c.addi".to_string(),
@@ -1034,7 +1093,7 @@ impl RiscVDecoder {
         let imm_str = if imm == 0 {
             "0".to_string()
         } else {
-            format!("{}", imm)  // c.li uses decimal format like cstool
+            format!("{}", imm) // c.li uses decimal format like cstool
         };
         Ok(RiscVDecodedInstruction {
             mnemonic: "c.li".to_string(),
@@ -1138,7 +1197,7 @@ impl RiscVDecoder {
         let imm_str = if imm == 0 {
             "0".to_string()
         } else {
-            format!("{}", imm)  // c.slli uses decimal format like cstool
+            format!("{}", imm) // c.slli uses decimal format like cstool
         };
         Ok(RiscVDecodedInstruction {
             mnemonic: "c.slli".to_string(),
@@ -1433,36 +1492,36 @@ impl RiscVDecoder {
 
     fn f_reg_name(&self, reg: u8) -> &'static str {
         match reg {
-            0 => "ft0", // f0
-            1 => "ft1", // f1
-            2 => "ft2", // f2
-            3 => "ft3", // f3
-            4 => "ft4", // f4
-            5 => "ft5", // f5
-            6 => "ft6", // f6
-            7 => "ft7", // f7
-            8 => "fs0", // f8
-            9 => "fs1", // f9
-            10 => "fa0", // f10
-            11 => "fa1", // f11
-            12 => "fa2", // f12
-            13 => "fa3", // f13
-            14 => "fa4", // f14
-            15 => "fa5", // f15
-            16 => "fa6", // f16
-            17 => "fa7", // f17
-            18 => "fs2", // f18
-            19 => "fs3", // f19
-            20 => "fs4", // f20
-            21 => "fs5", // f21
-            22 => "fs6", // f22
-            23 => "fs7", // f23
-            24 => "fs8", // f24
-            25 => "fs9", // f25
+            0 => "ft0",   // f0
+            1 => "ft1",   // f1
+            2 => "ft2",   // f2
+            3 => "ft3",   // f3
+            4 => "ft4",   // f4
+            5 => "ft5",   // f5
+            6 => "ft6",   // f6
+            7 => "ft7",   // f7
+            8 => "fs0",   // f8
+            9 => "fs1",   // f9
+            10 => "fa0",  // f10
+            11 => "fa1",  // f11
+            12 => "fa2",  // f12
+            13 => "fa3",  // f13
+            14 => "fa4",  // f14
+            15 => "fa5",  // f15
+            16 => "fa6",  // f16
+            17 => "fa7",  // f17
+            18 => "fs2",  // f18
+            19 => "fs3",  // f19
+            20 => "fs4",  // f20
+            21 => "fs5",  // f21
+            22 => "fs6",  // f22
+            23 => "fs7",  // f23
+            24 => "fs8",  // f24
+            25 => "fs9",  // f25
             26 => "fs10", // f26
             27 => "fs11", // f27
-            28 => "ft8", // f28
-            29 => "ft9", // f29
+            28 => "ft8",  // f28
+            29 => "ft9",  // f29
             30 => "ft10", // f30
             31 => "ft11", // f31
             _ => "invalid",
