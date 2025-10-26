@@ -1,4 +1,4 @@
-use crate::cli::error::ValidationError;
+use crate::error::ValidationError;
 
 /// Normalise a raw hex string into a list of canonical tokens.
 ///
