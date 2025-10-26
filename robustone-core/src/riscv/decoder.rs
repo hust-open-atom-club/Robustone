@@ -89,10 +89,11 @@ const FUNCT3_MISC_MEM_FENCE: u8 = 0b000;
 const FUNCT3_MISC_MEM_FENCE_I: u8 = 0b001;
 
 // RISC-V XLEN (register width) indicator.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Xlen {
     X32,
     X64,
+    // TODO support for RISC-V RV128 (`X128`) architecture
 }
 
 /// Improved RISC-V instruction decoder.
@@ -103,7 +104,7 @@ pub struct RiscVDecoder {
 
 impl RiscVDecoder {
     /// Construct a decoder with the provided XLEN and extension bitmask.
-    pub fn new(xlen: Xlen, extensions: u32) -> Self {
+    pub const fn new(xlen: Xlen, extensions: u32) -> Self {
         Self {
             xlen,
             _extensions: extensions,
@@ -111,12 +112,12 @@ impl RiscVDecoder {
     }
 
     /// Convenience constructor for RV32.
-    pub fn rv32() -> Self {
+    pub const fn rv32() -> Self {
         Self::new(Xlen::X32, 0b001)
     }
 
     /// Convenience constructor for RV64.
-    pub fn rv64() -> Self {
+    pub const fn rv64() -> Self {
         Self::new(Xlen::X64, 0b001)
     }
 
@@ -1571,6 +1572,7 @@ pub struct RiscVDecodedInstruction {
     pub operands_detail: Vec<RiscVOperand>,
 }
 
+// TODO split into independent test module
 #[cfg(test)]
 mod tests {
     use super::*;

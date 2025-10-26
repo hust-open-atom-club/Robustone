@@ -19,7 +19,7 @@ pub fn print_version_info() {
 
 /// Print the basic banner headline.
 fn print_basic_info() {
-    println!("Robustone v0.1.0");
+    println!("Robustone v{}", clap::crate_version!());
     println!("Capstone-compatible disassembly engine");
     println!();
 }
