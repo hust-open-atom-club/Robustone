@@ -1,0 +1,42 @@
+{
+  "extends": [
+    "config:base"
+  ],
+  "schedule": [
+    "before 6am on Monday"
+  ],
+  "timezone": "Asia/Shanghai",
+  "rust": {
+    "rangeStrategy": "bump"
+  },
+  "dockerfile": {
+    "fileMatch": ["Dockerfile*"]
+  },
+  "github-actions": {
+    "fileMatch": ["^\\.github/workflows/[^/]+\\.ya?ml$"]
+  },
+  "pip_requirements": {
+    "fileMatch": ["requirements.txt"]
+  },
+  "packageRules": [
+    {
+      "matchPackagePatterns": [
+        "*"
+      ],
+      "automerge": false,
+      "automergeType": "pr"
+    },
+    {
+      "matchDepTypes": ["devDependencies"],
+      "automerge": true,
+      "automergeType": "pr"
+    }
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on the first day of the month"]
+  },
+  "labels": ["dependencies"],
+  "assignees": ["@maintainer"],
+  "reviewers": ["@maintainer"]
+}

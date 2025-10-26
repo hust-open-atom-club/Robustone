@@ -1,0 +1,41 @@
+# EditorConfig is awesome: https://EditorConfig.org
+
+# top-most EditorConfig file
+root = true
+
+# Unix-style newlines with a newline ending every file
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Matches multiple files with brace expansion notation
+# Set default charset
+[*.{rs,toml,yml,yaml,md,py,sh}]
+indent_style = space
+indent_size = 4
+
+# Tab indentation (no size specified)
+[Makefile]
+indent_style = tab
+
+# YAML files
+[*.{yml,yaml}]
+indent_size = 2
+
+# Markdown files
+[*.{md,mkd}]
+trim_trailing_whitespace = false
+
+# Rust files
+[*.rs]
+max_line_length = 100
+
+# Configuration files
+[*.{toml,yml,yaml}]
+max_line_length = 120
+
+# Shell scripts
+[*.sh]
+indent_size = 2
