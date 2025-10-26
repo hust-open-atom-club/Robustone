@@ -3,13 +3,13 @@
 //! This module implements the RISC-V double-precision floating-point extension (D extension),
 //! which provides IEEE 754 double-precision floating-point operations.
 
-use super::InstructionExtension;
-use super::super::types::*;
 use super::super::decoder::{RiscVDecodedInstruction, Xlen};
 use super::super::shared::{
     operands::convenience,
     registers::{RegisterManager, RegisterNameProvider},
 };
+use super::super::types::*;
+use super::InstructionExtension;
 use crate::error::DisasmError;
 
 /// RVD Double-Precision Floating-Point Extension
@@ -223,8 +223,11 @@ impl InstructionExtension for RvdExtension {
                 let funct5 = funct7 >> 2;
                 let fmt = funct7 & 0b11;
 
-                if fmt != 0b01 { // Only double-precision (fmt=01)
-                    return Some(Err(DisasmError::DecodingError("Invalid D-extension fmt".to_string())));
+                if fmt != 0b01 {
+                    // Only double-precision (fmt=01)
+                    return Some(Err(DisasmError::DecodingError(
+                        "Invalid D-extension fmt".to_string(),
+                    )));
                 }
 
                 match (funct5, funct3) {
@@ -238,47 +241,71 @@ impl InstructionExtension for RvdExtension {
                     (0b00100, 0b010) => Some(self.decode_fp_r_type("fsgnjx.d", rd, rs1, rs2)),
                     (0b00101, 0b000) => Some(self.decode_fp_r_type("fmin.d", rd, rs1, rs2)),
                     (0b00101, 0b001) => Some(self.decode_fp_r_type("fmax.d", rd, rs1, rs2)),
-                    (0b11000, 0b000) => Some(self.decode_fp_int_type("fcvt.w.d", rd, rs1, rs2, false, true)), // rs2 ignored
-                    (0b11000, 0b001) => Some(self.decode_fp_int_type("fcvt.wu.d", rd, rs1, rs2, false, true)), // rs2 ignored
+                    (0b11000, 0b000) => {
+                        Some(self.decode_fp_int_type("fcvt.w.d", rd, rs1, rs2, false, true))
+                    } // rs2 ignored
+                    (0b11000, 0b001) => {
+                        Some(self.decode_fp_int_type("fcvt.wu.d", rd, rs1, rs2, false, true))
+                    } // rs2 ignored
                     (0b11000, 0b010) => {
                         if xlen == Xlen::X64 {
                             Some(self.decode_fp_int_type("fcvt.l.d", rd, rs1, rs2, false, true)) // rs2 ignored
                         } else {
-                            Some(Err(DisasmError::DecodingError("fcvt.l.d requires RV64".to_string())))
+                            Some(Err(DisasmError::DecodingError(
+                                "fcvt.l.d requires RV64".to_string(),
+                            )))
                         }
                     }
                     (0b11000, 0b011) => {
                         if xlen == Xlen::X64 {
                             Some(self.decode_fp_int_type("fcvt.lu.d", rd, rs1, rs2, false, true)) // rs2 ignored
                         } else {
-                            Some(Err(DisasmError::DecodingError("fcvt.lu.d requires RV64".to_string())))
+                            Some(Err(DisasmError::DecodingError(
+                                "fcvt.lu.d requires RV64".to_string(),
+                            )))
                         }
                     }
-                    (0b11100, 0b000) => Some(self.decode_fp_int_type("fmv.x.d", rd, rs1, rs2, false, true)), // rs2 ignored
+                    (0b11100, 0b000) => {
+                        Some(self.decode_fp_int_type("fmv.x.d", rd, rs1, rs2, false, true))
+                    } // rs2 ignored
                     (0b10100, 0b010) => Some(self.decode_fp_r_type("feq.d", rd, rs1, rs2)),
                     (0b10100, 0b001) => Some(self.decode_fp_r_type("flt.d", rd, rs1, rs2)),
                     (0b10100, 0b000) => Some(self.decode_fp_r_type("fle.d", rd, rs1, rs2)),
-                    (0b11100, 0b001) => Some(self.decode_fp_int_type("fclass.d", rd, rs1, rs2, false, true)), // rs2 ignored
-                    (0b11010, 0b000) => Some(self.decode_fp_int_type("fcvt.d.w", rd, rs1, rs2, true, false)), // rs2 ignored
-                    (0b11010, 0b001) => Some(self.decode_fp_int_type("fcvt.d.wu", rd, rs1, rs2, true, false)), // rs2 ignored
+                    (0b11100, 0b001) => {
+                        Some(self.decode_fp_int_type("fclass.d", rd, rs1, rs2, false, true))
+                    } // rs2 ignored
+                    (0b11010, 0b000) => {
+                        Some(self.decode_fp_int_type("fcvt.d.w", rd, rs1, rs2, true, false))
+                    } // rs2 ignored
+                    (0b11010, 0b001) => {
+                        Some(self.decode_fp_int_type("fcvt.d.wu", rd, rs1, rs2, true, false))
+                    } // rs2 ignored
                     (0b11010, 0b010) => {
                         if xlen == Xlen::X64 {
                             Some(self.decode_fp_int_type("fcvt.d.l", rd, rs1, rs2, true, false)) // rs2 ignored
                         } else {
-                            Some(Err(DisasmError::DecodingError("fcvt.d.l requires RV64".to_string())))
+                            Some(Err(DisasmError::DecodingError(
+                                "fcvt.d.l requires RV64".to_string(),
+                            )))
                         }
                     }
                     (0b11010, 0b011) => {
                         if xlen == Xlen::X64 {
                             Some(self.decode_fp_int_type("fcvt.d.lu", rd, rs1, rs2, true, false)) // rs2 ignored
                         } else {
-                            Some(Err(DisasmError::DecodingError("fcvt.d.lu requires RV64".to_string())))
+                            Some(Err(DisasmError::DecodingError(
+                                "fcvt.d.lu requires RV64".to_string(),
+                            )))
                         }
                     }
-                    (0b11110, 0b000) => Some(self.decode_fp_int_type("fmv.d.x", rd, rs1, rs2, true, false)), // rs2 ignored
+                    (0b11110, 0b000) => {
+                        Some(self.decode_fp_int_type("fmv.d.x", rd, rs1, rs2, true, false))
+                    } // rs2 ignored
                     (0b01000, 0b000) => Some(self.decode_fp_r_type("fcvt.d.s", rd, rs1, rs2)), // fmt=00, rs2 is rs1
                     (0b01000, 0b001) => Some(self.decode_fp_r_type("fcvt.s.d", rd, rs1, rs2)), // fmt=01, rs2 is rs1
-                    _ => Some(Err(DisasmError::DecodingError("Invalid D-extension encoding".to_string()))),
+                    _ => Some(Err(DisasmError::DecodingError(
+                        "Invalid D-extension encoding".to_string(),
+                    ))),
                 }
             }
             _ => None,

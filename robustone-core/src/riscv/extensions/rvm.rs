@@ -3,14 +3,14 @@
 //! This module implements the RISC-V multiply and divide extension (M extension),
 //! which includes integer multiplication, division, and remainder operations.
 
-use super::InstructionExtension;
-use super::super::types::*;
 use super::super::decoder::{RiscVDecodedInstruction, Xlen};
 use super::super::shared::{
+    OperandFactory,
     operands::DefaultOperandFactory,
     registers::{RegisterManager, RegisterNameProvider},
-    OperandFactory,
 };
+use super::super::types::*;
+use super::InstructionExtension;
 use crate::error::DisasmError;
 
 /// RVM Multiply and Divide Extension
@@ -62,15 +62,23 @@ impl RvmExtension {
             format: RiscVInstructionFormat::R,
             size: 4,
             operands_detail: vec![
-                self.operand_factory.make_register_operand(rd, Access::write()),
-                self.operand_factory.make_register_operand(rs1, Access::read()),
-                self.operand_factory.make_register_operand(rs2, Access::read()),
+                self.operand_factory
+                    .make_register_operand(rd, Access::write()),
+                self.operand_factory
+                    .make_register_operand(rs1, Access::read()),
+                self.operand_factory
+                    .make_register_operand(rs2, Access::read()),
             ],
         })
     }
 
-  
-    fn decode_mul(&self, funct3: u8, rd: u8, rs1: u8, rs2: u8) -> Result<RiscVDecodedInstruction, DisasmError> {
+    fn decode_mul(
+        &self,
+        funct3: u8,
+        rd: u8,
+        rs1: u8,
+        rs2: u8,
+    ) -> Result<RiscVDecodedInstruction, DisasmError> {
         match funct3 {
             Self::FUNCT3_OP_ADD_SUB => self.decode_r_type("mul", rd, rs1, rs2),
             Self::FUNCT3_OP_SLL => self.decode_r_type("mulh", rd, rs1, rs2),
@@ -80,7 +88,9 @@ impl RvmExtension {
             Self::FUNCT3_OP_SRL_SRA => self.decode_r_type("divu", rd, rs1, rs2),
             Self::FUNCT3_OP_OR => self.decode_r_type("rem", rd, rs1, rs2),
             Self::FUNCT3_OP_AND => self.decode_r_type("remu", rd, rs1, rs2),
-            _ => Err(DisasmError::DecodingError("Invalid M-extension funct3".to_string())),
+            _ => Err(DisasmError::DecodingError(
+                "Invalid M-extension funct3".to_string(),
+            )),
         }
     }
 }

@@ -3,8 +3,8 @@
 //! Provides centralized formatting functionality for instructions, operands,
 //! and immediate values used across all RISC-V extensions.
 
-use super::super::types::*;
 use super::super::decoder::RiscVDecodedInstruction;
+use super::super::types::*;
 
 /// Trait for formatting decoded RISC-V instructions.
 pub trait InstructionFormatter {
@@ -272,8 +272,8 @@ impl InstructionFormatHelper {
 
     /// Format an I-type instruction (register-immediate).
     pub fn format_i_type(mnemonic: &str, rd: u8, rs1: u8, imm: i64) -> String {
-        use super::registers::get_register_name;
         use super::operands::convenience;
+        use super::registers::get_register_name;
         format!(
             "{}, {}, {}",
             get_register_name(rd),
@@ -284,8 +284,8 @@ impl InstructionFormatHelper {
 
     /// Format an S-type instruction (store).
     pub fn format_s_type(mnemonic: &str, rs2: u8, rs1: u8, imm: i64) -> String {
-        use super::registers::get_register_name;
         use super::operands::convenience;
+        use super::registers::get_register_name;
         format!(
             "{}, {}({})",
             get_register_name(rs2),
@@ -296,8 +296,8 @@ impl InstructionFormatHelper {
 
     /// Format a B-type instruction (branch).
     pub fn format_b_type(mnemonic: &str, rs1: u8, rs2: u8, imm: i64) -> String {
-        use super::registers::get_register_name;
         use super::operands::convenience;
+        use super::registers::get_register_name;
         let offset_str = convenience::format_immediate(imm);
         if (mnemonic == "beqz" || mnemonic == "bnez") && rs2 == 0 {
             format!("{}, {}", get_register_name(rs1), offset_str)
@@ -325,8 +325,8 @@ impl InstructionFormatHelper {
 
     /// Format a J-type instruction (jump).
     pub fn format_j_type(mnemonic: &str, rd: u8, imm: i64) -> String {
-        use super::registers::get_register_name;
         use super::operands::convenience;
+        use super::registers::get_register_name;
         let offset_str = convenience::format_immediate(imm);
         match (mnemonic, rd) {
             ("j", _) => offset_str,
@@ -499,11 +499,26 @@ mod tests {
 
     #[test]
     fn test_instruction_format_helper() {
-        assert_eq!(InstructionFormatHelper::format_r_type("add", 1, 2, 3), "ra, sp, gp");
-        assert_eq!(InstructionFormatHelper::format_i_type("addi", 1, 2, 10), "ra, sp, 10");
-        assert_eq!(InstructionFormatHelper::format_s_type("sw", 3, 4, 16), "gp, 0x10(tp)");
-        assert_eq!(InstructionFormatHelper::format_u_type("lui", 5, 0x1000), "t0, 0x1");
-        assert_eq!(InstructionFormatHelper::format_j_type("jal", 1, 100), "0x64");
+        assert_eq!(
+            InstructionFormatHelper::format_r_type("add", 1, 2, 3),
+            "ra, sp, gp"
+        );
+        assert_eq!(
+            InstructionFormatHelper::format_i_type("addi", 1, 2, 10),
+            "ra, sp, 10"
+        );
+        assert_eq!(
+            InstructionFormatHelper::format_s_type("sw", 3, 4, 16),
+            "gp, 0x10(tp)"
+        );
+        assert_eq!(
+            InstructionFormatHelper::format_u_type("lui", 5, 0x1000),
+            "t0, 0x1"
+        );
+        assert_eq!(
+            InstructionFormatHelper::format_j_type("jal", 1, 100),
+            "0x64"
+        );
     }
 
     #[test]

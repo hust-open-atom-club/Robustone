@@ -3,13 +3,13 @@
 //! This module implements the RISC-V atomic instructions extension (A extension),
 //! which provides atomic memory operations for synchronization and concurrency.
 
-use super::InstructionExtension;
-use super::super::types::*;
 use super::super::decoder::{RiscVDecodedInstruction, Xlen};
 use super::super::shared::{
     operands::convenience,
     registers::{RegisterManager, RegisterNameProvider},
 };
+use super::super::types::*;
+use super::InstructionExtension;
 use crate::error::DisasmError;
 
 /// RVA Atomic Instructions Extension
@@ -216,7 +216,9 @@ impl InstructionExtension for RvaExtension {
                 Some(self.decode_amo("amomaxu.d", rd, rs1, rs2))
             }
 
-            _ => Some(Err(DisasmError::DecodingError("Invalid A-extension encoding".to_string()))),
+            _ => Some(Err(DisasmError::DecodingError(
+                "Invalid A-extension encoding".to_string(),
+            ))),
         }
     }
 
