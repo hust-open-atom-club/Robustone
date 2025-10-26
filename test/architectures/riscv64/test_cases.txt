@@ -1,0 +1,3 @@
+# RISC-V 64-bit test cases
+# Format: <hex_bytes> [| <cstool_output>] [| <note>]
+# This is a placeholder file - add actual 64-bit test cases here

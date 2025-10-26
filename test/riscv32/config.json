@@ -1,8 +1,0 @@
-{
-  "name": "riscv32",
-  "robustone_arch": "riscv32",
-  "cstool_arch": "riscv32",
-  "cases_file": "verified_instructions.txt",
-  "robustone_flags": [],
-  "cstool_flags": []
-}

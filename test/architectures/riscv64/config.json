@@ -1,0 +1,10 @@
+{
+  "name": "riscv64",
+  "robustone_arch": "riscv64",
+  "cstool_arch": "riscv64",
+  "cases_file": "test_cases.txt",
+  "robustone_flags": [],
+  "cstool_flags": [],
+  "description": "RISC-V 64-bit instruction set tests",
+  "category": "riscv"
+}

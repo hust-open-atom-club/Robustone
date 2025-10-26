@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CAPSTONE_PATH_INPUT="${1:-third_party/capstone}"
 if [[ "${CAPSTONE_PATH_INPUT}" != /* ]]; then
   CAPSTONE_PATH="${ROOT_DIR}/${CAPSTONE_PATH_INPUT}"
