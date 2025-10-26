@@ -35,6 +35,12 @@ pub trait OperandFormatter {
 /// Default implementation of operand factory.
 pub struct DefaultOperandFactory;
 
+impl Default for DefaultOperandFactory {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OperandFactory for DefaultOperandFactory {
     fn make_register_operand(&self, reg: u8, access: Access) -> RiscVOperand {
         RiscVOperand {
@@ -141,6 +147,12 @@ pub struct OperandBuilder {
     factory: DefaultOperandFactory,
 }
 
+impl Default for OperandBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OperandBuilder {
     /// Create a new operand builder.
     pub const fn new() -> Self {
@@ -155,7 +167,7 @@ impl OperandBuilder {
     }
 
     /// Format instruction operands for common instruction formats.
-    pub fn format_r_type(&self, mnemonic: &str, rd: u8, rs1: u8, rs2: u8) -> String {
+    pub fn format_r_type(&self, _mnemonic: &str, rd: u8, rs1: u8, rs2: u8) -> String {
         format!(
             "{}, {}, {}",
             super::registers::get_register_name(rd),
@@ -164,7 +176,7 @@ impl OperandBuilder {
         )
     }
 
-    pub fn format_i_type(&self, mnemonic: &str, rd: u8, rs1: u8, imm: i64) -> String {
+    pub fn format_i_type(&self, _mnemonic: &str, rd: u8, rs1: u8, imm: i64) -> String {
         format!(
             "{}, {}, {}",
             super::registers::get_register_name(rd),
@@ -173,7 +185,7 @@ impl OperandBuilder {
         )
     }
 
-    pub fn format_s_type(&self, mnemonic: &str, rs2: u8, rs1: u8, imm: i64) -> String {
+    pub fn format_s_type(&self, _mnemonic: &str, rs2: u8, rs1: u8, imm: i64) -> String {
         format!(
             "{}, {}({})",
             super::registers::get_register_name(rs2),
@@ -200,7 +212,7 @@ impl OperandBuilder {
         }
     }
 
-    pub fn format_u_type(&self, mnemonic: &str, rd: u8, imm: i64) -> String {
+    pub fn format_u_type(&self, _mnemonic: &str, rd: u8, imm: i64) -> String {
         let imm_val = imm >> 12;
         let imm_str = if imm_val == 0 {
             "0".to_string()
@@ -221,7 +233,7 @@ impl OperandBuilder {
 
     pub fn format_load_type(
         &self,
-        mnemonic: &str,
+        _mnemonic: &str,
         rd: u8,
         rs1: u8,
         imm: i64,
@@ -242,7 +254,7 @@ impl OperandBuilder {
 
     pub fn format_store_type(
         &self,
-        mnemonic: &str,
+        _mnemonic: &str,
         rs2: u8,
         rs1: u8,
         imm: i64,

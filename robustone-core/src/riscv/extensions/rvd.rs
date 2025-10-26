@@ -17,6 +17,12 @@ pub struct RvdExtension {
     register_manager: RegisterManager,
 }
 
+impl Default for RvdExtension {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RvdExtension {
     /// Create a new RVD extension instance.
     pub fn new() -> Self {
@@ -205,19 +211,19 @@ impl InstructionExtension for RvdExtension {
             }
             Self::OPCODE_FMADD => {
                 let rs3 = (funct7 >> 2) & 0x1F;
-                Some(self.decode_fp_r4_type("fmadd.d", rd, rs1, rs2, rs3 as u8))
+                Some(self.decode_fp_r4_type("fmadd.d", rd, rs1, rs2, rs3))
             }
             Self::OPCODE_FMSUB => {
                 let rs3 = (funct7 >> 2) & 0x1F;
-                Some(self.decode_fp_r4_type("fmsub.d", rd, rs1, rs2, rs3 as u8))
+                Some(self.decode_fp_r4_type("fmsub.d", rd, rs1, rs2, rs3))
             }
             Self::OPCODE_FNMSUB => {
                 let rs3 = (funct7 >> 2) & 0x1F;
-                Some(self.decode_fp_r4_type("fnmsub.d", rd, rs1, rs2, rs3 as u8))
+                Some(self.decode_fp_r4_type("fnmsub.d", rd, rs1, rs2, rs3))
             }
             Self::OPCODE_FNMADD => {
                 let rs3 = (funct7 >> 2) & 0x1F;
-                Some(self.decode_fp_r4_type("fnmadd.d", rd, rs1, rs2, rs3 as u8))
+                Some(self.decode_fp_r4_type("fnmadd.d", rd, rs1, rs2, rs3))
             }
             Self::OPCODE_FP => {
                 let funct5 = funct7 >> 2;

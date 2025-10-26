@@ -19,6 +19,7 @@ pub trait InstructionFormatter {
     ) -> RiscVDecodedInstruction;
 
     /// Create a decoded instruction using the operand builder.
+    #[allow(clippy::too_many_arguments)]
     fn create_instruction_from_parts(
         &self,
         mnemonic: &str,
@@ -69,6 +70,7 @@ impl InstructionFormatter for DefaultInstructionFormatter {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn create_instruction_from_parts(
         &self,
         mnemonic: &str,
@@ -155,7 +157,7 @@ impl InstructionFormatter for DefaultInstructionFormatter {
                 let ops = format!("{}, {}", get_register_name(rd), imm_str);
                 let details = vec![
                     convenience::register(rd, rd_access),
-                    convenience::immediate(imm_val as i64),
+                    convenience::immediate(imm_val),
                 ];
                 (ops, details)
             }
@@ -173,7 +175,7 @@ impl InstructionFormatter for DefaultInstructionFormatter {
                 (ops, details)
             }
             _ => {
-                let ops = format!("unknown format");
+                let ops = "unknown format".to_string();
                 let details = vec![];
                 (ops, details)
             }
@@ -213,6 +215,12 @@ impl ImmediateFormatter for DefaultInstructionFormatter {
         } else {
             self.format_immediate_decimal(value)
         }
+    }
+}
+
+impl Default for DefaultInstructionFormatter {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -260,7 +268,7 @@ pub struct InstructionFormatHelper;
 
 impl InstructionFormatHelper {
     /// Format an R-type instruction (register-register).
-    pub fn format_r_type(mnemonic: &str, rd: u8, rs1: u8, rs2: u8) -> String {
+    pub fn format_r_type(_mnemonic: &str, rd: u8, rs1: u8, rs2: u8) -> String {
         use super::registers::get_register_name;
         format!(
             "{}, {}, {}",
@@ -271,7 +279,7 @@ impl InstructionFormatHelper {
     }
 
     /// Format an I-type instruction (register-immediate).
-    pub fn format_i_type(mnemonic: &str, rd: u8, rs1: u8, imm: i64) -> String {
+    pub fn format_i_type(_mnemonic: &str, rd: u8, rs1: u8, imm: i64) -> String {
         use super::operands::convenience;
         use super::registers::get_register_name;
         format!(
@@ -283,7 +291,7 @@ impl InstructionFormatHelper {
     }
 
     /// Format an S-type instruction (store).
-    pub fn format_s_type(mnemonic: &str, rs2: u8, rs1: u8, imm: i64) -> String {
+    pub fn format_s_type(_mnemonic: &str, rs2: u8, rs1: u8, imm: i64) -> String {
         use super::operands::convenience;
         use super::registers::get_register_name;
         format!(
@@ -312,7 +320,7 @@ impl InstructionFormatHelper {
     }
 
     /// Format a U-type instruction (upper immediate).
-    pub fn format_u_type(mnemonic: &str, rd: u8, imm: i64) -> String {
+    pub fn format_u_type(_mnemonic: &str, rd: u8, imm: i64) -> String {
         use super::registers::get_register_name;
         let imm_val = imm >> 12;
         let imm_str = if imm_val == 0 {
@@ -419,18 +427,18 @@ pub mod convenience {
     }
 
     /// Format an R-type instruction.
-    pub fn format_r_type(mnemonic: &str, rd: u8, rs1: u8, rs2: u8) -> String {
-        InstructionFormatHelper::format_r_type(mnemonic, rd, rs1, rs2)
+    pub fn format_r_type(_mnemonic: &str, rd: u8, rs1: u8, rs2: u8) -> String {
+        InstructionFormatHelper::format_r_type(_mnemonic, rd, rs1, rs2)
     }
 
     /// Format an I-type instruction.
-    pub fn format_i_type(mnemonic: &str, rd: u8, rs1: u8, imm: i64) -> String {
-        InstructionFormatHelper::format_i_type(mnemonic, rd, rs1, imm)
+    pub fn format_i_type(_mnemonic: &str, rd: u8, rs1: u8, imm: i64) -> String {
+        InstructionFormatHelper::format_i_type(_mnemonic, rd, rs1, imm)
     }
 
     /// Format an S-type instruction.
-    pub fn format_s_type(mnemonic: &str, rs2: u8, rs1: u8, imm: i64) -> String {
-        InstructionFormatHelper::format_s_type(mnemonic, rs2, rs1, imm)
+    pub fn format_s_type(_mnemonic: &str, rs2: u8, rs1: u8, imm: i64) -> String {
+        InstructionFormatHelper::format_s_type(_mnemonic, rs2, rs1, imm)
     }
 
     /// Format a B-type instruction.
@@ -439,8 +447,8 @@ pub mod convenience {
     }
 
     /// Format a U-type instruction.
-    pub fn format_u_type(mnemonic: &str, rd: u8, imm: i64) -> String {
-        InstructionFormatHelper::format_u_type(mnemonic, rd, imm)
+    pub fn format_u_type(_mnemonic: &str, rd: u8, imm: i64) -> String {
+        InstructionFormatHelper::format_u_type(_mnemonic, rd, imm)
     }
 
     /// Format a J-type instruction.
@@ -455,12 +463,12 @@ pub mod convenience {
 
     /// Create an unknown instruction.
     pub fn unknown_instruction(value: u32) -> RiscVDecodedInstruction {
-        DefaultInstructionFormatter::unknown_instruction(value)
+        DefaultInstructionFormatter::simple_instruction("unknown", &format!("0x{:08x}", value))
     }
 
     /// Create an unknown compressed instruction.
     pub fn unknown_compressed_instruction(value: u16) -> RiscVDecodedInstruction {
-        DefaultInstructionFormatter::unknown_compressed_instruction(value)
+        DefaultInstructionFormatter::simple_instruction("c.unknown", &format!("0x{:04x}", value))
     }
 }
 

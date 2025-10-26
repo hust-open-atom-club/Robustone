@@ -19,6 +19,12 @@ pub struct RvmExtension {
     register_manager: RegisterManager,
 }
 
+impl Default for RvmExtension {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RvmExtension {
     /// Create a new RVM extension instance.
     pub fn new() -> Self {

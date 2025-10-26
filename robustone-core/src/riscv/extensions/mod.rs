@@ -4,7 +4,6 @@
 //! extensions, organized into separate modules for better maintainability.
 
 use super::decoder::{RiscVDecodedInstruction, Xlen};
-use super::types::*;
 use crate::error::DisasmError;
 
 /// Trait that all instruction set extensions must implement.
@@ -14,6 +13,7 @@ pub trait InstructionExtension: Sync {
     /// Returns `Some(Ok(instruction))` if this extension can decode the instruction,
     /// `Some(Err(error))` if decoding fails within this extension,
     /// or `None` if this extension doesn't handle the instruction.
+    #[allow(clippy::too_many_arguments)]
     fn try_decode_standard(
         &self,
         opcode: u32,
@@ -36,6 +36,7 @@ pub trait InstructionExtension: Sync {
     /// Returns `Some(Ok(instruction))` if this extension can decode the compressed instruction,
     /// `Some(Err(error))` if decoding fails within this extension,
     /// or `None` if this extension doesn't handle the instruction.
+    #[allow(clippy::too_many_arguments)]
     fn try_decode_compressed(
         &self,
         instruction: u16,

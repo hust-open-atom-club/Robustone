@@ -136,6 +136,12 @@ pub struct CompressedFields {
 /// Default implementation of sign extender.
 pub struct DefaultSignExtender;
 
+impl Default for DefaultSignExtender {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SignExtender for DefaultSignExtender {
     fn sign_extend(&self, value: u32, bits: u8) -> i64 {
         let sign_bit = 1 << (bits - 1);
@@ -469,7 +475,7 @@ mod tests {
         let decoder = DefaultSignExtender::new();
 
         // Test R-type: add x1, x2, x3
-        let instruction = 0b0000000_00011_00010_000_00001_0110011;
+        let instruction = 0b0000_0000_0011_0001_0000_0000_1011_0011;
         let r_fields = decoder.extract_r_type(instruction);
         assert_eq!(r_fields.opcode, 0b0110011);
         assert_eq!(r_fields.rd, 1);
@@ -479,7 +485,7 @@ mod tests {
         assert_eq!(r_fields.funct7, 0b0000000);
 
         // Test I-type: addi x1, x2, 5
-        let instruction = 0b000000000101_00010_000_00001_0010011;
+        let instruction = 0b0000_0000_0101_0001_0000_0000_1001_0011;
         let i_fields = decoder.extract_i_type(instruction);
         assert_eq!(i_fields.opcode, 0b0010011);
         assert_eq!(i_fields.rd, 1);
@@ -488,7 +494,7 @@ mod tests {
         assert_eq!(i_fields.imm, 5);
 
         // Test U-type: lui x5, 0x10
-        let instruction = 0b0001_0000_0000_0000_0000_00101_0110111;
+        let instruction = 0b0001_0000_0000_0000_0000_0010_1011_0111;
         let u_fields = decoder.extract_u_type(instruction);
         assert_eq!(u_fields.opcode, 0b0110111);
         assert_eq!(u_fields.rd, 5);
@@ -517,7 +523,7 @@ mod tests {
         assert_eq!(convenience::sign_extend(0x800, 12), -2048);
         assert_eq!(convenience::sign_extend_16(0x8000, 16), -32768);
 
-        let instruction = 0b0000000_00011_00010_000_00001_0110011;
+        let instruction = 0b0000_0000_0011_0001_0000_0000_1011_0011;
         let fields = convenience::extract_fields(instruction);
         assert_eq!(fields.rd, 1);
         assert_eq!(fields.rs1, 2);

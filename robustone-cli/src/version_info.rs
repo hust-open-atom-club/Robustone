@@ -65,10 +65,7 @@ fn print_implementation_status() {
     let mut categories: HashMap<&str, Vec<&Architecture>> = HashMap::new();
 
     for arch in &archs {
-        categories
-            .entry(arch.category())
-            .or_insert_with(Vec::new)
-            .push(arch);
+        categories.entry(arch.category()).or_default().push(arch);
     }
 
     // Display entries grouped by category for readability.
@@ -122,13 +119,13 @@ mod tests {
     #[test]
     fn test_architecture_categories() {
         let archs = Architecture::all_architectures();
-        let mut categories = HashMap::new();
+        let mut categories: HashMap<&str, Vec<&str>> = HashMap::new();
 
         for arch in &archs {
             categories
                 .entry(arch.category())
-                .or_insert_with(Vec::new)
-                .push(arch);
+                .or_default()
+                .push(arch.name());
         }
 
         // Ensure key architecture categories are present in the summary.

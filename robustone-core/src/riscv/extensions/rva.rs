@@ -17,6 +17,12 @@ pub struct RvaExtension {
     register_manager: RegisterManager,
 }
 
+impl Default for RvaExtension {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RvaExtension {
     /// Create a new RVA extension instance.
     pub fn new() -> Self {

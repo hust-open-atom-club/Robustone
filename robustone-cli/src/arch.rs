@@ -284,10 +284,7 @@ impl Architecture {
     }
 
     pub fn is_implemented(&self) -> bool {
-        match self {
-            Architecture::Riscv32 | Architecture::Riscv64 => true,
-            _ => false,
-        }
+        matches!(self, Architecture::Riscv32 | Architecture::Riscv64)
     }
 
     pub fn implementation_status(&self) -> &'static str {

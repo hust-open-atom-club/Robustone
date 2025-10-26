@@ -32,7 +32,7 @@ fn main() {
         ("13000513", "addi t0, t0, 5"),
     ];
 
-    for (hex, expected) in test_instructions {
+    for (hex, _expected) in test_instructions {
         let instr = dispatcher.disassemble(hex, "riscv32".to_string());
         println!("{} -> {} {}", hex, instr.mnemonic, instr.operands);
         if instr.mnemonic != "unknown" && instr.mnemonic != "c.unimp" {

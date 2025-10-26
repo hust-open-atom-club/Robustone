@@ -114,7 +114,7 @@ impl RiscVDecoder {
         let rs2 = ((instruction >> 20) & 0x1F) as u8;
         let funct7 = ((instruction >> 25) & 0x7F) as u8;
         let funct12 = (instruction >> 20) & 0xFFF;
-        let rs3 = ((instruction >> 27) & 0x1F) as u8;
+        let _rs3 = ((instruction >> 27) & 0x1F) as u8;
 
         // Immediate value extraction across instruction formats.
         let imm_i = self.sign_extend((instruction >> 20) & 0xFFF, 12);
@@ -362,7 +362,7 @@ mod tests {
         // Test ADDI x1, x2, 100
         // ADDI format: imm[11:0] | rs1[4:0] | funct3[2:0] | rd[4:0] | opcode[6:0]
         // imm = 100, rs1 = x2 (2), rd = x1 (1), funct3 = 0b000, opcode = 0b0010011
-        let instruction = (100u32 << 20) | (2u32 << 15) | (0u32 << 12) | (1u32 << 7) | 0b0010011;
+        let instruction = (100u32 << 20) | (2u32 << 15) | (1u32 << 7) | 0b0010011;
         let bytes = instruction.to_le_bytes();
 
         println!("Testing ADDI instruction: 0x{:08x}", instruction);

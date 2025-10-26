@@ -3,8 +3,6 @@
 //! Provides centralized register name lookup and management functionality
 //! used across all RISC-V extensions.
 
-use super::super::types::*;
-
 /// Trait for providing register names in RISC-V extensions.
 pub trait RegisterNameProvider {
     /// Get the name of an integer register (x0-x31).
@@ -19,6 +17,12 @@ pub trait RegisterNameProvider {
 
 /// Centralized register manager providing name lookup for all RISC-V registers.
 pub struct RegisterManager;
+
+impl Default for RegisterManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl RegisterNameProvider for RegisterManager {
     fn int_register_name(&self, reg: u8) -> &'static str {

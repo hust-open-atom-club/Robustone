@@ -135,8 +135,8 @@ mod tests {
 
     #[test]
     fn test_legacy_compatibility() {
-        assert!(validate_architecture("riscv32").is_ok());
-        assert!(parse_address("0x1000").is_ok());
-        assert!(parse_hex_code("1234").is_ok());
+        assert!(utils::validate_architecture("riscv32").is_ok());
+        assert!(utils::parse_address("0x1000").is_ok());
+        assert!(utils::parse_hex_to_bytes("1234").is_ok());
     }
 }

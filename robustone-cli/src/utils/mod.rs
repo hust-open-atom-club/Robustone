@@ -74,7 +74,7 @@ pub fn validate_architecture(arch_str: &str) -> Result<String> {
 
     // Ensure the base architecture is supported before considering modifiers.
     let base_arch = parts[0];
-    let is_valid = valid_prefixes.iter().any(|&prefix| base_arch == prefix);
+    let is_valid = valid_prefixes.contains(&base_arch);
 
     if !is_valid {
         return Err(CliError::validation(
@@ -168,8 +168,8 @@ fn normalize_hex_token(token: &str) -> Result<String> {
         return Err(CliError::validation("hex_token", "Empty hex token"));
     }
 
-    let hex_part = if trimmed.starts_with("0x") {
-        &trimmed[2..]
+    let hex_part = if let Some(stripped) = trimmed.strip_prefix("0x") {
+        stripped
     } else {
         &trimmed
     };
@@ -233,8 +233,14 @@ pub fn hex_byte_count(hex_str: &str) -> Result<usize> {
     Ok(normalized.len() / 2 - 1) // Subtract 1 for "0x" prefix
 }
 
+// Legacy re-exports for backward compatibility
+pub use self::{
+    parse_address as parse_address_legacy, parse_hex_code as parse_hex_code_legacy,
+    validate_architecture as validate_architecture_legacy,
+};
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
 
     #[test]
@@ -251,6 +257,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(dead_code)]
     fn test_parse_address() {
         assert_eq!(parse_address("0x1000").unwrap(), 0x1000);
         assert_eq!(parse_address("1000").unwrap(), 0x1000);
@@ -273,7 +280,3 @@ mod tests {
 }
 
 // Legacy re-exports for backward compatibility
-pub use self::{
-    parse_address as parse_address_legacy, parse_hex_code as parse_hex_code_legacy,
-    validate_architecture as validate_architecture_legacy,
-};

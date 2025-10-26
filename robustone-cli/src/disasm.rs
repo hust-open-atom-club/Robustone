@@ -86,6 +86,12 @@ pub struct DisassemblyEngine {
     dispatcher: ArchitectureDispatcher,
 }
 
+impl Default for DisassemblyEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DisassemblyEngine {
     /// Create a new disassembly engine.
     pub fn new() -> Self {
@@ -236,7 +242,6 @@ impl DisassemblyFormatter {
 }
 
 /// Convenience functions for backward compatibility.
-
 /// Disassembles the supplied byte tokens using the provided configuration.
 pub fn process_input(config: &DisasmConfig) -> Result<DisassemblyResult, DisasmError> {
     let engine = DisassemblyEngine::new();
@@ -257,6 +262,7 @@ pub fn print_instructions(result: &DisassemblyResult, config: &DisasmConfig) {
 }
 
 /// Legacy hex conversion function for backward compatibility.
+#[allow(dead_code)]
 fn hex_words_to_arch_bytes(words: &[String], _arch: &Architecture) -> Result<Vec<u8>, String> {
     let mut bytes: Vec<u8> = Vec::new();
     for word in words {
@@ -294,7 +300,7 @@ mod tests {
     fn test_disassembly_engine() {
         let engine = DisassemblyEngine::new();
         // The exact number of architectures may vary, so just check it's a reasonable number
-        assert!(engine.dispatcher.supported_architectures().len() >= 0); // Basic sanity check
+        assert!(!engine.dispatcher.supported_architectures().is_empty()); // Basic sanity check
     }
 
     #[test]

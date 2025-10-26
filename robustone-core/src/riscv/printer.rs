@@ -36,26 +36,14 @@ impl RiscVPrinter {
 
     /// Formats an immediate according to the active configuration.
     fn format_immediate(&self, imm: i64) -> String {
-        if self.unsigned_immediate {
-            if imm >= 0 && imm > 0xFF {
-                format!("0x{:x}", imm)
-            } else if imm >= 0 {
-                format!("{}", imm)
-            } else if imm < -0xFF {
-                format!("-0x{:x}", -imm)
-            } else {
-                format!("{}", imm)
-            }
+        if imm > 0xFF {
+            format!("0x{:x}", imm)
+        } else if imm >= 0 {
+            format!("{}", imm)
+        } else if imm < -0xFF {
+            format!("-0x{:x}", -imm)
         } else {
-            if imm >= 0 && imm > 0xFF {
-                format!("0x{:x}", imm)
-            } else if imm >= 0 {
-                format!("{}", imm)
-            } else if imm < -0xFF {
-                format!("-0x{:x}", -imm)
-            } else {
-                format!("{}", imm)
-            }
+            format!("{}", imm)
         }
     }
 

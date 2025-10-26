@@ -18,6 +18,12 @@ pub struct RvcExtension {
     register_manager: RegisterManager,
 }
 
+impl Default for RvcExtension {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RvcExtension {
     /// Create a new RVC extension instance.
     pub fn new() -> Self {
@@ -100,7 +106,7 @@ impl RvcExtension {
     fn decode_c_jr(&self, rd: u8) -> Result<RiscVDecodedInstruction, DisasmError> {
         Ok(RiscVDecodedInstruction {
             mnemonic: "c.jr".to_string(),
-            operands: format!("{}", self.register_manager.int_register_name(rd)),
+            operands: self.register_manager.int_register_name(rd).to_string(),
             format: RiscVInstructionFormat::CR,
             size: 2,
             operands_detail: vec![convenience::register(rd, Access::read())],
@@ -110,7 +116,7 @@ impl RvcExtension {
     fn decode_c_jalr(&self, rd: u8) -> Result<RiscVDecodedInstruction, DisasmError> {
         Ok(RiscVDecodedInstruction {
             mnemonic: "c.jalr".to_string(),
-            operands: format!("{}", self.register_manager.int_register_name(rd)),
+            operands: self.register_manager.int_register_name(rd).to_string(),
             format: RiscVInstructionFormat::CR,
             size: 2,
             operands_detail: vec![convenience::register(rd, Access::read())],
@@ -435,11 +441,11 @@ impl InstructionExtension for RvcExtension {
             (0b01, 0b001) => Some(self.decode_c_jal(imm_cj)),
             (0b01, 0b010) => Some(self.decode_c_li(rd_full, imm_ci)),
             (0b01, 0b011) => {
-                let imm_val = (((instruction >> 12) & 0x1) as u16) << 9
-                    | (((instruction >> 3) & 0x3) as u16) << 7
-                    | (((instruction >> 5) & 0x1) as u16) << 6
-                    | (((instruction >> 2) & 0x3) as u16) << 4
-                    | (((instruction >> 6) & 0x1) as u16) << 5;
+                let imm_val = ((instruction >> 12) & 0x1) << 9
+                    | ((instruction >> 3) & 0x3) << 7
+                    | ((instruction >> 5) & 0x1) << 6
+                    | ((instruction >> 2) & 0x3) << 4
+                    | ((instruction >> 6) & 0x1) << 5;
                 Some(self.decode_c_addi16sp(rd_full, imm_val))
             }
             (0b01, 0b100) => {
