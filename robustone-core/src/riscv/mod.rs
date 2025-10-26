@@ -8,6 +8,7 @@
 pub mod decoder;
 pub mod printer;
 pub mod types;
+pub mod extensions;
 
 use crate::{
     ArchitectureHandler,
