@@ -1,5 +1,5 @@
-use crate::cli::arch::ArchitectureSpec;
-use crate::cli::command::Cli;
+use crate::arch::ArchitectureSpec;
+use crate::command::Cli;
 
 /// Fully validated configuration derived from CLI arguments.
 #[derive(Clone)]
@@ -33,8 +33,8 @@ impl std::fmt::Debug for DisasmConfig {
 
 impl DisasmConfig {
     /// Builds a configuration from CLI input and performs full validation.
-    pub fn config_from_cli(cli: &Cli) -> crate::cli::error::Result<Self> {
-        use crate::cli::error::CliError;
+    pub fn config_from_cli(cli: &Cli) -> crate::error::Result<Self> {
+        use crate::error::CliError;
 
         // Ensure required fields are present.
         let arch_mode = cli
@@ -51,12 +51,12 @@ impl DisasmConfig {
         let arch_spec = ArchitectureSpec::parse(arch_mode)
             .map_err(|e| CliError::Architecture(e.to_string()))?;
 
-        let hex_words = crate::cli::utils::parse_hex_code(hex_code)
+        let hex_words = crate::utils::parse_hex_code(hex_code)
             .map_err(|e| CliError::InvalidHex(e.to_string()))?;
 
         // Parse the starting address, defaulting to zero when omitted.
         let address_str = cli.address.as_deref().unwrap_or("0");
-        let start_address = crate::cli::utils::parse_address(address_str)
+        let start_address = crate::utils::parse_address(address_str)
             .map_err(|e| CliError::InvalidAddress(e.to_string()))?;
 
         Ok(DisasmConfig {

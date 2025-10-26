@@ -1,5 +1,5 @@
-use crate::cli::error::{CliError, ValidationError};
-use crate::cli::{Architecture, ArchitectureSpec, Cli, DisasmConfig};
+use crate::error::{CliError, ValidationError};
+use crate::{Architecture, ArchitectureSpec, Cli, DisasmConfig};
 use clap::Parser;
 
 #[test]
@@ -86,7 +86,7 @@ fn test_architecture_spec_parsing() {
 
 #[test]
 fn test_hex_validation() {
-    use crate::cli::parse_hex_code;
+    use crate::parse_hex_code;
 
     // Valid hexadecimal payloads should parse successfully.
     assert!(parse_hex_code("00100093").is_ok());
@@ -114,7 +114,7 @@ fn test_hex_validation() {
 
 #[test]
 fn test_address_validation() {
-    use crate::cli::parse_address;
+    use crate::parse_address;
 
     // Accept canonical and prefixed hexadecimal addresses.
     assert_eq!(parse_address("0").unwrap(), 0);
@@ -186,7 +186,7 @@ fn test_config_missing_required_args() {
 
 #[test]
 fn test_error_handling() {
-    use crate::cli::error::Result;
+    use crate::error::Result;
 
     // Ensure canonical error variants propagate through the Result alias.
     let result: Result<()> = Err(CliError::InvalidHex("Invalid hex code".to_string()));
@@ -287,7 +287,7 @@ fn test_error_display() {
 
 #[cfg(test)]
 mod integration_tests {
-    use crate::cli::disasm::process_input;
+    use crate::disasm::process_input;
 
     use super::*;
 

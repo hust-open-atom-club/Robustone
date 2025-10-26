@@ -150,10 +150,17 @@ dependencies = [
 name = "robustone"
 version = "0.0.0"
 dependencies = [
+ "hex",
+]
+
+[[package]]
+name = "robustone-cli"
+version = "0.0.0"
+dependencies = [
  "clap",
  "hex",
  "lazy_static",
- "transfer",
+ "robustone",
 ]
 
 [[package]]
@@ -171,13 +178,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "transfer"
-version = "0.0.0"
-dependencies = [
- "hex",
 ]
 
 [[package]]

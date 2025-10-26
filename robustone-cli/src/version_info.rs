@@ -6,7 +6,7 @@
 //! - implementation status indicators
 //! - dedicated helper functions for maintainability
 
-use crate::cli::Architecture;
+use crate::Architecture;
 use std::collections::HashMap;
 
 /// Print the full version banner along with implementation stats.

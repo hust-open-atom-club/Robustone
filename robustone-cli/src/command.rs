@@ -1,4 +1,4 @@
-use crate::cli::utils::validate_architecture;
+use crate::utils::validate_architecture;
 use clap::Parser;
 
 /// Robustone - Capstone-compatible disassembly engine CLI tool (cstool style)

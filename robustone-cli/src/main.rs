@@ -1,6 +1,4 @@
-mod cli;
-
-use cli::executor::run;
+use robustone_cli::executor::run;
 
 fn main() {
     if let Err(e) = run() {

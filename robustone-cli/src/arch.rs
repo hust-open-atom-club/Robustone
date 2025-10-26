@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::cli::error::ParseError;
+use crate::error::ParseError;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Architecture {

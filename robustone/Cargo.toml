@@ -4,7 +4,8 @@ version = "0.0.0"
 edition = "2024"
 
 [dependencies]
-clap = { version = "4.5.50", features = ["derive"] }
-lazy_static = "1.4.0"
 hex = "0.4"
-transfer = { path = "../transfer" }
+
+[features]
+default = ["riscv"]
+riscv = []
