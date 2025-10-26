@@ -1,12 +1,12 @@
 use crate::cli::error::ValidationError;
 
-/// 将输入解析为“十六进制字符串”列表，例如：
-/// 输入："0x00000000 0x00000011" => 输出：vec!["0x00000000", "0x00000011"]
-/// 规则：
-/// - 以空白分隔多个 token；
-/// - 每个 token 可带 0x/0X 前缀；
-/// - 仅允许十六进制字符；
-/// - 必须为偶数字符长度（不含前缀），否则报错；
+/// Normalise a raw hex string into a list of canonical tokens.
+///
+/// Examples:
+/// - `"0x00000000 0x00000011"` → `vec!["0x00000000", "0x00000011"]`
+/// - tokens may include `0x`/`0X` prefixes
+/// - only hexadecimal characters are accepted
+/// - tokens must contain an even number of digits (excluding the prefix)
 pub fn parse_hex_code(input: &str) -> std::result::Result<Vec<String>, ValidationError> {
     let trimmed = input.trim();
     if trimmed.is_empty() {
@@ -19,7 +19,7 @@ pub fn parse_hex_code(input: &str) -> std::result::Result<Vec<String>, Validatio
             continue;
         }
 
-        // 处理前缀并统一为小写
+    // Normalise the prefix and force lowercase for consistent downstream parsing.
         let lower = raw.to_lowercase();
         let no_prefix = if lower.starts_with("0x") || lower.starts_with("0X") {
             &lower[2..]
@@ -31,19 +31,19 @@ pub fn parse_hex_code(input: &str) -> std::result::Result<Vec<String>, Validatio
             return Err(ValidationError::EmptyHexCode);
         }
 
-        // 校验字符
+    // Validate that every character is a hexadecimal digit.
         for c in no_prefix.chars() {
             if !c.is_ascii_hexdigit() {
                 return Err(ValidationError::InvalidHexChar(c));
             }
         }
 
-        // 必须偶数字符长度
+    // Require an even number of digits so each token expands to whole bytes.
         if no_prefix.len() % 2 != 0 {
             return Err(ValidationError::OddHexLength);
         }
 
-        // 规范化：保留 0x 前缀，小写
+    // Canonical form: lowercase with a `0x` prefix.
         words.push(format!("0x{}", no_prefix));
     }
 
@@ -54,7 +54,7 @@ pub fn parse_hex_code(input: &str) -> std::result::Result<Vec<String>, Validatio
     Ok(words)
 }
 
-/// 解析十六进制地址（允许带0x/0X前缀）
+/// Parse a hexadecimal address, accepting optional `0x`/`0X` prefixes.
 pub fn parse_address(input: &str) -> std::result::Result<u64, ValidationError> {
     if input.trim().is_empty() {
         return Err(ValidationError::EmptyAddress);
@@ -71,7 +71,7 @@ pub fn parse_address(input: &str) -> std::result::Result<u64, ValidationError> {
         return Err(ValidationError::InvalidAddressFormat);
     }
 
-    // 验证所有字符都是有效的十六进制字符
+    // Ensure all characters are valid hexadecimal digits.
     for c in hex_str.chars() {
         if !c.is_ascii_hexdigit() {
             return Err(ValidationError::InvalidAddressFormat);
@@ -81,7 +81,7 @@ pub fn parse_address(input: &str) -> std::result::Result<u64, ValidationError> {
     u64::from_str_radix(hex_str, 16).map_err(|_| ValidationError::InvalidAddressFormat)
 }
 
-/// 将 parse_hex_code 产生的十六进制字符串列表展开为字节序列
+/// Expand canonical hex tokens into a contiguous byte buffer.
 pub fn hex_words_to_bytes(words: &[String]) -> std::result::Result<Vec<u8>, ValidationError> {
     let mut out: Vec<u8> = Vec::new();
     for w in words {

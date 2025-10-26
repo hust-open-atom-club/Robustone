@@ -3,7 +3,7 @@ use transfer::*;
 fn main() {
     let dispatcher = ArchitectureDispatcher::new();
 
-    // 测试ADDI指令 - 这应该产生详细的操作数信息
+    // Test the ADDI instruction - this should produce detailed operand information
     let instruction = dispatcher.disassemble("13000513", "riscv32".to_string());
 
     println!("=== Basic Output ===");
@@ -24,7 +24,7 @@ fn main() {
         println!("\nNo detailed information available");
     }
 
-    // 测试更多指令
+    // Test additional instructions
     println!("\n=== Testing Multiple Instructions ===");
     let test_instructions = vec![
         ("97000000", "auipc zero, 0x97000"),

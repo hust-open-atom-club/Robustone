@@ -1,30 +1,6 @@
 use crate::cli::arch::ArchitectureSpec;
 use crate::cli::command::Cli;
 
-/// Supported mode modifiers parsed from the CLI architecture string.
-#[derive(Debug, Clone)]
-pub enum ModeModifier {
-    LittleEndian,
-    BigEndian,
-    Thumb,
-    Arm,
-    Micro,
-    V8,
-    V9,
-    Mips32,
-    Mips64,
-}
-
-/// Supported architecture-specific option modifiers.
-#[derive(Debug, Clone)]
-pub enum OptionModifier {
-    AttSyntax,
-    IntelSyntax,
-    MasmSyntax,
-    NasmSyntax,
-    Csyntax,
-}
-
 /// Fully validated configuration derived from CLI arguments.
 #[derive(Clone)]
 pub struct DisasmConfig {

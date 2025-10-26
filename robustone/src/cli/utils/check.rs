@@ -1,6 +1,6 @@
-/// 验证架构字符串（保持原有签名以兼容现有调用处）
+/// Validate an architecture string while preserving the legacy return type.
 pub fn validate_architecture(arch_str: &str) -> Result<String, String> {
-    // 扩展的架构前缀验证，基于Capstone支持
+    // Expanded list of architecture prefixes derived from Capstone support.
     let valid_prefixes = [
         // RISC-V
         "riscv32",
@@ -62,7 +62,7 @@ pub fn validate_architecture(arch_str: &str) -> Result<String, String> {
         return Err("Empty architecture string".to_string());
     }
 
-    // 检查基础架构是否有效
+    // Ensure the base architecture is supported before considering modifiers.
     let base_arch = parts[0];
     let is_valid = valid_prefixes.iter().any(|&prefix| base_arch == prefix);
 
