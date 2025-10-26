@@ -4,8 +4,9 @@ version = "0.0.0"
 edition = "2024"
 
 [dependencies]
-hex = "0.4"
+robustone-core = { path = "../robustone-core", default-features = false }
+robustone-cli = { path = "../robustone-cli" }
 
 [features]
 default = ["riscv"]
-riscv = []
+riscv = ["robustone-core/riscv"]
