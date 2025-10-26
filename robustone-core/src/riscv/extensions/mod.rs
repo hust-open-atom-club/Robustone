@@ -4,10 +4,10 @@
 //! extensions, organized into separate modules for better maintainability.
 
 use super::decoder::{RiscVDecodedInstruction, Xlen};
-use super::types::*;
 use crate::error::DisasmError;
 
 /// Trait that all instruction set extensions must implement.
+#[allow(clippy::too_many_arguments)]
 pub trait InstructionExtension: Sync {
     /// Try to decode a standard 32-bit instruction.
     ///

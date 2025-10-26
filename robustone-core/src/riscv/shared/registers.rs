@@ -3,7 +3,7 @@
 //! Provides centralized register name lookup and management functionality
 //! used across all RISC-V extensions.
 
-use super::super::types::*;
+// types are not required in this module directly; avoid unused import
 
 /// Trait for providing register names in RISC-V extensions.
 pub trait RegisterNameProvider {
@@ -130,6 +130,12 @@ impl RegisterManager {
     /// Check if a register number is valid for compressed registers (x8-x15).
     pub const fn is_valid_compressed_register(reg: u8) -> bool {
         reg <= 7
+    }
+}
+
+impl Default for RegisterManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

@@ -114,7 +114,7 @@ impl RiscVDecoder {
         let rs2 = ((instruction >> 20) & 0x1F) as u8;
         let funct7 = ((instruction >> 25) & 0x7F) as u8;
         let funct12 = (instruction >> 20) & 0xFFF;
-        let rs3 = ((instruction >> 27) & 0x1F) as u8;
+        let _rs3 = ((instruction >> 27) & 0x1F) as u8;
 
         // Immediate value extraction across instruction formats.
         let imm_i = self.sign_extend((instruction >> 20) & 0xFFF, 12);
@@ -298,7 +298,7 @@ impl RiscVDecoder {
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         Ok(RiscVDecodedInstruction {
             mnemonic: "unknown".to_string(),
-            operands: format!("0x{:08x}", instruction),
+            operands: format!("0x{instruction:08x}"),
             format: RiscVInstructionFormat::I,
             size: 4,
             operands_detail: vec![],
@@ -308,7 +308,7 @@ impl RiscVDecoder {
     fn decode_c_unknown(&self, instruction: u16) -> Result<RiscVDecodedInstruction, DisasmError> {
         Ok(RiscVDecodedInstruction {
             mnemonic: "c.unknown".to_string(),
-            operands: format!("0x{:04x}", instruction),
+            operands: format!("0x{instruction:04x}"),
             format: RiscVInstructionFormat::CI,
             size: 2,
             operands_detail: vec![],

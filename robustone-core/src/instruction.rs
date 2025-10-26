@@ -33,7 +33,7 @@ impl Default for Instruction {
 }
 
 /// Expanded instruction metadata for architectures that provide it.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct InstructionDetail {
     /// Normalized operands as structured data.
     pub operands: Vec<RiscVOperand>,
@@ -45,13 +45,4 @@ pub struct InstructionDetail {
     pub groups: Vec<String>,
 }
 
-impl Default for InstructionDetail {
-    fn default() -> Self {
-        Self {
-            operands: Vec::new(),
-            regs_read: Vec::new(),
-            regs_write: Vec::new(),
-            groups: Vec::new(),
-        }
-    }
-}
+// Default is derived above

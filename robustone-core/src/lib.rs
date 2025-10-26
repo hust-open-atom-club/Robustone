@@ -52,7 +52,11 @@ impl ArchitectureDispatcher {
     /// Legacy helper that accepts a hex string and returns the decoded instruction.
     pub fn disassemble(&self, hex: &str, arch: String) -> Instruction {
         let s = hex.trim().to_lowercase();
-        let no_prefix = if s.starts_with("0x") { &s[2..] } else { &s };
+        let no_prefix = if let Some(stripped) = s.strip_prefix("0x") {
+            stripped
+        } else {
+            &s
+        };
 
         let mut bytes: Vec<u8> = Vec::new();
         let mut i = 0;

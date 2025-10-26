@@ -11,16 +11,16 @@ impl std::fmt::Display for DisasmError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             DisasmError::UnsupportedArchitecture(arch) => {
-                write!(f, "ERROR: Unsupported architecture: {}", arch)
+                write!(f, "ERROR: Unsupported architecture: {arch}")
             }
             DisasmError::DecodingError(msg) => {
-                write!(f, "ERROR: Decoding failed: {}", msg)
+                write!(f, "ERROR: Decoding failed: {msg}")
             }
             DisasmError::InvalidHexCode(msg) => {
-                write!(f, "ERROR: invalid assembly code: {}", msg)
+                write!(f, "ERROR: invalid assembly code: {msg}")
             }
             DisasmError::InvalidAddress(msg) => {
-                write!(f, "ERROR: invalid address argument: {}", msg)
+                write!(f, "ERROR: invalid address argument: {msg}")
             }
         }
     }

@@ -69,7 +69,7 @@ pub fn disassemble_hex(hex_code: &str, architecture: &str, address: Option<u64>)
         arch_mode: Some(architecture.to_string()),
         hex_code: Some(
             hex::decode(hex_code)
-                .map_err(|e| CliError::validation("hex_code", format!("Invalid hex: {}", e)))?,
+                .map_err(|e| CliError::validation("hex_code", format!("Invalid hex: {e}")))?,
         ),
         address,
         detailed: false,

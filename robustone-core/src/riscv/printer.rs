@@ -36,26 +36,14 @@ impl RiscVPrinter {
 
     /// Formats an immediate according to the active configuration.
     fn format_immediate(&self, imm: i64) -> String {
-        if self.unsigned_immediate {
-            if imm >= 0 && imm > 0xFF {
-                format!("0x{:x}", imm)
-            } else if imm >= 0 {
-                format!("{}", imm)
-            } else if imm < -0xFF {
-                format!("-0x{:x}", -imm)
-            } else {
-                format!("{}", imm)
-            }
+        if imm > 0xFF {
+            format!("0x{imm:x}")
+        } else if imm >= 0 {
+            format!("{imm}")
+        } else if imm < -0xFF {
+            format!("-0x{imm:x}")
         } else {
-            if imm >= 0 && imm > 0xFF {
-                format!("0x{:x}", imm)
-            } else if imm >= 0 {
-                format!("{}", imm)
-            } else if imm < -0xFF {
-                format!("-0x{:x}", -imm)
-            } else {
-                format!("{}", imm)
-            }
+            format!("{imm}")
         }
     }
 
@@ -67,7 +55,7 @@ impl RiscVPrinter {
         } else {
             // Use the x0-x31 naming scheme when aliases are disabled.
             if reg_id <= 31 {
-                format!("x{}", reg_id)
+                format!("x{reg_id}")
             } else {
                 reg.name().to_string()
             }
@@ -175,10 +163,9 @@ impl RiscVPrinter {
                     };
 
                     result.push(format!(
-                        "\toperands[{}].type: {} = {}",
-                        i, operand_type_str, value_str
+                        "\toperands[{i}].type: {operand_type_str} = {value_str}",
                     ));
-                    result.push(format!("\toperands[{}].access: {}", i, access_str));
+                    result.push(format!("\toperands[{i}].access: {access_str}"));
                 }
             }
 
@@ -213,7 +200,7 @@ impl RiscVPrinter {
         } else {
             String::new()
         };
-        format!("{}{}", hex_str, padding)
+        format!("{hex_str}{padding}")
     }
 }
 

@@ -248,3 +248,9 @@ impl InstructionExtension for RvaExtension {
         None
     }
 }
+
+impl Default for RvaExtension {
+    fn default() -> Self {
+        Self::new()
+    }
+}

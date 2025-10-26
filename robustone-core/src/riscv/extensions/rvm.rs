@@ -155,3 +155,9 @@ impl InstructionExtension for RvmExtension {
         None
     }
 }
+
+impl Default for RvmExtension {
+    fn default() -> Self {
+        Self::new()
+    }
+}

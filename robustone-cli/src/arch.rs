@@ -138,10 +138,10 @@ impl std::fmt::Debug for ArchitectureSpec {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let arch_name = self.arch.name();
         if self.options.is_empty() {
-            write!(f, "ArchitectureSpec({})", arch_name)
+            write!(f, "ArchitectureSpec({arch_name})",)
         } else {
             let options_str = self.options.join("+");
-            write!(f, "ArchitectureSpec({}+{})", arch_name, options_str)
+            write!(f, "ArchitectureSpec({arch_name}+{options_str})")
         }
     }
 }
@@ -217,8 +217,7 @@ impl Architecture {
             "bpf" => Ok(Architecture::Bpf),
 
             _ => Err(format!(
-                "Invalid <arch+mode>: {}. Supported: riscv32, riscv64, riscv32e, arm, armle, armbe, thumb, aarch64, aarch64be, x16, x32, x64, mips, mipsel, mips64, mips64el, ppc, ppc32, ppc64, sparc, sparc64, systemz, and others",
-                input
+                "Invalid <arch+mode>: {input}. Supported: riscv32, riscv64, riscv32e, arm, armle, armbe, thumb, aarch64, aarch64be, x16, x32, x64, mips, mipsel, mips64, mips64el, ppc, ppc32, ppc64, sparc, sparc64, systemz, and others"
             )),
         }
     }
@@ -284,10 +283,7 @@ impl Architecture {
     }
 
     pub fn is_implemented(&self) -> bool {
-        match self {
-            Architecture::Riscv32 | Architecture::Riscv64 => true,
-            _ => false,
-        }
+        matches!(self, Architecture::Riscv32 | Architecture::Riscv64)
     }
 
     pub fn implementation_status(&self) -> &'static str {
