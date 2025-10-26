@@ -6,15 +6,26 @@
 use super::InstructionExtension;
 use super::super::types::*;
 use super::super::decoder::{RiscVDecodedInstruction, Xlen};
+use super::super::shared::{
+    operands::DefaultOperandFactory,
+    registers::{RegisterManager, RegisterNameProvider},
+    OperandFactory,
+};
 use crate::error::DisasmError;
 
 /// RVM Multiply and Divide Extension
-pub struct RvmExtension;
+pub struct RvmExtension {
+    operand_factory: DefaultOperandFactory,
+    register_manager: RegisterManager,
+}
 
 impl RvmExtension {
     /// Create a new RVM extension instance.
-    pub const fn new() -> Self {
-        Self
+    pub fn new() -> Self {
+        Self {
+            operand_factory: DefaultOperandFactory::new(),
+            register_manager: RegisterManager::new(),
+        }
     }
 
     // M-extension opcodes (same as base opcodes, but distinguished by funct7)
@@ -44,66 +55,21 @@ impl RvmExtension {
             mnemonic: mnemonic.to_string(),
             operands: format!(
                 "{}, {}, {}",
-                self.reg_name(rd),
-                self.reg_name(rs1),
-                self.reg_name(rs2)
+                self.register_manager.int_register_name(rd),
+                self.register_manager.int_register_name(rs1),
+                self.register_manager.int_register_name(rs2)
             ),
             format: RiscVInstructionFormat::R,
             size: 4,
             operands_detail: vec![
-                self.make_register_operand(rd, Access::write()),
-                self.make_register_operand(rs1, Access::read()),
-                self.make_register_operand(rs2, Access::read()),
+                self.operand_factory.make_register_operand(rd, Access::write()),
+                self.operand_factory.make_register_operand(rs1, Access::read()),
+                self.operand_factory.make_register_operand(rs2, Access::read()),
             ],
         })
     }
 
-    fn reg_name(&self, reg: u8) -> &'static str {
-        match reg {
-            0 => "zero",
-            1 => "ra",
-            2 => "sp",
-            3 => "gp",
-            4 => "tp",
-            5 => "t0",
-            6 => "t1",
-            7 => "t2",
-            8 => "s0",
-            9 => "s1",
-            10 => "a0",
-            11 => "a1",
-            12 => "a2",
-            13 => "a3",
-            14 => "a4",
-            15 => "a5",
-            16 => "a6",
-            17 => "a7",
-            18 => "s2",
-            19 => "s3",
-            20 => "s4",
-            21 => "s5",
-            22 => "s6",
-            23 => "s7",
-            24 => "s8",
-            25 => "s9",
-            26 => "s10",
-            27 => "s11",
-            28 => "t3",
-            29 => "t4",
-            30 => "t5",
-            31 => "t6",
-            _ => "invalid",
-        }
-    }
-
-    fn make_register_operand(&self, reg: u8, access: Access) -> RiscVOperand {
-        RiscVOperand {
-            op_type: RiscVOperandType::Register,
-            access,
-            value: RiscVOperandValue::Register(reg as u32),
-        }
-    }
-
+  
     fn decode_mul(&self, funct3: u8, rd: u8, rs1: u8, rs2: u8) -> Result<RiscVDecodedInstruction, DisasmError> {
         match funct3 {
             Self::FUNCT3_OP_ADD_SUB => self.decode_r_type("mul", rd, rs1, rs2),

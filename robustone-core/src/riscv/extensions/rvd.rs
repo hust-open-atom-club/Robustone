@@ -6,15 +6,23 @@
 use super::InstructionExtension;
 use super::super::types::*;
 use super::super::decoder::{RiscVDecodedInstruction, Xlen};
+use super::super::shared::{
+    operands::convenience,
+    registers::{RegisterManager, RegisterNameProvider},
+};
 use crate::error::DisasmError;
 
 /// RVD Double-Precision Floating-Point Extension
-pub struct RvdExtension;
+pub struct RvdExtension {
+    register_manager: RegisterManager,
+}
 
 impl RvdExtension {
     /// Create a new RVD extension instance.
-    pub const fn new() -> Self {
-        Self
+    pub fn new() -> Self {
+        Self {
+            register_manager: RegisterManager::new(),
+        }
     }
 
     // D-extension opcodes (same as F-extension)
@@ -30,48 +38,25 @@ impl RvdExtension {
     const FUNCT3_LOAD_FLD: u8 = 0b011;
     const FUNCT3_STORE_FSD: u8 = 0b011;
 
-    // D-extension funct7 values for FP operations
-    const FUNCT7_FADD_D: u8 = 0b000_0001;
-    const FUNCT7_FSUB_D: u8 = 0b000_0101;
-    const FUNCT7_FMUL_D: u8 = 0b000_1001;
-    const FUNCT7_FDIV_D: u8 = 0b000_1101;
-    const FUNCT7_FSQRT_D: u8 = 0b010_1101;
-    const FUNCT7_FSGNJ_D: u8 = 0b001_0001;
-    const FUNCT7_FMIN_MAX_D: u8 = 0b001_0101;
-    const FUNCT7_FCVT_W_D: u8 = 0b110_0000;
-    const FUNCT7_FCVT_WU_D: u8 = 0b110_0001;
-    const FUNCT7_FCVT_L_D: u8 = 0b110_0010;
-    const FUNCT7_FCVT_LU_D: u8 = 0b110_0011;
-    const FUNCT7_FMV_X_D: u8 = 0b111_0001;
-    const FUNCT7_FEQ_D: u8 = 0b101_0001;
-    const FUNCT7_FLT_D: u8 = 0b101_0011;
-    const FUNCT7_FLE_D: u8 = 0b101_0010;
-    const FUNCT7_FCLASS_D: u8 = 0b111_0001;
-    const FUNCT7_FCVT_D_W: u8 = 0b110_1000;
-    const FUNCT7_FCVT_D_WU: u8 = 0b110_1001;
-    const FUNCT7_FCVT_D_L: u8 = 0b110_1010;
-    const FUNCT7_FCVT_D_LU: u8 = 0b110_1011;
-    const FUNCT7_FMV_D_X: u8 = 0b111_1001;
-
-    // F-D conversion instructions
-    const FUNCT7_FCVT_D_S: u8 = 0b010_0000;
-    const FUNCT7_FCVT_S_D: u8 = 0b010_0001;
-
     fn decode_load_fp(
         &self,
         rd: u8,
         rs1: u8,
         imm: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let offset = self.format_imm(imm);
         Ok(RiscVDecodedInstruction {
             mnemonic: "fld".to_string(),
-            operands: format!("{}, {}({})", self.f_reg_name(rd), offset, self.reg_name(rs1)),
+            operands: format!(
+                "{}, {}({})",
+                self.register_manager.fp_register_name(rd),
+                convenience::format_immediate(imm),
+                self.register_manager.int_register_name(rs1)
+            ),
             format: RiscVInstructionFormat::I,
             size: 4,
             operands_detail: vec![
-                self.make_register_operand(rd, Access::write()),
-                self.make_memory_operand(rs1, imm),
+                convenience::register(rd, Access::write()),
+                convenience::memory(rs1, imm),
             ],
         })
     }
@@ -82,15 +67,19 @@ impl RvdExtension {
         rs1: u8,
         imm: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let offset = self.format_imm(imm);
         Ok(RiscVDecodedInstruction {
             mnemonic: "fsd".to_string(),
-            operands: format!("{}, {}({})", self.f_reg_name(rs2), offset, self.reg_name(rs1)),
+            operands: format!(
+                "{}, {}({})",
+                self.register_manager.fp_register_name(rs2),
+                convenience::format_immediate(imm),
+                self.register_manager.int_register_name(rs1)
+            ),
             format: RiscVInstructionFormat::S,
             size: 4,
             operands_detail: vec![
-                self.make_register_operand(rs2, Access::read()),
-                self.make_memory_operand(rs1, imm),
+                convenience::register(rs2, Access::read()),
+                convenience::memory(rs1, imm),
             ],
         })
     }
@@ -106,16 +95,16 @@ impl RvdExtension {
             mnemonic: mnemonic.to_string(),
             operands: format!(
                 "{}, {}, {}",
-                self.f_reg_name(rd),
-                self.f_reg_name(rs1),
-                self.f_reg_name(rs2)
+                self.register_manager.fp_register_name(rd),
+                self.register_manager.fp_register_name(rs1),
+                self.register_manager.fp_register_name(rs2)
             ),
             format: RiscVInstructionFormat::R,
             size: 4,
             operands_detail: vec![
-                self.make_register_operand(rd, Access::write()),
-                self.make_register_operand(rs1, Access::read()),
-                self.make_register_operand(rs2, Access::read()),
+                convenience::register(rd, Access::write()),
+                convenience::register(rs1, Access::read()),
+                convenience::register(rs2, Access::read()),
             ],
         })
     }
@@ -132,136 +121,52 @@ impl RvdExtension {
             mnemonic: mnemonic.to_string(),
             operands: format!(
                 "{}, {}, {}, {}",
-                self.f_reg_name(rd),
-                self.f_reg_name(rs1),
-                self.f_reg_name(rs2),
-                self.f_reg_name(rs3)
+                self.register_manager.fp_register_name(rd),
+                self.register_manager.fp_register_name(rs1),
+                self.register_manager.fp_register_name(rs2),
+                self.register_manager.fp_register_name(rs3)
             ),
             format: RiscVInstructionFormat::R4,
             size: 4,
             operands_detail: vec![
-                self.make_register_operand(rd, Access::write()),
-                self.make_register_operand(rs1, Access::read()),
-                self.make_register_operand(rs2, Access::read()),
-                self.make_register_operand(rs3, Access::read()),
+                convenience::register(rd, Access::write()),
+                convenience::register(rs1, Access::read()),
+                convenience::register(rs2, Access::read()),
+                convenience::register(rs3, Access::read()),
             ],
         })
     }
 
-    fn format_imm(&self, value: i64) -> String {
-        if value == 0 {
-            return "0".to_string();
-        }
-
-        let abs = value.abs();
-        let use_hex = abs >= 10;
-
-        if use_hex {
-            if value < 0 {
-                format!("-0x{:x}", abs)
-            } else {
-                format!("0x{:x}", abs)
-            }
-        } else if value < 0 {
-            format!("-{}", abs)
+    fn decode_fp_int_type(
+        &self,
+        mnemonic: &str,
+        rd: u8,
+        rs1: u8,
+        _rs2: u8,
+        rd_is_fp: bool,
+        rs1_is_fp: bool,
+    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+        let rd_name = if rd_is_fp {
+            self.register_manager.fp_register_name(rd)
         } else {
-            format!("{}", value)
-        }
-    }
+            self.register_manager.int_register_name(rd)
+        };
+        let rs1_name = if rs1_is_fp {
+            self.register_manager.fp_register_name(rs1)
+        } else {
+            self.register_manager.int_register_name(rs1)
+        };
 
-    fn reg_name(&self, reg: u8) -> &'static str {
-        match reg {
-            0 => "zero",
-            1 => "ra",
-            2 => "sp",
-            3 => "gp",
-            4 => "tp",
-            5 => "t0",
-            6 => "t1",
-            7 => "t2",
-            8 => "s0",
-            9 => "s1",
-            10 => "a0",
-            11 => "a1",
-            12 => "a2",
-            13 => "a3",
-            14 => "a4",
-            15 => "a5",
-            16 => "a6",
-            17 => "a7",
-            18 => "s2",
-            19 => "s3",
-            20 => "s4",
-            21 => "s5",
-            22 => "s6",
-            23 => "s7",
-            24 => "s8",
-            25 => "s9",
-            26 => "s10",
-            27 => "s11",
-            28 => "t3",
-            29 => "t4",
-            30 => "t5",
-            31 => "t6",
-            _ => "invalid",
-        }
-    }
-
-    fn f_reg_name(&self, reg: u8) -> &'static str {
-        match reg {
-            0 => "ft0",
-            1 => "ft1",
-            2 => "ft2",
-            3 => "ft3",
-            4 => "ft4",
-            5 => "ft5",
-            6 => "ft6",
-            7 => "ft7",
-            8 => "fs0",
-            9 => "fs1",
-            10 => "fa0",
-            11 => "fa1",
-            12 => "fa2",
-            13 => "fa3",
-            14 => "fa4",
-            15 => "fa5",
-            16 => "fa6",
-            17 => "fa7",
-            18 => "fs2",
-            19 => "fs3",
-            20 => "fs4",
-            21 => "fs5",
-            22 => "fs6",
-            23 => "fs7",
-            24 => "fs8",
-            25 => "fs9",
-            26 => "fs10",
-            27 => "fs11",
-            28 => "ft8",
-            29 => "ft9",
-            30 => "ft10",
-            31 => "ft11",
-            _ => "invalid",
-        }
-    }
-
-    fn make_register_operand(&self, reg: u8, access: Access) -> RiscVOperand {
-        RiscVOperand {
-            op_type: RiscVOperandType::Register,
-            access,
-            value: RiscVOperandValue::Register(reg as u32),
-        }
-    }
-
-    fn make_memory_operand(&self, base: u8, disp: i64) -> RiscVOperand {
-        RiscVOperand {
-            op_type: RiscVOperandType::Memory,
-            access: Access::read(),
-            value: RiscVOperandValue::Memory(RiscVMemoryOperand {
-                base: base as u32,
-                disp,
-            }),
-        }
+        Ok(RiscVDecodedInstruction {
+            mnemonic: mnemonic.to_string(),
+            operands: format!("{}, {}", rd_name, rs1_name),
+            format: RiscVInstructionFormat::R,
+            size: 4,
+            operands_detail: vec![
+                convenience::register(rd, Access::write()),
+                convenience::register(rs1, Access::read()),
+            ],
+        })
     }
 }
 
@@ -289,7 +194,7 @@ impl InstructionExtension for RvdExtension {
         _imm_b: i64,
         _imm_u: i64,
         _imm_j: i64,
-        _xlen: Xlen,
+        xlen: Xlen,
     ) -> Option<Result<RiscVDecodedInstruction, DisasmError>> {
         match opcode {
             Self::OPCODE_LOAD_FP if funct3 == Self::FUNCT3_LOAD_FLD => {
@@ -333,20 +238,44 @@ impl InstructionExtension for RvdExtension {
                     (0b00100, 0b010) => Some(self.decode_fp_r_type("fsgnjx.d", rd, rs1, rs2)),
                     (0b00101, 0b000) => Some(self.decode_fp_r_type("fmin.d", rd, rs1, rs2)),
                     (0b00101, 0b001) => Some(self.decode_fp_r_type("fmax.d", rd, rs1, rs2)),
-                    (0b11000, 0b000) => Some(self.decode_fp_r_type("fcvt.w.d", rd, rs1, rs2)), // rs2 ignored
-                    (0b11000, 0b001) => Some(self.decode_fp_r_type("fcvt.wu.d", rd, rs1, rs2)), // rs2 ignored
-                    (0b11000, 0b010) => Some(self.decode_fp_r_type("fcvt.l.d", rd, rs1, rs2)), // rs2 ignored
-                    (0b11000, 0b011) => Some(self.decode_fp_r_type("fcvt.lu.d", rd, rs1, rs2)), // rs2 ignored
-                    (0b11100, 0b000) => Some(self.decode_fp_r_type("fmv.x.d", rd, rs1, rs2)), // rs2 ignored
+                    (0b11000, 0b000) => Some(self.decode_fp_int_type("fcvt.w.d", rd, rs1, rs2, false, true)), // rs2 ignored
+                    (0b11000, 0b001) => Some(self.decode_fp_int_type("fcvt.wu.d", rd, rs1, rs2, false, true)), // rs2 ignored
+                    (0b11000, 0b010) => {
+                        if xlen == Xlen::X64 {
+                            Some(self.decode_fp_int_type("fcvt.l.d", rd, rs1, rs2, false, true)) // rs2 ignored
+                        } else {
+                            Some(Err(DisasmError::DecodingError("fcvt.l.d requires RV64".to_string())))
+                        }
+                    }
+                    (0b11000, 0b011) => {
+                        if xlen == Xlen::X64 {
+                            Some(self.decode_fp_int_type("fcvt.lu.d", rd, rs1, rs2, false, true)) // rs2 ignored
+                        } else {
+                            Some(Err(DisasmError::DecodingError("fcvt.lu.d requires RV64".to_string())))
+                        }
+                    }
+                    (0b11100, 0b000) => Some(self.decode_fp_int_type("fmv.x.d", rd, rs1, rs2, false, true)), // rs2 ignored
                     (0b10100, 0b010) => Some(self.decode_fp_r_type("feq.d", rd, rs1, rs2)),
                     (0b10100, 0b001) => Some(self.decode_fp_r_type("flt.d", rd, rs1, rs2)),
                     (0b10100, 0b000) => Some(self.decode_fp_r_type("fle.d", rd, rs1, rs2)),
-                    (0b11100, 0b001) => Some(self.decode_fp_r_type("fclass.d", rd, rs1, rs2)), // rs2 ignored
-                    (0b11010, 0b000) => Some(self.decode_fp_r_type("fcvt.d.w", rd, rs1, rs2)), // rs2 ignored
-                    (0b11010, 0b001) => Some(self.decode_fp_r_type("fcvt.d.wu", rd, rs1, rs2)), // rs2 ignored
-                    (0b11010, 0b010) => Some(self.decode_fp_r_type("fcvt.d.l", rd, rs1, rs2)), // rs2 ignored
-                    (0b11010, 0b011) => Some(self.decode_fp_r_type("fcvt.d.lu", rd, rs1, rs2)), // rs2 ignored
-                    (0b11110, 0b000) => Some(self.decode_fp_r_type("fmv.d.x", rd, rs1, rs2)), // rs2 ignored
+                    (0b11100, 0b001) => Some(self.decode_fp_int_type("fclass.d", rd, rs1, rs2, false, true)), // rs2 ignored
+                    (0b11010, 0b000) => Some(self.decode_fp_int_type("fcvt.d.w", rd, rs1, rs2, true, false)), // rs2 ignored
+                    (0b11010, 0b001) => Some(self.decode_fp_int_type("fcvt.d.wu", rd, rs1, rs2, true, false)), // rs2 ignored
+                    (0b11010, 0b010) => {
+                        if xlen == Xlen::X64 {
+                            Some(self.decode_fp_int_type("fcvt.d.l", rd, rs1, rs2, true, false)) // rs2 ignored
+                        } else {
+                            Some(Err(DisasmError::DecodingError("fcvt.d.l requires RV64".to_string())))
+                        }
+                    }
+                    (0b11010, 0b011) => {
+                        if xlen == Xlen::X64 {
+                            Some(self.decode_fp_int_type("fcvt.d.lu", rd, rs1, rs2, true, false)) // rs2 ignored
+                        } else {
+                            Some(Err(DisasmError::DecodingError("fcvt.d.lu requires RV64".to_string())))
+                        }
+                    }
+                    (0b11110, 0b000) => Some(self.decode_fp_int_type("fmv.d.x", rd, rs1, rs2, true, false)), // rs2 ignored
                     (0b01000, 0b000) => Some(self.decode_fp_r_type("fcvt.d.s", rd, rs1, rs2)), // fmt=00, rs2 is rs1
                     (0b01000, 0b001) => Some(self.decode_fp_r_type("fcvt.s.d", rd, rs1, rs2)), // fmt=01, rs2 is rs1
                     _ => Some(Err(DisasmError::DecodingError("Invalid D-extension encoding".to_string()))),

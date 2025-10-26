@@ -6,15 +6,23 @@
 use super::InstructionExtension;
 use super::super::types::*;
 use super::super::decoder::{RiscVDecodedInstruction, Xlen};
+use super::super::shared::{
+    operands::convenience,
+    registers::{RegisterManager, RegisterNameProvider},
+};
 use crate::error::DisasmError;
 
 /// RVA Atomic Instructions Extension
-pub struct RvaExtension;
+pub struct RvaExtension {
+    register_manager: RegisterManager,
+}
 
 impl RvaExtension {
     /// Create a new RVA extension instance.
-    pub const fn new() -> Self {
-        Self
+    pub fn new() -> Self {
+        Self {
+            register_manager: RegisterManager::new(),
+        }
     }
 
     // A-extension opcode
@@ -23,8 +31,6 @@ impl RvaExtension {
     // A-extension funct3 values
     const FUNCT3_AMO_W: u8 = 0b010;
     const FUNCT3_AMO_D: u8 = 0b011;
-    const FUNCT3_AMOSWAP_W: u8 = 0b001;
-    const FUNCT3_AMOSWAP_D: u8 = 0b001;
     const FUNCT3_LR_W: u8 = 0b010;
     const FUNCT3_SC_W: u8 = 0b010;
     const FUNCT3_LR_D: u8 = 0b011;
@@ -43,11 +49,6 @@ impl RvaExtension {
     const FUNCT5_AMOMINU: u8 = 0b11000;
     const FUNCT5_AMOMAXU: u8 = 0b11100;
 
-    // A-extension funct7 values (funct5 << 2 | funct2)
-    fn make_amo_funct7(funct5: u8, funct2: u8) -> u8 {
-        (funct5 << 2) | (funct2 & 0b11)
-    }
-
     fn decode_amo(
         &self,
         mnemonic: &str,
@@ -59,16 +60,16 @@ impl RvaExtension {
             mnemonic: mnemonic.to_string(),
             operands: format!(
                 "{}, {}, ({})",
-                self.reg_name(rd),
-                self.reg_name(rs2),
-                self.reg_name(rs1)
+                self.register_manager.int_register_name(rd),
+                self.register_manager.int_register_name(rs2),
+                self.register_manager.int_register_name(rs1)
             ),
             format: RiscVInstructionFormat::R,
             size: 4,
             operands_detail: vec![
-                self.make_register_operand(rd, Access::write()),
-                self.make_register_operand(rs2, Access::read()),
-                self.make_register_operand(rs1, Access::read()),
+                convenience::register(rd, Access::write()),
+                convenience::register(rs2, Access::read()),
+                convenience::register(rs1, Access::read()),
             ],
         })
     }
@@ -81,9 +82,18 @@ impl RvaExtension {
         rs2: u8,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         let operands = if mnemonic == "lr.w" || mnemonic == "lr.d" {
-            format!("{}, ({})", self.reg_name(rd), self.reg_name(rs1))
+            format!(
+                "{}, ({})",
+                self.register_manager.int_register_name(rd),
+                self.register_manager.int_register_name(rs1)
+            )
         } else {
-            format!("{}, {}, ({})", self.reg_name(rd), self.reg_name(rs2), self.reg_name(rs1))
+            format!(
+                "{}, {}, ({})",
+                self.register_manager.int_register_name(rd),
+                self.register_manager.int_register_name(rs2),
+                self.register_manager.int_register_name(rs1)
+            )
         };
 
         Ok(RiscVDecodedInstruction {
@@ -92,57 +102,11 @@ impl RvaExtension {
             format: RiscVInstructionFormat::R,
             size: 4,
             operands_detail: vec![
-                self.make_register_operand(rd, Access::write()),
-                self.make_register_operand(rs2, Access::read()),
-                self.make_register_operand(rs1, Access::read()),
+                convenience::register(rd, Access::write()),
+                convenience::register(rs2, Access::read()),
+                convenience::register(rs1, Access::read()),
             ],
         })
-    }
-
-    fn reg_name(&self, reg: u8) -> &'static str {
-        match reg {
-            0 => "zero",
-            1 => "ra",
-            2 => "sp",
-            3 => "gp",
-            4 => "tp",
-            5 => "t0",
-            6 => "t1",
-            7 => "t2",
-            8 => "s0",
-            9 => "s1",
-            10 => "a0",
-            11 => "a1",
-            12 => "a2",
-            13 => "a3",
-            14 => "a4",
-            15 => "a5",
-            16 => "a6",
-            17 => "a7",
-            18 => "s2",
-            19 => "s3",
-            20 => "s4",
-            21 => "s5",
-            22 => "s6",
-            23 => "s7",
-            24 => "s8",
-            25 => "s9",
-            26 => "s10",
-            27 => "s11",
-            28 => "t3",
-            29 => "t4",
-            30 => "t5",
-            31 => "t6",
-            _ => "invalid",
-        }
-    }
-
-    fn make_register_operand(&self, reg: u8, access: Access) -> RiscVOperand {
-        RiscVOperand {
-            op_type: RiscVOperandType::Register,
-            access,
-            value: RiscVOperandValue::Register(reg as u32),
-        }
     }
 }
 
