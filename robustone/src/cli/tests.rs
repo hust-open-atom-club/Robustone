@@ -297,10 +297,10 @@ mod integration_tests {
         let args = vec!["robustone", "riscv32", "00100093"];
         let cli = Cli::try_parse_from(args).expect("Should parse successfully");
 
-    // Building the configuration should succeed.
+        // Building the configuration should succeed.
         let config = DisasmConfig::config_from_cli(&cli).expect("Should create config");
 
-    // Disassembly should return at least one decoded instruction.
+        // Disassembly should return at least one decoded instruction.
         let result = process_input(&config);
         assert!(result.is_ok());
 
@@ -317,7 +317,7 @@ mod integration_tests {
         let cli = Cli::try_parse_from(args);
         assert!(cli.is_err());
 
-    // Invalid hex input should be caught during configuration creation.
+        // Invalid hex input should be caught during configuration creation.
         let args = vec!["robustone", "riscv32", "invalid_hex"];
         let cli = Cli::try_parse_from(args).expect("Should parse successfully");
         let config_result = DisasmConfig::config_from_cli(&cli);

@@ -1,5 +1,5 @@
-use crate::cli::arch::Architecture;
 use crate::cli::DisasmConfig;
+use crate::cli::arch::Architecture;
 use transfer::{ArchitectureDispatcher, DisasmError, Instruction};
 
 // Shared dispatcher instance reused to avoid repeated initialisation costs.

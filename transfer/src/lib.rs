@@ -33,7 +33,7 @@ impl ArchitectureDispatcher {
     pub fn new() -> Self {
         let mut handlers: Vec<Box<dyn ArchitectureHandler>> = Vec::new();
 
-    // Register the RISC-V handler when the feature is enabled.
+        // Register the RISC-V handler when the feature is enabled.
         #[cfg(feature = "riscv")]
         {
             use crate::riscv::RiscVHandler;
@@ -115,7 +115,7 @@ mod tests {
         let dispatcher = ArchitectureDispatcher::new();
         let archs = dispatcher.supported_architectures();
 
-    // Ensure RISC-V is present whenever the feature flag is enabled.
+        // Ensure RISC-V is present whenever the feature flag is enabled.
         #[cfg(feature = "riscv")]
         assert!(archs.contains(&"riscv"));
     }
@@ -124,13 +124,13 @@ mod tests {
     fn test_hex_parsing() {
         let dispatcher = ArchitectureDispatcher::new();
 
-    // Hex parsing should succeed for bare strings.
+        // Hex parsing should succeed for bare strings.
         let instruction = dispatcher.disassemble("deadbeef", "unknown".to_string());
         assert_eq!(instruction.mnemonic, "unknown");
         assert_eq!(instruction.bytes, vec![0xde, 0xad, 0xbe, 0xef]);
         assert_eq!(instruction.size, 4);
 
-    // Hex parsing should also accept a `0x` prefix.
+        // Hex parsing should also accept a `0x` prefix.
         let instruction = dispatcher.disassemble("0x1234", "unknown".to_string());
         assert_eq!(instruction.bytes, vec![0x12, 0x34]);
         assert_eq!(instruction.size, 2);
