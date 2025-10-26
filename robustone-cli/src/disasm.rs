@@ -1,5 +1,5 @@
-use crate::config::{DisasmConfig, OutputConfig};
 use crate::arch::Architecture;
+use crate::config::{DisasmConfig, OutputConfig};
 use robustone_core::{ArchitectureDispatcher, error::DisasmError, instruction::Instruction};
 
 // Shared dispatcher instance reused to avoid repeated initialisation costs.
@@ -101,10 +101,12 @@ impl DisassemblyEngine {
 
     /// Disassemble bytes using the provided configuration.
     pub fn disassemble(&self, config: &DisasmConfig) -> Result<DisassemblyResult, DisasmError> {
-        config.validate_for_disassembly()
+        config
+            .validate_for_disassembly()
             .map_err(|e| DisasmError::DecodingError(e.to_string()))?;
 
-        let mut result = DisassemblyResult::new(config.start_address, config.arch_name().to_string());
+        let mut result =
+            DisassemblyResult::new(config.start_address, config.arch_name().to_string());
         let mut offset = 0;
         let mut current_address = config.start_address;
         let arch_name = config.arch_name();
@@ -112,7 +114,10 @@ impl DisassemblyEngine {
         while offset < config.hex_bytes.len() {
             let slice = &config.hex_bytes[offset..];
 
-            match self.dispatcher.disassemble_bytes(slice, arch_name, current_address) {
+            match self
+                .dispatcher
+                .disassemble_bytes(slice, arch_name, current_address)
+            {
                 Ok((instruction, size)) => {
                     if size == 0 {
                         return Err(DisasmError::DecodingError(
@@ -190,7 +195,11 @@ impl DisassemblyFormatter {
     /// Format a single instruction.
     fn format_instruction(&self, instr: &Instruction, address: u64) -> String {
         let address_str = if self.output_config.show_address {
-            format!("{:0width$x}", address, width = self.output_config.address_width)
+            format!(
+                "{:0width$x}",
+                address,
+                width = self.output_config.address_width
+            )
         } else {
             String::new()
         };
@@ -198,7 +207,12 @@ impl DisassemblyFormatter {
         let bytes_str = if self.output_config.show_hex {
             format!(
                 "{:>width$}",
-                instr.bytes.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" "),
+                instr
+                    .bytes
+                    .iter()
+                    .map(|b| format!("{:02x}", b))
+                    .collect::<Vec<_>>()
+                    .join(" "),
                 width = self.output_config.hex_width
             )
         } else {

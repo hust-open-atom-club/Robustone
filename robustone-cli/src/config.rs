@@ -1,5 +1,5 @@
 use crate::arch::ArchitectureSpec;
-use crate::command::{ValidatedConfig, DisplayOptions};
+use crate::command::{DisplayOptions, ValidatedConfig};
 use crate::error::{CliError, Result};
 
 /// High-level disassembly configuration that unifies all options.
@@ -16,16 +16,16 @@ impl DisasmConfig {
     /// Create a disassembly configuration from validated CLI input.
     pub fn from_validated_config(mut config: ValidatedConfig) -> Result<Self> {
         // Parse and validate architecture specification
-        let arch_mode = config.arch_mode
-            .take()
-            .ok_or_else(|| CliError::validation("arch_mode", "Architecture specification is required"))?;
+        let arch_mode = config.arch_mode.take().ok_or_else(|| {
+            CliError::validation("arch_mode", "Architecture specification is required")
+        })?;
         let arch_spec = ArchitectureSpec::parse(&arch_mode)
             .map_err(|e| CliError::parse("architecture", e.to_string()))?;
 
         // Get hex bytes (already validated in command.rs)
-        let hex_bytes = config.hex_code
-            .take()
-            .ok_or_else(|| CliError::validation("hex_code", "Hexadecimal code is required for disassembly"))?;
+        let hex_bytes = config.hex_code.take().ok_or_else(|| {
+            CliError::validation("hex_code", "Hexadecimal code is required for disassembly")
+        })?;
 
         Ok(DisasmConfig {
             arch_spec,
@@ -58,7 +58,10 @@ impl DisasmConfig {
         self.hex_bytes
             .chunks(4)
             .map(|chunk| {
-                let word = chunk.iter().rev().fold(0u32, |acc, &byte| (acc << 8) | byte as u32);
+                let word = chunk
+                    .iter()
+                    .rev()
+                    .fold(0u32, |acc, &byte| (acc << 8) | byte as u32);
                 format!("{:08x}", word)
             })
             .collect()
@@ -74,20 +77,26 @@ impl DisasmConfig {
         match self.arch_spec.arch.name() {
             "riscv32" | "riscv64" => self.hex_bytes.len() / 4, // RISC-V instructions are 4 bytes
             "arm" | "arm64" => self.hex_bytes.len() / 4, // ARM instructions are typically 4 bytes
-            "x86" | "x86_64" => self.hex_bytes.len(), // x86 has variable instruction length
-            _ => self.hex_bytes.len() / 4, // Default estimate
+            "x86" | "x86_64" => self.hex_bytes.len(),    // x86 has variable instruction length
+            _ => self.hex_bytes.len() / 4,               // Default estimate
         }
     }
 
     /// Validate that the configuration is sufficient for disassembly.
     pub fn validate_for_disassembly(&self) -> Result<()> {
         if self.hex_bytes.is_empty() {
-            return Err(CliError::validation("hex_code", "No hexadecimal data provided for disassembly"));
+            return Err(CliError::validation(
+                "hex_code",
+                "No hexadecimal data provided for disassembly",
+            ));
         }
 
         // Architecture-specific validation
         if self.arch_spec.arch.name().starts_with("riscv") && self.hex_bytes.len() % 2 != 0 {
-            return Err(CliError::validation("hex_code", "RISC-V hex code must have even number of bytes"));
+            return Err(CliError::validation(
+                "hex_code",
+                "RISC-V hex code must have even number of bytes",
+            ));
         }
 
         Ok(())
@@ -131,7 +140,7 @@ impl OutputConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::command::{ValidatedConfig, DisplayOptions};
+    use crate::command::{DisplayOptions, ValidatedConfig};
 
     #[test]
     fn test_config_creation() {

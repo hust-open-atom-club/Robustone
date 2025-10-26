@@ -15,11 +15,11 @@ pub mod version_info;
 
 // Re-export modern API surface for convenient use
 pub use arch::{Architecture, ArchitectureSpec};
-pub use command::{Cli, ValidatedConfig, DisplayOptions};
+pub use command::{Cli, DisplayOptions, ValidatedConfig};
 pub use config::{DisasmConfig, OutputConfig};
 pub use disasm::{DisassemblyEngine, DisassemblyFormatter, DisassemblyResult};
+pub use error::{CliError, ParseError, Result, ValidationError};
 pub use executor::CliExecutor;
-pub use error::{CliError, Result, ValidationError, ParseError};
 
 /// Main library interface for programmatic use.
 pub struct RobustoneCli {
@@ -62,17 +62,15 @@ impl Default for RobustoneCli {
 }
 
 /// Convenience function for quick disassembly.
-pub fn disassemble_hex(
-    hex_code: &str,
-    architecture: &str,
-    address: Option<u64>,
-) -> Result<String> {
+pub fn disassemble_hex(hex_code: &str, architecture: &str, address: Option<u64>) -> Result<String> {
     let cli = RobustoneCli::new();
 
     let config = DisasmConfig::from_validated_config(ValidatedConfig {
         arch_mode: Some(architecture.to_string()),
-        hex_code: Some(hex::decode(hex_code)
-            .map_err(|e| CliError::validation("hex_code", format!("Invalid hex: {}", e)))?),
+        hex_code: Some(
+            hex::decode(hex_code)
+                .map_err(|e| CliError::validation("hex_code", format!("Invalid hex: {}", e)))?,
+        ),
         address,
         detailed: false,
         alias_regs: false,
@@ -95,7 +93,9 @@ pub fn parse_hex_code(input: &str) -> std::result::Result<Vec<u8>, ValidationErr
             Err(_) => Err(ValidationError::InvalidHexChar(' ')),
         },
         Err(e) => Err(match e {
-            CliError::Validation { message, .. } => ValidationError::InvalidHexChar(message.chars().next().unwrap_or('x')),
+            CliError::Validation { message, .. } => {
+                ValidationError::InvalidHexChar(message.chars().next().unwrap_or('x'))
+            }
             _ => ValidationError::InvalidHexChar('x'),
         }),
     }
