@@ -92,7 +92,7 @@ impl DisasmConfig {
         }
 
         // Architecture-specific validation
-        if self.arch_spec.arch.name().starts_with("riscv") && self.hex_bytes.len() % 2 != 0 {
+        if self.arch_spec.arch.name().starts_with("riscv") && !self.hex_bytes.len().is_multiple_of(2) {
             return Err(CliError::validation(
                 "hex_code",
                 "RISC-V hex code must have even number of bytes",
