@@ -24,7 +24,7 @@ class TestRunner:
         """
         self.repo_root = repo_root or find_repo_root()
         self.comparator = comparator or OutputComparator()
-        self.robustone_bin = self.repo_root / "robustone" / "target" / "debug" / "robustone"
+        self.robustone_bin = self.repo_root / "target" / "debug" / "robustone"
         self.cstool_bin = self.repo_root / "third_party" / "capstone" / "cstool" / "cstool"
 
     def ensure_binaries(self, verbose: bool = False) -> None:
@@ -85,6 +85,7 @@ class TestRunner:
         # Build commands
         robustone_cmd = [
             str(self.robustone_bin),
+            "--detailed",
             config.robustone_arch,
             hex_input
         ] + config.robustone_flags

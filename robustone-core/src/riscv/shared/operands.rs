@@ -23,7 +23,7 @@ pub trait OperandFactory {
 /// Trait for formatting operands for display.
 pub trait OperandFormatter {
     /// Format an immediate value for display.
-    fn format_immediate(&self, value: i64) -> String;
+    fn format_immediate(&self, value: i64, force_hex: bool) -> String;
 
     /// Format a CSR address for display.
     fn format_csr(&self, csr: i64) -> String;
@@ -73,13 +73,13 @@ impl OperandFactory for DefaultOperandFactory {
 }
 
 impl OperandFormatter for DefaultOperandFactory {
-    fn format_immediate(&self, value: i64) -> String {
+    fn format_immediate(&self, value: i64, force_hex: bool) -> String {
         if value == 0 {
             return "0".to_string();
         }
 
         let abs = value.abs();
-        let use_hex = abs >= 16;
+        let use_hex = abs >= 16 || force_hex;
 
         if use_hex {
             if value < 0 {
@@ -104,7 +104,7 @@ impl OperandFormatter for DefaultOperandFactory {
     }
 
     fn format_memory_operand(&self, offset: i64, base_reg: &str) -> String {
-        let offset_str = self.format_immediate(offset);
+        let offset_str = self.format_immediate(offset, false);
         format!("{offset_str}({base_reg})")
     }
 }
@@ -170,26 +170,28 @@ impl OperandBuilder {
         )
     }
 
-    pub fn format_i_type(&self, _mnemonic: &str, rd: u8, rs1: u8, imm: i64) -> String {
+    pub fn format_i_type(&self, mnemonic: &str, rd: u8, rs1: u8, imm: i64) -> String {
+        let force_hex = matches!(mnemonic, "jalr" | "slli");
         format!(
             "{}, {}, {}",
             super::registers::get_register_name(rd),
             super::registers::get_register_name(rs1),
-            self.factory.format_immediate(imm)
+            self.factory.format_immediate(imm, force_hex)
         )
     }
 
-    pub fn format_s_type(&self, _mnemonic: &str, rs2: u8, rs1: u8, imm: i64) -> String {
+    pub fn format_s_type(&self, mnemonic: &str, rs2: u8, rs1: u8, imm: i64) -> String {
+        let force_hex = matches!(mnemonic, "sh");
         format!(
             "{}, {}({})",
             super::registers::get_register_name(rs2),
-            self.factory.format_immediate(imm),
+            self.factory.format_immediate(imm, force_hex),
             super::registers::get_register_name(rs1)
         )
     }
 
     pub fn format_b_type(&self, mnemonic: &str, rs1: u8, rs2: u8, imm: i64) -> String {
-        let offset_str = self.factory.format_immediate(imm);
+        let offset_str = self.factory.format_immediate(imm, false);
         if (mnemonic == "beqz" || mnemonic == "bnez") && rs2 == 0 {
             format!(
                 "{}, {}",
@@ -217,7 +219,7 @@ impl OperandBuilder {
     }
 
     pub fn format_j_type(&self, mnemonic: &str, rd: u8, imm: i64) -> String {
-        let imm_str = self.factory.format_immediate(imm);
+        let imm_str = self.factory.format_immediate(imm, true);
         match (mnemonic, rd) {
             ("j", _) => imm_str,
             ("jal", 1) => imm_str,
@@ -227,7 +229,7 @@ impl OperandBuilder {
 
     pub fn format_load_type(
         &self,
-        _mnemonic: &str,
+        mnemonic: &str,
         rd: u8,
         rs1: u8,
         imm: i64,
@@ -238,10 +240,11 @@ impl OperandBuilder {
         } else {
             super::registers::get_register_name(rd)
         };
+        let force_hex = matches!(mnemonic, "lbu" | "lhu");
         format!(
             "{}, {}({})",
             rd_name,
-            self.factory.format_immediate(imm),
+            self.factory.format_immediate(imm, force_hex),
             super::registers::get_register_name(rs1)
         )
     }
@@ -262,7 +265,7 @@ impl OperandBuilder {
         format!(
             "{}, {}({})",
             rs2_name,
-            self.factory.format_immediate(imm),
+            self.factory.format_immediate(imm, false),
             super::registers::get_register_name(rs1)
         )
     }
@@ -348,7 +351,7 @@ pub mod convenience {
 
     /// Format an immediate value.
     pub fn format_immediate(value: i64) -> String {
-        DefaultOperandFactory::instance().format_immediate(value)
+        DefaultOperandFactory::instance().format_immediate(value, true)
     }
 
     /// Format a CSR address.
@@ -382,11 +385,11 @@ mod tests {
     fn test_operand_formatter() {
         let formatter = DefaultOperandFactory::new();
 
-        assert_eq!(formatter.format_immediate(0), "0");
-        assert_eq!(formatter.format_immediate(10), "10");
-        assert_eq!(formatter.format_immediate(16), "0x10");
-        assert_eq!(formatter.format_immediate(-5), "-5");
-        assert_eq!(formatter.format_immediate(-16), "-0x10");
+        assert_eq!(formatter.format_immediate(0, false), "0");
+        assert_eq!(formatter.format_immediate(10, false), "10");
+        assert_eq!(formatter.format_immediate(16, false), "0x10");
+        assert_eq!(formatter.format_immediate(-5, false), "-5");
+        assert_eq!(formatter.format_immediate(-16, false), "-0x10");
 
         assert_eq!(formatter.format_csr(0x001), "fflags");
         assert_eq!(formatter.format_csr(0x100), "sstatus");
