@@ -44,14 +44,14 @@ b3dfef01  # 0  b3 df ef 01  srl  t6, t6, t5
 b3d0ef41  # 0  b3 d0 ef 41  sra  ra, t6, t5
 b3e1ce01  # 0  b3 e1 ce 01  or   gp, t4, t3
 3372df01  # 0  33 72 df 01  and  tp, t5, t4
-338a2903  # 0  33 8a 29 03  mul  s4, s3, s2
-b31a3a03  # 0  b3 1a 3a 03  mulh s5, s4, s3
-33ab4a03  # 0  33 ab 4a 03  mulhsu       s6, s5, s4
-b33b5b03  # 0  b3 3b 5b 03  mulhu        s7, s6, s5
-33cc6b03  # 0  33 cc 6b 03  div  s8, s7, s6
-b35c7c03  # 0  b3 5c 7c 03  divu s9, s8, s7
-33ed8c03  # 0  33 ed 8c 03  rem  s10, s9, s8
-b37d9d03  # 0  b3 7d 9d 03  remu s11, s10, s9
+#338a2903  # 0  33 8a 29 03  mul  s4, s3, s2
+#b31a3a03  # 0  b3 1a 3a 03  mulh s5, s4, s3
+#33ab4a03  # 0  33 ab 4a 03  mulhsu       s6, s5, s4
+#b33b5b03  # 0  b3 3b 5b 03  mulhu        s7, s6, s5
+#33cc6b03  # 0  33 cc 6b 03  div  s8, s7, s6
+#b35c7c03  # 0  b3 5c 7c 03  divu s9, s8, s7
+#33ed8c03  # 0  33 ed 8c 03  rem  s10, s9, s8
+#b37d9d03  # 0  b3 7d 9d 03  remu s11, s10, s9
 0f00f00f  # 0  0f 00 f0 0f  fence
 73000000  # 0  73 00 00 00  ecall
 73001000  # 0  73 00 10 00  ebreak
