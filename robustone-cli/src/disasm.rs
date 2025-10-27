@@ -209,14 +209,6 @@ impl DisassemblyFormatter {
             String::new()
         };
 
-        // let hex_operands = match instr.operands.parse::<i32>() {
-        //     Ok(operands) => operands,
-        //     Err(e) => {
-        //         eprintln!("Failed to parse: {}", e);
-        //         std::process::exit(1);
-        //     },
-        // };
-
         if instr.operands.is_empty() {
             format!("{}  {}  {}", address, bytes_str, instr.mnemonic)
         } else {
@@ -261,7 +253,7 @@ mod tests {
     fn test_disassembly_engine() {
         let engine = DisassemblyEngine::new();
         // The exact number of architectures may vary, so just check it's a reasonable number
-        assert!(engine.dispatcher.supported_architectures().len() >= 0); // Basic sanity check
+        assert!(!engine.dispatcher.supported_architectures().is_empty()); // Basic sanity check
     }
 
     #[test]
