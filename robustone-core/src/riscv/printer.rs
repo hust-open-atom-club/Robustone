@@ -41,7 +41,7 @@ impl RiscVPrinter {
         } else if imm >= 0 {
             format!("{imm}")
         } else if imm < -0xFF {
-            format!("-0x{imm:x}")
+            format!("-0x{:x}", (-imm) as u64)
         } else {
             format!("{imm}")
         }

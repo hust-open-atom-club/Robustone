@@ -134,6 +134,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_legacy_compatibility() {
         assert!(validate_architecture("riscv32").is_ok());
         assert!(parse_address("0x1000").is_ok());

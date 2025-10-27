@@ -263,7 +263,7 @@ mod tests {
     fn test_disassembly_engine() {
         let engine = DisassemblyEngine::new();
         // The exact number of architectures may vary, so just check it's a reasonable number
-        assert!(engine.dispatcher.supported_architectures().len() >= 0); // Basic sanity check
+        assert!(engine.dispatcher.supported_architectures().len() > 0); // Basic sanity check
     }
 
     #[test]
