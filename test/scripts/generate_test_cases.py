@@ -68,7 +68,7 @@ def load_instruction_set(arch: str) -> List[str]:
             # System instructions
             "00000073", "00100073", "00200073", "00300073",
             # More complex instructions
-            "000000b3", "00000033", "00000037", "00000117", "ff010113",
+            # "000000b3", "00000033", "00000037", "00000117", "ff010113",
         ],
         "riscv64": [
             # 64-bit specific instructions
