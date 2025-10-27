@@ -512,7 +512,7 @@ mod tests {
         );
         assert_eq!(
             InstructionFormatHelper::format_i_type("addi", 1, 2, 10),
-            "ra, sp, 10"
+            "ra, sp, 0xa"
         );
         assert_eq!(
             InstructionFormatHelper::format_s_type("sw", 3, 4, 16),

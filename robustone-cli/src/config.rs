@@ -92,7 +92,9 @@ impl DisasmConfig {
         }
 
         // Architecture-specific validation
-        if self.arch_spec.arch.name().starts_with("riscv") && self.hex_bytes.len() % 2 != 0 {
+        if self.arch_spec.arch.name().starts_with("riscv")
+            && !self.hex_bytes.len().is_multiple_of(2)
+        {
             return Err(CliError::validation(
                 "hex_code",
                 "RISC-V hex code must have even number of bytes",
@@ -106,7 +108,6 @@ impl DisasmConfig {
 /// Configuration for output formatting and display options.
 #[derive(Debug, Clone)]
 pub struct OutputConfig {
-    pub show_address: bool,
     pub show_hex: bool,
     pub show_bytes: bool,
     pub address_width: usize,
@@ -117,7 +118,6 @@ impl OutputConfig {
     /// Create output configuration based on display options.
     pub fn from_display_options(display: &DisplayOptions) -> Self {
         Self {
-            show_address: true,
             show_hex: display.detailed,
             show_bytes: display.real_detail,
             address_width: 8,
@@ -128,7 +128,6 @@ impl OutputConfig {
     /// Create minimal output configuration for brief display.
     pub fn minimal() -> Self {
         Self {
-            show_address: false,
             show_hex: false,
             show_bytes: false,
             address_width: 0,

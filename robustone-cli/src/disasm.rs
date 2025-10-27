@@ -194,16 +194,6 @@ impl DisassemblyFormatter {
 
     /// Format a single instruction.
     fn format_instruction(&self, instr: &Instruction, address: u64) -> String {
-        let address_str = if self.output_config.show_address {
-            format!(
-                "{:0width$x}",
-                address,
-                width = self.output_config.address_width
-            )
-        } else {
-            String::new()
-        };
-
         let bytes_str = if self.output_config.show_hex {
             format!(
                 "{:>width$}",
@@ -219,12 +209,20 @@ impl DisassemblyFormatter {
             String::new()
         };
 
+        // let hex_operands = match instr.operands.parse::<i32>() {
+        //     Ok(operands) => operands,
+        //     Err(e) => {
+        //         eprintln!("Failed to parse: {}", e);
+        //         std::process::exit(1);
+        //     },
+        // };
+
         if instr.operands.is_empty() {
-            format!("{}  {}  {}", address_str, bytes_str, instr.mnemonic)
+            format!("{}  {}  {}", address, bytes_str, instr.mnemonic)
         } else {
             format!(
                 "{}  {}  {}\t{}",
-                address_str, bytes_str, instr.mnemonic, instr.operands
+                address, bytes_str, instr.mnemonic, instr.operands
             )
         }
     }
