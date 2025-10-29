@@ -34,16 +34,6 @@ impl RiscVDecoder {
         }
     }
 
-    /// Convenience constructor for RV32 with base I extension.
-    pub fn rv32() -> Self {
-        Self::new(Xlen::X32, extension_masks::I)
-    }
-
-    /// Convenience constructor for RV64 with base I extension.
-    pub fn rv64() -> Self {
-        Self::new(Xlen::X64, extension_masks::I)
-    }
-
     /// Create a decoder with full RV32GC support.
     pub fn rv32gc() -> Self {
         Self::new(
