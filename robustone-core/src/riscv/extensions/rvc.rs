@@ -12,6 +12,7 @@ use super::super::shared::{
 use super::super::types::*;
 use super::InstructionExtension;
 use crate::error::DisasmError;
+use crate::riscv::extensions::extension_masks;
 
 /// RVC Compressed Instructions Extension
 pub struct RvcExtension {
@@ -372,7 +373,7 @@ impl InstructionExtension for RvcExtension {
 
     fn is_enabled(&self, extensions: u32) -> bool {
         // C extension bit (bit 5)
-        extensions & 0b100000 != 0
+        extensions & extension_masks::C != 0
     }
 
     fn try_decode_standard(
