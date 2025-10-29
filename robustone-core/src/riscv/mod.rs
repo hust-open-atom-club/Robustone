@@ -74,15 +74,15 @@ impl ArchitectureHandler for RiscVHandler {
         // Track register usage from operands
         for operand in &decoded.operands_detail {
             if matches!(operand.op_type, RiscVOperandType::Register) {
-                if operand.access.read {
-                    if let RiscVOperandValue::Register(reg) = operand.value {
-                        riscv_detail = riscv_detail.reads_register(reg);
-                    }
+                if operand.access.read
+                    && let RiscVOperandValue::Register(reg) = operand.value
+                {
+                    riscv_detail = riscv_detail.reads_register(reg);
                 }
-                if operand.access.write {
-                    if let RiscVOperandValue::Register(reg) = operand.value {
-                        riscv_detail = riscv_detail.writes_register(reg);
-                    }
+                if operand.access.write
+                    && let RiscVOperandValue::Register(reg) = operand.value
+                {
+                    riscv_detail = riscv_detail.writes_register(reg);
                 }
             }
         }
