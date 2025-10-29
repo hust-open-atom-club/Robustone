@@ -31,13 +31,14 @@ run:
 	$(CARGO) run --manifest-path $(MANIFEST) -- $(RUN_ARGS)
 
 check:
-	$(CARGO) check --manifest-path $(MANIFEST)
+	$(CARGO) fmt --all -- --check
+	$(CARGO) clippy --workspace --all-features -- -D warnings
 
 check-clippy:
-	$(CARGO) clippy --manifest-path $(MANIFEST) --all-targets --all-features -- -D warnings
+	$(CARGO) clippy --workspace --all-features -- -D warnings
 
 check-fmt:
-	$(CARGO) fmt --manifest-path $(MANIFEST) -- --check
+	$(CARGO) fmt --all -- --check
 
 check-all: check check-clippy check-fmt
 	@echo "All checks passed!"
