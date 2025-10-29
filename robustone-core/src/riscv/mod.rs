@@ -29,10 +29,7 @@ impl RiscVHandler {
     /// Creates a new handler configured for 64-bit RISC-V with the base extension set.
     pub fn new() -> Self {
         // Default to the base I extension in 64-bit mode.
-        let extensions = 0b001; // I extension
-        Self {
-            decoder: RiscVDecoder::new(Xlen::X64, extensions),
-        }
+        Self::rv64()
     }
 
     /// Creates a handler targeting RV32.
@@ -46,6 +43,13 @@ impl RiscVHandler {
     pub fn rv64() -> Self {
         Self {
             decoder: RiscVDecoder::rv64(),
+        }
+    }
+
+    /// Creates a handler targeting RV64GC.
+    pub fn rv64gc() -> Self {
+        Self {
+            decoder: RiscVDecoder::rv64gc(),
         }
     }
 

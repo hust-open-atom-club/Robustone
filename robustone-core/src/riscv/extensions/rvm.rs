@@ -12,6 +12,7 @@ use super::super::shared::{
 use super::super::types::*;
 use super::InstructionExtension;
 use crate::error::DisasmError;
+use crate::riscv::extensions::extension_masks;
 
 /// RVM Multiply and Divide Extension
 pub struct RvmExtension {
@@ -102,7 +103,7 @@ impl InstructionExtension for RvmExtension {
 
     fn is_enabled(&self, extensions: u32) -> bool {
         // M extension bit (bit 1)
-        extensions & 0b010 != 0
+        extensions & extension_masks::M != 0
     }
 
     fn try_decode_standard(

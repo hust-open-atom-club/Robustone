@@ -163,8 +163,8 @@ impl RiscVDecoder {
         _address: u64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         // cstool compatibility: interpret bytes in reverse order for 16-bit instructions
-        let instruction = (bytes[1] as u16) | ((bytes[0] as u16) << 8);
-        let opcode = instruction & 0x3;
+        let instruction = ((bytes[1] as u16) << 8) | (bytes[0] as u16);
+        let opcode = instruction & 0x03;
         let funct3 = ((instruction >> 13) & 0x7) as u8;
 
         // Compressed register fields:
