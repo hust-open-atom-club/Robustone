@@ -13,13 +13,11 @@ fn main() {
 
     if let Some(detail) = &instruction.detail {
         println!("\n=== Detailed Information ===");
-        println!("Operands count: {}", detail.operands.len());
-        for (i, op) in detail.operands.iter().enumerate() {
-            println!("Operand {}: {:?}", i, op);
-        }
-        println!("Registers read: {:?}", detail.regs_read);
-        println!("Registers written: {:?}", detail.regs_write);
-        println!("Instruction groups: {:?}", detail.groups);
+        let regs_read = detail.registers_read();
+        let regs_write = detail.registers_written();
+        println!("Architecture: {}", detail.architecture_name());
+        println!("Registers read: {:?}", regs_read);
+        println!("Registers written: {:?}", regs_write);
     } else {
         println!("\nNo detailed information available");
     }
