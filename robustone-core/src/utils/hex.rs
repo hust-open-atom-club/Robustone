@@ -119,7 +119,7 @@ impl HexParser {
         }
 
         // Ensure even number of characters
-        if cleaned.len() % 2 != 0 {
+        if !cleaned.len().is_multiple_of(2) {
             return Err(DisasmError::DecodingError(
                 "Hexadecimal string must have even number of characters".to_string(),
             ));
