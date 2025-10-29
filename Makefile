@@ -19,7 +19,7 @@ endif
 
 RUN_ARGS ?=
 
-.PHONY: format run build check test test-parity test-validate clean-help
+.PHONY: format run build check check-clippy check-fmt check-all test test-parity test-validate clean-help
 
 format:
 	$(CARGO) fmt --manifest-path $(MANIFEST)
@@ -32,6 +32,15 @@ run:
 
 check:
 	$(CARGO) check --manifest-path $(MANIFEST)
+
+check-clippy:
+	$(CARGO) clippy --manifest-path $(MANIFEST) --all-targets --all-features -- -D warnings
+
+check-fmt:
+	$(CARGO) fmt --manifest-path $(MANIFEST) -- --check
+
+check-all: check check-clippy check-fmt
+	@echo "All checks passed!"
 
 test:
 	@mkdir -p $(dir $(CAPSTONE_DIR))
@@ -64,12 +73,26 @@ test-quick:
 	@cd test && $(PYTHON) run_tests.py --all --limit 20
 
 clean-help:
-	@echo "Available test-related targets:"
+	@echo "Available targets:"
+	@echo ""
+	@echo "Build & Check:"
+	@echo "  build        - Build the project"
+	@echo "  check        - Run cargo check (basic compilation check)"
+	@echo "  check-clippy - Run clippy lints (with -D warnings)"
+	@echo "  check-fmt    - Check code formatting"
+	@echo "  check-all    - Run all checks (check + clippy + fmt)"
+	@echo "  format       - Format code with rustfmt"
+	@echo ""
+	@echo "Testing:"
 	@echo "  test         - Run full test suite (parity + unit tests)"
 	@echo "  test-parity  - Run parity tests only"
 	@echo "  test-validate - Validate test configurations"
 	@echo "  test-list    - List available test architectures"
 	@echo "  test-quick   - Run quick parity test (limited cases)"
+	@echo ""
+	@echo "Utility:"
+	@echo "  run          - Run the CLI with args (usage: make run -- <args>)"
+	@echo "  clean-help   - Show this help message"
 	@echo ""
 	@echo "For more test options, see test/Makefile or run:"
 	@echo "  cd test && make help"
