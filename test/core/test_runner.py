@@ -38,17 +38,16 @@ class TestRunner:
             RuntimeError: If binaries cannot be built or found
         """
         # Build robustone if needed
-        if not self.robustone_bin.exists():
-            if verbose:
-                print("Building robustone...")
-            build_cmd = [
-                "cargo", "build",
-                "--manifest-path", str(self.repo_root / "robustone" / "Cargo.toml"),
-                "--bin", "robustone"
-            ]
-            code, out, err = run_command(build_cmd)
-            if code != 0:
-                raise RuntimeError(f"Failed to build robustone: {err}")
+        if verbose:
+            print("Building robustone...")
+        build_cmd = [
+            "cargo", "build",
+            "--manifest-path", str(self.repo_root / "robustone" / "Cargo.toml"),
+            "--bin", "robustone"
+        ]
+        code, out, err = run_command(build_cmd)
+        if code != 0:
+            raise RuntimeError(f"Failed to build robustone: {err}")
 
         # Check cstool binary
         if not self.cstool_bin.exists():
@@ -67,7 +66,7 @@ class TestRunner:
                 raise RuntimeError(f"cstool not found at {self.cstool_bin}")
 
     def run_test_case(self, config: ArchConfig, hex_input: str, expected: str,
-                     note: str) -> TestCaseResult:
+                     note: str, verbose: bool = False) -> TestCaseResult:
         """
         Run a single test case.
 
@@ -76,6 +75,7 @@ class TestRunner:
             hex_input: Hexadecimal input instruction
             expected: Expected output from documentation
             note: Optional note
+            verbose: Whether to print detailed progress
 
         Returns:
             TestCaseResult
@@ -90,6 +90,9 @@ class TestRunner:
             hex_input
         ] + config.robustone_flags
 
+        if verbose:
+            print(f"Running Command: {robustone_cmd}")
+
         cstool_cmd = [
             str(self.cstool_bin),
             config.cstool_arch,
@@ -100,6 +103,8 @@ class TestRunner:
         rob_code, rob_out, rob_err = run_command(robustone_cmd)
         cs_code, cs_out, cs_err = run_command(cstool_cmd)
 
+        if verbose:
+            print(f"Running Result: {rob_out}")
         execution_time = int((time.time() - start_time) * 1000)
 
         # Create result
@@ -160,7 +165,7 @@ class TestRunner:
             if verbose:
                 print(f"[{i:3d}/{len(test_cases)}] Testing {hex_input}")
 
-            result = self.run_test_case(config, hex_input, expected, note)
+            result = self.run_test_case(config, hex_input, expected, note, verbose)
             results.append(result)
 
             # Print immediate result
