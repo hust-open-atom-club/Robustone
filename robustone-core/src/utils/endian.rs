@@ -5,8 +5,7 @@
 //! and big-endian systems in a generic way.
 
 /// Endianness enumeration for byte ordering.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Endianness {
     /// Little-endian byte order (least significant byte first)
     #[default]
@@ -162,7 +161,6 @@ impl Endianness {
         }
     }
 }
-
 
 /// Trait for types that can be converted between different endiannesses.
 pub trait EndianConvert {
