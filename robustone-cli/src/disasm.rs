@@ -194,6 +194,8 @@ impl DisassemblyFormatter {
 
     /// Format a single instruction.
     fn format_instruction(&self, instr: &Instruction, address: u64) -> String {
+        let address_str = format!("{:x}", address,);
+
         let bytes_str = if self.output_config.show_hex {
             format!(
                 "{:>width$}",
@@ -210,11 +212,11 @@ impl DisassemblyFormatter {
         };
 
         if instr.operands.is_empty() {
-            format!("{}  {}  {}", address, bytes_str, instr.mnemonic)
+            format!("{}  {}  {}", address_str, bytes_str, instr.mnemonic)
         } else {
             format!(
                 "{}  {}  {}\t{}",
-                address, bytes_str, instr.mnemonic, instr.operands
+                address_str, bytes_str, instr.mnemonic, instr.operands
             )
         }
     }

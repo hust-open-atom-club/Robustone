@@ -120,18 +120,22 @@ impl Cli {
     fn validate_hex_code(&self) -> Result<Option<Vec<u8>>> {
         match &self.hex_code {
             Some(code) => {
-                let clean_code = code.trim().replace("0x", "").replace("0X", "");
+                let clean_code = code
+                    .trim()
+                    .replace("0x", "")
+                    .replace("0X", "")
+                    .replace(" ", "");
                 if clean_code.is_empty() {
                     return Err(CliError::validation("hex_code", "Empty hex code provided"));
                 }
-                if clean_code.len() % 2 != 0 {
-                    return Err(CliError::validation(
-                        "hex_code",
-                        "Hex code must have even number of characters",
-                    ));
-                }
 
-                hex::decode(&clean_code)
+                let trimmed_code = if clean_code.len() % 4 != 0 {
+                    &clean_code[..clean_code.len() - clean_code.len() % 4]
+                } else {
+                    &clean_code
+                };
+
+                hex::decode(trimmed_code)
                     .map(Some)
                     .map_err(|e| CliError::validation("hex_code", format!("Invalid hex code: {e}")))
             }
