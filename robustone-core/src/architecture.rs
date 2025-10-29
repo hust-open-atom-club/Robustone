@@ -79,7 +79,7 @@ impl ArchitectureUtils {
     ///
     /// `true` if the address is properly aligned, `false` otherwise.
     pub fn is_address_aligned(address: u64, alignment: usize) -> bool {
-        address % (alignment as u64) == 0
+        address.is_multiple_of(alignment as u64)
     }
 }
 
