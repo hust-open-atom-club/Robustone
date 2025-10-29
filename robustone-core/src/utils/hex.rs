@@ -49,11 +49,16 @@ impl HexParser {
     /// # Examples
     ///
     /// ```rust
+    /// use robustone_core::prelude::*;
     /// let parser = HexParser::new();
-    /// let bytes = parser.parse("deadbeef", None)?;
+    /// let bytes = parser.parse("deadbeef", None).unwrap();
     /// assert_eq!(bytes, vec![0xde, 0xad, 0xbe, 0xef]);
     /// ```
-    pub fn parse(&self, hex_str: &str, endianness: Option<crate::utils::Endianness>) -> Result<Vec<u8>, DisasmError> {
+    pub fn parse(
+        &self,
+        hex_str: &str,
+        endianness: Option<crate::utils::Endianness>,
+    ) -> Result<Vec<u8>, DisasmError> {
         let cleaned = self.clean_hex_string(hex_str)?;
         let bytes = self.convert_to_bytes(&cleaned)?;
         let final_endianness = endianness.unwrap_or(self.default_endianness);
@@ -74,7 +79,11 @@ impl HexParser {
     /// # Returns
     ///
     /// Returns a vector of bytes properly ordered for the specified architecture.
-    pub fn parse_for_architecture(&self, hex_str: &str, arch_name: &str) -> Result<Vec<u8>, DisasmError> {
+    pub fn parse_for_architecture(
+        &self,
+        hex_str: &str,
+        arch_name: &str,
+    ) -> Result<Vec<u8>, DisasmError> {
         let endianness = self.determine_architecture_endianness(arch_name);
         self.parse(hex_str, Some(endianness))
     }
@@ -94,10 +103,7 @@ impl HexParser {
         };
 
         // Remove whitespace and validate characters
-        let cleaned: String = no_prefix
-            .chars()
-            .filter(|c| !c.is_whitespace())
-            .collect();
+        let cleaned: String = no_prefix.chars().filter(|c| !c.is_whitespace()).collect();
 
         if cleaned.is_empty() {
             return Err(DisasmError::DecodingError(
@@ -132,9 +138,9 @@ impl HexParser {
             match u8::from_str_radix(byte_str, 16) {
                 Ok(byte) => bytes.push(byte),
                 Err(_) => {
-                    return Err(DisasmError::DecodingError(
-                        format!("Invalid hexadecimal byte: {}", byte_str),
-                    ));
+                    return Err(DisasmError::DecodingError(format!(
+                        "Invalid hexadecimal byte: {byte_str}"
+                    )));
                 }
             }
             i += 2;
@@ -144,7 +150,11 @@ impl HexParser {
     }
 
     /// Applies endianness to the byte vector.
-    fn apply_endianness(&self, mut bytes: Vec<u8>, endianness: crate::utils::Endianness) -> Vec<u8> {
+    fn apply_endianness(
+        &self,
+        mut bytes: Vec<u8>,
+        endianness: crate::utils::Endianness,
+    ) -> Vec<u8> {
         match endianness {
             crate::utils::Endianness::Little => bytes, // Already in little-endian order
             crate::utils::Endianness::Big => {
@@ -216,11 +226,15 @@ mod tests {
         let parser = HexParser::new();
 
         // Little-endian (default)
-        let le_result = parser.parse("12345678", Some(crate::utils::Endianness::Little)).unwrap();
+        let le_result = parser
+            .parse("12345678", Some(crate::utils::Endianness::Little))
+            .unwrap();
         assert_eq!(le_result, vec![0x12, 0x34, 0x56, 0x78]);
 
         // Big-endian
-        let be_result = parser.parse("12345678", Some(crate::utils::Endianness::Big)).unwrap();
+        let be_result = parser
+            .parse("12345678", Some(crate::utils::Endianness::Big))
+            .unwrap();
         assert_eq!(be_result, vec![0x78, 0x56, 0x34, 0x12]);
     }
 
@@ -229,7 +243,9 @@ mod tests {
         let parser = HexParser::new();
 
         // RISC-V should use big-endian (reverse order)
-        let riscv_result = parser.parse_for_architecture("deadbeef", "riscv32").unwrap();
+        let riscv_result = parser
+            .parse_for_architecture("deadbeef", "riscv32")
+            .unwrap();
         assert_eq!(riscv_result, vec![0xef, 0xbe, 0xad, 0xde]);
 
         // x86 should use little-endian

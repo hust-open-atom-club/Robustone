@@ -159,13 +159,11 @@ mod tests {
     fn test_executor_creation() {
         let _executor = CliExecutor::new();
         // Basic test that executor can be created
-        assert!(true);
     }
 
     #[test]
     fn test_executor_default() {
         let _executor = CliExecutor::default();
         // Basic test that default executor works
-        assert!(true);
     }
 }

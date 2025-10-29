@@ -3,7 +3,6 @@
 //! This module defines RISC-V specific types and extensions used by
 //! the RISC-V instruction decoder and handler.
 
-
 /// RISC-V extensions bit mask type.
 ///
 /// This type represents the set of enabled RISC-V extensions
@@ -57,7 +56,14 @@ impl RiscVExtensions {
 
     /// Creates extensions mask with all standard extensions (GC).
     pub fn gc() -> Self {
-        Self(RiscVExtensions::i().0 | RiscVExtensions::m().0 | RiscVExtensions::a().0 | RiscVExtensions::f().0 | RiscVExtensions::d().0 | RiscVExtensions::c().0)
+        Self(
+            RiscVExtensions::i().0
+                | RiscVExtensions::m().0
+                | RiscVExtensions::a().0
+                | RiscVExtensions::f().0
+                | RiscVExtensions::d().0
+                | RiscVExtensions::c().0,
+        )
     }
 
     /// Checks if the I extension is enabled.
@@ -106,8 +112,6 @@ impl RiscVExtensions {
     }
 }
 
-
-
 /// Simple RISC-V instruction detail containing register access information.
 #[derive(Debug, Clone)]
 pub struct RiscVInstructionDetail {
@@ -115,6 +119,12 @@ pub struct RiscVInstructionDetail {
     pub regs_read: Vec<u32>,
     /// Registers written by this instruction
     pub regs_write: Vec<u32>,
+}
+
+impl Default for RiscVInstructionDetail {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RiscVInstructionDetail {

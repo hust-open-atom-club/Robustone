@@ -356,17 +356,17 @@ mod tests {
         // Test ADDI x1, x2, 100
         // ADDI format: imm[11:0] | rs1[4:0] | funct3[2:0] | rd[4:0] | opcode[6:0]
         // imm = 100, rs1 = x2 (2), rd = x1 (1), funct3 = 0b000, opcode = 0b0010011
-        let instruction = (100u32 << 20) | (2u32 << 15) | (0u32 << 12) | (1u32 << 7) | 0b0010011;
+        let instruction = ((100u32 << 20) | (2u32 << 15)) | (1u32 << 7) | 0b0010011;
         let bytes = instruction.to_le_bytes();
 
-        println!("Testing ADDI instruction: 0x{:08x}", instruction);
-        println!("Bytes: {:?}", bytes);
+        println!("Testing ADDI instruction: 0x{instruction:08x}");
+        println!("Bytes: {bytes:?}");
 
         let result = decoder.decode(&bytes, 0);
         if let Err(e) = &result {
-            println!("Decoding error: {:?}", e);
+            println!("Decoding error: {e:?}");
         }
-        assert!(result.is_ok(), "Failed to decode instruction: {:?}", result);
+        assert!(result.is_ok(), "Failed to decode instruction: {result:?}");
 
         let instr = result.unwrap();
         assert_eq!(instr.mnemonic, "addi");
