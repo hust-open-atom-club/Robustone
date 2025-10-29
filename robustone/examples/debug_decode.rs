@@ -41,9 +41,7 @@ fn main() {
                 let funct3 = (instr_value >> 12) & 0x7;
                 let rs1 = (instr_value >> 15) & 0x1F;
                 let imm = (instr_value >> 20) & 0xFFF;
-                println!(
-                    "  I-type: rd={rd}, funct3={funct3}, rs1={rs1}, imm={imm}"
-                );
+                println!("  I-type: rd={rd}, funct3={funct3}, rs1={rs1}, imm={imm}");
             }
         }
         println!();
