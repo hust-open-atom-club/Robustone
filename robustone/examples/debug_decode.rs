@@ -15,7 +15,7 @@ fn main() {
     ];
 
     for hex in test_instructions {
-        println!("Testing: {}", hex);
+        println!("Testing: {hex}");
         let instruction = dispatcher.disassemble(hex, "riscv32".to_string());
         println!(
             "  Result: {} {}",
@@ -31,8 +31,8 @@ fn main() {
                 | ((instruction.bytes[2] as u32) << 16)
                 | ((instruction.bytes[3] as u32) << 24);
             let opcode = instr_value & 0x7F;
-            println!("  Instruction value: 0x{:08x}", instr_value);
-            println!("  Opcode: 0x{:02x}", opcode);
+            println!("  Instruction value: 0x{instr_value:08x}");
+            println!("  Opcode: 0x{opcode:02x}");
 
             // Decode fields for I-type instructions
             if opcode == 0x03 {
@@ -42,8 +42,7 @@ fn main() {
                 let rs1 = (instr_value >> 15) & 0x1F;
                 let imm = (instr_value >> 20) & 0xFFF;
                 println!(
-                    "  I-type: rd={}, funct3={}, rs1={}, imm={}",
-                    rd, funct3, rs1, imm
+                    "  I-type: rd={rd}, funct3={funct3}, rs1={rs1}, imm={imm}"
                 );
             }
         }

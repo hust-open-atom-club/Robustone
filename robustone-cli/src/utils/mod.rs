@@ -232,6 +232,12 @@ pub fn hex_byte_count(hex_str: &str) -> Result<usize> {
     Ok(normalized.len() / 2 - 1) // Subtract 1 for "0x" prefix
 }
 
+// Legacy re-exports for backward compatibility
+pub use self::{
+    parse_address as parse_address_legacy, parse_hex_code as parse_hex_code_legacy,
+    validate_architecture as validate_architecture_legacy,
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -270,9 +276,3 @@ mod tests {
         assert!(!is_valid_hex(""));
     }
 }
-
-// Legacy re-exports for backward compatibility
-pub use self::{
-    parse_address as parse_address_legacy, parse_hex_code as parse_hex_code_legacy,
-    validate_architecture as validate_architecture_legacy,
-};

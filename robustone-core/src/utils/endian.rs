@@ -6,8 +6,10 @@
 
 /// Endianness enumeration for byte ordering.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub enum Endianness {
     /// Little-endian byte order (least significant byte first)
+    #[default]
     Little,
     /// Big-endian byte order (most significant byte first)
     Big,
@@ -152,22 +154,15 @@ impl Endianness {
 
         match self {
             Endianness::Little => u64::from_le_bytes([
-                bytes[0], bytes[1], bytes[2], bytes[3],
-                bytes[4], bytes[5], bytes[6], bytes[7],
+                bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
             ]),
             Endianness::Big => u64::from_be_bytes([
-                bytes[0], bytes[1], bytes[2], bytes[3],
-                bytes[4], bytes[5], bytes[6], bytes[7],
+                bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
             ]),
         }
     }
 }
 
-impl Default for Endianness {
-    fn default() -> Self {
-        Endianness::Little
-    }
-}
 
 /// Trait for types that can be converted between different endiannesses.
 pub trait EndianConvert {

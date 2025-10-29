@@ -16,8 +16,8 @@ fn main() {
         let regs_read = detail.registers_read();
         let regs_write = detail.registers_written();
         println!("Architecture: {}", detail.architecture_name());
-        println!("Registers read: {:?}", regs_read);
-        println!("Registers written: {:?}", regs_write);
+        println!("Registers read: {regs_read:?}");
+        println!("Registers written: {regs_write:?}");
     } else {
         println!("\nNo detailed information available");
     }

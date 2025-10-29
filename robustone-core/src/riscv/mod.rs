@@ -16,14 +16,10 @@ pub mod printer;
 pub mod shared;
 pub mod types;
 
-use crate::{
-    ArchitectureHandler,
-    error::DisasmError,
-    instruction::Instruction,
-};
+use crate::{ArchitectureHandler, error::DisasmError, instruction::Instruction};
+use arch::RiscVInstructionDetail;
 use decoder::{RiscVDecoder, Xlen};
 use types::*;
-use arch::RiscVInstructionDetail;
 
 /// Architecture handler implementation for RISC-V targets.
 pub struct RiscVHandler {
