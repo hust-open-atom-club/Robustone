@@ -2,3 +2,6 @@ robustone/target/
 robustone/src/transfer/target/
 third_party/
 target/
+.idea/
+.vscode/
+**/__pycache__/
