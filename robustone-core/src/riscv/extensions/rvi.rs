@@ -15,6 +15,7 @@ use super::super::shared::{
 use super::super::types::*;
 use super::InstructionExtension;
 use crate::error::DisasmError;
+use crate::riscv::extensions::extension_masks;
 
 /// RV32I/RV64I Base Integer Extension
 pub struct RviExtension {
@@ -617,7 +618,7 @@ impl InstructionExtension for RviExtension {
 
     fn is_enabled(&self, extensions: u32) -> bool {
         // I extension is always enabled (bit 0)
-        extensions & 0b001 != 0
+        extensions & extension_masks::I != 0
     }
 
     fn try_decode_standard(

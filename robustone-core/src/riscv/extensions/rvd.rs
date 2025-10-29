@@ -11,6 +11,7 @@ use super::super::shared::{
 use super::super::types::*;
 use super::InstructionExtension;
 use crate::error::DisasmError;
+use crate::riscv::extensions::extension_masks;
 
 /// RVD Double-Precision Floating-Point Extension
 pub struct RvdExtension {
@@ -177,7 +178,7 @@ impl InstructionExtension for RvdExtension {
 
     fn is_enabled(&self, extensions: u32) -> bool {
         // D extension bit (bit 4)
-        extensions & 0b10000 != 0
+        extensions & extension_masks::D != 0
     }
 
     fn try_decode_standard(
