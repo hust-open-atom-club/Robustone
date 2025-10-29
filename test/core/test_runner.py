@@ -88,6 +88,9 @@ class TestRunner:
             config.robustone_arch,
             hex_input
         ] + config.robustone_flags
+        
+        if verbose:
+            print(f"Running Command: {robustone_cmd}")
 
         if verbose:
             print(f"Running Command: {robustone_cmd}")
