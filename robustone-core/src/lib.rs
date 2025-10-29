@@ -24,7 +24,8 @@
 //! # Example
 //!
 //! ```rust
-//! use robustone_core::{ArchitectureDispatcher, DisasmError};
+//! use robustone_core::prelude::*;
+//! use robustone_core::ArchitectureDispatcher;
 //!
 //! let dispatcher = ArchitectureDispatcher::new();
 //! match dispatcher.disassemble_bytes(&[0x90, 0x90], "x86", 0x1000) {
@@ -40,10 +41,10 @@
 //! }
 //! ```
 
+pub mod architecture;
 pub mod error;
 pub mod instruction;
 pub mod utils;
-pub mod architecture;
 
 /// Robustone prelude.
 ///
@@ -51,10 +52,10 @@ pub mod architecture;
 /// This module provides access to the most common functionality needed for
 /// using the disassembly engine.
 pub mod prelude {
+    pub use crate::ArchitectureHandler;
     pub use crate::error::DisasmError;
     pub use crate::instruction::{Instruction, InstructionDetail};
-    pub use crate::utils::{HexParser, Endianness};
-    pub use crate::ArchitectureHandler;
+    pub use crate::utils::{Endianness, HexParser};
 
     // Re-export architecture utilities
     pub use crate::architecture::ArchitectureUtils;
@@ -85,14 +86,14 @@ use crate::utils::HexParser;
 /// # Example Implementation
 ///
 /// ```rust
-/// use robustone_core::*;
+/// use robustone_core::prelude::*;
 ///
 /// pub struct MyArchitectureHandler;
 ///
 /// impl ArchitectureHandler for MyArchitectureHandler {
 ///     fn disassemble(&self, bytes: &[u8], addr: u64) -> Result<(Instruction, usize), DisasmError> {
 ///         // Architecture-specific disassembly logic here
-///         Ok((instruction, size))
+///         todo!("Implement actual disassembly logic")
 ///     }
 ///
 ///     fn name(&self) -> &'static str {
@@ -240,6 +241,8 @@ impl ArchitectureDispatcher {
     /// # Example
     ///
     /// ```rust
+    /// use robustone_core::prelude::*;
+    /// use robustone_core::ArchitectureDispatcher;
     /// let dispatcher = ArchitectureDispatcher::new();
     /// let instruction = dispatcher.disassemble("deadbeef", "riscv32".to_string());
     /// println!("Instruction: {} {}", instruction.mnemonic, instruction.operands);
@@ -254,7 +257,7 @@ impl ArchitectureDispatcher {
                     address: 0,
                     bytes: vec![],
                     mnemonic: "unknown".to_string(),
-                    operands: format!("(parse error: {})", hex),
+                    operands: format!("(parse error: {hex})"),
                     size: 0,
                     detail: None,
                 };
@@ -306,6 +309,8 @@ impl ArchitectureDispatcher {
     /// # Example
     ///
     /// ```rust
+    /// use robustone_core::prelude::*;
+    /// use robustone_core::ArchitectureDispatcher;
     /// let dispatcher = ArchitectureDispatcher::new();
     /// let bytes = [0x93, 0x01, 0x10, 0x00]; // ADDI x2, x1, 16
     /// match dispatcher.disassemble_bytes(&bytes, "riscv32", 0x1000) {
@@ -346,6 +351,8 @@ impl ArchitectureDispatcher {
     /// # Example
     ///
     /// ```rust
+    /// use robustone_core::prelude::*;
+    /// use robustone_core::ArchitectureDispatcher;
     /// let dispatcher = ArchitectureDispatcher::new();
     /// let archs = dispatcher.supported_architectures();
     /// for arch in archs {
@@ -373,6 +380,8 @@ impl ArchitectureDispatcher {
     /// # Example
     ///
     /// ```rust
+    /// use robustone_core::prelude::*;
+    /// use robustone_core::ArchitectureDispatcher;
     /// let dispatcher = ArchitectureDispatcher::new();
     /// if dispatcher.supports_architecture("riscv32") {
     ///     println!("RISC-V 32-bit is supported!");
@@ -401,7 +410,10 @@ impl ArchitectureDispatcher {
     /// This is primarily intended for internal use and testing. Most users
     /// should prefer the `disassemble` and `disassemble_bytes` methods.
     pub fn get_handler(&self, arch_name: &str) -> Option<&dyn ArchitectureHandler> {
-        self.handlers.iter().find(|h| h.supports(arch_name)).map(|h| h.as_ref())
+        self.handlers
+            .iter()
+            .find(|h| h.supports(arch_name))
+            .map(|h| h.as_ref())
     }
 }
 

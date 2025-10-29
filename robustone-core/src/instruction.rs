@@ -105,6 +105,7 @@ impl Instruction {
     /// # Example
     ///
     /// ```rust
+    /// use robustone_core::prelude::*;
     /// let instruction = Instruction::new(
     ///     0x1000,
     ///     vec![0x48, 0x89, 0xd8], // mov rax, rbx
@@ -236,11 +237,16 @@ impl Instruction {
     /// # Example
     ///
     /// ```rust
+    /// use robustone_core::prelude::*;
+    /// let instruction = Instruction::new(0x1000, vec![0x48, 0x89, 0xD8], "mov".to_string(), "rax, rbx".to_string());
     /// let formatted = instruction.assembly_line();
     /// // Might return: "0x1000: mov    rax, rbx"
     /// ```
     pub fn assembly_line(&self) -> String {
-        format!("0x{:08x}: {:<7} {}", self.address, self.mnemonic, self.operands)
+        format!(
+            "0x{:08x}: {:<7} {}",
+            self.address, self.mnemonic, self.operands
+        )
     }
 }
 
@@ -346,6 +352,9 @@ impl InstructionDetail for BasicInstructionDetail {
 /// # Example
 ///
 /// ```rust
+/// use robustone_core::prelude::*;
+/// use robustone_core::instruction::BasicInstructionDetail;
+/// use robustone_core::basic_detail;
 /// let detail = basic_detail!("riscv")
 ///     .reads_register(5)   // t0
 ///     .writes_register(10) // a0
@@ -435,8 +444,8 @@ mod tests {
         assert_eq!(detail.architecture_name(), "test_arch");
         assert_eq!(detail.registers_read(), vec![5]);
         assert_eq!(detail.registers_written(), vec![10]);
-        assert_eq!(detail.groups(), vec!["arithmetic"]);
-        assert_eq!(detail.properties().get("width"), Some(&"32".to_string()));
+        assert_eq!(detail.groups, vec!["arithmetic"]);
+        assert_eq!(detail.properties.get("width"), Some(&"32".to_string()));
     }
 
     #[test]
@@ -446,7 +455,6 @@ mod tests {
             .writes_register(2);
 
         assert_eq!(detail.architecture_name(), "test_arch");
-        assert_eq!(detail.groups(), vec!["memory", "load"]);
+        assert_eq!(detail.groups, vec!["memory", "load"]);
     }
 }
-

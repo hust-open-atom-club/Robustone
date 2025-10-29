@@ -9,9 +9,9 @@
 //! - [`hex`]: Hexadecimal string parsing utilities
 //! - [`endian`]: Endianness handling utilities for multi-architecture support
 
-pub mod hex;
 pub mod endian;
+pub mod hex;
 
 // Re-export main utilities with explicit names to avoid conflicts
+pub use endian::{EndianConvert, Endianness};
 pub use hex::HexParser;
-pub use endian::{Endianness, EndianConvert};

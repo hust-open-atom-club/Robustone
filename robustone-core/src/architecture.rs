@@ -23,6 +23,7 @@ impl ArchitectureUtils {
     /// # Examples
     ///
     /// ```rust
+    /// use robustone_core::prelude::*;
     /// assert_eq!(ArchitectureUtils::normalize_name("RISCV32"), "riscv32");
     /// assert_eq!(ArchitectureUtils::normalize_name("x86-64"), "x86_64");
     /// assert_eq!(ArchitectureUtils::normalize_name("armv7"), "arm");
