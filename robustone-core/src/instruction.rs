@@ -45,4 +45,3 @@ pub struct InstructionDetail {
     pub groups: Vec<String>,
 }
 
-// Default is derived above
