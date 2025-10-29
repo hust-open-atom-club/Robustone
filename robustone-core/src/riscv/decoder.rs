@@ -238,6 +238,10 @@ impl RiscVDecoder {
             | ((instruction >> 6) & 0x1) << 6          // imm[6] from instruction[6]
             | ((instruction >> 9) & 0x3) << 7; // imm[8:7] from instruction[9:8]
 
+        if self.extensions & extension_masks::C == 0 {
+            eprintln!("Warning: Decoding compressed instruction while C extension is disabled");
+        }
+
         // Try each enabled extension for compressed instructions
         for extension in &self.extension_handlers {
             if !extension.is_enabled(self.extensions) {
