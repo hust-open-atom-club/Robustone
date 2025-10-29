@@ -331,11 +331,11 @@ mod tests {
 
     #[test]
     fn test_refactored_decoder_creation() {
-        let decoder = RiscVDecoder::rv32();
+        let decoder = RiscVDecoder::rv32gc();
         assert_eq!(decoder.xlen, Xlen::X32);
         assert!(decoder.extensions & extension_masks::I != 0);
 
-        let decoder = RiscVDecoder::rv64();
+        let decoder = RiscVDecoder::rv64gc();
         assert_eq!(decoder.xlen, Xlen::X64);
         assert!(decoder.extensions & extension_masks::I != 0);
 
@@ -351,7 +351,7 @@ mod tests {
 
     #[test]
     fn test_basic_instruction_decoding() {
-        let decoder = RiscVDecoder::rv32();
+        let decoder = RiscVDecoder::rv32gc();
 
         // Test ADDI x1, x2, 100
         // ADDI format: imm[11:0] | rs1[4:0] | funct3[2:0] | rd[4:0] | opcode[6:0]

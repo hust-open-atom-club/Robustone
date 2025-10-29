@@ -3,7 +3,7 @@
 //! These structures mirror Capstone's RISC-V bindings to ease interoperability.
 
 /// Kinds of operands that can appear in a RISC-V instruction.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RiscVOperandType {
     /// Placeholder for invalid operands.
     Invalid,
@@ -16,7 +16,7 @@ pub enum RiscVOperandType {
 }
 
 /// Memory operand descriptor (matches `RISCV_OP_MEM`).
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RiscVMemoryOperand {
     /// Base register.
     pub base: u32,
@@ -25,7 +25,7 @@ pub struct RiscVMemoryOperand {
 }
 
 /// Fully described operand (aligned with `cs_riscv_op`).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RiscVOperand {
     /// Operand classification.
     pub op_type: RiscVOperandType,
@@ -36,7 +36,7 @@ pub struct RiscVOperand {
 }
 
 /// Concrete value carried by an operand.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RiscVOperandValue {
     /// Register identifier.
     Register(u32),
@@ -47,7 +47,7 @@ pub enum RiscVOperandValue {
 }
 
 /// Register access flags (mirrors `cs_ac_type`).
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Access {
     /// Indicates the register is read.
     pub read: bool,
@@ -429,7 +429,7 @@ pub enum RiscVExtension {
 }
 
 /// Instruction encoding formats available in RISC-V.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RiscVInstructionFormat {
     /// R-type (register-register) format.
     R,
