@@ -4,7 +4,12 @@
 //! - 32-bit and 64-bit profiles
 //! - Standard and compressed (RVC) encodings
 //! - Core ISA extensions (I, M, A, F, D, C)
+//!
+//! This module implements the generic `Architecture` trait for RISC-V
+//! and provides both modern architecture-aware interfaces and legacy
+//! compatibility interfaces.
 
+pub mod arch;
 pub mod decoder;
 pub mod extensions;
 pub mod printer;
@@ -14,10 +19,11 @@ pub mod types;
 use crate::{
     ArchitectureHandler,
     error::DisasmError,
-    instruction::{Instruction, InstructionDetail},
+    instruction::Instruction,
 };
 use decoder::{RiscVDecoder, Xlen};
 use types::*;
+use arch::RiscVInstructionDetail;
 
 /// Architecture handler implementation for RISC-V targets.
 pub struct RiscVHandler {
@@ -66,39 +72,33 @@ impl ArchitectureHandler for RiscVHandler {
         // Decode the instruction with the dedicated RISC-V decoder.
         let decoded = self.decoder.decode(bytes, addr)?;
 
-        // Assemble the high-level instruction detail payload.
-        let instruction_detail = InstructionDetail {
-            operands: decoded.operands_detail.clone(),
-            regs_read: decoded
-                .operands_detail
-                .iter()
-                .filter(|op| matches!(op.op_type, RiscVOperandType::Register) && op.access.read)
-                .map(|op| match op.value {
-                    RiscVOperandValue::Register(reg) => reg,
-                    _ => 0,
-                })
-                .collect(),
-            regs_write: decoded
-                .operands_detail
-                .iter()
-                .filter(|op| matches!(op.op_type, RiscVOperandType::Register) && op.access.write)
-                .map(|op| match op.value {
-                    RiscVOperandValue::Register(reg) => reg,
-                    _ => 0,
-                })
-                .collect(),
-            groups: vec!["riscv".to_string()],
-        };
+        // Create simple instruction detail with register information
+        let mut riscv_detail = RiscVInstructionDetail::new();
+
+        // Track register usage from operands
+        for operand in &decoded.operands_detail {
+            if matches!(operand.op_type, RiscVOperandType::Register) {
+                if operand.access.read {
+                    if let RiscVOperandValue::Register(reg) = operand.value {
+                        riscv_detail = riscv_detail.reads_register(reg);
+                    }
+                }
+                if operand.access.write {
+                    if let RiscVOperandValue::Register(reg) = operand.value {
+                        riscv_detail = riscv_detail.writes_register(reg);
+                    }
+                }
+            }
+        }
 
         Ok((
-            Instruction {
-                address: addr,
-                bytes: bytes[..decoded.size].to_vec(),
-                mnemonic: decoded.mnemonic,
-                operands: decoded.operands,
-                size: decoded.size,
-                detail: Some(instruction_detail),
-            },
+            Instruction::with_detail(
+                addr,
+                bytes[..decoded.size].to_vec(),
+                decoded.mnemonic,
+                decoded.operands,
+                Box::new(riscv_detail),
+            ),
             decoded.size,
         ))
     }

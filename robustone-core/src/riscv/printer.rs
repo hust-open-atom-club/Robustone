@@ -122,66 +122,19 @@ impl RiscVPrinter {
 
         // Emit detailed sections when available.
         if let Some(detail) = &instruction.detail {
-            // Group identifiers (if present).
-            if !detail.groups.is_empty() {
-                result.push(format!("\tGroups: {}", detail.groups.join(", ")));
-            }
-
-            // Operand breakdown.
-            if !detail.operands.is_empty() {
-                result.push(format!("\tOperand count: {}", detail.operands.len()));
-                for (i, operand) in detail.operands.iter().enumerate() {
-                    let access_str = match (operand.access.read, operand.access.write) {
-                        (true, true) => "READ | WRITE",
-                        (true, false) => "READ",
-                        (false, true) => "WRITE",
-                        (false, false) => "NONE",
-                    };
-
-                    let operand_type_str = match operand.op_type {
-                        RiscVOperandType::Register => "REG",
-                        RiscVOperandType::Immediate => "IMM",
-                        RiscVOperandType::Memory => "MEM",
-                        RiscVOperandType::Invalid => "INVALID",
-                    };
-
-                    let value_str = match &operand.value {
-                        RiscVOperandValue::Register(reg) => {
-                            format!("{} ({})", self.format_register(*reg), reg)
-                        }
-                        RiscVOperandValue::Immediate(imm) => {
-                            format!("{} ({})", self.format_immediate(*imm), imm)
-                        }
-                        RiscVOperandValue::Memory(mem) => {
-                            format!(
-                                "{} (base={}, disp={})",
-                                self.format_memory_operand(mem.base, mem.disp),
-                                mem.base,
-                                mem.disp
-                            )
-                        }
-                    };
-
-                    result.push(format!(
-                        "\toperands[{i}].type: {operand_type_str} = {value_str}",
-                    ));
-                    result.push(format!("\toperands[{i}].access: {access_str}"));
-                }
-            }
-
             // Register access lists.
-            if !detail.regs_read.is_empty() {
-                let regs_read: Vec<String> = detail
-                    .regs_read
+            let regs_read = detail.registers_read();
+            if !regs_read.is_empty() {
+                let regs_read: Vec<String> = regs_read
                     .iter()
                     .map(|&reg| format!("{} ({})", self.format_register(reg), reg))
                     .collect();
                 result.push(format!("\tRegisters read: {}", regs_read.join(", ")));
             }
 
-            if !detail.regs_write.is_empty() {
-                let regs_write: Vec<String> = detail
-                    .regs_write
+            let regs_write = detail.registers_written();
+            if !regs_write.is_empty() {
+                let regs_write: Vec<String> = regs_write
                     .iter()
                     .map(|&reg| format!("{} ({})", self.format_register(reg), reg))
                     .collect();
