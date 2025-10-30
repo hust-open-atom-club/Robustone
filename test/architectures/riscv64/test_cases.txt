@@ -1,3 +1,68 @@
-# RISC-V 64-bit test cases
+# Generated test cases for riscv64
 # Format: <hex_bytes> [| <cstool_output>] [| <note>]
-# This is a placeholder file - add actual 64-bit test cases here
+
+37340000  # 0  37 34 00 00  lui	s0, 3
+97820000  # 0  97 82 00 00  auipc	t0, 8
+ef008000  # 0  ef 00 80 00  jal	8
+eff01fff  # 0  ef f0 1f ff  jal	-0x10
+e7004500  # 0  e7 00 45 00  jalr	ra, a0, 4
+e700c0ff  # 0  e7 00 c0 ff  jalr	ra, zero, -4
+63054100  # 0  63 05 41 00  beq	sp, tp, 0xa
+e39d61fe  # 0  e3 9d 61 fe  bne	gp, t1, -6
+63ca9300  # 0  63 ca 93 00  blt	t2, s1, 0x14
+6353b500  # 0  63 53 b5 00  bge	a0, a1, 6
+6365d600  # 0  63 65 d6 00  bltu	a2, a3, 0xa
+6376f700  # 0  63 76 f7 00  bgeu	a4, a5, 0xc
+03881800  # 0  03 88 18 00  lb	a6, 1(a7)
+03994900  # 0  03 99 49 00  lh	s2, 4(s3)
+03aa6a00  # 0  03 aa 6a 00  lw	s4, 6(s5)
+03cb2b01  # 0  03 cb 2b 01  lbu	s6, 0x12(s7)
+03dc8c01  # 0  03 dc 8c 01  lhu	s8, 0x18(s9)
+2386ad03  # 0  23 86 ad 03  sb	s10, 0x2c(s11)
+239ace03  # 0  23 9a ce 03  sh	t3, 0x34(t4)
+238fef01  # 0  23 8f ef 01  sb	t5, 0x1e(t6)
+9300e000  # 0  93 00 e0 00  addi	ra, zero, 0xe
+13a10101  # 0  13 a1 01 01  slti	sp, gp, 0x10
+13b2027d  # 0  13 b2 02 7d  sltiu	tp, t0, 0x7d0
+13c303dd  # 0  13 c3 03 dd  xori	t1, t2, -0x230
+13e4c412  # 0  13 e4 c4 12  ori	s0, s1, 0x12c
+13f5850c  # 0  13 f5 85 0c  andi	a0, a1, 0xc8
+1396e601  # 0  13 96 e6 01  slli	a2, a3, 0x1e
+13d79701  # 0  13 d7 97 01  srli	a4, a5, 0x19
+13d8f840  # 0  13 d8 f8 40  srai	a6, a7, 0xf
+33894901  # 0  33 89 49 01  add	s2, s3, s4
+b30a7b41  # 0  b3 0a 7b 41  sub	s5, s6, s7
+33acac01  # 0  33 ac ac 01  slt	s8, s9, s10
+b33dde01  # 0  b3 3d de 01  sltu	s11, t3, t4
+33d26240  # 0  33 d2 62 40  sra	tp, t0, t1
+b3439400  # 0  b3 43 94 00  xor	t2, s0, s1
+33e5c500  # 0  33 e5 c5 00  or	a0, a1, a2
+b376f700  # 0  b3 76 f7 00  and	a3, a4, a5
+b3543901  # 0  b3 54 39 01  srl	s1, s2, s3
+b3503100  # 0  b3 50 31 00  srl	ra, sp, gp
+339f0f00  # 0  33 9f 0f 00  sll	t5, t6, zero
+# 731504b0  # 0  73 15 04 b0  csrrw	a0, mcycle, s0
+f3560010  # 0  f3 56 00 10  csrrwi	a3, sstatus, 0
+33057b03  # 0  33 05 7b 03  mul	a0, s6, s7
+b3459c03  # 0  b3 45 9c 03  div	a1, s8, s9
+3366bd03  # 0  33 66 bd 03  rem	a2, s10, s11
+2fa40210  # 0  2f a4 02 10  lr.w	s0, (t0)
+af236518  # 0  af 23 65 18  sc.w	t2, t1, (a0)
+2f272f01  # 0  2f 27 2f 01  amoadd.w	a4, s2, (t5)
+43f02018  # 0  43 f0 20 18  fmadd.s	ft0, ft1, ft2, ft3
+# d3727300  # 0  d3 72 73 00  fadd.s	ft5, ft6, ft7
+# 53f40458  # 0  53 f4 04 58  fsqrt.s	fs0, fs1
+# 5385c528  # 0  53 85 c5 28  fmin.s	fa0, fa1, fa2
+# 532edea1  # 0  53 2e de a1  feq.s	t3, ft8, ft9
+# d38405f0  # 0  d3 84 05 f0  fmv.w.x	fs1, a1
+# 530605e0  # 0  53 06 05 e0  fmv.x.w	a2, fa0
+# 537500c0  # 0  53 75 00 c0  fcvt.w.s	a0, ft0
+# d3f005d0  # 0  d3 f0 05 d0  fcvt.s.w	ft1, a1
+# d31508e0  # 0  d3 15 08 e0  fclass.s	a1, fa6
+# 87aa7500  # 0  87 aa 75 00  flw	fs5, 7(a1)
+# 27276601  # 0  27 27 66 01  fsw	fs6, 0xe(a2)
+# 43f0201a  # 0  43 f0 20 1a  fmadd.d	ft0, ft1, ft2, ft3
+# d3727302  # 0  d3 72 73 02  fadd.d	ft5, ft6, ft7
+# 53f4045a  # 0  53 f4 04 5a  fsqrt.d	fs0, fs1
+# 5385c52a  # 0  53 85 c5 2a  fmin.d	fa0, fa1, fa2
+# 532edea3  # 0  53 2e de a3  feq.d	t3, ft8, ft9

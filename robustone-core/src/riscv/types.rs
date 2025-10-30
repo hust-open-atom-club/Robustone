@@ -456,3 +456,5 @@ pub enum RiscVInstructionFormat {
     CB,
     CJ,
 }
+
+pub const HEX_THRESHOLD: i64 = 9;
