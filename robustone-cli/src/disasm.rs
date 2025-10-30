@@ -194,29 +194,40 @@ impl DisassemblyFormatter {
 
     /// Format a single instruction.
     fn format_instruction(&self, instr: &Instruction, address: u64) -> String {
-        let address_str = format!("{address:2x}");
+        let address_width: usize = self.output_config.address_width;
+        let bytes_width: usize = self.output_config.hex_width;
+        let mnemonic_width: usize = 10;
 
-        let bytes_str = if self.output_config.show_hex {
-            format!(
-                "{:>width$}",
-                instr
-                    .bytes
-                    .iter()
-                    .map(|b| format!("{b:02x}"))
-                    .collect::<Vec<_>>()
-                    .join(" "),
-                width = self.output_config.hex_width
-            )
+        let address_str = format!("{:width$x}", address, width = address_width);
+
+        let bytes_str = if instr.bytes.is_empty() {
+            "".to_string()
         } else {
-            String::new()
+            let bytes_display = instr
+                .bytes
+                .iter()
+                .take(4)
+                .map(|b| format!("{:02x}", b))
+                .collect::<Vec<_>>()
+                .join(" ");
+
+            let bytes_display = if instr.bytes.len() > 4 {
+                format!("{} ...", bytes_display)
+            } else {
+                bytes_display
+            };
+
+            format!("{:width$}", bytes_display, width = bytes_width)
         };
 
+        let mnemonic_str = format!("{:width$}", instr.mnemonic, width = mnemonic_width);
+
         if instr.operands.is_empty() {
-            format!("{}  {}  {}", address_str, bytes_str, instr.mnemonic)
+            format!("{}  {}  {}", address_str, bytes_str, mnemonic_str)
         } else {
             format!(
-                "{}  {}  {}\t{}",
-                address_str, bytes_str, instr.mnemonic, instr.operands
+                "{}  {}  {} {}",
+                address_str, bytes_str, mnemonic_str, instr.operands
             )
         }
     }

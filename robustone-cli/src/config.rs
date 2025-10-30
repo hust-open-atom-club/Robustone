@@ -50,7 +50,7 @@ impl DisasmConfig {
 
     /// Check if detailed output is enabled.
     pub fn is_detailed(&self) -> bool {
-        self.display_options.detailed || self.display_options.real_detail
+        self.display_options.real_detail
     }
 
     /// Get the hex code as formatted words for display.
@@ -121,7 +121,7 @@ impl OutputConfig {
             show_hex: display.detailed,
             show_bytes: display.real_detail,
             address_width: 8,
-            hex_width: 8,
+            hex_width: 12,
         }
     }
 

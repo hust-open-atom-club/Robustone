@@ -85,7 +85,6 @@ class TestRunner:
         # Build commands
         robustone_cmd = [
             str(self.robustone_bin),
-            "--detailed",
             config.robustone_arch,
             hex_input
         ] + config.robustone_flags
