@@ -5,4 +5,5 @@ target/
 .idea/
 .vscode/
 **/__pycache__/
+**/__init__.py
 virt-py
