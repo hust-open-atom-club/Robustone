@@ -1,0 +1,31 @@
+[tool.pylint.MASTER]
+# 可以配置主选项，比如忽略某些文件
+ignore = [""]
+
+[tool.pylint."MESSAGES CONTROL"]
+# 禁用某些检查项
+disable = [
+    "missing-docstring",
+    "invalid-name",
+    "too-few-public-methods",
+    "line-too-long",
+    "broad-exception-caught",
+    "too-many-arguments",
+    "too-many-instance-attributes",
+    "too-many-positional-arguments",
+    "too-many-locals",
+    "too-many-statements",
+]
+
+[tool.pylint."FORMAT"]
+# 控制代码格式相关
+max-line-length = 120
+
+[tool.pylint."DESIGN"]
+# 设计相关规则，比如类方法数量等
+max-args = 5
+
+[tool.black]
+exclude = '''
+test/scripts/generate_test_cases.py
+'''

@@ -4,11 +4,10 @@ Generate test cases by running cstool on various instructions.
 """
 
 import argparse
-import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Dict
+from typing import List
 
 
 def find_cstool(repo_root: Path) -> Path:
@@ -26,7 +25,7 @@ def run_cstool(cstool_bin: Path, arch: str, instruction: str) -> str:
             [str(cstool_bin), arch, instruction],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
@@ -34,10 +33,15 @@ def run_cstool(cstool_bin: Path, arch: str, instruction: str) -> str:
         return ""
 
 
-def generate_test_cases(cstool_bin: Path, arch: str, instructions: List[str],
-                       output_file: Path) -> None:
+def generate_test_cases(
+    cstool_bin: Path, arch: str, instructions: List[str], output_file: Path
+) -> None:
     """Generate test cases file from instructions."""
-    lines = [f"# Generated test cases for {arch}", "# Format: <hex_bytes> [| <cstool_output>] [| <note>]", ""]
+    lines = [
+        f"# Generated test cases for {arch}",
+        "# Format: <hex_bytes> [| <cstool_output>] [| <note>]",
+        "",
+    ]
 
     for instruction in instructions:
         output = run_cstool(cstool_bin, arch, instruction)
@@ -88,14 +92,13 @@ def load_instruction_set(arch: str) -> List[str]:
             "532edea1", "d38405f0", "530605e0", "537500c0",
             "d3f005d0", "d31508e0", "87aa7500", "27276601",
             "43f0201a", "d3727302", "53f4045a", "5385c52a",
-            "532edea3",
         ],
         "arm": [
             # ARM Thumb instructions (16-bit)
             "0000", "4700", "1800", "1c40", "4018", "4001", "4280", "d100",
             # ARM instructions (32-bit)
             "e1a00000", "e0810000", "e0800001", "e1500000", "e3500000",
-        ]
+        ],
     }
 
     return instruction_sets.get(arch, [])
@@ -105,7 +108,9 @@ def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Generate test cases for architecture")
     parser.add_argument("--arch", required=True, help="Architecture name")
-    parser.add_argument("--instructions", nargs="*", help="Specific instructions to test")
+    parser.add_argument(
+        "--instructions", nargs="*", help="Specific instructions to test"
+    )
     parser.add_argument("--output", help="Output file (default: test_cases.txt)")
     parser.add_argument("--cstool", help="Path to cstool binary")
 

@@ -3,7 +3,7 @@ Utility functions for the test framework.
 """
 
 import subprocess
-import sys
+import re
 from pathlib import Path
 from typing import List, Tuple, Optional
 
@@ -26,7 +26,7 @@ def run_command(cmd: List[str], timeout: Optional[int] = 60) -> Tuple[int, str, 
             stderr=subprocess.PIPE,
             text=True,
             timeout=timeout,
-            check=False
+            check=False,
         )
         return result.returncode, result.stdout.strip(), result.stderr.strip()
     except subprocess.TimeoutExpired:
@@ -73,7 +73,9 @@ def find_repo_root(start_path: Optional[Path] = None) -> Path:
     raise FileNotFoundError("Git repository not found")
 
 
-def ensure_binary(binary_path: Path, build_commands: List[str], verbose: bool = False) -> Path:
+def ensure_binary(
+    binary_path: Path, build_commands: List[str], verbose: bool = False
+) -> Path:
     """
     Ensure a binary exists, building it if necessary.
 
@@ -95,7 +97,9 @@ def ensure_binary(binary_path: Path, build_commands: List[str], verbose: bool = 
         print(f"Building binary: {binary_path}")
 
     for cmd in build_commands:
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        result = subprocess.run(
+            cmd, shell=True, capture_output=True, text=True, check=True
+        )
         if result.returncode != 0:
             raise RuntimeError(f"Build command failed: {cmd}\nstderr: {result.stderr}")
 
@@ -140,7 +144,9 @@ def parse_test_case(line: str) -> Tuple[str, str, str]:
     return hex_input, expected_output, note
 
 
-def format_test_result(hex_input: str, expected: str, actual: str, note: str = "") -> str:
+def format_test_result(
+    hex_input: str, expected: str, actual: str, note: str = ""
+) -> str:
     """
     Format a test result for display.
 
@@ -175,7 +181,7 @@ def truncate_string(s: str, max_length: int = 100) -> str:
     """
     if len(s) <= max_length:
         return s
-    return s[:max_length - 3] + "..."
+    return s[: max_length - 3] + "..."
 
 
 def safe_filename(name: str) -> str:
@@ -188,10 +194,10 @@ def safe_filename(name: str) -> str:
     Returns:
         Safe filename string
     """
-    import re
+
     # Remove or replace unsafe characters
-    safe = re.sub(r'[<>:"/\\|?*]', '_', name)
+    safe = re.sub(r'[<>:"/\\|?*]', "_", name)
     # Remove leading/trailing spaces and dots
-    safe = safe.strip('. ')
+    safe = safe.strip(". ")
     # Ensure it's not empty
     return safe or "unnamed"

@@ -5,11 +5,10 @@ Validate all architecture configurations.
 
 import sys
 from pathlib import Path
+from core.arch_config import discover_arch_configs, validate_config
 
 # Add the parent directory to Python path so we can import the core modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from core.arch_config import discover_arch_configs, validate_config
 
 
 def main():
@@ -39,9 +38,9 @@ def main():
     if all_valid:
         print("🎉 All configurations are valid!")
         return 0
-    else:
-        print("❌ Some configurations have issues.")
-        return 1
+
+    print("❌ Some configurations have issues.")
+    return 1
 
 
 if __name__ == "__main__":
