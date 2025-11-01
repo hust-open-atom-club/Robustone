@@ -3,9 +3,20 @@
 Validate all architecture configurations.
 """
 
+import os
 import sys
 from pathlib import Path
-from core.arch_config import discover_arch_configs, validate_config
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(PROJECT_ROOT)
+
+# pylint: disable=wrong-import-position
+from core.arch_config import (
+    discover_arch_configs,
+    validate_config,
+)
+
+# pylint: enable=wrong-import-position
 
 # Add the parent directory to Python path so we can import the core modules
 sys.path.insert(0, str(Path(__file__).parent.parent))

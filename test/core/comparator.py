@@ -5,7 +5,7 @@ Output comparison functionality for the test framework.
 from dataclasses import dataclass
 from enum import Enum
 from typing import List
-from .utils import normalize_output
+from utils import normalize_output
 
 
 class ComparisonResult(Enum):

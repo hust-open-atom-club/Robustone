@@ -2,13 +2,21 @@
 Main test runner for the Robustone test framework.
 """
 
+import os
+import sys
 import time
 from pathlib import Path
 from typing import List, Optional
 
-from .arch_config import ArchConfig, validate_config
-from .comparator import OutputComparator, TestCaseResult, ArchTestSummary
-from .utils import run_command, parse_test_case, find_repo_root
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(PROJECT_ROOT)
+
+# pylint: disable=wrong-import-position
+from arch_config import ArchConfig, validate_config
+from comparator import OutputComparator, TestCaseResult, ArchTestSummary
+from utils import run_command, parse_test_case, find_repo_root
+
+# pylint: enable=wrong-import-position
 
 
 class TestRunner:
