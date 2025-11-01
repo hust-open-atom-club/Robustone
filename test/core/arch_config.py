@@ -5,12 +5,13 @@ Architecture configuration management for the test framework.
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 
 @dataclass
 class ArchConfig:
     """Configuration for a specific architecture test."""
+
     name: str
     robustone_arch: str
     cstool_arch: str
@@ -39,7 +40,7 @@ def load_config(config_path: Path) -> ArchConfig:
         with config_path.open("r", encoding="utf-8") as f:
             data = json.load(f)
     except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON in {config_path}: {e}")
+        raise ValueError(f"Invalid JSON in {config_path}: {e}") from e
 
     # Convert cases_file to absolute path
     cases_file = Path(data.get("cases_file", "test_cases.txt"))
@@ -48,13 +49,15 @@ def load_config(config_path: Path) -> ArchConfig:
 
     return ArchConfig(
         name=data.get("name", config_path.parent.name),
-        robustone_arch=data.get("robustone_arch", data.get("name", config_path.parent.name)),
+        robustone_arch=data.get(
+            "robustone_arch", data.get("name", config_path.parent.name)
+        ),
         cstool_arch=data.get("cstool_arch", data.get("name", config_path.parent.name)),
         cases_file=cases_file,
         robustone_flags=data.get("robustone_flags", []),
         cstool_flags=data.get("cstool_flags", []),
         description=data.get("description", ""),
-        category=data.get("category", "general")
+        category=data.get("category", "general"),
     )
 
 
@@ -114,7 +117,7 @@ def create_sample_config(arch_name: str, output_dir: Path) -> Path:
         "robustone_flags": [],
         "cstool_flags": [],
         "description": f"Test configuration for {arch_name} architecture",
-        "category": "general"
+        "category": "general",
     }
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -125,6 +128,8 @@ def create_sample_config(arch_name: str, output_dir: Path) -> Path:
 
     # Create empty test cases file
     cases_path = output_dir / "test_cases.txt"
-    cases_path.write_text(f"# {arch_name} test cases\n# Format: <hex_bytes> [| <expected_cstool_output>] [| <note>]\n\n")
+    cases_path.write_text(
+        f"# {arch_name} test cases\n# Format: <hex_bytes> [| <expected_cstool_output>] [| <note>]\n\n"
+    )
 
     return config_path

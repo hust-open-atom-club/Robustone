@@ -7,6 +7,11 @@ CAPSTONE_DIR := third_party/capstone
 CAPSTONE_BUILD_SCRIPT := test/scripts/build_cstool.sh
 PARITY_SCRIPT := test/run_tests.py
 
+VENV_DIR := virt-py
+VENV_PIP := $(VENV_DIR)/bin/pip
+VENV_BLACK := $(VENV_DIR)/bin/black
+VENV_PYLINT := $(VENV_DIR)/bin/pylint
+
 ifeq ($(firstword $(MAKECMDGOALS)),run)
 RUN_EXTRA := $(filter-out --,$(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS)))
 ifneq ($(RUN_EXTRA),)
@@ -19,10 +24,15 @@ endif
 
 RUN_ARGS ?=
 
-.PHONY: format run build check check-clippy check-fmt check-all test test-parity test-validate clean-help
+.PHONY: format run build check check-clippy check-pylint check-fmt check-all test test-parity test-validate clean-help virt-env
 
-format:
+virt-env:
+	$(PYTHON) -m venv virt-py
+	$(VENV_PIP) install -r requirements.txt
+
+format: virt-env
 	$(CARGO) fmt --manifest-path $(MANIFEST)
+	$(VENV_BLACK) test
 
 build:
 	$(CARGO) build --manifest-path $(MANIFEST)
@@ -30,17 +40,23 @@ build:
 run:
 	$(CARGO) run --manifest-path $(MANIFEST) -- $(RUN_ARGS)
 
-check:
+check: virt-env
 	$(CARGO) fmt --all -- --check
 	$(CARGO) clippy --workspace --all-features -- -D warnings
+	$(VENV_PYLINT) $$(find . -type f -name "*.py")
+	$(VENV_BLACK) --check test/
 
-check-clippy:
+check-clippy: virt-env
 	$(CARGO) clippy --workspace --all-features -- -D warnings
 
-check-fmt:
-	$(CARGO) fmt --all -- --check
+check-pylint: virt-env
+	$(VENV_PYLINT) $$(find test/ -type f -name "*.py")
 
-check-all: check check-clippy check-fmt
+check-fmt: virt-env
+	$(CARGO) fmt --all -- --check
+	$(VENV_BLACK) --check test
+
+check-all: check check-clippy check-pylint check-fmt
 	@echo "All checks passed!"
 
 test:

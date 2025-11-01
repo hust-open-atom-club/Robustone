@@ -4,7 +4,7 @@ Main test runner for the Robustone test framework.
 
 import time
 from pathlib import Path
-from typing import List, Optional, Dict
+from typing import List, Optional
 
 from .arch_config import ArchConfig, validate_config
 from .comparator import OutputComparator, TestCaseResult, ArchTestSummary
@@ -14,7 +14,11 @@ from .utils import run_command, parse_test_case, find_repo_root
 class TestRunner:
     """Main test runner for comparing robustone and cstool outputs."""
 
-    def __init__(self, repo_root: Optional[Path] = None, comparator: Optional[OutputComparator] = None):
+    def __init__(
+        self,
+        repo_root: Optional[Path] = None,
+        comparator: Optional[OutputComparator] = None,
+    ):
         """
         Initialize the test runner.
 
@@ -25,7 +29,9 @@ class TestRunner:
         self.repo_root = repo_root or find_repo_root()
         self.comparator = comparator or OutputComparator()
         self.robustone_bin = self.repo_root / "target" / "debug" / "robustone"
-        self.cstool_bin = self.repo_root / "third_party" / "capstone" / "cstool" / "cstool"
+        self.cstool_bin = (
+            self.repo_root / "third_party" / "capstone" / "cstool" / "cstool"
+        )
 
     def ensure_binaries(self, verbose: bool = False) -> None:
         """
@@ -41,11 +47,14 @@ class TestRunner:
         if verbose:
             print("Building robustone...")
         build_cmd = [
-            "cargo", "build",
-            "--manifest-path", str(self.repo_root / "robustone" / "Cargo.toml"),
-            "--bin", "robustone"
+            "cargo",
+            "build",
+            "--manifest-path",
+            str(self.repo_root / "robustone" / "Cargo.toml"),
+            "--bin",
+            "robustone",
         ]
-        code, out, err = run_command(build_cmd)
+        code, _, err = run_command(build_cmd)
         if code != 0:
             raise RuntimeError(f"Failed to build robustone: {err}")
 
@@ -56,17 +65,26 @@ class TestRunner:
             if build_script.exists():
                 if verbose:
                     print("Building cstool...")
-                code, out, err = run_command([
-                    "bash", str(build_script),
-                    str(self.repo_root / "third_party" / "capstone")
-                ])
+                code, _, err = run_command(
+                    [
+                        "bash",
+                        str(build_script),
+                        str(self.repo_root / "third_party" / "capstone"),
+                    ]
+                )
                 if code != 0:
                     raise RuntimeError(f"Failed to build cstool: {err}")
             else:
                 raise RuntimeError(f"cstool not found at {self.cstool_bin}")
 
-    def run_test_case(self, config: ArchConfig, hex_input: str, expected: str,
-                     note: str, verbose: bool = False) -> TestCaseResult:
+    def run_test_case(
+        self,
+        config: ArchConfig,
+        hex_input: str,
+        expected: str,
+        note: str,
+        verbose: bool = False,
+    ) -> TestCaseResult:
         """
         Run a single test case.
 
@@ -87,7 +105,7 @@ class TestRunner:
             str(self.robustone_bin),
             "--detailed",
             config.robustone_arch,
-            hex_input
+            hex_input,
         ] + config.robustone_flags
 
         if verbose:
@@ -96,7 +114,7 @@ class TestRunner:
         cstool_cmd = [
             str(self.cstool_bin),
             config.cstool_arch,
-            hex_input
+            hex_input,
         ] + config.cstool_flags
 
         # Execute commands
@@ -118,11 +136,16 @@ class TestRunner:
             cstool_exit_code=cs_code,
             robustone_stderr=rob_err,
             cstool_stderr=cs_err,
-            execution_time_ms=execution_time
+            execution_time_ms=execution_time,
         )
 
-    def run_arch_tests(self, config: ArchConfig, limit: Optional[int] = None,
-                      verbose: bool = False, fail_fast: bool = False) -> ArchTestSummary:
+    def run_arch_tests(
+        self,
+        config: ArchConfig,
+        limit: Optional[int] = None,
+        verbose: bool = False,
+        fail_fast: bool = False,
+    ) -> ArchTestSummary:
         """
         Run all tests for a specific architecture.
 
@@ -138,7 +161,9 @@ class TestRunner:
         # Validate configuration
         issues = validate_config(config)
         if issues:
-            raise ValueError(f"Invalid configuration for {config.name}: {'; '.join(issues)}")
+            raise ValueError(
+                f"Invalid configuration for {config.name}: {'; '.join(issues)}"
+            )
 
         # Load test cases
         test_cases = self._load_test_cases(config.cases_file)
@@ -192,14 +217,18 @@ class TestRunner:
         """
         test_cases = []
         with cases_file.open("r", encoding="utf-8") as f:
-            for line_num, line in enumerate(f, start=1):
+            for _, line in enumerate(f, start=1):
                 hex_input, expected, note = parse_test_case(line)
                 if hex_input:  # Skip empty lines and comments
                     test_cases.append((hex_input, expected, note))
         return test_cases
 
-    def print_summary(self, summary: ArchTestSummary, show_failures: int = 10,
-                     show_details: bool = False) -> None:
+    def print_summary(
+        self,
+        summary: ArchTestSummary,
+        show_failures: int = 10,
+        show_details: bool = False,
+    ) -> None:
         """
         Print test summary to stdout.
 
@@ -212,7 +241,11 @@ class TestRunner:
         print(f"Results for {summary.arch_name}:")
         print(f"{'='*60}")
         print(f"Total cases:     {summary.total_cases}")
-        success_rate = (summary.matches/summary.total_cases*100) if summary.total_cases > 0 else 0.0
+        success_rate = (
+            (summary.matches / summary.total_cases * 100)
+            if summary.total_cases > 0
+            else 0.0
+        )
         print(f"Matches:         {summary.matches} ({success_rate:.1f}%)")
         print(f"Mismatches:      {summary.mismatches}")
         print(f"Command failures: {summary.command_failures}")
@@ -221,7 +254,9 @@ class TestRunner:
 
         failed_results = self.comparator.get_failed_results(summary.results)
         if failed_results:
-            print(f"\nFailures (showing first {min(show_failures, len(failed_results))}):")
+            print(
+                f"\nFailures (showing first {min(show_failures, len(failed_results))}):"
+            )
             print("-" * 60)
 
             for i, result in enumerate(failed_results[:show_failures], start=1):
@@ -239,7 +274,11 @@ class TestRunner:
         if len(failed_results) > show_failures:
             print(f"\n... and {len(failed_results) - show_failures} more failures")
 
-        success_rate = (summary.matches / summary.total_cases * 100) if summary.total_cases > 0 else 0.0
+        success_rate = (
+            (summary.matches / summary.total_cases * 100)
+            if summary.total_cases > 0
+            else 0.0
+        )
         print(f"\nOverall success rate: {success_rate:.1f}%")
         if success_rate == 100.0 and summary.total_cases > 0:
             print("🎉 All tests passed!")

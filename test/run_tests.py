@@ -60,10 +60,10 @@ def init_architecture(arch_name: str, test_root: Path) -> None:
 
     try:
         config_path = create_sample_config(arch_name, arch_dir)
-        print(f"Created architecture configuration:")
+        print("Created architecture configuration:")
         print(f"  Config: {config_path}")
         print(f"  Cases:  {config_path.parent / 'test_cases.txt'}")
-        print(f"\nNext steps:")
+        print("\nNext steps:")
         print(f"  1. Add test cases to {config_path.parent / 'test_cases.txt'}")
         print(f"  2. Run tests with: python3 test/run_tests.py --arch {arch_name}")
     except Exception as e:
@@ -101,8 +101,7 @@ def run_tests(args: argparse.Namespace) -> int:
 
     # Setup comparator
     comparator = OutputComparator(
-        strict_match=not args.loose_match,
-        ignore_whitespace=args.ignore_whitespace
+        strict_match=not args.loose_match, ignore_whitespace=args.ignore_whitespace
     )
     runner.comparator = comparator
 
@@ -129,13 +128,13 @@ def run_tests(args: argparse.Namespace) -> int:
                 config=config,
                 limit=args.limit,
                 verbose=args.verbose,
-                fail_fast=args.fail_fast
+                fail_fast=args.fail_fast,
             )
             all_summaries.append(summary)
             runner.print_summary(
                 summary,
                 show_failures=args.show_failures,
-                show_details=args.show_details
+                show_details=args.show_details,
             )
 
             # Determine if this architecture passed
@@ -161,7 +160,9 @@ def run_tests(args: argparse.Namespace) -> int:
 
         print(f"Architectures tested: {len(selected_archs)}")
         print(f"Total test cases:    {total_cases}")
-        total_success_rate = (total_matches/total_cases*100) if total_cases > 0 else 0.0
+        total_success_rate = (
+            (total_matches / total_cases * 100) if total_cases > 0 else 0.0
+        )
         print(f"Total matches:       {total_matches} ({total_success_rate:.1f}%)")
         print(f"Total mismatches:    {total_mismatches}")
         print(f"Total failures:      {total_failures}")
@@ -183,26 +184,44 @@ Examples:
   python3 test/run_tests.py --arch riscv32 --limit 20  # Limit test cases
   python3 test/run_tests.py --list                  # List available architectures
   python3 test/run_tests.py --init new_arch         # Create new architecture config
-        """
+        """,
     )
 
     # Action selection
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--all", action="store_true", help="Test all architectures")
-    group.add_argument("--arch", action="append", metavar="NAME", help="Architecture(s) to test")
-    group.add_argument("--list", action="store_true", help="List available architectures")
+    group.add_argument(
+        "--arch", action="append", metavar="NAME", help="Architecture(s) to test"
+    )
+    group.add_argument(
+        "--list", action="store_true", help="List available architectures"
+    )
     group.add_argument("--init", metavar="NAME", help="Initialize new architecture")
 
     # Test configuration
-    parser.add_argument("--limit", type=int, help="Limit number of test cases per architecture")
-    parser.add_argument("--fail-fast", action="store_true", help="Stop on first failure")
-    parser.add_argument("--show-failures", type=int, default=10, help="Number of failures to display")
-    parser.add_argument("--show-details", action="store_true", help="Show detailed failure information")
+    parser.add_argument(
+        "--limit", type=int, help="Limit number of test cases per architecture"
+    )
+    parser.add_argument(
+        "--fail-fast", action="store_true", help="Stop on first failure"
+    )
+    parser.add_argument(
+        "--show-failures", type=int, default=10, help="Number of failures to display"
+    )
+    parser.add_argument(
+        "--show-details", action="store_true", help="Show detailed failure information"
+    )
 
     # Comparison options
-    parser.add_argument("--loose-match", action="store_true", help="Use loose output matching")
-    parser.add_argument("--ignore-whitespace", action="store_true", default=True,
-                       help="Ignore whitespace differences (default: True)")
+    parser.add_argument(
+        "--loose-match", action="store_true", help="Use loose output matching"
+    )
+    parser.add_argument(
+        "--ignore-whitespace",
+        action="store_true",
+        default=True,
+        help="Ignore whitespace differences (default: True)",
+    )
 
     # General options
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
@@ -214,11 +233,12 @@ Examples:
     if args.list:
         list_architectures(test_root)
         return 0
-    elif args.init:
+
+    if args.init:
         init_architecture(args.init, test_root)
         return 0
 
-    # Default to --all if no architecture specified
+    # Default case: neither --list nor --init was passed
     if not args.all and not args.arch:
         args.all = True
 
