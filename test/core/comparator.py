@@ -4,12 +4,13 @@ Output comparison functionality for the test framework.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Tuple, Optional
+from typing import List
 from .utils import normalize_output
 
 
 class ComparisonResult(Enum):
     """Result of output comparison."""
+
     MATCH = "match"
     MISMATCH = "mismatch"
     COMMAND_FAILURE = "command_failure"
@@ -19,6 +20,7 @@ class ComparisonResult(Enum):
 @dataclass
 class TestCaseResult:
     """Result of a single test case."""
+
     hex_input: str
     result: ComparisonResult
     expected_output: str
@@ -35,6 +37,7 @@ class TestCaseResult:
 @dataclass
 class ArchTestSummary:
     """Summary of test results for an architecture."""
+
     arch_name: str
     total_cases: int
     matches: int
@@ -73,11 +76,11 @@ class OutputComparator:
         if self.strict_match:
             if self.ignore_whitespace:
                 return normalize_output(robustone_out) == normalize_output(cstool_out)
-            else:
-                return robustone_out == cstool_out
-        else:
-            # Non-strict comparison can be customized here
-            return normalize_output(robustone_out) == normalize_output(cstool_out)
+
+            return robustone_out == cstool_out
+
+        # Non-strict comparison can be customized here
+        return normalize_output(robustone_out) == normalize_output(cstool_out)
 
     def check_documentation_drift(self, expected: str, actual: str) -> bool:
         """
@@ -94,8 +97,14 @@ class OutputComparator:
             return False
         return normalize_output(expected) != normalize_output(actual)
 
-    def classify_result(self, expected: str, robustone_out: str, cstool_out: str,
-                       robustone_exit_code: int, cstool_exit_code: int) -> ComparisonResult:
+    def classify_result(
+        self,
+        expected: str,
+        robustone_out: str,
+        cstool_out: str,
+        robustone_exit_code: int,
+        cstool_exit_code: int,
+    ) -> ComparisonResult:
         """
         Classify the result of a test case.
 
@@ -117,13 +126,22 @@ class OutputComparator:
 
         if self.compare_outputs(robustone_out, cstool_out):
             return ComparisonResult.MATCH
-        else:
-            return ComparisonResult.MISMATCH
 
-    def create_test_result(self, hex_input: str, expected: str, robustone_out: str,
-                          cstool_out: str, note: str, robustone_exit_code: int = 0,
-                          cstool_exit_code: int = 0, robustone_stderr: str = "",
-                          cstool_stderr: str = "", execution_time_ms: int = 0) -> TestCaseResult:
+        return ComparisonResult.MISMATCH
+
+    def create_test_result(
+        self,
+        hex_input: str,
+        expected: str,
+        robustone_out: str,
+        cstool_out: str,
+        note: str,
+        robustone_exit_code: int = 0,
+        cstool_exit_code: int = 0,
+        robustone_stderr: str = "",
+        cstool_stderr: str = "",
+        execution_time_ms: int = 0,
+    ) -> TestCaseResult:
         """
         Create a TestCaseResult from test execution data.
 
@@ -143,8 +161,7 @@ class OutputComparator:
             TestCaseResult object
         """
         result = self.classify_result(
-            expected, robustone_out, cstool_out,
-            robustone_exit_code, cstool_exit_code
+            expected, robustone_out, cstool_out, robustone_exit_code, cstool_exit_code
         )
 
         return TestCaseResult(
@@ -158,11 +175,12 @@ class OutputComparator:
             cstool_exit_code=cstool_exit_code,
             robustone_stderr=robustone_stderr,
             cstool_stderr=cstool_stderr,
-            execution_time_ms=execution_time_ms
+            execution_time_ms=execution_time_ms,
         )
 
-    def generate_summary(self, arch_name: str, results: List[TestCaseResult],
-                        total_time_ms: int = 0) -> ArchTestSummary:
+    def generate_summary(
+        self, arch_name: str, results: List[TestCaseResult], total_time_ms: int = 0
+    ) -> ArchTestSummary:
         """
         Generate a summary of test results.
 
@@ -177,8 +195,12 @@ class OutputComparator:
         total_cases = len(results)
         matches = sum(1 for r in results if r.result == ComparisonResult.MATCH)
         mismatches = sum(1 for r in results if r.result == ComparisonResult.MISMATCH)
-        command_failures = sum(1 for r in results if r.result == ComparisonResult.COMMAND_FAILURE)
-        documentation_drifts = sum(1 for r in results if r.result == ComparisonResult.DOCUMENTATION_DRIFT)
+        command_failures = sum(
+            1 for r in results if r.result == ComparisonResult.COMMAND_FAILURE
+        )
+        documentation_drifts = sum(
+            1 for r in results if r.result == ComparisonResult.DOCUMENTATION_DRIFT
+        )
 
         return ArchTestSummary(
             arch_name=arch_name,
@@ -188,11 +210,12 @@ class OutputComparator:
             command_failures=command_failures,
             documentation_drifts=documentation_drifts,
             execution_time_ms=total_time_ms,
-            results=results
+            results=results,
         )
 
-    def get_failed_results(self, results: List[TestCaseResult],
-                          include_drift: bool = True) -> List[TestCaseResult]:
+    def get_failed_results(
+        self, results: List[TestCaseResult], include_drift: bool = True
+    ) -> List[TestCaseResult]:
         """
         Get list of failed test results.
 
@@ -203,12 +226,15 @@ class OutputComparator:
         Returns:
             List of failed test case results
         """
-        failed = [r for r in results if r.result in [
-            ComparisonResult.MISMATCH,
-            ComparisonResult.COMMAND_FAILURE
-        ]]
+        failed = [
+            r
+            for r in results
+            if r.result in [ComparisonResult.MISMATCH, ComparisonResult.COMMAND_FAILURE]
+        ]
         if include_drift:
-            failed.extend([r for r in results if r.result == ComparisonResult.DOCUMENTATION_DRIFT])
+            failed.extend(
+                [r for r in results if r.result == ComparisonResult.DOCUMENTATION_DRIFT]
+            )
         return failed
 
     def format_result_detailed(self, result: TestCaseResult) -> str:

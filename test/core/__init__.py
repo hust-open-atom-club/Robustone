@@ -10,4 +10,11 @@ from .comparator import OutputComparator
 from .utils import run_command, normalize_output
 
 __version__ = "1.0.0"
-__all__ = ["TestRunner", "ArchConfig", "load_config", "OutputComparator", "run_command", "normalize_output"]
+__all__ = [
+    "TestRunner",
+    "ArchConfig",
+    "load_config",
+    "OutputComparator",
+    "run_command",
+    "normalize_output",
+]

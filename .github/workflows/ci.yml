@@ -36,6 +36,17 @@ jobs:
       uses: actions-rs/audit-check@v1
       continue-on-error: true
 
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.x"
+
+    - name: Python Format Check
+      run: make check-fmt
+
+    - name: Python Lint Check
+      run: make check-pylint
+
   # 单元测试
   test:
     name: Unit Tests
