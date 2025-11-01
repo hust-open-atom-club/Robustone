@@ -111,10 +111,12 @@ class TestRunner:
         # Build commands
         robustone_cmd = [
             str(self.robustone_bin),
-            "--detailed",
             config.robustone_arch,
             hex_input,
         ] + config.robustone_flags
+        
+        if verbose:
+            print(f"Running Command: {robustone_cmd}")
 
         if verbose:
             print(f"Running Command: {robustone_cmd}")
