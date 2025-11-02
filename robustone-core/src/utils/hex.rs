@@ -171,7 +171,7 @@ impl HexParser {
     fn determine_architecture_endianness(&self, arch_name: &str) -> crate::utils::Endianness {
         // RISC-V architectures use little-endian by default
         if arch_name.starts_with("riscv") {
-            return crate::utils::Endianness::Big; // Note: Current implementation expects big-endian for RISC-V
+            return crate::utils::Endianness::Little; // RISC-V uses little-endian byte order
         }
 
         // ARM can be either, but we'll use little-endian as default
@@ -242,11 +242,11 @@ mod tests {
     fn test_architecture_specific_parsing() {
         let parser = HexParser::new();
 
-        // RISC-V should use big-endian (reverse order)
+        // RISC-V should use little-endian (no reverse order)
         let riscv_result = parser
             .parse_for_architecture("deadbeef", "riscv32")
             .unwrap();
-        assert_eq!(riscv_result, vec![0xef, 0xbe, 0xad, 0xde]);
+        assert_eq!(riscv_result, vec![0xde, 0xad, 0xbe, 0xef]);
 
         // x86 should use little-endian
         let x86_result = parser.parse_for_architecture("deadbeef", "x86").unwrap();
