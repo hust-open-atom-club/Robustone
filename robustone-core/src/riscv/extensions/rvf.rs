@@ -195,7 +195,7 @@ impl InstructionExtension for RvfExtension {
         _imm_b: i64,
         _imm_u: i64,
         _imm_j: i64,
-        _xlen: Xlen,
+        xlen: Xlen,
     ) -> Option<Result<RiscVDecodedInstruction, DisasmError>> {
         match opcode {
             Self::OPCODE_LOAD_FP if funct3 == Self::FUNCT3_LOAD_FLW => {
@@ -225,10 +225,8 @@ impl InstructionExtension for RvfExtension {
                 let fmt = funct7 & 0b11;
 
                 if fmt != 0b00 {
-                    // Only single-precision (fmt=00)
-                    return Some(Err(DisasmError::DecodingError(
-                        "Invalid F-extension fmt".to_string(),
-                    )));
+                    // Only single-precision (fmt=00), let RVD extension handle fmt=01
+                    return None;
                 }
 
                 match (funct5, funct3) {
@@ -248,6 +246,24 @@ impl InstructionExtension for RvfExtension {
                     (0b11000, 0b001) => {
                         Some(self.decode_fp_int_type("fcvt.wu.s", rd, rs1, rs2, false, true))
                     } // rs2 ignored
+                    (0b11000, 0b010) => {
+                        if xlen == Xlen::X64 {
+                            Some(self.decode_fp_int_type("fcvt.l.s", rd, rs1, rs2, false, true)) // rs2 ignored
+                        } else {
+                            Some(Err(DisasmError::DecodingError(
+                                "fcvt.l.s requires RV64".to_string(),
+                            )))
+                        }
+                    }
+                    (0b11000, 0b011) => {
+                        if xlen == Xlen::X64 {
+                            Some(self.decode_fp_int_type("fcvt.lu.s", rd, rs1, rs2, false, true)) // rs2 ignored
+                        } else {
+                            Some(Err(DisasmError::DecodingError(
+                                "fcvt.lu.s requires RV64".to_string(),
+                            )))
+                        }
+                    }
                     (0b11100, 0b000) => {
                         Some(self.decode_fp_int_type("fmv.x.w", rd, rs1, rs2, false, true))
                     } // rs2 ignored
@@ -263,6 +279,24 @@ impl InstructionExtension for RvfExtension {
                     (0b11010, 0b001) => {
                         Some(self.decode_fp_int_type("fcvt.s.wu", rd, rs1, rs2, true, false))
                     } // rs2 ignored
+                    (0b11010, 0b010) => {
+                        if xlen == Xlen::X64 {
+                            Some(self.decode_fp_int_type("fcvt.s.l", rd, rs1, rs2, true, false)) // rs2 ignored
+                        } else {
+                            Some(Err(DisasmError::DecodingError(
+                                "fcvt.s.l requires RV64".to_string(),
+                            )))
+                        }
+                    }
+                    (0b11010, 0b011) => {
+                        if xlen == Xlen::X64 {
+                            Some(self.decode_fp_int_type("fcvt.s.lu", rd, rs1, rs2, true, false)) // rs2 ignored
+                        } else {
+                            Some(Err(DisasmError::DecodingError(
+                                "fcvt.s.lu requires RV64".to_string(),
+                            )))
+                        }
+                    }
                     (0b11110, 0b000) => {
                         Some(self.decode_fp_int_type("fmv.w.x", rd, rs1, rs2, true, false))
                     } // rs2 ignored
