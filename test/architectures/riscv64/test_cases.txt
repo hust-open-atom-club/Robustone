@@ -50,19 +50,19 @@ b3459c03  # 0  b3 45 9c 03  div	a1, s8, s9
 af236518  # 0  af 23 65 18  sc.w	t2, t1, (a0)
 2f272f01  # 0  2f 27 2f 01  amoadd.w	a4, s2, (t5)
 43f02018  # 0  43 f0 20 18  fmadd.s	ft0, ft1, ft2, ft3
-# d3727300  # 0  d3 72 73 00  fadd.s	ft5, ft6, ft7
-# 53f40458  # 0  53 f4 04 58  fsqrt.s	fs0, fs1
-# 5385c528  # 0  53 85 c5 28  fmin.s	fa0, fa1, fa2
-# 532edea1  # 0  53 2e de a1  feq.s	t3, ft8, ft9
-# d38405f0  # 0  d3 84 05 f0  fmv.w.x	fs1, a1
-# 530605e0  # 0  53 06 05 e0  fmv.x.w	a2, fa0
-# 537500c0  # 0  53 75 00 c0  fcvt.w.s	a0, ft0
-# d3f005d0  # 0  d3 f0 05 d0  fcvt.s.w	ft1, a1
-# d31508e0  # 0  d3 15 08 e0  fclass.s	a1, fa6
-# 87aa7500  # 0  87 aa 75 00  flw	fs5, 7(a1)
-# 27276601  # 0  27 27 66 01  fsw	fs6, 0xe(a2)
-# 43f0201a  # 0  43 f0 20 1a  fmadd.d	ft0, ft1, ft2, ft3
-# d3727302  # 0  d3 72 73 02  fadd.d	ft5, ft6, ft7
-# 53f4045a  # 0  53 f4 04 5a  fsqrt.d	fs0, fs1
-# 5385c52a  # 0  53 85 c5 2a  fmin.d	fa0, fa1, fa2
-# 532edea3  # 0  53 2e de a3  feq.d	t3, ft8, ft9
+d3027300  # 0  d3 02 73 00  fadd.s	ft5, ft6, ft7
+53840458  # 0  53 84 04 58  fsqrt.s	fs0, fs1
+5385c528  # 0  53 85 c5 28  fmin.s	fa0, fa1, fa2
+532edea1  # 0  53 2e de a1  feq.s	t3, ft8, ft9
+d38405f0  # 0  d3 84 05 f0  fmv.w.x	fs1, a1
+530605e0  # 0  53 06 05 e0  fmv.x.w	a2, fa0
+530500c0  # 0  53 05 00 c0  fcvt.w.s	a0, ft0
+d38005d0  # 0  d3 80 05 d0  fcvt.s.w	ft1, a1
+d31508e0  # 0  d3 15 08 e0  fclass.s	a1, fa6
+87aa7500  # 0  87 aa 75 00  flw	fs5, 7(a1)
+27276601  # 0  27 27 66 01  fsw	fs6, 0xe(a2)
+43f0201a  # 0  43 f0 20 1a  fmadd.d	ft0, ft1, ft2, ft3
+d3027302  # 0  d3 02 73 02  fadd.d	ft5, ft6, ft7
+5384045a  # 0  53 84 04 5a  fsqrt.d	fs0, fs1
+5385c52a  # 0  53 85 c5 2a  fmin.d	fa0, fa1, fa2
+532edea3  # 0  53 2e de a3  feq.d	t3, ft8, ft9
