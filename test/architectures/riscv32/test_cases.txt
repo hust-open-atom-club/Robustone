@@ -58,6 +58,9 @@ b37d9d03  # 0  b3 7d 9d 03  remu s11, s10, s9
 f3155530  # 0  f3 15 55 30  csrrw        a1, mtvec, a0
 f3262634  # 0  f3 26 26 34  csrrs        a3, mcause, a2
 f33707c0  # 0  f3 37 07 c0  csrrc        a5, cycle, a4
+f3220318  # 0  f3 22 03 18  csrrs        t0, satp, t1
+f3120318  # 0  f3 12 03 18  csrrw        t0, satp, t1
+f3320318  # 0  f3 32 03 18  csrrc        t0, satp, t1
 73d85030  # 0  73 d8 50 30  csrrwi       a6, mtvec, 1
 f3682134  # 0  f3 68 21 34  csrrsi       a7, mcause, 2
 73f901c0  # 0  73 f9 01 c0  csrrci       s2, cycle, 3
