@@ -42,6 +42,9 @@ b3543901  # 0  b3 54 39 01  srl	s1, s2, s3
 b3503100  # 0  b3 50 31 00  srl	ra, sp, gp
 339f0f00  # 0  33 9f 0f 00  sll	t5, t6, zero
 # 731504b0  # 0  73 15 04 b0  csrrw	a0, mcycle, s0
+f3220318  # 0  f3 22 03 18  csrrs	t0, satp, t1
+f3120318  # 0  f3 12 03 18  csrrw	t0, satp, t1
+f3320318  # 0  f3 32 03 18  csrrc	t0, satp, t1
 f3560010  # 0  f3 56 00 10  csrrwi	a3, sstatus, 0
 33057b03  # 0  33 05 7b 03  mul	a0, s6, s7
 b3459c03  # 0  b3 45 9c 03  div	a1, s8, s9

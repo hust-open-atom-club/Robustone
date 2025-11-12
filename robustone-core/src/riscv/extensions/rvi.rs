@@ -559,21 +559,48 @@ impl RviExtension {
         csr: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         let csr_str = self.operand_factory.format_csr(csr);
-        let operands = format!(
-            "{}, {}, {}",
-            self.register_manager.int_register_name(rd),
-            csr_str,
-            self.register_manager.int_register_name(rs1)
-        );
-        let operands_detail = vec![
-            self.operand_factory
-                .make_register_operand(rd, Access::write()),
-            self.operand_factory.make_immediate_operand(csr),
-            self.operand_factory
-                .make_register_operand(rs1, Access::read()),
-        ];
+
+        // Handle pseudo-instructions: csrr, csrc, csrw
+        // csrrs with rs1=0 → csrr
+        // csrrc with rs1=0 → csrc
+        // csrrw with rs1=0 → csrw
+        let (final_mnemonic, operands, operands_detail) = if rs1 == 0 {
+            let pseudo_mnemonic = match mnemonic {
+                "csrrs" => "csrr",
+                "csrrc" => "csrc",
+                "csrrw" => "csrw",
+                _ => mnemonic,
+            };
+            let ops = format!(
+                "{}, {}",
+                self.register_manager.int_register_name(rd),
+                csr_str
+            );
+            let ops_detail = vec![
+                self.operand_factory
+                    .make_register_operand(rd, Access::write()),
+                self.operand_factory.make_immediate_operand(csr),
+            ];
+            (pseudo_mnemonic, ops, ops_detail)
+        } else {
+            let ops = format!(
+                "{}, {}, {}",
+                self.register_manager.int_register_name(rd),
+                csr_str,
+                self.register_manager.int_register_name(rs1)
+            );
+            let ops_detail = vec![
+                self.operand_factory
+                    .make_register_operand(rd, Access::write()),
+                self.operand_factory.make_immediate_operand(csr),
+                self.operand_factory
+                    .make_register_operand(rs1, Access::read()),
+            ];
+            (mnemonic, ops, ops_detail)
+        };
+
         Ok(self.formatter.create_decoded_instruction(
-            mnemonic,
+            final_mnemonic,
             operands,
             RiscVInstructionFormat::I,
             4,
