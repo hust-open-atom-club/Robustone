@@ -1,17 +1,16 @@
 //! Zicntr Extension
-//!
+//! 
 //! This module implements the RISC-V Zicntr extension, which provides access to machine counters:
 //! - cycle: Processor cycle counter
 //! - time: Real-time counter
 //! - instret: Instructions-retired counter
-//!
+//! 
 //! Note: Zicntr requires Zicsr to be implemented as well.
 
 use super::super::decoder::{RiscVDecodedInstruction, Xlen};
 use super::super::shared::{
     InstructionFormatter, OperandFactory, RegisterNameProvider,
-    formatting::DefaultInstructionFormatter,
-    operands::{DefaultOperandFactory, OperandBuilder},
+    formatting::DefaultInstructionFormatter, operands::DefaultOperandFactory,
     registers::RegisterManager,
 };
 use super::super::types::*;
@@ -24,7 +23,6 @@ pub struct ZicntrExtension {
     operand_factory: DefaultOperandFactory,
     formatter: DefaultInstructionFormatter,
     register_manager: RegisterManager,
-    operand_builder: OperandBuilder,
 }
 
 impl ZicntrExtension {
@@ -34,17 +32,16 @@ impl ZicntrExtension {
             operand_factory: DefaultOperandFactory::new(),
             formatter: DefaultInstructionFormatter::new(),
             register_manager: RegisterManager::new(),
-            operand_builder: OperandBuilder::new(),
         }
     }
 
-    // Counter CSR registers (standard for Zicntr extension)
-    pub const CSR_CYCLE: u32 = 0xC00; // Cycle counter
-    pub const CSR_TIME: u32 = 0xC01; // Timer counter
-    pub const CSR_INSTRET: u32 = 0xC02; // Instructions retired counter
-    pub const CSR_CYCLEH: u32 = 0xC80; // Upper 32 bits of cycle (RV64/RV128)
-    pub const CSR_TIMEH: u32 = 0xC81; // Upper 32 bits of time (RV64/RV128)
-    pub const CSR_INSTRETH: u32 = 0xC82; // Upper 32 bits of instret (RV64/RV128)
+    // Counter CSR registers
+    pub const CSR_CYCLE: u32 = 0xC00;
+    pub const CSR_TIME: u32 = 0xC01;
+    pub const CSR_INSTRET: u32 = 0xC02;
+    pub const CSR_CYCLEH: u32 = 0xC80;
+    pub const CSR_TIMEH: u32 = 0xC81;
+    pub const CSR_INSTRETH: u32 = 0xC82;
 
     // Opcode constants
     const OPCODE_SYSTEM: u32 = 0b111_0011;
@@ -59,15 +56,12 @@ impl ZicntrExtension {
 
     // Check if the CSR address corresponds to a counter register
     fn is_counter_csr(&self, csr: u32) -> bool {
-        match csr {
-            Self::CSR_CYCLE
+        matches!(csr, Self::CSR_CYCLE
             | Self::CSR_TIME
             | Self::CSR_INSTRET
             | Self::CSR_CYCLEH
             | Self::CSR_TIMEH
-            | Self::CSR_INSTRETH => true,
-            _ => false,
-        }
+            | Self::CSR_INSTRETH)
     }
 
     // Get the name of the counter register based on its address
@@ -79,7 +73,7 @@ impl ZicntrExtension {
             Self::CSR_CYCLEH => "cycleh".to_string(),
             Self::CSR_TIMEH => "timeh".to_string(),
             Self::CSR_INSTRETH => "instreth".to_string(),
-            _ => format!("0x{:03x}", csr),
+            _ => format!("0x{csr:03x}"),
         }
     }
 
@@ -90,7 +84,7 @@ impl ZicntrExtension {
         rd: u8,
         rs1: u8,
         csr: u32,
-        xlen: Xlen,
+        _xlen: Xlen,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         let csr_name = self.get_counter_name(csr);
 
@@ -146,7 +140,7 @@ impl ZicntrExtension {
         rd: u8,
         imm: i64,
         csr: u32,
-        xlen: Xlen,
+        _xlen: Xlen,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         let csr_name = self.get_counter_name(csr);
 
@@ -297,15 +291,15 @@ mod tests {
     fn test_zicntr_instruction_decoding() {
         let extension = ZicntrExtension::new();
 
-        // Test CSRRS x1, cycle, x0 (which becomes csrr x1, cycle)
+        // Test CSRRS x1, cycle, x0
         let result = extension.try_decode_standard(
-            0b1110011, // opcode (SYSTEM)
-            0b010,     // funct3 (CSRRS)
+            0b1110011, // opcode
+            0b010,     // funct3
             0,         // funct7
             1,         // rd
             0,         // rs1
             0,         // rs2
-            0xC00,     // funct12 (cycle CSR)
+            0xC00,     // funct12
             0,         // imm_i
             0,         // imm_s
             0,         // imm_b

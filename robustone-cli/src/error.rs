@@ -21,6 +21,10 @@ pub enum CliError {
     MissingArgument(String),
     /// Invalid command request.
     InvalidCommand(String),
+    /// Invalid hexadecimal code.
+    InvalidHex(String),
+    /// Invalid address format.
+    InvalidAddress(String),
 }
 
 impl CliError {
@@ -62,6 +66,8 @@ impl fmt::Display for CliError {
             CliError::Generic(msg) => write!(f, "Error: {msg}"),
             CliError::MissingArgument(msg) => write!(f, "Missing required argument: {msg}"),
             CliError::InvalidCommand(msg) => write!(f, "Invalid command: {msg}"),
+            CliError::InvalidHex(msg) => write!(f, "Invalid hex code: {msg}"),
+            CliError::InvalidAddress(msg) => write!(f, "Invalid address: {msg}"),
         }
     }
 }

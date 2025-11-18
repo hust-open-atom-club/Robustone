@@ -1,12 +1,11 @@
 //! Zicsr Extension
-//!
+//! 
 //! This module implements the RISC-V Zicsr extension, which provides access to Control and Status Registers (CSRs).
 
 use super::super::decoder::{RiscVDecodedInstruction, Xlen};
 use super::super::shared::{
     InstructionFormatter, OperandFactory, RegisterNameProvider,
-    formatting::DefaultInstructionFormatter,
-    operands::{DefaultOperandFactory, OperandBuilder},
+    formatting::DefaultInstructionFormatter, operands::DefaultOperandFactory,
     registers::RegisterManager,
 };
 use super::super::types::*;
@@ -19,7 +18,6 @@ pub struct ZicsrExtension {
     operand_factory: DefaultOperandFactory,
     formatter: DefaultInstructionFormatter,
     register_manager: RegisterManager,
-    operand_builder: OperandBuilder,
 }
 
 impl ZicsrExtension {
@@ -29,18 +27,16 @@ impl ZicsrExtension {
             operand_factory: DefaultOperandFactory::new(),
             formatter: DefaultInstructionFormatter::new(),
             register_manager: RegisterManager::new(),
-            operand_builder: OperandBuilder::new(),
         }
     }
 
-    // Zicsr specific CSR registers
-    // Note: These are just some common CSRs from Zicsr
-    pub const CSR_STATUS: u32 = 0x000; // Machine Status Register
-    pub const CSR_IE: u32 = 0x004; // Machine Interrupt Enable Register
-    pub const CSR_TVAL: u32 = 0x003; // Machine Trap Value
-    pub const CSR_TIP: u32 = 0x005; // Machine Interrupt Pending Register
-    pub const CSR_TMIP: u32 = 0x707; // Machine Timer Interrupt Pending
-    pub const CSR_TMEIE: u32 = 0x009; // Machine Timer External Interrupt Enable
+    // Common CSR registers
+    pub const CSR_CYCLE: u32 = 0xC00;
+    pub const CSR_TIME: u32 = 0xC01;
+    pub const CSR_INSTRET: u32 = 0xC02;
+    pub const CSR_CYCLEH: u32 = 0xC80;
+    pub const CSR_TIMEH: u32 = 0xC81;
+    pub const CSR_INSTRETH: u32 = 0xC82;
 
     // Opcode constants
     const OPCODE_SYSTEM: u32 = 0b111_0011;
@@ -53,52 +49,51 @@ impl ZicsrExtension {
     const FUNCT3_SYSTEM_CSRRSI: u8 = 0b110;
     const FUNCT3_SYSTEM_CSRRCI: u8 = 0b111;
 
-    // Zicsr specific CSR registers
-    fn is_zicsr_csr(&self, csr: u32) -> bool {
-        // Zicsr provides access to various CSRs
-        // This is a simplified check - in reality, Zicsr allows access to all CSRs
-        // that are supported by the implementation
-        (csr >= 0x000 && csr <= 0x7FF) // Standard CSR address space
-    }
-
-    // Format CSR name based on address
-    fn format_csr_name(&self, csr: u32) -> String {
+    // Get the name of a CSR based on its address
+    fn get_csr_name(&self, csr: u32) -> String {
+        // Handle standard machine mode CSRs
         match csr {
-            // Common CSR names
-            Self::CSR_STATUS => match csr >> 8 {
-                0 => "mstatus".to_string(),
-                1 => "sstatus".to_string(),
-                2 => "hstatus".to_string(),
-                _ => format!("0x{:03x}", csr),
-            },
-            Self::CSR_IE => match csr >> 8 {
-                0 => "mie".to_string(),
-                1 => "sie".to_string(),
-                2 => "hie".to_string(),
-                _ => format!("0x{:03x}", csr),
-            },
-            Self::CSR_TVAL => match csr >> 8 {
-                0 => "mtval".to_string(),
-                1 => "stval".to_string(),
-                2 => "htval".to_string(),
-                _ => format!("0x{:03x}", csr),
-            },
-            Self::CSR_TIP => match csr >> 8 {
-                0 => "mip".to_string(),
-                1 => "sip".to_string(),
-                2 => "hip".to_string(),
-                _ => format!("0x{:03x}", csr),
-            },
-            Self::CSR_TMIP => "mtip".to_string(),
-            Self::CSR_TMEIE => "mtie".to_string(),
-            // Zicsr specific CSRs
-            0xC00 => "cycle".to_string(),
-            0xC01 => "time".to_string(),
-            0xC02 => "instret".to_string(),
-            0xC80 => "cycleh".to_string(),
-            0xC81 => "timeh".to_string(),
-            0xC82 => "instreth".to_string(),
-            _ => format!("0x{:03x}", csr),
+            // User counters
+            0xC00 | 0x800 => "cycle".to_string(),
+            0xC01 | 0x801 => "time".to_string(),
+            0xC02 | 0x802 => "instret".to_string(),
+            0xC80 | 0x880 => "cycleh".to_string(),
+            0xC81 | 0x881 => "timeh".to_string(),
+            0xC82 | 0x882 => "instreth".to_string(),
+            // Machine status register
+            0x300 => "mstatus".to_string(),
+            0x301 => "misa".to_string(),
+            0x302 => "medeleg".to_string(),
+            0x303 => "mideleg".to_string(),
+            0x304 => "mie".to_string(),
+            0x305 => "mtvec".to_string(),
+            0x306 => "mscratch".to_string(),
+            0x307 => "mepc".to_string(),
+            0x308 => "mcause".to_string(),
+            0x309 => "mtval".to_string(),
+            0x30A => "mip".to_string(),
+            // Machine info registers
+            0xF11 => "mvendorid".to_string(),
+            0xF12 => "marchid".to_string(),
+            0xF13 => "mimpid".to_string(),
+            0xF14 => "mhartid".to_string(),
+            // Supervisor registers
+            0x100 => "sstatus".to_string(),
+            0x102 => "sedeleg".to_string(),
+            0x103 => "sideleg".to_string(),
+            0x104 => "sie".to_string(),
+            0x105 => "stvec".to_string(),
+            0x106 => "sscratch".to_string(),
+            0x107 => "sepc".to_string(),
+            0x108 => "scause".to_string(),
+            0x109 => "stval".to_string(),
+            0x10A => "sip".to_string(),
+            0x10C => "satp".to_string(),
+            // Privilege level
+            0x140 => "scounteren".to_string(),
+            0x340 => "mcounteren".to_string(),
+            // Default fallback
+            _ => format!("0x{csr:03x}"),
         }
     }
 
@@ -109,8 +104,9 @@ impl ZicsrExtension {
         rd: u8,
         rs1: u8,
         csr: u32,
+        _xlen: Xlen,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let csr_str = self.format_csr_name(csr);
+        let csr_name = self.get_csr_name(csr);
 
         // Handle pseudo-instructions: csrr, csrc, csrw
         let (final_mnemonic, operands, operands_detail) = if rs1 == 0 {
@@ -123,7 +119,7 @@ impl ZicsrExtension {
             let ops = format!(
                 "{}, {}",
                 self.register_manager.int_register_name(rd),
-                csr_str
+                csr_name
             );
             let ops_detail = vec![
                 self.operand_factory
@@ -135,7 +131,7 @@ impl ZicsrExtension {
             let ops = format!(
                 "{}, {}, {}",
                 self.register_manager.int_register_name(rd),
-                csr_str,
+                csr_name,
                 self.register_manager.int_register_name(rs1)
             );
             let ops_detail = vec![
@@ -164,8 +160,9 @@ impl ZicsrExtension {
         rd: u8,
         imm: i64,
         csr: u32,
+        _xlen: Xlen,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let csr_str = self.format_csr_name(csr);
+        let csr_name = self.get_csr_name(csr);
 
         // Handle pseudo-instructions for immediate versions
         let (final_mnemonic, operands, operands_detail) = if imm == 0 {
@@ -178,7 +175,7 @@ impl ZicsrExtension {
             let ops = format!(
                 "{}, {}",
                 self.register_manager.int_register_name(rd),
-                csr_str
+                csr_name
             );
             let ops_detail = vec![
                 self.operand_factory
@@ -190,7 +187,7 @@ impl ZicsrExtension {
             let ops = format!(
                 "{}, {}, {}",
                 self.register_manager.int_register_name(rd),
-                csr_str,
+                csr_name,
                 imm
             );
             let ops_detail = vec![
@@ -227,29 +224,29 @@ impl InstructionExtension for ZicsrExtension {
         _imm_b: i64,
         _imm_u: i64,
         _imm_j: i64,
-        _xlen: Xlen,
+        xlen: Xlen,
     ) -> Option<Result<RiscVDecodedInstruction, DisasmError>> {
         // Check if this is a CSR instruction
         if opcode == Self::OPCODE_SYSTEM {
             match funct3 {
                 Self::FUNCT3_SYSTEM_CSRRW => {
-                    Some(self.decode_csr_instruction("csrrw", rd, rs1, funct12))
+                    Some(self.decode_csr_instruction("csrrw", rd, rs1, funct12, xlen))
                 }
                 Self::FUNCT3_SYSTEM_CSRRS => {
-                    Some(self.decode_csr_instruction("csrrs", rd, rs1, funct12))
+                    Some(self.decode_csr_instruction("csrrs", rd, rs1, funct12, xlen))
                 }
                 Self::FUNCT3_SYSTEM_CSRRC => {
-                    Some(self.decode_csr_instruction("csrrc", rd, rs1, funct12))
+                    Some(self.decode_csr_instruction("csrrc", rd, rs1, funct12, xlen))
                 }
-                Self::FUNCT3_SYSTEM_CSRRWI => {
-                    Some(self.decode_csr_instruction_imm("csrrwi", rd, rs1 as i64, funct12))
-                }
-                Self::FUNCT3_SYSTEM_CSRRSI => {
-                    Some(self.decode_csr_instruction_imm("csrrsi", rd, rs1 as i64, funct12))
-                }
-                Self::FUNCT3_SYSTEM_CSRRCI => {
-                    Some(self.decode_csr_instruction_imm("csrrci", rd, rs1 as i64, funct12))
-                }
+                Self::FUNCT3_SYSTEM_CSRRWI => Some(
+                    self.decode_csr_instruction_imm("csrrwi", rd, rs1 as i64, funct12, xlen),
+                ),
+                Self::FUNCT3_SYSTEM_CSRRSI => Some(
+                    self.decode_csr_instruction_imm("csrrsi", rd, rs1 as i64, funct12, xlen),
+                ),
+                Self::FUNCT3_SYSTEM_CSRRCI => Some(
+                    self.decode_csr_instruction_imm("csrrci", rd, rs1 as i64, funct12, xlen),
+                ),
                 _ => None,
             }
         } else {
@@ -314,15 +311,15 @@ mod tests {
     fn test_zicsr_instruction_decoding() {
         let extension = ZicsrExtension::new();
 
-        // Test CSRRW x1, cycle, x2 (assumes cycle is 0xC00)
+        // Test CSRRS x1, mstatus, x0
         let result = extension.try_decode_standard(
-            0b1110011, // opcode (SYSTEM)
-            0b001,     // funct3 (CSRRW)
+            0b1110011, // opcode
+            0b010,     // funct3
             0,         // funct7
             1,         // rd
-            2,         // rs1
+            0,         // rs1
             0,         // rs2
-            0xC00,     // funct12 (cycle CSR)
+            0x300,     // funct12
             0,         // imm_i
             0,         // imm_s
             0,         // imm_b
@@ -333,14 +330,16 @@ mod tests {
 
         assert!(result.is_some());
         let instruction = result.unwrap().unwrap();
-        assert_eq!(instruction.mnemonic, "csrrw");
+        assert_eq!(instruction.mnemonic, "csrr");
     }
 
     #[test]
-    fn test_zicsr_csr_formatting() {
+    fn test_zicsr_csr_names() {
         let extension = ZicsrExtension::new();
-        assert_eq!(extension.format_csr_name(0xC00), "cycle");
-        assert_eq!(extension.format_csr_name(0xC01), "time");
-        assert_eq!(extension.format_csr_name(0xC02), "instret");
+        assert_eq!(extension.get_csr_name(0x300), "mstatus");
+        assert_eq!(extension.get_csr_name(0x301), "misa");
+        assert_eq!(extension.get_csr_name(0xC00), "cycle");
+        assert_eq!(extension.get_csr_name(0x800), "cycle");
+        assert_eq!(extension.get_csr_name(0xFFFF), "0xffff");
     }
 }
