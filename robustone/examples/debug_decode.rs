@@ -11,6 +11,9 @@ fn main() {
         "00000513", // addi a0, zero, 0
         "00052503", // lw a0, 0(zero)
         "13000513", // addi a0, zero, 304
+        "00000013", // addi zero, zero, 0
+        "00008067", // jalr zero, 0(ra)
+        "00100093", // addi ra, zero, 1
         "4101",     // c.addi4spn
     ];
 

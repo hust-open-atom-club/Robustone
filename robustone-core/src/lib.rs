@@ -448,12 +448,12 @@ mod tests {
         // Hex parsing should succeed for bare strings.
         let instruction = dispatcher.disassemble("deadbeef", "unknown".to_string());
         assert_eq!(instruction.mnemonic, "unknown");
-        assert_eq!(instruction.bytes, vec![0xde, 0xad, 0xbe, 0xef]);
+        assert_eq!(instruction.bytes, vec![0xef, 0xbe, 0xad, 0xde]);
         assert_eq!(instruction.size, 4);
 
         // Hex parsing should also accept a `0x` prefix.
         let instruction = dispatcher.disassemble("0x1234", "unknown".to_string());
-        assert_eq!(instruction.bytes, vec![0x12, 0x34]);
+        assert_eq!(instruction.bytes, vec![0x34, 0x12]);
         assert_eq!(instruction.size, 2);
     }
 }
