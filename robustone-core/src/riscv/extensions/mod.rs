@@ -70,11 +70,14 @@ pub trait InstructionExtension: Sync {
 
 // Standard RISC-V extension modules
 pub mod rva; // RVA - Atomic Instructions
-pub mod rvc;
+pub mod rvc; // RVC - Compressed Instructions
 pub mod rvd; // RVD - Double-Precision Floating-Point
 pub mod rvf; // RVF - Single-Precision Floating-Point
 pub mod rvi; // RV32I/RV64I - Base Integer Instruction Set
-pub mod rvm; // RVM - Multiply and Divide Instructions // RVC - Compressed Instructions
+pub mod rvm; // RVM - Multiply and Divide Instructions
+
+// XuanTie vendor extension modules
+pub mod xtheadcondmov; // XTheadCondMov - Conditional Move Instructions
 
 use rva::RvaExtension;
 use rvc::RvcExtension;
@@ -82,6 +85,7 @@ use rvd::RvdExtension;
 use rvf::RvfExtension;
 use rvi::RviExtension;
 use rvm::RvmExtension;
+use xtheadcondmov::XTheadCondMovExtension;
 
 /// Create all available standard RISC-V extensions.
 pub fn create_extensions() -> Vec<Box<dyn InstructionExtension>> {
@@ -92,10 +96,11 @@ pub fn create_extensions() -> Vec<Box<dyn InstructionExtension>> {
         Box::new(RvfExtension::new()),
         Box::new(RvdExtension::new()),
         Box::new(RvcExtension::new()),
+        Box::new(XTheadCondMovExtension::new()),
     ]
 }
 
-/// Extension bit masks for standard RISC-V extensions
+/// Extension bit masks for standard RISC-V and XuanTie extensions.
 pub mod extension_masks {
     pub const I: u32 = 0b001; // Base Integer Instruction Set
     pub const M: u32 = 0b010; // Multiply and Divide
@@ -103,4 +108,5 @@ pub mod extension_masks {
     pub const F: u32 = 0b1000; // Single-Precision Floating-Point
     pub const D: u32 = 0b10000; // Double-Precision Floating-Point
     pub const C: u32 = 0b100000; // Compressed Instructions
+    pub const XTHEADCONDMOV: u32 = 0b1000000; // XTheadCondMov - Conditional Move
 }
