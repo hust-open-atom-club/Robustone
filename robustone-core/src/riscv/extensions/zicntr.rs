@@ -1,17 +1,15 @@
 //! Zicntr Extension
-//! 
+//!
 //! This module implements the RISC-V Zicntr extension, which provides access to machine counters:
 //! - cycle: Processor cycle counter
 //! - time: Real-time counter
 //! - instret: Instructions-retired counter
-//! 
+//!
 //! Note: Zicntr requires Zicsr to be implemented as well.
 
 use super::super::decoder::{RiscVDecodedInstruction, Xlen};
 use super::super::shared::{
-    InstructionFormatter,
-    OperandFactory,
-    RegisterNameProvider,
+    InstructionFormatter, OperandFactory, RegisterNameProvider,
     formatting::DefaultInstructionFormatter,
     operands::{DefaultOperandFactory, OperandBuilder},
     registers::RegisterManager,
@@ -41,12 +39,12 @@ impl ZicntrExtension {
     }
 
     // Counter CSR registers (standard for Zicntr extension)
-    pub const CSR_CYCLE: u32 = 0xC00;     // Cycle counter
-    pub const CSR_TIME: u32 = 0xC01;      // Timer counter
-    pub const CSR_INSTRET: u32 = 0xC02;   // Instructions retired counter
-    pub const CSR_CYCLEH: u32 = 0xC80;    // Upper 32 bits of cycle (RV64/RV128)
-    pub const CSR_TIMEH: u32 = 0xC81;     // Upper 32 bits of time (RV64/RV128)
-    pub const CSR_INSTRETH: u32 = 0xC82;  // Upper 32 bits of instret (RV64/RV128)
+    pub const CSR_CYCLE: u32 = 0xC00; // Cycle counter
+    pub const CSR_TIME: u32 = 0xC01; // Timer counter
+    pub const CSR_INSTRET: u32 = 0xC02; // Instructions retired counter
+    pub const CSR_CYCLEH: u32 = 0xC80; // Upper 32 bits of cycle (RV64/RV128)
+    pub const CSR_TIMEH: u32 = 0xC81; // Upper 32 bits of time (RV64/RV128)
+    pub const CSR_INSTRETH: u32 = 0xC82; // Upper 32 bits of instret (RV64/RV128)
 
     // Opcode constants
     const OPCODE_SYSTEM: u32 = 0b111_0011;
@@ -62,8 +60,12 @@ impl ZicntrExtension {
     // Check if the CSR address corresponds to a counter register
     fn is_counter_csr(&self, csr: u32) -> bool {
         match csr {
-            Self::CSR_CYCLE | Self::CSR_TIME | Self::CSR_INSTRET |
-            Self::CSR_CYCLEH | Self::CSR_TIMEH | Self::CSR_INSTRETH => true,
+            Self::CSR_CYCLE
+            | Self::CSR_TIME
+            | Self::CSR_INSTRET
+            | Self::CSR_CYCLEH
+            | Self::CSR_TIMEH
+            | Self::CSR_INSTRETH => true,
             _ => false,
         }
     }
@@ -91,7 +93,7 @@ impl ZicntrExtension {
         xlen: Xlen,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         let csr_name = self.get_counter_name(csr);
-        
+
         // Handle pseudo-instructions: csrr, csrc, csrw
         let (final_mnemonic, operands, operands_detail) = if rs1 == 0 {
             let pseudo_mnemonic = match mnemonic {
@@ -147,7 +149,7 @@ impl ZicntrExtension {
         xlen: Xlen,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         let csr_name = self.get_counter_name(csr);
-        
+
         // Handle pseudo-instructions for immediate versions
         let (final_mnemonic, operands, operands_detail) = if imm == 0 {
             let pseudo_mnemonic = match mnemonic {
@@ -213,12 +215,24 @@ impl InstructionExtension for ZicntrExtension {
         // Check if this is a CSR instruction and if the CSR is a counter register
         if opcode == Self::OPCODE_SYSTEM && self.is_counter_csr(funct12) {
             match funct3 {
-                Self::FUNCT3_SYSTEM_CSRRW => Some(self.decode_counter_instruction("csrrw", rd, rs1, funct12, xlen)),
-                Self::FUNCT3_SYSTEM_CSRRS => Some(self.decode_counter_instruction("csrrs", rd, rs1, funct12, xlen)),
-                Self::FUNCT3_SYSTEM_CSRRC => Some(self.decode_counter_instruction("csrrc", rd, rs1, funct12, xlen)),
-                Self::FUNCT3_SYSTEM_CSRRWI => Some(self.decode_counter_instruction_imm("csrrwi", rd, rs1 as i64, funct12, xlen)),
-                Self::FUNCT3_SYSTEM_CSRRSI => Some(self.decode_counter_instruction_imm("csrrsi", rd, rs1 as i64, funct12, xlen)),
-                Self::FUNCT3_SYSTEM_CSRRCI => Some(self.decode_counter_instruction_imm("csrrci", rd, rs1 as i64, funct12, xlen)),
+                Self::FUNCT3_SYSTEM_CSRRW => {
+                    Some(self.decode_counter_instruction("csrrw", rd, rs1, funct12, xlen))
+                }
+                Self::FUNCT3_SYSTEM_CSRRS => {
+                    Some(self.decode_counter_instruction("csrrs", rd, rs1, funct12, xlen))
+                }
+                Self::FUNCT3_SYSTEM_CSRRC => {
+                    Some(self.decode_counter_instruction("csrrc", rd, rs1, funct12, xlen))
+                }
+                Self::FUNCT3_SYSTEM_CSRRWI => Some(
+                    self.decode_counter_instruction_imm("csrrwi", rd, rs1 as i64, funct12, xlen),
+                ),
+                Self::FUNCT3_SYSTEM_CSRRSI => Some(
+                    self.decode_counter_instruction_imm("csrrsi", rd, rs1 as i64, funct12, xlen),
+                ),
+                Self::FUNCT3_SYSTEM_CSRRCI => Some(
+                    self.decode_counter_instruction_imm("csrrci", rd, rs1 as i64, funct12, xlen),
+                ),
                 _ => None,
             }
         } else {

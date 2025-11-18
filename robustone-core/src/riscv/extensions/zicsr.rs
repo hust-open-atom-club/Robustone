@@ -1,12 +1,10 @@
 //! Zicsr Extension
-//! 
+//!
 //! This module implements the RISC-V Zicsr extension, which provides access to Control and Status Registers (CSRs).
 
 use super::super::decoder::{RiscVDecodedInstruction, Xlen};
 use super::super::shared::{
-    InstructionFormatter,
-    OperandFactory,
-    RegisterNameProvider,
+    InstructionFormatter, OperandFactory, RegisterNameProvider,
     formatting::DefaultInstructionFormatter,
     operands::{DefaultOperandFactory, OperandBuilder},
     registers::RegisterManager,
@@ -168,7 +166,7 @@ impl ZicsrExtension {
         csr: u32,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         let csr_str = self.format_csr_name(csr);
-        
+
         // Handle pseudo-instructions for immediate versions
         let (final_mnemonic, operands, operands_detail) = if imm == 0 {
             let pseudo_mnemonic = match mnemonic {
@@ -234,12 +232,24 @@ impl InstructionExtension for ZicsrExtension {
         // Check if this is a CSR instruction
         if opcode == Self::OPCODE_SYSTEM {
             match funct3 {
-                Self::FUNCT3_SYSTEM_CSRRW => Some(self.decode_csr_instruction("csrrw", rd, rs1, funct12)),
-                Self::FUNCT3_SYSTEM_CSRRS => Some(self.decode_csr_instruction("csrrs", rd, rs1, funct12)),
-                Self::FUNCT3_SYSTEM_CSRRC => Some(self.decode_csr_instruction("csrrc", rd, rs1, funct12)),
-                Self::FUNCT3_SYSTEM_CSRRWI => Some(self.decode_csr_instruction_imm("csrrwi", rd, rs1 as i64, funct12)),
-                Self::FUNCT3_SYSTEM_CSRRSI => Some(self.decode_csr_instruction_imm("csrrsi", rd, rs1 as i64, funct12)),
-                Self::FUNCT3_SYSTEM_CSRRCI => Some(self.decode_csr_instruction_imm("csrrci", rd, rs1 as i64, funct12)),
+                Self::FUNCT3_SYSTEM_CSRRW => {
+                    Some(self.decode_csr_instruction("csrrw", rd, rs1, funct12))
+                }
+                Self::FUNCT3_SYSTEM_CSRRS => {
+                    Some(self.decode_csr_instruction("csrrs", rd, rs1, funct12))
+                }
+                Self::FUNCT3_SYSTEM_CSRRC => {
+                    Some(self.decode_csr_instruction("csrrc", rd, rs1, funct12))
+                }
+                Self::FUNCT3_SYSTEM_CSRRWI => {
+                    Some(self.decode_csr_instruction_imm("csrrwi", rd, rs1 as i64, funct12))
+                }
+                Self::FUNCT3_SYSTEM_CSRRSI => {
+                    Some(self.decode_csr_instruction_imm("csrrsi", rd, rs1 as i64, funct12))
+                }
+                Self::FUNCT3_SYSTEM_CSRRCI => {
+                    Some(self.decode_csr_instruction_imm("csrrci", rd, rs1 as i64, funct12))
+                }
                 _ => None,
             }
         } else {
