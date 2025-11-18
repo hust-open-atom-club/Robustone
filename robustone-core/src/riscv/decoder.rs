@@ -42,7 +42,9 @@ impl RiscVDecoder {
                 | extension_masks::M
                 | extension_masks::A
                 | extension_masks::F
-                | extension_masks::C,
+                | extension_masks::C
+                | extension_masks::ZICSR
+                | extension_masks::ZICNTR,
         )
     }
 
@@ -55,7 +57,9 @@ impl RiscVDecoder {
                 | extension_masks::A
                 | extension_masks::F
                 | extension_masks::D
-                | extension_masks::C,
+                | extension_masks::C
+                | extension_masks::ZICSR
+                | extension_masks::ZICNTR,
         )
     }
 

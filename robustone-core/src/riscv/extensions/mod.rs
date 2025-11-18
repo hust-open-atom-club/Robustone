@@ -74,7 +74,9 @@ pub mod rvc;
 pub mod rvd; // RVD - Double-Precision Floating-Point
 pub mod rvf; // RVF - Single-Precision Floating-Point
 pub mod rvi; // RV32I/RV64I - Base Integer Instruction Set
-pub mod rvm; // RVM - Multiply and Divide Instructions // RVC - Compressed Instructions
+pub mod rvm; // RVM - Multiply and Divide Instructions
+pub mod zicsr; // Zicsr - Control and Status Register Access
+pub mod zicntr; // Zicntr - Counter Registers
 
 use rva::RvaExtension;
 use rvc::RvcExtension;
@@ -82,6 +84,8 @@ use rvd::RvdExtension;
 use rvf::RvfExtension;
 use rvi::RviExtension;
 use rvm::RvmExtension;
+use zicsr::ZicsrExtension;
+use zicntr::ZicntrExtension;
 
 /// Create all available standard RISC-V extensions.
 pub fn create_extensions() -> Vec<Box<dyn InstructionExtension>> {
@@ -92,6 +96,8 @@ pub fn create_extensions() -> Vec<Box<dyn InstructionExtension>> {
         Box::new(RvfExtension::new()),
         Box::new(RvdExtension::new()),
         Box::new(RvcExtension::new()),
+        Box::new(ZicsrExtension::new()),
+        Box::new(ZicntrExtension::new()),
     ]
 }
 
@@ -103,4 +109,6 @@ pub mod extension_masks {
     pub const F: u32 = 0b1000; // Single-Precision Floating-Point
     pub const D: u32 = 0b10000; // Double-Precision Floating-Point
     pub const C: u32 = 0b100000; // Compressed Instructions
+    pub const ZICSR: u32 = 0b1000000; // Control and Status Register Access
+    pub const ZICNTR: u32 = 0b10000000; // Counter Registers
 }
