@@ -13,9 +13,8 @@ use super::super::shared::{
     registers::RegisterManager,
 };
 use super::super::types::*;
-use super::InstructionExtension;
+use super::{Extensions, InstructionExtension};
 use crate::error::DisasmError;
-use crate::riscv::extensions::extension_masks;
 
 /// RV32I/RV64I Base Integer Extension
 pub struct RviExtension {
@@ -643,9 +642,9 @@ impl InstructionExtension for RviExtension {
         "I"
     }
 
-    fn is_enabled(&self, extensions: u32) -> bool {
+    fn is_enabled(&self, extensions: Extensions) -> bool {
         // I extension is always enabled (bit 0)
-        extensions & extension_masks::I != 0
+        extensions.contains(Extensions::I)
     }
 
     fn try_decode_standard(
@@ -731,8 +730,8 @@ mod tests {
     fn test_rvi_extension_creation() {
         let extension = RviExtension::new();
         assert_eq!(extension.name(), "I");
-        assert!(extension.is_enabled(0b001));
-        assert!(!extension.is_enabled(0b010));
+        assert!(extension.is_enabled(Extensions::I));
+        assert!(!extension.is_enabled(Extensions::M));
     }
 
     #[test]

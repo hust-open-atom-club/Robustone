@@ -10,9 +10,8 @@ use super::super::shared::{
     registers::{RegisterManager, RegisterNameProvider},
 };
 use super::super::types::*;
-use super::InstructionExtension;
+use super::{Extensions, InstructionExtension};
 use crate::error::DisasmError;
-use crate::riscv::extensions::extension_masks;
 
 /// XTheadCondMov Conditional Move Extension
 pub struct XTheadCondMovExtension {
@@ -68,9 +67,9 @@ impl InstructionExtension for XTheadCondMovExtension {
         "XTheadCondMov"
     }
 
-    fn is_enabled(&self, extensions: u32) -> bool {
+    fn is_enabled(&self, extensions: Extensions) -> bool {
         // XTheadCondMov extension bit
-        extensions & extension_masks::XTHEADCONDMOV != 0
+        extensions.contains(Extensions::XTHEADCONDMOV)
     }
 
     fn try_decode_standard(

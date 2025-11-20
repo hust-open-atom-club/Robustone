@@ -9,9 +9,8 @@ use super::super::shared::{
     registers::{RegisterManager, RegisterNameProvider},
 };
 use super::super::types::*;
-use super::InstructionExtension;
+use super::{Extensions, InstructionExtension};
 use crate::error::DisasmError;
-use crate::riscv::extensions::extension_masks;
 
 /// RVD Double-Precision Floating-Point Extension
 pub struct RvdExtension {
@@ -176,9 +175,9 @@ impl InstructionExtension for RvdExtension {
         "D"
     }
 
-    fn is_enabled(&self, extensions: u32) -> bool {
+    fn is_enabled(&self, extensions: Extensions) -> bool {
         // D extension bit (bit 4)
-        extensions & extension_masks::D != 0
+        extensions.contains(Extensions::D)
     }
 
     fn try_decode_standard(
