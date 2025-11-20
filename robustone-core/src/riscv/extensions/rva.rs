@@ -9,9 +9,8 @@ use super::super::shared::{
     registers::{RegisterManager, RegisterNameProvider},
 };
 use super::super::types::*;
-use super::InstructionExtension;
+use super::{Extensions, InstructionExtension};
 use crate::error::DisasmError;
-use crate::riscv::extensions::extension_masks;
 
 /// RVA Atomic Instructions Extension
 pub struct RvaExtension {
@@ -116,9 +115,9 @@ impl InstructionExtension for RvaExtension {
         "A"
     }
 
-    fn is_enabled(&self, extensions: u32) -> bool {
+    fn is_enabled(&self, extensions: Extensions) -> bool {
         // A extension bit (bit 2)
-        extensions & extension_masks::A != 0
+        extensions.contains(Extensions::A)
     }
 
     fn try_decode_standard(
