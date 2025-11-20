@@ -4,7 +4,7 @@
 //! is implemented as a separate module, making the codebase more maintainable
 //! and easier to extend with new instructions.
 
-use super::extensions::{InstructionExtension, create_extensions, extension_masks};
+use super::extensions::{Extensions, InstructionExtension, create_extensions};
 use super::types::*;
 use crate::error::DisasmError;
 
@@ -19,13 +19,13 @@ pub enum Xlen {
 /// Refactored RISC-V instruction decoder using extension modules.
 pub struct RiscVDecoder {
     xlen: Xlen,
-    extensions: u32,
+    extensions: Extensions,
     extension_handlers: Vec<Box<dyn InstructionExtension>>,
 }
 
 impl RiscVDecoder {
     /// Construct a decoder with the provided XLEN and extension bitmask.
-    pub fn new(xlen: Xlen, extensions: u32) -> Self {
+    pub fn new(xlen: Xlen, extensions: Extensions) -> Self {
         let extension_handlers = create_extensions();
         Self {
             xlen,
@@ -36,28 +36,12 @@ impl RiscVDecoder {
 
     /// Create a decoder with full RV32GC support.
     pub fn rv32gc() -> Self {
-        Self::new(
-            Xlen::X32,
-            extension_masks::I
-                | extension_masks::M
-                | extension_masks::A
-                | extension_masks::F
-                | extension_masks::C
-                | extension_masks::XTHEADCONDMOV,
-        )
+        Self::new(Xlen::X32, Extensions::G | Extensions::C)
     }
 
     /// Create a decoder with full RV64GC support.
     pub fn rv64gc() -> Self {
-        Self::new(
-            Xlen::X64,
-            extension_masks::I
-                | extension_masks::M
-                | extension_masks::A
-                | extension_masks::F
-                | extension_masks::D
-                | extension_masks::C,
-        )
+        Self::new(Xlen::X64, Extensions::G | Extensions::C)
     }
 
     /// Decode a single instruction located at `address`.
@@ -229,7 +213,7 @@ impl RiscVDecoder {
             | ((instruction >> 6) & 0x1) << 6          // imm[6] from instruction[6]
             | ((instruction >> 9) & 0x3) << 7; // imm[8:7] from instruction[9:8]
 
-        if self.extensions & extension_masks::C == 0 {
+        if !self.extensions.contains(Extensions::C) {
             eprintln!("Warning: Decoding compressed instruction while C extension is disabled");
         }
 
@@ -334,20 +318,16 @@ mod tests {
     fn test_refactored_decoder_creation() {
         let decoder = RiscVDecoder::rv32gc();
         assert_eq!(decoder.xlen, Xlen::X32);
-        assert!(decoder.extensions & extension_masks::I != 0);
+        assert!(decoder.extensions.contains(Extensions::I));
 
         let decoder = RiscVDecoder::rv64gc();
         assert_eq!(decoder.xlen, Xlen::X64);
-        assert!(decoder.extensions & extension_masks::I != 0);
+        assert!(decoder.extensions.contains(Extensions::I));
 
         let decoder = RiscVDecoder::rv64gc();
         assert_eq!(decoder.xlen, Xlen::X64);
-        assert!(decoder.extensions & extension_masks::I != 0);
-        assert!(decoder.extensions & extension_masks::M != 0);
-        assert!(decoder.extensions & extension_masks::A != 0);
-        assert!(decoder.extensions & extension_masks::F != 0);
-        assert!(decoder.extensions & extension_masks::D != 0);
-        assert!(decoder.extensions & extension_masks::C != 0);
+        assert!(decoder.extensions.contains(Extensions::G));
+        assert!(decoder.extensions.contains(Extensions::C));
     }
 
     #[test]

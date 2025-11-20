@@ -5,6 +5,22 @@
 
 use super::decoder::{RiscVDecodedInstruction, Xlen};
 use crate::error::DisasmError;
+use bitflags::bitflags;
+
+bitflags! {
+    /// Bitflags representing enabled RISC-V extensions.
+    #[derive(Clone, Copy)]
+    pub struct Extensions: u32 {
+        const G             = Self::I.bits() | Self::M.bits() | Self::A.bits() | Self::F.bits() | Self::D.bits();
+        const I             = 1 << 0;
+        const M             = 1 << 1;
+        const A             = 1 << 2;
+        const F             = 1 << 3;
+        const D             = 1 << 4;
+        const C             = 1 << 5;
+        const XTHEADCONDMOV = 1 << 6;
+    }
+}
 
 /// Trait that all instruction set extensions must implement.
 #[allow(clippy::too_many_arguments)]
@@ -65,7 +81,7 @@ pub trait InstructionExtension: Sync {
     fn name(&self) -> &'static str;
 
     /// Check if this extension is enabled for the given configuration.
-    fn is_enabled(&self, extensions: u32) -> bool;
+    fn is_enabled(&self, extensions: Extensions) -> bool;
 }
 
 // Standard RISC-V extension modules
@@ -98,15 +114,4 @@ pub fn create_extensions() -> Vec<Box<dyn InstructionExtension>> {
         Box::new(RvcExtension::new()),
         Box::new(XTheadCondMovExtension::new()),
     ]
-}
-
-/// Extension bit masks for standard RISC-V and XuanTie extensions.
-pub mod extension_masks {
-    pub const I: u32 = 0b001; // Base Integer Instruction Set
-    pub const M: u32 = 0b010; // Multiply and Divide
-    pub const A: u32 = 0b100; // Atomic Instructions
-    pub const F: u32 = 0b1000; // Single-Precision Floating-Point
-    pub const D: u32 = 0b10000; // Double-Precision Floating-Point
-    pub const C: u32 = 0b100000; // Compressed Instructions
-    pub const XTHEADCONDMOV: u32 = 0b1000000; // XTheadCondMov - Conditional Move
 }

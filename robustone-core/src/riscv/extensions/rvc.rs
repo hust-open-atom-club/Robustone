@@ -10,9 +10,8 @@ use super::super::shared::{
     registers::{RegisterManager, RegisterNameProvider},
 };
 use super::super::types::*;
-use super::InstructionExtension;
+use super::{Extensions, InstructionExtension};
 use crate::error::DisasmError;
-use crate::riscv::extensions::extension_masks;
 
 /// RVC Compressed Instructions Extension
 pub struct RvcExtension {
@@ -371,9 +370,9 @@ impl InstructionExtension for RvcExtension {
         "C"
     }
 
-    fn is_enabled(&self, extensions: u32) -> bool {
+    fn is_enabled(&self, extensions: Extensions) -> bool {
         // C extension bit (bit 5)
-        extensions & extension_masks::C != 0
+        extensions.contains(Extensions::C)
     }
 
     fn try_decode_standard(

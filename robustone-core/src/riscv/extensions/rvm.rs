@@ -10,9 +10,8 @@ use super::super::shared::{
     registers::{RegisterManager, RegisterNameProvider},
 };
 use super::super::types::*;
-use super::InstructionExtension;
+use super::{Extensions, InstructionExtension};
 use crate::error::DisasmError;
-use crate::riscv::extensions::extension_masks;
 
 /// RVM Multiply and Divide Extension
 pub struct RvmExtension {
@@ -101,9 +100,9 @@ impl InstructionExtension for RvmExtension {
         "M"
     }
 
-    fn is_enabled(&self, extensions: u32) -> bool {
+    fn is_enabled(&self, extensions: Extensions) -> bool {
         // M extension bit (bit 1)
-        extensions & extension_masks::M != 0
+        extensions.contains(Extensions::M)
     }
 
     fn try_decode_standard(
