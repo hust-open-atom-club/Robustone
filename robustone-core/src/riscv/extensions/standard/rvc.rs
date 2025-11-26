@@ -3,22 +3,23 @@
 //! This module implements the RISC-V compressed instruction extension (C extension),
 //! which provides 16-bit compressed versions of common instructions to improve code density.
 
-use super::super::decoder::{RiscVDecodedInstruction, Xlen};
-use super::super::shared::{
+use super::Standard;
+use crate::error::DisasmError;
+use crate::riscv::decoder::{RiscVDecodedInstruction, Xlen};
+use crate::riscv::extensions::{Extensions, InstructionExtension};
+use crate::riscv::shared::{
     encoding::convenience as encoding_conv,
     operands::convenience,
     registers::{RegisterManager, RegisterNameProvider},
 };
-use super::super::types::*;
-use super::{Extensions, InstructionExtension};
-use crate::error::DisasmError;
+use crate::riscv::types::*;
 
 /// RVC Compressed Instructions Extension
-pub struct RvcExtension {
+pub struct Rvc {
     register_manager: RegisterManager,
 }
 
-impl RvcExtension {
+impl Rvc {
     /// Create a new RVC extension instance.
     pub fn new() -> Self {
         Self {
@@ -365,14 +366,14 @@ impl RvcExtension {
     }
 }
 
-impl InstructionExtension for RvcExtension {
+impl InstructionExtension for Rvc {
     fn name(&self) -> &'static str {
         "C"
     }
 
-    fn is_enabled(&self, extensions: Extensions) -> bool {
+    fn is_enabled(&self, extensions: &Extensions) -> bool {
         // C extension bit (bit 5)
-        extensions.contains(Extensions::C)
+        extensions.standard.contains(Standard::C)
     }
 
     fn try_decode_standard(
@@ -471,7 +472,7 @@ impl InstructionExtension for RvcExtension {
     }
 }
 
-impl Default for RvcExtension {
+impl Default for Rvc {
     fn default() -> Self {
         Self::new()
     }

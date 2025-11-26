@@ -3,21 +3,22 @@
 //! This module implements the RISC-V atomic instructions extension (A extension),
 //! which provides atomic memory operations for synchronization and concurrency.
 
-use super::super::decoder::{RiscVDecodedInstruction, Xlen};
-use super::super::shared::{
+use super::Standard;
+use crate::error::DisasmError;
+use crate::riscv::decoder::{RiscVDecodedInstruction, Xlen};
+use crate::riscv::extensions::{Extensions, InstructionExtension};
+use crate::riscv::shared::{
     operands::convenience,
     registers::{RegisterManager, RegisterNameProvider},
 };
-use super::super::types::*;
-use super::{Extensions, InstructionExtension};
-use crate::error::DisasmError;
+use crate::riscv::types::*;
 
 /// RVA Atomic Instructions Extension
-pub struct RvaExtension {
+pub struct Rva {
     register_manager: RegisterManager,
 }
 
-impl RvaExtension {
+impl Rva {
     /// Create a new RVA extension instance.
     pub fn new() -> Self {
         Self {
@@ -110,14 +111,14 @@ impl RvaExtension {
     }
 }
 
-impl InstructionExtension for RvaExtension {
+impl InstructionExtension for Rva {
     fn name(&self) -> &'static str {
         "A"
     }
 
-    fn is_enabled(&self, extensions: Extensions) -> bool {
+    fn is_enabled(&self, extensions: &Extensions) -> bool {
         // A extension bit (bit 2)
-        extensions.contains(Extensions::A)
+        extensions.standard.contains(Standard::A)
     }
 
     fn try_decode_standard(
@@ -249,7 +250,7 @@ impl InstructionExtension for RvaExtension {
     }
 }
 
-impl Default for RvaExtension {
+impl Default for Rva {
     fn default() -> Self {
         Self::new()
     }

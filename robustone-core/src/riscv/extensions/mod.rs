@@ -5,20 +5,43 @@
 
 use super::decoder::{RiscVDecodedInstruction, Xlen};
 use crate::error::DisasmError;
-use bitflags::bitflags;
 
-bitflags! {
-    /// Bitflags representing enabled RISC-V extensions.
-    #[derive(Clone, Copy)]
-    pub struct Extensions: u32 {
-        const G             = Self::I.bits() | Self::M.bits() | Self::A.bits() | Self::F.bits() | Self::D.bits();
-        const I             = 1 << 0;
-        const M             = 1 << 1;
-        const A             = 1 << 2;
-        const F             = 1 << 3;
-        const D             = 1 << 4;
-        const C             = 1 << 5;
-        const XTHEADCONDMOV = 1 << 6;
+// Submodules grouping standard and custom-specific extensions.
+pub mod standard;
+pub mod thead;
+
+use standard::Standard;
+use thead::THead;
+
+/// Aggregated extension configuration passed to RISC-V extension handlers.
+pub struct Extensions {
+    pub(crate) standard: Standard,
+    pub(crate) thead: THead,
+}
+
+impl Extensions {
+    /// Convenience configuration for RV32GC profile with all standard and
+    /// no T-Head custom extensions enabled.
+    pub fn rv32gc() -> Self {
+        Self {
+            standard: Standard::G | Standard::C,
+            thead: THead::empty(),
+        }
+    }
+
+    /// Convenience configuration for RV64GC profile with all standard and
+    /// no T-Head custom extensions enabled.
+    pub fn rv64gc() -> Self {
+        Self {
+            standard: Standard::G | Standard::C,
+            thead: THead::empty(),
+        }
+    }
+
+    /// Enables all available T-Head custom extensions on this configuration.
+    pub fn thead(mut self) -> Self {
+        self.thead |= THead::all();
+        self
     }
 }
 
@@ -81,37 +104,18 @@ pub trait InstructionExtension: Sync {
     fn name(&self) -> &'static str;
 
     /// Check if this extension is enabled for the given configuration.
-    fn is_enabled(&self, extensions: Extensions) -> bool;
+    fn is_enabled(&self, extensions: &Extensions) -> bool;
 }
-
-// Standard RISC-V extension modules
-pub mod rva; // RVA - Atomic Instructions
-pub mod rvc; // RVC - Compressed Instructions
-pub mod rvd; // RVD - Double-Precision Floating-Point
-pub mod rvf; // RVF - Single-Precision Floating-Point
-pub mod rvi; // RV32I/RV64I - Base Integer Instruction Set
-pub mod rvm; // RVM - Multiply and Divide Instructions
-
-// XuanTie vendor extension modules
-pub mod xtheadcondmov; // XTheadCondMov - Conditional Move Instructions
-
-use rva::RvaExtension;
-use rvc::RvcExtension;
-use rvd::RvdExtension;
-use rvf::RvfExtension;
-use rvi::RviExtension;
-use rvm::RvmExtension;
-use xtheadcondmov::XTheadCondMovExtension;
 
 /// Create all available standard RISC-V extensions.
 pub fn create_extensions() -> Vec<Box<dyn InstructionExtension>> {
     vec![
-        Box::new(RviExtension::new()),
-        Box::new(RvaExtension::new()),
-        Box::new(RvmExtension::new()),
-        Box::new(RvfExtension::new()),
-        Box::new(RvdExtension::new()),
-        Box::new(RvcExtension::new()),
-        Box::new(XTheadCondMovExtension::new()),
+        Box::new(standard::Rvi::new()),
+        Box::new(standard::Rva::new()),
+        Box::new(standard::Rvm::new()),
+        Box::new(standard::Rvf::new()),
+        Box::new(standard::Rvd::new()),
+        Box::new(standard::Rvc::new()),
+        Box::new(thead::CMov::new()),
     ]
 }
