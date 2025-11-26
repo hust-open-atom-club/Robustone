@@ -4,27 +4,28 @@
 //! which includes all the fundamental integer operations, control flow instructions,
 //! memory operations, and system instructions that form the core of RISC-V.
 
-use super::super::decoder::{RiscVDecodedInstruction, Xlen};
-use super::super::shared::{
+use super::Standard;
+use crate::error::DisasmError;
+use crate::riscv::decoder::{RiscVDecodedInstruction, Xlen};
+use crate::riscv::extensions::{Extensions, InstructionExtension};
+use crate::riscv::shared::{
     InstructionFormatter, OperandFactory, RegisterNameProvider,
     encoding::ShamtExtractor,
     formatting::DefaultInstructionFormatter,
     operands::{DefaultOperandFactory, OperandBuilder, OperandFormatter},
     registers::RegisterManager,
 };
-use super::super::types::*;
-use super::{Extensions, InstructionExtension};
-use crate::error::DisasmError;
+use crate::riscv::types::*;
 
 /// RV32I/RV64I Base Integer Extension
-pub struct RviExtension {
+pub struct Rvi {
     operand_factory: DefaultOperandFactory,
     formatter: DefaultInstructionFormatter,
     register_manager: RegisterManager,
     operand_builder: OperandBuilder,
 }
 
-impl RviExtension {
+impl Rvi {
     /// Create a new RV32I/RV64I extension instance.
     pub fn new() -> Self {
         Self {
@@ -637,14 +638,14 @@ impl RviExtension {
     }
 }
 
-impl InstructionExtension for RviExtension {
+impl InstructionExtension for Rvi {
     fn name(&self) -> &'static str {
         "I"
     }
 
-    fn is_enabled(&self, extensions: Extensions) -> bool {
+    fn is_enabled(&self, extensions: &Extensions) -> bool {
         // I extension is always enabled (bit 0)
-        extensions.contains(Extensions::I)
+        extensions.standard.contains(Standard::I)
     }
 
     fn try_decode_standard(
@@ -716,7 +717,7 @@ impl InstructionExtension for RviExtension {
     }
 }
 
-impl Default for RviExtension {
+impl Default for Rvi {
     fn default() -> Self {
         Self::new()
     }
@@ -725,18 +726,26 @@ impl Default for RviExtension {
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use crate::riscv::extensions::thead::THead;
     #[test]
     fn test_rvi_extension_creation() {
-        let extension = RviExtension::new();
+        let extension = Rvi::new();
         assert_eq!(extension.name(), "I");
-        assert!(extension.is_enabled(Extensions::I));
-        assert!(!extension.is_enabled(Extensions::M));
+        let exts_i = Extensions {
+            standard: Standard::I,
+            thead: THead::empty(),
+        };
+        let exts_m = Extensions {
+            standard: Standard::M,
+            thead: THead::empty(),
+        };
+        assert!(extension.is_enabled(&exts_i));
+        assert!(!extension.is_enabled(&exts_m));
     }
 
     #[test]
     fn test_rvi_instruction_decoding() {
-        let extension = RviExtension::new();
+        let extension = Rvi::new();
 
         // Test ADDI x1, x2, 10 -> 0x00000513
         let result = extension.try_decode_standard(
@@ -762,7 +771,7 @@ mod tests {
 
     #[test]
     fn test_rvi_compressed_instructions() {
-        let extension = RviExtension::new();
+        let extension = Rvi::new();
 
         // RVI extension shouldn't handle compressed instructions
         let result = extension.try_decode_compressed(

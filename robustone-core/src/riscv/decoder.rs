@@ -4,6 +4,7 @@
 //! is implemented as a separate module, making the codebase more maintainable
 //! and easier to extend with new instructions.
 
+use super::extensions::standard::Standard;
 use super::extensions::{Extensions, InstructionExtension, create_extensions};
 use super::types::*;
 use crate::error::DisasmError;
@@ -36,12 +37,12 @@ impl RiscVDecoder {
 
     /// Create a decoder with full RV32GC support.
     pub fn rv32gc() -> Self {
-        Self::new(Xlen::X32, Extensions::G | Extensions::C)
+        Self::new(Xlen::X32, Extensions::rv32gc())
     }
 
     /// Create a decoder with full RV64GC support.
     pub fn rv64gc() -> Self {
-        Self::new(Xlen::X64, Extensions::G | Extensions::C)
+        Self::new(Xlen::X64, Extensions::rv64gc())
     }
 
     /// Decode a single instruction located at `address`.
@@ -115,7 +116,7 @@ impl RiscVDecoder {
 
         // Try each enabled extension in order
         for extension in &self.extension_handlers {
-            if !extension.is_enabled(self.extensions) {
+            if !extension.is_enabled(&self.extensions) {
                 continue;
             }
 
@@ -213,13 +214,13 @@ impl RiscVDecoder {
             | ((instruction >> 6) & 0x1) << 6          // imm[6] from instruction[6]
             | ((instruction >> 9) & 0x3) << 7; // imm[8:7] from instruction[9:8]
 
-        if !self.extensions.contains(Extensions::C) {
+        if !self.extensions.standard.contains(Standard::C) {
             eprintln!("Warning: Decoding compressed instruction while C extension is disabled");
         }
 
         // Try each enabled extension for compressed instructions
         for extension in &self.extension_handlers {
-            if !extension.is_enabled(self.extensions) {
+            if !extension.is_enabled(&self.extensions) {
                 continue;
             }
 
@@ -318,16 +319,16 @@ mod tests {
     fn test_refactored_decoder_creation() {
         let decoder = RiscVDecoder::rv32gc();
         assert_eq!(decoder.xlen, Xlen::X32);
-        assert!(decoder.extensions.contains(Extensions::I));
+        assert!(decoder.extensions.standard.contains(Standard::I));
 
         let decoder = RiscVDecoder::rv64gc();
         assert_eq!(decoder.xlen, Xlen::X64);
-        assert!(decoder.extensions.contains(Extensions::I));
+        assert!(decoder.extensions.standard.contains(Standard::I));
 
         let decoder = RiscVDecoder::rv64gc();
         assert_eq!(decoder.xlen, Xlen::X64);
-        assert!(decoder.extensions.contains(Extensions::G));
-        assert!(decoder.extensions.contains(Extensions::C));
+        assert!(decoder.extensions.standard.contains(Standard::G));
+        assert!(decoder.extensions.standard.contains(Standard::C));
     }
 
     #[test]
