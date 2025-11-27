@@ -19,6 +19,7 @@ pub mod types;
 use crate::{ArchitectureHandler, error::DisasmError, instruction::Instruction};
 use arch::RiscVInstructionDetail;
 use decoder::{RiscVDecoder, Xlen};
+use extensions::Extensions;
 use types::*;
 
 /// Architecture handler implementation for RISC-V targets.
@@ -50,7 +51,7 @@ impl RiscVHandler {
     }
 
     /// Creates a handler with custom XLEN and extension flags.
-    pub fn with_extensions(xlen: Xlen, extensions: u32) -> Self {
+    pub fn with_extensions(xlen: Xlen, extensions: Extensions) -> Self {
         Self {
             decoder: RiscVDecoder::new(xlen, extensions),
         }

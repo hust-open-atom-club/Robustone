@@ -4,22 +4,22 @@
 //! which provides instructions to conditionally move register values based on
 //! whether another register is zero or non-zero.
 
-use super::super::decoder::{RiscVDecodedInstruction, Xlen};
-use super::super::shared::{
+use super::THead;
+use crate::error::DisasmError;
+use crate::riscv::decoder::{RiscVDecodedInstruction, Xlen};
+use crate::riscv::extensions::{Extensions, InstructionExtension};
+use crate::riscv::shared::{
     operands::convenience,
     registers::{RegisterManager, RegisterNameProvider},
 };
-use super::super::types::*;
-use super::InstructionExtension;
-use crate::error::DisasmError;
-use crate::riscv::extensions::extension_masks;
+use crate::riscv::types::*;
 
 /// XTheadCondMov Conditional Move Extension
-pub struct XTheadCondMovExtension {
+pub struct CMov {
     register_manager: RegisterManager,
 }
 
-impl XTheadCondMovExtension {
+impl CMov {
     /// Create a new XTheadCondMov extension instance.
     pub fn new() -> Self {
         Self {
@@ -63,14 +63,14 @@ impl XTheadCondMovExtension {
     }
 }
 
-impl InstructionExtension for XTheadCondMovExtension {
+impl InstructionExtension for CMov {
     fn name(&self) -> &'static str {
         "XTheadCondMov"
     }
 
-    fn is_enabled(&self, extensions: u32) -> bool {
+    fn is_enabled(&self, extensions: &Extensions) -> bool {
         // XTheadCondMov extension bit
-        extensions & extension_masks::XTHEADCONDMOV != 0
+        extensions.thead.contains(THead::CMOV)
     }
 
     fn try_decode_standard(
@@ -145,7 +145,7 @@ impl InstructionExtension for XTheadCondMovExtension {
     }
 }
 
-impl Default for XTheadCondMovExtension {
+impl Default for CMov {
     fn default() -> Self {
         Self::new()
     }
@@ -157,7 +157,7 @@ mod tests {
 
     #[test]
     fn test_mveqz_decoding() {
-        let ext = XTheadCondMovExtension::new();
+        let ext = CMov::new();
 
         // th.mveqz ra, sp, gp (x1, x2, x3)
         // opcode=0x0B, funct3=0x1, funct7=(0x08<<2)|0x00=0x20, rd=1, rs1=2, rs2=3
@@ -172,7 +172,7 @@ mod tests {
 
     #[test]
     fn test_mvnez_decoding() {
-        let ext = XTheadCondMovExtension::new();
+        let ext = CMov::new();
 
         // th.mvnez x1, x2, x3
         // opcode=0x0B, funct3=0x1, funct7=(0x08<<2)|0x01=0x21, rd=1, rs1=2, rs2=3
@@ -187,7 +187,7 @@ mod tests {
 
     #[test]
     fn test_non_matching_opcode() {
-        let ext = XTheadCondMovExtension::new();
+        let ext = CMov::new();
 
         // Different opcode should not match
         let result = ext.try_decode_standard(0x33, 0x1, 0x20, 1, 2, 3, 0, 0, 0, 0, 0, 0, Xlen::X32);

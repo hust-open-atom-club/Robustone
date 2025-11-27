@@ -3,22 +3,22 @@
 //! This module implements the RISC-V double-precision floating-point extension (D extension),
 //! which provides IEEE 754 double-precision floating-point operations.
 
-use super::super::decoder::{RiscVDecodedInstruction, Xlen};
-use super::super::shared::{
+use super::Standard;
+use crate::error::DisasmError;
+use crate::riscv::decoder::{RiscVDecodedInstruction, Xlen};
+use crate::riscv::extensions::{Extensions, InstructionExtension};
+use crate::riscv::shared::{
     operands::convenience,
     registers::{RegisterManager, RegisterNameProvider},
 };
-use super::super::types::*;
-use super::InstructionExtension;
-use crate::error::DisasmError;
-use crate::riscv::extensions::extension_masks;
+use crate::riscv::types::*;
 
 /// RVD Double-Precision Floating-Point Extension
-pub struct RvdExtension {
+pub struct Rvd {
     register_manager: RegisterManager,
 }
 
-impl RvdExtension {
+impl Rvd {
     /// Create a new RVD extension instance.
     pub fn new() -> Self {
         Self {
@@ -171,14 +171,14 @@ impl RvdExtension {
     }
 }
 
-impl InstructionExtension for RvdExtension {
+impl InstructionExtension for Rvd {
     fn name(&self) -> &'static str {
         "D"
     }
 
-    fn is_enabled(&self, extensions: u32) -> bool {
+    fn is_enabled(&self, extensions: &Extensions) -> bool {
         // D extension bit (bit 4)
-        extensions & extension_masks::D != 0
+        extensions.standard.contains(Standard::D)
     }
 
     fn try_decode_standard(
@@ -340,7 +340,7 @@ impl InstructionExtension for RvdExtension {
     }
 }
 
-impl Default for RvdExtension {
+impl Default for Rvd {
     fn default() -> Self {
         Self::new()
     }
