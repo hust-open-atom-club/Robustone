@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 hex = "0.4"
 bitflags = "2.10.0"
+thiserror = "2.0.17"
 
 [features]
 default = ["riscv"]
