@@ -5,12 +5,43 @@
 
 use std::collections::HashMap;
 
+use crate::riscv::arch::RiscVInstructionDetail;
+
+#[derive(Debug, Clone)]
+pub enum AllInstructionDetail {
+    BasicInstructionDetail(BasicInstructionDetail),
+    RiscVInstructionDetail(RiscVInstructionDetail),
+}
+
+impl AsRef<dyn InstructionDetail + 'static> for AllInstructionDetail {
+    fn as_ref(&self) -> &(dyn InstructionDetail + 'static) {
+        match self {
+            AllInstructionDetail::BasicInstructionDetail(detail) => detail,
+            AllInstructionDetail::RiscVInstructionDetail(detail) => detail,
+        }
+    }
+}
+
+impl InstructionDetail for AllInstructionDetail {
+    fn architecture_name(&self) -> &'static str {
+        self.as_ref().architecture_name()
+    }
+
+    fn registers_read(&self) -> Vec<u32> {
+        self.as_ref().registers_read()
+    }
+
+    fn registers_written(&self) -> Vec<u32> {
+        self.as_ref().registers_written()
+    }
+}
+
 /// Decoded instruction returned by the disassembler.
 ///
 /// This is the legacy instruction structure that maintains backward compatibility
 /// with existing code while providing the essential information needed for
 /// most disassembly use cases.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Instruction {
     /// The memory address where this instruction would be located.
     ///
@@ -52,24 +83,7 @@ pub struct Instruction {
     /// structured information beyond the basic text representation.
     /// The content is architecture-specific and should be handled
     /// with appropriate type checking or pattern matching.
-    pub detail: Option<Box<dyn InstructionDetail>>,
-}
-
-impl Clone for Instruction {
-    fn clone(&self) -> Self {
-        Self {
-            address: self.address,
-            bytes: self.bytes.clone(),
-            mnemonic: self.mnemonic.clone(),
-            operands: self.operands.clone(),
-            size: self.size,
-            detail: self.detail.as_ref().map(|_d| {
-                // For now, we'll use BasicInstructionDetail as a fallback for cloning
-                // This maintains compatibility while avoiding the complex clone trait
-                Box::new(BasicInstructionDetail::new("cloned")) as Box<dyn InstructionDetail>
-            }),
-        }
-    }
+    pub detail: Option<AllInstructionDetail>,
 }
 
 impl Default for Instruction {
@@ -146,7 +160,7 @@ impl Instruction {
         bytes: Vec<u8>,
         mnemonic: String,
         operands: String,
-        detail: Box<dyn InstructionDetail>,
+        detail: AllInstructionDetail,
     ) -> Self {
         let size = bytes.len();
         Self {
@@ -190,7 +204,7 @@ impl Instruction {
             mnemonic,
             operands,
             size,
-            detail: Some(Box::new(detail)),
+            detail: Some(AllInstructionDetail::BasicInstructionDetail(detail)),
         }
     }
 
@@ -404,7 +418,7 @@ mod tests {
             vec![0x01, 0x02, 0x03, 0x04],
             "test".to_string(),
             "r1, r2".to_string(),
-            Box::new(detail),
+            AllInstructionDetail::BasicInstructionDetail(detail),
         );
 
         assert_eq!(instruction.mnemonic, "test");
