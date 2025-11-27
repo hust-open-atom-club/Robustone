@@ -16,7 +16,11 @@ pub mod printer;
 pub mod shared;
 pub mod types;
 
-use crate::{ArchitectureHandler, error::DisasmError, instruction::Instruction};
+use crate::{
+    ArchitectureHandler,
+    error::DisasmError,
+    instruction::{AllInstructionDetail, Instruction},
+};
 use arch::RiscVInstructionDetail;
 use decoder::{RiscVDecoder, Xlen};
 use extensions::Extensions;
@@ -94,7 +98,7 @@ impl ArchitectureHandler for RiscVHandler {
                 bytes[..decoded.size].to_vec(),
                 decoded.mnemonic,
                 decoded.operands,
-                Box::new(riscv_detail),
+                AllInstructionDetail::RiscVInstructionDetail(riscv_detail),
             ),
             decoded.size,
         ))
