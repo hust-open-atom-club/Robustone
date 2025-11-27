@@ -58,6 +58,11 @@ pub mod prelude {
     pub use crate::utils::{Endianness, HexParser};
 
     // Re-export architecture utilities
+    pub use crate::architecture::{Architecture, is_address_aligned};
+    // Compatible with backwards usage
+    #[deprecated(
+        note = "Use the `Architecture::from` and `is_address_aligned` function directly instead of the `ArchitectureUtils` struct"
+    )]
     pub use crate::architecture::ArchitectureUtils;
 }
 

@@ -494,7 +494,7 @@ mod tests {
         assert_eq!(i_fields.imm, 5);
 
         // Test U-type: lui x5, 0x10
-        let instruction = 0b0001_0000_0000_0000_0000_00101_0110111;
+        let instruction = 0b0001_0000_0000_0000_0000_0010_1011_0111;
         let u_fields = decoder.extract_u_type(instruction);
         assert_eq!(u_fields.opcode, 0b0110111);
         assert_eq!(u_fields.rd, 5);
