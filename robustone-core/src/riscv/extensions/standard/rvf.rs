@@ -3,22 +3,22 @@
 //! This module implements the RISC-V single-precision floating-point extension (F extension),
 //! which provides IEEE 754 single-precision floating-point operations.
 
-use super::super::decoder::{RiscVDecodedInstruction, Xlen};
-use super::super::shared::{
+use super::Standard;
+use crate::error::DisasmError;
+use crate::riscv::decoder::{RiscVDecodedInstruction, Xlen};
+use crate::riscv::extensions::{Extensions, InstructionExtension};
+use crate::riscv::shared::{
     operands::convenience,
     registers::{RegisterManager, RegisterNameProvider},
 };
-use super::super::types::*;
-use super::InstructionExtension;
-use crate::error::DisasmError;
-use crate::riscv::extensions::extension_masks;
+use crate::riscv::types::*;
 
 /// RVF Single-Precision Floating-Point Extension
-pub struct RvfExtension {
+pub struct Rvf {
     register_manager: RegisterManager,
 }
 
-impl RvfExtension {
+impl Rvf {
     /// Create a new RVF extension instance.
     pub fn new() -> Self {
         Self {
@@ -171,14 +171,14 @@ impl RvfExtension {
     }
 }
 
-impl InstructionExtension for RvfExtension {
+impl InstructionExtension for Rvf {
     fn name(&self) -> &'static str {
         "F"
     }
 
-    fn is_enabled(&self, extensions: u32) -> bool {
+    fn is_enabled(&self, extensions: &Extensions) -> bool {
         // F extension bit (bit 3)
-        extensions & extension_masks::F != 0
+        extensions.standard.contains(Standard::F)
     }
 
     fn try_decode_standard(
@@ -336,7 +336,7 @@ impl InstructionExtension for RvfExtension {
     }
 }
 
-impl Default for RvfExtension {
+impl Default for Rvf {
     fn default() -> Self {
         Self::new()
     }

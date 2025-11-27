@@ -3,24 +3,24 @@
 //! This module implements the RISC-V multiply and divide extension (M extension),
 //! which includes integer multiplication, division, and remainder operations.
 
-use super::super::decoder::{RiscVDecodedInstruction, Xlen};
-use super::super::shared::{
+use super::Standard;
+use crate::error::DisasmError;
+use crate::riscv::decoder::{RiscVDecodedInstruction, Xlen};
+use crate::riscv::extensions::{Extensions, InstructionExtension};
+use crate::riscv::shared::{
     OperandFactory,
     operands::DefaultOperandFactory,
     registers::{RegisterManager, RegisterNameProvider},
 };
-use super::super::types::*;
-use super::InstructionExtension;
-use crate::error::DisasmError;
-use crate::riscv::extensions::extension_masks;
+use crate::riscv::types::*;
 
 /// RVM Multiply and Divide Extension
-pub struct RvmExtension {
+pub struct Rvm {
     operand_factory: DefaultOperandFactory,
     register_manager: RegisterManager,
 }
 
-impl RvmExtension {
+impl Rvm {
     /// Create a new RVM extension instance.
     pub fn new() -> Self {
         Self {
@@ -96,14 +96,14 @@ impl RvmExtension {
     }
 }
 
-impl InstructionExtension for RvmExtension {
+impl InstructionExtension for Rvm {
     fn name(&self) -> &'static str {
         "M"
     }
 
-    fn is_enabled(&self, extensions: u32) -> bool {
+    fn is_enabled(&self, extensions: &Extensions) -> bool {
         // M extension bit (bit 1)
-        extensions & extension_masks::M != 0
+        extensions.standard.contains(Standard::M)
     }
 
     fn try_decode_standard(
@@ -157,7 +157,7 @@ impl InstructionExtension for RvmExtension {
     }
 }
 
-impl Default for RvmExtension {
+impl Default for Rvm {
     fn default() -> Self {
         Self::new()
     }
