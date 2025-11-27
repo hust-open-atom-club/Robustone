@@ -99,7 +99,7 @@ impl Architecture {
     /// assert_eq!(Architecture::from("RISCV32"), "riscv32");
     /// assert_eq!(Architecture::from("x86-64"), "x86_64");
     /// assert_eq!(Architecture::from("armv7"), "arm");
-    /// assert_eq!(Architecture::from("RISCV32"), Architecture::RisCV32);
+    /// assert_eq!(Architecture::from("RISCV32"), Architecture::RiscV32);
     /// assert_eq!(Architecture::from("x86-64"), Architecture::X86_64);
     /// assert_eq!(Architecture::from("ARMV7"), Architecture::Arm);
     /// ```
