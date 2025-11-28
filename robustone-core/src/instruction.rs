@@ -261,10 +261,10 @@ pub trait InstructionDetail: std::fmt::Debug + Send + Sync {
     fn architecture_name(&self) -> &'static str;
 
     /// Returns a list of register identifiers that are read by this instruction.
-    fn registers_read(&self) -> Vec<u32>;
+    fn registers_read(&self) -> &[u32];
 
     /// Returns a list of register identifiers that are written by this instruction.
-    fn registers_written(&self) -> Vec<u32>;
+    fn registers_written(&self) -> &[u32];
 }
 
 /// A generic implementation of `InstructionDetail` for simple use cases.
@@ -335,12 +335,12 @@ impl InstructionDetail for BasicInstructionDetail {
         self.architecture
     }
 
-    fn registers_read(&self) -> Vec<u32> {
-        self.regs_read.clone()
+    fn registers_read(&self) -> &[u32] {
+        &self.regs_read
     }
 
-    fn registers_written(&self) -> Vec<u32> {
-        self.regs_write.clone()
+    fn registers_written(&self) -> &[u32] {
+        &self.regs_write
     }
 }
 
