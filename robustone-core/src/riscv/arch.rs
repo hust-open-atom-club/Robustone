@@ -157,12 +157,12 @@ impl crate::instruction::InstructionDetail for RiscVInstructionDetail {
         "riscv"
     }
 
-    fn registers_read(&self) -> Vec<u32> {
-        self.regs_read.clone()
+    fn registers_read(&self) -> &[u32] {
+        &self.regs_read
     }
 
-    fn registers_written(&self) -> Vec<u32> {
-        self.regs_write.clone()
+    fn registers_written(&self) -> &[u32] {
+        &self.regs_write
     }
 }
 
