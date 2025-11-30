@@ -54,15 +54,16 @@ pub mod utils;
 pub mod prelude {
     pub use crate::ArchitectureHandler;
     pub use crate::error::DisasmError;
-    pub use crate::instruction::{Instruction, InstructionDetail};
+    pub use crate::instruction::{AllInstructionDetail, Instruction, InstructionDetail};
     pub use crate::utils::{Endianness, HexParser};
 
     // Re-export architecture utilities
-    pub use crate::architecture::ArchitectureUtils;
+    pub use crate::architecture::{Architecture, is_address_aligned};
 }
 
 use crate::error::DisasmError;
 use crate::instruction::Instruction;
+pub use crate::instruction::InstructionDetail;
 use crate::utils::HexParser;
 
 /// Trait that all architecture-specific disassemblers must implement.

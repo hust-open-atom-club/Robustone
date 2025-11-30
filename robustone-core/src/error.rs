@@ -1,29 +1,14 @@
+use thiserror::Error;
+
 /// Errors produced by the architecture-agnostic disassembly layer.
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum DisasmError {
+    #[error("ERROR: Unsupported architecture: {0}")]
     UnsupportedArchitecture(String),
+    #[error("ERROR: Decoding failed: {0}")]
     DecodingError(String),
+    #[error("ERROR: invalid assembly code: {0}")]
     InvalidHexCode(String),
+    #[error("ERROR: invalid address argument: {0}")]
     InvalidAddress(String),
 }
-
-impl std::fmt::Display for DisasmError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            DisasmError::UnsupportedArchitecture(arch) => {
-                write!(f, "ERROR: Unsupported architecture: {arch}")
-            }
-            DisasmError::DecodingError(msg) => {
-                write!(f, "ERROR: Decoding failed: {msg}")
-            }
-            DisasmError::InvalidHexCode(msg) => {
-                write!(f, "ERROR: invalid assembly code: {msg}")
-            }
-            DisasmError::InvalidAddress(msg) => {
-                write!(f, "ERROR: invalid address argument: {msg}")
-            }
-        }
-    }
-}
-
-impl std::error::Error for DisasmError {}

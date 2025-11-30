@@ -3,7 +3,7 @@
 //! Inspired by Capstone's printer to maintain compatible output formatting.
 
 use super::types::*;
-use crate::Instruction;
+use crate::{Instruction, InstructionDetail as _};
 
 /// Pretty-printer for RISC-V instructions.
 pub struct RiscVPrinter {
