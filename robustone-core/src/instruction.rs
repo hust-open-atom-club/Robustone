@@ -27,11 +27,11 @@ impl InstructionDetail for AllInstructionDetail {
         self.as_ref().architecture_name()
     }
 
-    fn registers_read(&self) -> Vec<u32> {
+    fn registers_read(&self) -> &[u32] {
         self.as_ref().registers_read()
     }
 
-    fn registers_written(&self) -> Vec<u32> {
+    fn registers_written(&self) -> &[u32] {
         self.as_ref().registers_written()
     }
 }
