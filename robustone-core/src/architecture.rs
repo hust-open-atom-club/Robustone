@@ -145,26 +145,6 @@ impl Architecture {
     }
 }
 
-pub struct ArchitectureUtils;
-
-impl ArchitectureUtils {
-    #[deprecated(
-        since = "0.2.0",
-        note = "Please use the `Architecture::from` function directly instead"
-    )]
-    pub fn normalize_name(name: &str) -> String {
-        Architecture::from(name).to_string()
-    }
-
-    #[deprecated(
-        since = "0.2.0",
-        note = "Please use the `is_address_aligned` function directly instead"
-    )]
-    pub fn is_address_aligned(address: u64, alignment: usize) -> bool {
-        is_address_aligned(address, alignment)
-    }
-}
-
 /// Validates that a byte sequence is properly aligned for an architecture.
 ///
 /// # Arguments
