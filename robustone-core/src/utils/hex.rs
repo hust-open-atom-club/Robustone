@@ -53,12 +53,12 @@ impl HexParser {
     pub fn parse(
         &self,
         hex_str: &str,
-        endianness: Option<&Endianness>,
+        endianness: Option<Endianness>,
     ) -> Result<Vec<u8>, DisasmError> {
         let cleaned = self.clean_hex_string(hex_str)?;
         let bytes = self.convert_to_bytes(&cleaned)?;
-        let final_endianness = endianness.unwrap_or(&self.0);
-        Ok(self.apply_endianness(bytes, final_endianness))
+        let final_endianness = endianness.unwrap_or(self.0);
+        Ok(self.apply_endianness(bytes, &final_endianness))
     }
 
     /// Parses a hex string with architecture-specific byte order handling.
@@ -79,7 +79,7 @@ impl HexParser {
         hex_str: &str,
         arch_name: &str,
     ) -> Result<Vec<u8>, DisasmError> {
-        let endianness = &self.determine_architecture_endianness(arch_name);
+        let endianness = self.determine_architecture_endianness(arch_name);
         self.parse(hex_str, Some(endianness))
     }
 
@@ -209,11 +209,11 @@ mod tests {
         let parser = HexParser::new();
 
         // Little-endian (default)
-        let le_result = parser.parse("12345678", Some(&Endianness::Little)).unwrap();
+        let le_result = parser.parse("12345678", Some(Endianness::Little)).unwrap();
         assert_eq!(le_result, vec![0x78, 0x56, 0x34, 0x12]);
 
         // Big-endian
-        let be_result = parser.parse("12345678", Some(&Endianness::Big)).unwrap();
+        let be_result = parser.parse("12345678", Some(Endianness::Big)).unwrap();
         assert_eq!(be_result, vec![0x12, 0x34, 0x56, 0x78]);
     }
 
