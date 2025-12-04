@@ -5,7 +5,7 @@
 //! and big-endian systems in a generic way.
 
 /// Endianness enumeration for byte ordering.
-#[derive(Debug, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Endianness {
     /// Little-endian byte order (least significant byte first)
     #[default]
