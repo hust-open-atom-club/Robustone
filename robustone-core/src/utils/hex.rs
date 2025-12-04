@@ -5,8 +5,11 @@
 //! provides clear error messages for invalid inputs.
 
 use crate::error::DisasmError;
+use crate::utils::Endianness;
 
 /// Parser for hexadecimal strings with various formats and prefixes.
+///
+/// Endianness for parsing (can be overridden per architecture)
 ///
 /// This struct provides methods to parse hexadecimal strings into byte vectors,
 /// handling common formats like:
@@ -14,25 +17,18 @@ use crate::error::DisasmError;
 /// - With prefix: "0xdeadbeef"
 /// - Mixed case: "DeAdBeEf"
 /// - Spaced: "de ad be ef"
-#[derive(Debug, Clone, Default)]
-pub struct HexParser {
-    /// Default endianness for parsing (can be overridden per architecture)
-    default_endianness: crate::utils::Endianness,
-}
+#[derive(Debug, Default)]
+pub struct HexParser(Endianness);
 
 impl HexParser {
     /// Creates a new hex parser with default little-endian ordering.
     pub fn new() -> Self {
-        Self {
-            default_endianness: crate::utils::Endianness::Little,
-        }
+        Self::default()
     }
 
     /// Creates a hex parser with specified default endianness.
-    pub fn with_endianness(endianness: crate::utils::Endianness) -> Self {
-        Self {
-            default_endianness: endianness,
-        }
+    pub fn with_endianness(endianness: Endianness) -> Self {
+        Self(endianness)
     }
 
     /// Parses a hexadecimal string into a byte vector.
@@ -57,13 +53,12 @@ impl HexParser {
     pub fn parse(
         &self,
         hex_str: &str,
-        endianness: Option<crate::utils::Endianness>,
+        endianness: Option<Endianness>,
     ) -> Result<Vec<u8>, DisasmError> {
         let cleaned = self.clean_hex_string(hex_str)?;
         let bytes = self.convert_to_bytes(&cleaned)?;
-        let final_endianness = endianness.unwrap_or(self.default_endianness);
-
-        Ok(self.apply_endianness(bytes, final_endianness))
+        let final_endianness = endianness.unwrap_or(self.0);
+        Ok(self.apply_endianness(bytes, &final_endianness))
     }
 
     /// Parses a hex string with architecture-specific byte order handling.
@@ -130,36 +125,22 @@ impl HexParser {
 
     /// Converts cleaned hex string to byte vector.
     fn convert_to_bytes(&self, cleaned: &str) -> Result<Vec<u8>, DisasmError> {
-        let mut bytes = Vec::with_capacity(cleaned.len() / 2);
-        let mut i = 0;
-
-        while i < cleaned.len() {
-            let byte_str = &cleaned[i..i + 2];
-            match u8::from_str_radix(byte_str, 16) {
-                Ok(byte) => bytes.push(byte),
-                Err(_) => {
-                    return Err(DisasmError::DecodingError(format!(
-                        "Invalid hexadecimal byte: {byte_str}"
-                    )));
-                }
-            }
-            i += 2;
+        match hex::decode(cleaned) {
+            Ok(bytes) => Ok(bytes),
+            Err(e) => Err(DisasmError::DecodingError(format!(
+                "Invalid hexadecimal input: {}",
+                e
+            ))),
         }
-
-        Ok(bytes)
     }
 
     /// Applies endianness conversion to the byte vector.
     /// Input bytes are in the order they appear in the hex string (big-endian textual order).
     /// For little-endian targets, this reverses the bytes to match memory layout.
-    fn apply_endianness(
-        &self,
-        mut bytes: Vec<u8>,
-        endianness: crate::utils::Endianness,
-    ) -> Vec<u8> {
+    fn apply_endianness(&self, mut bytes: Vec<u8>, endianness: &Endianness) -> Vec<u8> {
         match endianness {
-            crate::utils::Endianness::Big => bytes,
-            crate::utils::Endianness::Little => {
+            Endianness::Big => bytes,
+            Endianness::Little => {
                 bytes.reverse();
                 bytes
             }
@@ -170,24 +151,24 @@ impl HexParser {
     ///
     /// This method contains architecture-specific knowledge about byte ordering.
     /// Future architectures should be added here as they are supported.
-    fn determine_architecture_endianness(&self, arch_name: &str) -> crate::utils::Endianness {
+    fn determine_architecture_endianness(&self, arch_name: &str) -> Endianness {
         // RISC-V architectures use little-endian by default
         if arch_name.starts_with("riscv") {
-            return crate::utils::Endianness::Little; // RISC-V uses little-endian byte order
+            return Endianness::Little; // RISC-V uses little-endian byte order
         }
 
         // ARM can be either, but we'll use little-endian as default
         if arch_name.starts_with("arm") || arch_name.starts_with("aarch64") {
-            return crate::utils::Endianness::Little;
+            return Endianness::Little;
         }
 
         // x86/x64 are little-endian
         if arch_name.starts_with("x86") || arch_name.starts_with("x64") {
-            return crate::utils::Endianness::Little;
+            return Endianness::Little;
         }
 
         // Default to little-endian for unknown architectures
-        crate::utils::Endianness::Little
+        Endianness::Little
     }
 }
 
@@ -228,15 +209,11 @@ mod tests {
         let parser = HexParser::new();
 
         // Little-endian (default)
-        let le_result = parser
-            .parse("12345678", Some(crate::utils::Endianness::Little))
-            .unwrap();
+        let le_result = parser.parse("12345678", Some(Endianness::Little)).unwrap();
         assert_eq!(le_result, vec![0x78, 0x56, 0x34, 0x12]);
 
         // Big-endian
-        let be_result = parser
-            .parse("12345678", Some(crate::utils::Endianness::Big))
-            .unwrap();
+        let be_result = parser.parse("12345678", Some(Endianness::Big)).unwrap();
         assert_eq!(be_result, vec![0x12, 0x34, 0x56, 0x78]);
     }
 
