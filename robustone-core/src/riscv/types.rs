@@ -2,6 +2,8 @@
 //!
 //! These structures mirror Capstone's RISC-V bindings to ease interoperability.
 
+use crate::riscv::shared::registers::{get_fp_register_name, get_register_name};
+
 /// Kinds of operands that can appear in a RISC-V instruction.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum RiscVOperandType {
@@ -215,88 +217,32 @@ pub enum RiscVRegister {
     F31_64 = 96,
 }
 
+impl From<u32> for RiscVRegister {
+    /// Converts a raw register ID (x0=0, x1=1, …, x31=31) into the enum representation.
+    fn from(value: u32) -> Self {
+        match value {
+            0..=31 => unsafe { std::mem::transmute(value as u8 + 1) },
+            _ => RiscVRegister::Invalid,
+        }
+    }
+}
+
 impl RiscVRegister {
-    // General-purpose registers
-    const GPR_REGISTERS: [RiscVRegister; 32] = [
-        Self::X0,
-        Self::X1,
-        Self::X2,
-        Self::X3,
-        Self::X4,
-        Self::X5,
-        Self::X6,
-        Self::X7,
-        Self::X8,
-        Self::X9,
-        Self::X10,
-        Self::X11,
-        Self::X12,
-        Self::X13,
-        Self::X14,
-        Self::X15,
-        Self::X16,
-        Self::X17,
-        Self::X18,
-        Self::X19,
-        Self::X20,
-        Self::X21,
-        Self::X22,
-        Self::X23,
-        Self::X24,
-        Self::X25,
-        Self::X26,
-        Self::X27,
-        Self::X28,
-        Self::X29,
-        Self::X30,
-        Self::X31,
-    ];
-
-    // 32-bit floating-point aliases
-    const GPR_NAMES: [&'static str; 32] = [
-        "zero", "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0", "a1", "a2", "a3", "a4",
-        "a5", "a6", "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4",
-        "t5", "t6",
-    ];
-
-    // 64-bit floating-point aliases
-    const FPR_NAMES: [&'static str; 32] = [
-        "ft0", "ft1", "ft2", "ft3", "ft4", "ft5", "ft6", "ft7", "fs0", "fs1", "fa0", "fa1", "fa2",
-        "fa3", "fa4", "fa5", "fa6", "fa7", "fs2", "fs3", "fs4", "fs5", "fs6", "fs7", "fs8", "fs9",
-        "fs10", "fs11", "ft8", "ft9", "ft10", "ft11",
-    ];
-
     /// Returns the canonical register name.
     pub fn name(self) -> &'static str {
-        let value = self as u8;
-        match value {
-            0 => "invalid",
-            // General-purpose registers (X0=1 to X31=32)
-            1..=32 => {
-                let index = (value - 1) as usize; // 1 -> 0, 32 -> 31
-                Self::GPR_NAMES[index]
-            }
-            // 32-bit floating-point registers (F0_32=33 to F31_32=64)
-            33..=64 => {
-                let index = (value - 33) as usize; // 33 -> 0, 64 -> 31
-                Self::FPR_NAMES[index]
-            }
-            // 64-bit floating-point registers (F0_64=65 to F31_64=96)
-            65..=96 => {
-                let index = (value - 65) as usize; // 65 -> 0, 96 -> 31
-                Self::FPR_NAMES[index]
-            }
-            _ => "invalid",
+        let reg = self as u8;
+        if reg >= 1 && reg <= 32 {
+            get_register_name(reg - 1)
+        } else if reg >= 33 && reg <= 64 {
+            get_fp_register_name(reg - 33)
+        } else {
+            "invalid"
         }
     }
 
     /// Converts a raw register ID (x0=0, x1=1, …, x31=31) into the enum representation.
     pub fn from_id(id: u32) -> Self {
-        if (id as usize) < Self::GPR_REGISTERS.len() {
-            Self::GPR_REGISTERS[id as usize]
-        } else {
-            Self::Invalid
-        }
+        Self::from(id)
     }
 }
 

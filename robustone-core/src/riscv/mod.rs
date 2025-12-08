@@ -140,6 +140,7 @@ mod tests {
     fn test_riscv_register_from_id() {
         assert_eq!(RiscVRegister::from_id(0), RiscVRegister::X0);
         assert_eq!(RiscVRegister::from_id(1), RiscVRegister::X1);
+        assert_eq!(RiscVRegister::from_id(31), RiscVRegister::X31);
         assert_eq!(RiscVRegister::from_id(32), RiscVRegister::Invalid);
         assert_eq!(RiscVRegister::from_id(100), RiscVRegister::Invalid);
     }
