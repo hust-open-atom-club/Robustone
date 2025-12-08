@@ -221,7 +221,7 @@ impl From<u32> for RiscVRegister {
     /// Converts a raw register ID (x0=0, x1=1, …, x31=31) into the enum representation.
     fn from(value: u32) -> Self {
         match value {
-            0..=31 => unsafe { std::mem::transmute(value as u8 + 1) },
+            0..=31 => unsafe { std::mem::transmute::<u8, RiscVRegister>(value as u8 + 1) },
             _ => RiscVRegister::Invalid,
         }
     }
@@ -231,9 +231,9 @@ impl RiscVRegister {
     /// Returns the canonical register name.
     pub fn name(self) -> &'static str {
         let reg = self as u8;
-        if reg >= 1 && reg <= 32 {
+        if (1..=32).contains(&reg) {
             get_register_name(reg - 1)
-        } else if reg >= 33 && reg <= 64 {
+        } else if (33..=64).contains(&reg) {
             get_fp_register_name(reg - 33)
         } else {
             "invalid"
