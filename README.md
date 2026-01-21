@@ -43,13 +43,11 @@ The CLI mirrors the classic `cstool` UX. For example, to decode a RISC-V instruc
 make run -- riscv32 13000513 -d
 ```
 
-The command also accepts arguments without the explicit `--` separator:
+Alternatively, use the `RUN_ARGS` variable. This prevents `make` from misinterpreting flags like `-d`:
 
 ```bash
-make run riscv32 13000513 -d
+make run RUN_ARGS="riscv32 13000513 -d"
 ```
-
-Internally the target forwards any trailing words to the binary (or you can pass them via `RUN_ARGS="..."`).
 
 ## Testing
 
