@@ -1,13 +1,6 @@
 repos:
-  - repo: https://github.com/doublify/pre-commit-rust
-    rev: v1.0
-    hooks:
-      - id: fmt
-      - id: clippy
-        args: ['--all-features', '--', '-D', 'warnings']
-
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v5.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -17,19 +10,52 @@ repos:
       - id: check-merge-conflict
       - id: check-case-conflict
       - id: check-added-large-files
+        args: ['--maxkb=500']
+
+  - repo: https://github.com/psf/black
+    rev: 24.4.2
+    hooks:
+      - id: black
+        name: black
+        language_version: python3
+        files: ^test/
+        exclude: ^test/scripts/generate_test_cases\.py$
+
+  - repo: https://github.com/PyCQA/pylint
+    rev: v3.2.0
+    hooks:
+      - id: pylint
+        name: pylint
+        files: ^test/
+        args: ['--rcfile=pyproject.toml']
 
   - repo: local
     hooks:
-      - id: cargo-test
-        name: cargo test
-        entry: cargo test
+      - id: rustfmt
+        name: rustfmt
+        entry: cargo fmt --all --
         language: system
+        types: [rust]
         pass_filenames: false
-        always_run: true
+
+      - id: clippy
+        name: clippy
+        entry: cargo clippy --workspace --all-features -- -D warnings
+        language: system
+        types: [rust]
+        pass_filenames: false
 
       - id: cargo-check
         name: cargo check
-        entry: cargo check
+        entry: cargo check --workspace
         language: system
+        types: [rust]
         pass_filenames: false
-        always_run: true
+
+      - id: cargo-test
+        name: cargo test
+        entry: cargo test --workspace
+        language: system
+        types: [rust]
+        pass_filenames: false
+        stages: [pre-push]

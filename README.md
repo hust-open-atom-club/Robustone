@@ -69,3 +69,13 @@ If you only need to validate the Python comparison script, run it directly:
 ```bash
 python3 test/riscv32/test_vs_cstool.py
 ```
+
+## Contributing
+
+We welcome contributions. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
+
+- Setting up the development environment
+- Installing and using pre-commit hooks
+- Code style requirements
+- Testing procedures
+- Submitting pull requests
