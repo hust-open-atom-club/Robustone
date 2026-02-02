@@ -4,7 +4,7 @@
 //! extensions, organized into separate modules for better maintainability.
 
 use super::decoder::{RiscVDecodedInstruction, Xlen};
-use crate::error::DisasmError;
+use crate::types::error::DisasmError;
 
 // Submodules grouping standard and custom-specific extensions.
 pub mod standard;

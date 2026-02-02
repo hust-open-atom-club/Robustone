@@ -3,6 +3,8 @@
 //! This module defines RISC-V specific types and extensions used by
 //! the RISC-V instruction decoder and handler.
 
+use crate::traits::instruction::Detail;
+
 /// RISC-V extensions bit mask type.
 ///
 /// This type represents the set of enabled RISC-V extensions
@@ -149,10 +151,10 @@ impl RiscVInstructionDetail {
     }
 }
 
-// Re-export register type from the existing types module
+/// Re-export register type from the existing types module
 pub use crate::riscv::types::RiscVRegister;
 
-impl crate::instruction::InstructionDetail for RiscVInstructionDetail {
+impl Detail for RiscVInstructionDetail {
     fn architecture_name(&self) -> &'static str {
         "riscv"
     }

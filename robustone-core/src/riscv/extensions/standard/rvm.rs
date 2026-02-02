@@ -4,7 +4,6 @@
 //! which includes integer multiplication, division, and remainder operations.
 
 use super::Standard;
-use crate::error::DisasmError;
 use crate::riscv::decoder::{RiscVDecodedInstruction, Xlen};
 use crate::riscv::extensions::{Extensions, InstructionExtension};
 use crate::riscv::shared::{
@@ -13,6 +12,7 @@ use crate::riscv::shared::{
     registers::{RegisterManager, RegisterNameProvider},
 };
 use crate::riscv::types::*;
+use crate::types::error::DisasmError;
 
 /// RVM Multiply and Divide Extension
 pub struct Rvm {

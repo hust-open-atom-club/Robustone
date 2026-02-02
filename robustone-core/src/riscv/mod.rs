@@ -17,9 +17,7 @@ pub mod shared;
 pub mod types;
 
 use crate::{
-    ArchitectureHandler,
-    error::DisasmError,
-    instruction::{AllInstructionDetail, Instruction},
+    traits::ArchitectureHandler, types::error::DisasmError, types::instruction::Instruction,
 };
 use arch::RiscVInstructionDetail;
 use decoder::{RiscVDecoder, Xlen};
@@ -98,7 +96,7 @@ impl ArchitectureHandler for RiscVHandler {
                 bytes[..decoded.size].to_vec(),
                 decoded.mnemonic,
                 decoded.operands,
-                AllInstructionDetail::RiscVInstructionDetail(riscv_detail),
+                Box::new(riscv_detail),
             ),
             decoded.size,
         ))
