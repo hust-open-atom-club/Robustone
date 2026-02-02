@@ -4,7 +4,7 @@
 //! used across different architectures. It handles various input formats and
 //! provides clear error messages for invalid inputs.
 
-use crate::error::DisasmError;
+use crate::types::error::DisasmError;
 use crate::utils::Endianness;
 
 /// Parser for hexadecimal strings with various formats and prefixes.

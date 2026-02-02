@@ -7,3 +7,5 @@ target/
 **/__pycache__/
 **/__init__.py
 virt-py
+AGENTS.md
+RFC.md

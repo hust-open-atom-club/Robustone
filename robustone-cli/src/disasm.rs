@@ -1,5 +1,5 @@
 use crate::config::{DisasmConfig, OutputConfig};
-use robustone_core::{ArchitectureDispatcher, error::DisasmError, instruction::Instruction};
+use robustone_core::{ArchitectureDispatcher, DisasmError, Instruction};
 
 // Shared dispatcher instance reused to avoid repeated initialisation costs.
 lazy_static::lazy_static! {

@@ -19,7 +19,6 @@
 //! 1. Create a new module in `src/` (e.g., `src/arm/`)
 //! 2. Implement the `ArchitectureHandler` trait for your architecture
 //! 3. Register the handler in `ArchitectureDispatcher::new()`
-//! 4. Add appropriate feature flags in `Cargo.toml`
 //!
 //! # Example
 //!
@@ -28,7 +27,7 @@
 //! use robustone_core::ArchitectureDispatcher;
 //!
 //! let dispatcher = ArchitectureDispatcher::new();
-//! match dispatcher.disassemble_bytes(&[0x90, 0x90], "x86", 0x1000) {
+//! match dispatcher.disassemble_bytes(&[0x93, 0x01, 0x00, 0x00], "riscv32", 0x1000) {
 //!     Ok((instruction, size)) => {
 //!         println!("Instruction: {} {}", instruction.mnemonic, instruction.operands);
 //!     }
@@ -42,8 +41,9 @@
 //! ```
 
 pub mod architecture;
-pub mod error;
-pub mod instruction;
+pub mod riscv;
+pub mod traits;
+pub mod types;
 pub mod utils;
 
 /// Robustone prelude.
@@ -52,115 +52,18 @@ pub mod utils;
 /// This module provides access to the most common functionality needed for
 /// using the disassembly engine.
 pub mod prelude {
-    pub use crate::ArchitectureHandler;
-    pub use crate::error::DisasmError;
-    pub use crate::instruction::{AllInstructionDetail, Instruction, InstructionDetail};
-    pub use crate::utils::{Endianness, HexParser};
-
-    // Re-export architecture utilities
     pub use crate::architecture::{Architecture, is_address_aligned};
+    pub use crate::traits::{ArchitectureHandler, BasicInstructionDetail, Detail};
+    pub use crate::types::{DisasmError, Instruction};
+    pub use crate::utils::{Endianness, HexParser};
 }
 
-use crate::error::DisasmError;
-use crate::instruction::Instruction;
-pub use crate::instruction::InstructionDetail;
+pub use traits::ArchitectureHandler;
+pub use traits::instruction::Detail;
+pub use types::error::DisasmError;
+pub use types::instruction::Instruction;
+
 use crate::utils::HexParser;
-
-/// Trait that all architecture-specific disassemblers must implement.
-///
-/// This trait provides a unified interface for disassembling instructions
-/// across different architectures. Each architecture handler is responsible
-/// for parsing the raw byte representation of instructions and converting
-/// them into a standardized `Instruction` format.
-///
-/// # Thread Safety
-///
-/// All implementations must be thread-safe (`Sync`) because handlers may
-/// be shared across multiple threads in the dispatcher.
-///
-/// # Required Methods
-///
-/// * `disassemble`: Core method that performs the actual disassembly
-/// * `name`: Returns the canonical name of the architecture
-/// * `supports`: Checks if the handler supports a given architecture name
-///
-/// # Example Implementation
-///
-/// ```rust
-/// use robustone_core::prelude::*;
-///
-/// pub struct MyArchitectureHandler;
-///
-/// impl ArchitectureHandler for MyArchitectureHandler {
-///     fn disassemble(&self, bytes: &[u8], addr: u64) -> Result<(Instruction, usize), DisasmError> {
-///         // Architecture-specific disassembly logic here
-///         todo!("Implement actual disassembly logic")
-///     }
-///
-///     fn name(&self) -> &'static str {
-///         "myarch"
-///     }
-///
-///     fn supports(&self, arch_name: &str) -> bool {
-///         arch_name == "myarch" || arch_name == "myarch32" || arch_name == "myarch64"
-///     }
-/// }
-/// ```
-pub trait ArchitectureHandler: Sync {
-    /// Disassembles a single instruction from the provided bytes.
-    ///
-    /// This is the core method that performs the actual disassembly work.
-    /// Implementations should parse the instruction bytes and return both
-    /// the decoded instruction and the number of bytes consumed.
-    ///
-    /// # Arguments
-    ///
-    /// * `bytes` - Raw instruction bytes to decode
-    /// * `addr` - The address where these bytes would be located in memory
-    ///
-    /// # Returns
-    ///
-    /// Returns a tuple containing:
-    /// - The decoded `Instruction`
-    /// - The number of bytes consumed from the input
-    ///
-    /// # Errors
-    ///
-    /// Returns a `DisasmError` if:
-    /// - The bytes cannot be decoded as a valid instruction
-    /// - The input is malformed or incomplete
-    /// - An architecture-specific error occurs
-    fn disassemble(&self, bytes: &[u8], addr: u64) -> Result<(Instruction, usize), DisasmError>;
-
-    /// Returns the canonical name of this architecture.
-    ///
-    /// This should return the primary, canonical name for the architecture.
-    /// For example, "riscv", "arm", "x86", etc. This name is used for
-    /// identification and logging purposes.
-    ///
-    /// # Returns
-    ///
-    /// A string slice containing the canonical architecture name.
-    fn name(&self) -> &'static str;
-
-    /// Checks whether this handler supports the given architecture name.
-    ///
-    /// This method allows a single handler to support multiple variations
-    /// of the same architecture. For example, an ARM handler might support
-    /// "arm", "arm32", "armv7", "thumb", etc.
-    ///
-    /// The check should be case-insensitive and handle common variations.
-    ///
-    /// # Arguments
-    ///
-    /// * `arch_name` - The architecture name to check
-    ///
-    /// # Returns
-    ///
-    /// `true` if this handler can disassemble for the given architecture,
-    /// `false` otherwise.
-    fn supports(&self, arch_name: &str) -> bool;
-}
 
 /// Runtime dispatcher that selects the appropriate architecture handler.
 ///
@@ -181,40 +84,35 @@ pub struct ArchitectureDispatcher {
 impl ArchitectureDispatcher {
     /// Creates a new dispatcher and registers all available architecture handlers.
     ///
-    /// This method automatically registers handlers for all architectures that
-    /// have been enabled through feature flags. Currently supported architectures:
+    /// This method automatically registers handlers for all supported architectures.
+    /// Currently supported architectures:
     ///
-    /// - RISC-V (when `riscv` feature is enabled)
-    ///
-    /// # Future Extensions
-    ///
-    /// To add support for new architectures, add the handler registration
-    /// code here with the appropriate feature flag.
+    /// - RISC-V (32-bit and 64-bit)
     ///
     /// # Returns
     ///
     /// A new `ArchitectureDispatcher` instance with all available handlers registered.
     pub fn new() -> Self {
-        let mut handlers: Vec<Box<dyn ArchitectureHandler>> = Vec::new();
-
-        // Register architecture handlers based on enabled feature flags
-        #[cfg(feature = "riscv")]
-        {
-            use crate::riscv::RiscVHandler;
-            handlers.push(Box::new(RiscVHandler::new()));
-        }
-
-        // Future architecture handlers should be added here:
-        // #[cfg(feature = "arm")]
-        // {
-        //     use crate::arm::ArmHandler;
-        //     handlers.push(Box::new(ArmHandler::new()));
-        // }
-
-        Self {
-            handlers,
+        let mut dispatcher = Self {
+            handlers: Vec::new(),
             hex_parser: HexParser::new(),
-        }
+        };
+
+        dispatcher.register(Box::new(riscv::RiscVHandler::new()));
+
+        dispatcher
+    }
+
+    /// Registers an architecture handler with the dispatcher.
+    ///
+    /// This method allows adding custom architecture handlers at runtime.
+    /// The handler will be added to the end of the handler list.
+    ///
+    /// # Arguments
+    ///
+    /// * `handler` - A boxed architecture handler to register
+    pub fn register(&mut self, handler: Box<dyn ArchitectureHandler>) {
+        self.handlers.push(handler);
     }
 
     /// Legacy convenience method for disassembling a hex string.
@@ -233,19 +131,12 @@ impl ArchitectureDispatcher {
     /// Returns the decoded `Instruction`. If disassembly fails, returns
     /// an "unknown" instruction with the original bytes.
     ///
-    /// # Note
-    ///
-    /// This method uses architecture-specific byte ordering. For example,
-    /// RISC-V instructions are parsed in reverse order to match the
-    /// expected byte ordering for that architecture.
-    ///
     /// # Example
     ///
     /// ```rust
-    /// use robustone_core::prelude::*;
     /// use robustone_core::ArchitectureDispatcher;
     /// let dispatcher = ArchitectureDispatcher::new();
-    /// let instruction = dispatcher.disassemble("deadbeef", "riscv32".to_string());
+    /// let instruction = dispatcher.disassemble("13000513", "riscv32".to_string());
     /// println!("Instruction: {} {}", instruction.mnemonic, instruction.operands);
     /// ```
     pub fn disassemble(&self, hex: &str, arch: String) -> Instruction {
@@ -310,10 +201,9 @@ impl ArchitectureDispatcher {
     /// # Example
     ///
     /// ```rust
-    /// use robustone_core::prelude::*;
     /// use robustone_core::ArchitectureDispatcher;
     /// let dispatcher = ArchitectureDispatcher::new();
-    /// let bytes = [0x93, 0x01, 0x10, 0x00]; // ADDI x2, x1, 16
+    /// let bytes = [0x13, 0x05, 0x00, 0x00]; // addi a0, zero, 0
     /// match dispatcher.disassemble_bytes(&bytes, "riscv32", 0x1000) {
     ///     Ok((instruction, size)) => {
     ///         println!("Instruction: {} {}", instruction.mnemonic, instruction.operands);
@@ -352,7 +242,6 @@ impl ArchitectureDispatcher {
     /// # Example
     ///
     /// ```rust
-    /// use robustone_core::prelude::*;
     /// use robustone_core::ArchitectureDispatcher;
     /// let dispatcher = ArchitectureDispatcher::new();
     /// let archs = dispatcher.supported_architectures();
@@ -381,7 +270,6 @@ impl ArchitectureDispatcher {
     /// # Example
     ///
     /// ```rust
-    /// use robustone_core::prelude::*;
     /// use robustone_core::ArchitectureDispatcher;
     /// let dispatcher = ArchitectureDispatcher::new();
     /// if dispatcher.supports_architecture("riscv32") {
@@ -424,10 +312,6 @@ impl Default for ArchitectureDispatcher {
     }
 }
 
-// Default RISC-V module inclusion when the feature flag is enabled.
-#[cfg(feature = "riscv")]
-pub mod riscv;
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -437,8 +321,7 @@ mod tests {
         let dispatcher = ArchitectureDispatcher::new();
         let archs = dispatcher.supported_architectures();
 
-        // Ensure RISC-V is present whenever the feature flag is enabled.
-        #[cfg(feature = "riscv")]
+        // Ensure RISC-V is present
         assert!(archs.contains(&"riscv"));
     }
 

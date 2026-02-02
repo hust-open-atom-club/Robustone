@@ -7,7 +7,7 @@
 use super::extensions::standard::Standard;
 use super::extensions::{Extensions, InstructionExtension, create_extensions};
 use super::types::*;
-use crate::error::DisasmError;
+use crate::types::error::DisasmError;
 
 /// RISC-V XLEN (register width) indicator.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

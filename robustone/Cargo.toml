@@ -4,9 +4,5 @@ version = "0.0.0"
 edition = "2024"
 
 [dependencies]
-robustone-core = { path = "../robustone-core", default-features = false }
+robustone-core = { path = "../robustone-core" }
 robustone-cli = { path = "../robustone-cli" }
-
-[features]
-default = ["riscv"]
-riscv = ["robustone-core/riscv"]
