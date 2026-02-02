@@ -70,3 +70,13 @@ make test
 ```bash
 python3 test/riscv32/test_vs_cstool.py
 ```
+
+## 贡献
+
+我们欢迎贡献。请阅读 [CONTRIBUTING_CN.md](CONTRIBUTING_CN.md) 了解以下内容：
+
+- 开发环境配置
+- Pre-commit 钩子的安装和使用
+- 代码规范要求
+- 测试流程
+- 提交 Pull Request
