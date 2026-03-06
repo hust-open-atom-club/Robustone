@@ -3,7 +3,7 @@
 //! Provides centralized formatting functionality for instructions, operands,
 //! and immediate values used across all RISC-V extensions.
 
-use super::super::decoder::RiscVDecodedInstruction;
+use super::super::decoder::{RiscVDecodedInstruction, Xlen};
 use super::super::types::*;
 
 /// Trait for formatting decoded RISC-V instructions.
@@ -47,10 +47,14 @@ pub trait ImmediateFormatter {
 
     /// Format an immediate value with automatic format selection.
     fn format_immediate_auto(&self, value: i64) -> String;
+
+    fn format_control_offset(&self, value: i64) -> String;
 }
 
 /// Default implementation of instruction formatter.
-pub struct DefaultInstructionFormatter;
+pub struct DefaultInstructionFormatter {
+    xlen: Option<Xlen>,
+}
 
 impl InstructionFormatter for DefaultInstructionFormatter {
     fn create_decoded_instruction(
@@ -70,6 +74,42 @@ impl InstructionFormatter for DefaultInstructionFormatter {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
+    fn create_instruction_from_parts(
+        &self,
+        mnemonic: &str,
+        rd: u8,
+        rs1: u8,
+        rs2: u8,
+        imm: i64,
+        format: RiscVInstructionFormat,
+        rd_access: Access,
+        rs1_access: Access,
+        rs2_access: Access,
+    ) -> RiscVDecodedInstruction {
+        DefaultInstructionFormatter::create_instruction_from_parts(
+            self, mnemonic, rd, rs1, rs2, imm, format, rd_access, rs1_access, rs2_access,
+        )
+    }
+}
+
+impl DefaultInstructionFormatter {
+    /// Create a new default instruction formatter.
+    pub const fn new() -> Self {
+        Self { xlen: None }
+    }
+
+    /// Create a new default instruction formatter with XLEN.
+    pub const fn with_xlen(xlen: Xlen) -> Self {
+        Self { xlen: Some(xlen) }
+    }
+
+    /// Get the global default instruction formatter instance.
+    pub const fn instance() -> Self {
+        Self::new()
+    }
+
+    #[allow(clippy::too_many_arguments)]
     fn create_instruction_from_parts(
         &self,
         mnemonic: &str,
@@ -101,17 +141,34 @@ impl InstructionFormatter for DefaultInstructionFormatter {
                 (ops, details)
             }
             RiscVInstructionFormat::I => {
-                let ops = format!(
-                    "{}, {}, {}",
-                    get_register_name(rd),
-                    get_register_name(rs1),
-                    self.format_immediate_auto(imm)
-                );
-                let details = vec![
-                    convenience::register(rd, rd_access),
-                    convenience::register(rs1, rs1_access),
-                    convenience::immediate(imm),
-                ];
+                let (ops, details) = if mnemonic == "jalr" {
+                    (
+                        format!(
+                            "{}, {}({})",
+                            get_register_name(rd),
+                            self.format_immediate_auto(imm),
+                            get_register_name(rs1)
+                        ),
+                        vec![
+                            convenience::register(rd, rd_access),
+                            convenience::memory(rs1, imm),
+                        ],
+                    )
+                } else {
+                    (
+                        format!(
+                            "{}, {}, {}",
+                            get_register_name(rd),
+                            get_register_name(rs1),
+                            self.format_immediate_auto(imm)
+                        ),
+                        vec![
+                            convenience::register(rd, rd_access),
+                            convenience::register(rs1, rs1_access),
+                            convenience::immediate(imm),
+                        ],
+                    )
+                };
                 (ops, details)
             }
             RiscVInstructionFormat::S => {
@@ -128,7 +185,7 @@ impl InstructionFormatter for DefaultInstructionFormatter {
                 (ops, details)
             }
             RiscVInstructionFormat::B => {
-                let offset_str = self.format_immediate_auto(imm);
+                let offset_str = self.format_control_offset(imm);
                 let ops = if rs2 == 0 && (mnemonic == "beqz" || mnemonic == "bnez") {
                     format!("{}, {}", get_register_name(rs1), offset_str)
                 } else {
@@ -161,7 +218,7 @@ impl InstructionFormatter for DefaultInstructionFormatter {
                 (ops, details)
             }
             RiscVInstructionFormat::J => {
-                let offset_str = self.format_immediate_auto(imm);
+                let offset_str = self.format_control_offset(imm);
                 let ops = match (mnemonic, rd) {
                     ("j", _) => offset_str,
                     ("jal", 1) => offset_str,
@@ -215,22 +272,24 @@ impl ImmediateFormatter for DefaultInstructionFormatter {
             self.format_immediate_decimal(value)
         }
     }
+
+    fn format_control_offset(&self, value: i64) -> String {
+        if value >= 0 {
+            self.format_immediate_auto(value)
+        } else {
+            let uvalue = value as u64;
+            match self.xlen {
+                Some(Xlen::X32) => format!("0x{:x}", uvalue as u32),
+                Some(Xlen::X64) | None => format!("0x{:x}", uvalue),
+            }
+        }
+    }
 }
 
 impl DefaultInstructionFormatter {
-    /// Create a new default instruction formatter.
-    pub const fn new() -> Self {
-        Self
-    }
-
-    /// Get the global default instruction formatter instance.
-    pub const fn instance() -> &'static Self {
-        &DefaultInstructionFormatter
-    }
-
     /// Create a simple decoded instruction with just mnemonic and operands.
     pub fn simple_instruction(mnemonic: &str, operands: &str) -> RiscVDecodedInstruction {
-        Self::instance().create_decoded_instruction(
+        Self::new().create_decoded_instruction(
             mnemonic,
             operands.to_string(),
             RiscVInstructionFormat::I,
@@ -246,7 +305,7 @@ impl DefaultInstructionFormatter {
 
     /// Create an unknown compressed instruction placeholder.
     pub fn unknown_compressed_instruction(value: u16) -> RiscVDecodedInstruction {
-        Self::instance().create_decoded_instruction(
+        Self::new().create_decoded_instruction(
             "c.unknown",
             format!("0x{value:04x}"),
             RiscVInstructionFormat::CI,
@@ -417,7 +476,7 @@ pub mod convenience {
 
     /// Format an immediate value using automatic format selection.
     pub fn format_immediate(value: i64) -> String {
-        DefaultInstructionFormatter::instance().format_immediate_auto(value)
+        DefaultInstructionFormatter::new().format_immediate_auto(value)
     }
 
     /// Format a CSR address.

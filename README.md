@@ -40,13 +40,13 @@ The `test` target downloads Capstone into `third_party/capstone` on first use, b
 The CLI mirrors the classic `cstool` UX. For example, to decode a RISC-V instruction with detailed output:
 
 ```bash
-make run -- riscv32 13000513 -d
+make run -- riscv32 130101ff -d
 ```
 
 Alternatively, use the `RUN_ARGS` variable. This prevents `make` from misinterpreting flags like `-d`:
 
 ```bash
-make run RUN_ARGS="riscv32 13000513 -d"
+make run RUN_ARGS="riscv32 130101ff -d"
 ```
 
 ## Testing

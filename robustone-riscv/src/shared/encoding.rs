@@ -443,7 +443,7 @@ pub mod convenience {
     }
 
     /// Extract and validate shift amount.
-    pub fn extract_shamt(imm: i64, xlen: crate::riscv::decoder::Xlen) -> i64 {
+    pub fn extract_shamt(imm: i64, xlen: crate::decoder::Xlen) -> i64 {
         ShamtExtractor::extract_shamt(imm, xlen)
     }
 }
@@ -451,7 +451,7 @@ pub mod convenience {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::riscv::decoder::Xlen;
+    use crate::decoder::Xlen;
 
     #[test]
     fn test_sign_extender() {

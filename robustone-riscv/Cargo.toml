@@ -1,0 +1,10 @@
+[package]
+name = "robustone-riscv"
+version = "0.1.0"
+edition = "2024"
+description = "RISC-V architecture support for Robustone"
+
+[dependencies]
+robustone-core = { path = "../robustone-core" }
+bitflags = "2.10.0"
+hex = "0.4"

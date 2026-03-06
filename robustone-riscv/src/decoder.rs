@@ -7,7 +7,7 @@
 use super::extensions::standard::Standard;
 use super::extensions::{Extensions, InstructionExtension, create_extensions};
 use super::types::*;
-use crate::types::error::DisasmError;
+use robustone_core::types::error::DisasmError;
 
 /// RISC-V XLEN (register width) indicator.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -27,7 +27,7 @@ pub struct RiscVDecoder {
 impl RiscVDecoder {
     /// Construct a decoder with the provided XLEN and extension bitmask.
     pub fn new(xlen: Xlen, extensions: Extensions) -> Self {
-        let extension_handlers = create_extensions();
+        let extension_handlers = create_extensions(xlen);
         Self {
             xlen,
             extensions,

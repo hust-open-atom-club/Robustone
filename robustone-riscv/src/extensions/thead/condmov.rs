@@ -5,14 +5,14 @@
 //! whether another register is zero or non-zero.
 
 use super::THead;
-use crate::riscv::decoder::{RiscVDecodedInstruction, Xlen};
-use crate::riscv::extensions::{Extensions, InstructionExtension};
-use crate::riscv::shared::{
+use crate::decoder::{RiscVDecodedInstruction, Xlen};
+use crate::extensions::{Extensions, InstructionExtension};
+use crate::shared::{
     operands::convenience,
     registers::{RegisterManager, RegisterNameProvider},
 };
-use crate::riscv::types::*;
-use crate::types::error::DisasmError;
+use crate::types::*;
+use robustone_core::types::error::DisasmError;
 
 /// XTheadCondMov Conditional Move Extension
 pub struct CMov {

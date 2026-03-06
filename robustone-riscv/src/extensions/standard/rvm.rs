@@ -4,15 +4,15 @@
 //! which includes integer multiplication, division, and remainder operations.
 
 use super::Standard;
-use crate::riscv::decoder::{RiscVDecodedInstruction, Xlen};
-use crate::riscv::extensions::{Extensions, InstructionExtension};
-use crate::riscv::shared::{
+use crate::decoder::{RiscVDecodedInstruction, Xlen};
+use crate::extensions::{Extensions, InstructionExtension};
+use crate::shared::{
     OperandFactory,
     operands::DefaultOperandFactory,
     registers::{RegisterManager, RegisterNameProvider},
 };
-use crate::riscv::types::*;
-use crate::types::error::DisasmError;
+use crate::types::*;
+use robustone_core::types::error::DisasmError;
 
 /// RVM Multiply and Divide Extension
 pub struct Rvm {

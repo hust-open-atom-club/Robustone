@@ -4,15 +4,15 @@
 //! which provides 16-bit compressed versions of common instructions to improve code density.
 
 use super::Standard;
-use crate::riscv::decoder::{RiscVDecodedInstruction, Xlen};
-use crate::riscv::extensions::{Extensions, InstructionExtension};
-use crate::riscv::shared::{
+use crate::decoder::{RiscVDecodedInstruction, Xlen};
+use crate::extensions::{Extensions, InstructionExtension};
+use crate::shared::{
     encoding::convenience as encoding_conv,
     operands::convenience,
     registers::{RegisterManager, RegisterNameProvider},
 };
-use crate::riscv::types::*;
-use crate::types::error::DisasmError;
+use crate::types::*;
+use robustone_core::types::error::DisasmError;
 
 /// RVC Compressed Instructions Extension
 pub struct Rvc {
