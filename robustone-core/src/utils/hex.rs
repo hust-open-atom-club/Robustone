@@ -48,7 +48,7 @@ impl HexParser {
     /// use robustone_core::prelude::*;
     /// let parser = HexParser::new();
     /// let bytes = parser.parse("deadbeef", None).unwrap();
-    /// assert_eq!(bytes, vec![0xef, 0xbe, 0xad, 0xde]);
+    /// assert_eq!(bytes, vec![0xde, 0xad, 0xbe, 0xef]);
     /// ```
     pub fn parse(
         &self,
@@ -134,17 +134,8 @@ impl HexParser {
         }
     }
 
-    /// Applies endianness conversion to the byte vector.
-    /// Input bytes are in the order they appear in the hex string (big-endian textual order).
-    /// For little-endian targets, this reverses the bytes to match memory layout.
-    fn apply_endianness(&self, mut bytes: Vec<u8>, endianness: &Endianness) -> Vec<u8> {
-        match endianness {
-            Endianness::Big => bytes,
-            Endianness::Little => {
-                bytes.reverse();
-                bytes
-            }
-        }
+    fn apply_endianness(&self, bytes: Vec<u8>, _endianness: &Endianness) -> Vec<u8> {
+        bytes
     }
 
     /// Determines the appropriate endianness for a given architecture.
@@ -180,37 +171,36 @@ mod tests {
     fn test_basic_hex_parsing() {
         let parser = HexParser::new();
         let result = parser.parse("deadbeef", None).unwrap();
-        assert_eq!(result, vec![0xef, 0xbe, 0xad, 0xde]);
+        assert_eq!(result, vec![0xde, 0xad, 0xbe, 0xef]);
     }
 
     #[test]
     fn test_hex_with_prefix() {
         let parser = HexParser::new();
         let result = parser.parse("0x1234", None).unwrap();
-        assert_eq!(result, vec![0x34, 0x12]);
+        assert_eq!(result, vec![0x12, 0x34]);
     }
 
     #[test]
     fn test_hex_with_whitespace() {
         let parser = HexParser::new();
         let result = parser.parse("de ad be ef", None).unwrap();
-        assert_eq!(result, vec![0xef, 0xbe, 0xad, 0xde]);
+        assert_eq!(result, vec![0xde, 0xad, 0xbe, 0xef]);
     }
 
     #[test]
     fn test_mixed_case_hex() {
         let parser = HexParser::new();
         let result = parser.parse("DeAdBeEf", None).unwrap();
-        assert_eq!(result, vec![0xef, 0xbe, 0xad, 0xde]);
+        assert_eq!(result, vec![0xde, 0xad, 0xbe, 0xef]);
     }
 
     #[test]
     fn test_endianness_handling() {
         let parser = HexParser::new();
 
-        // Little-endian (default)
         let le_result = parser.parse("12345678", Some(Endianness::Little)).unwrap();
-        assert_eq!(le_result, vec![0x78, 0x56, 0x34, 0x12]);
+        assert_eq!(le_result, vec![0x12, 0x34, 0x56, 0x78]);
 
         // Big-endian
         let be_result = parser.parse("12345678", Some(Endianness::Big)).unwrap();
@@ -221,15 +211,13 @@ mod tests {
     fn test_architecture_specific_parsing() {
         let parser = HexParser::new();
 
-        // RISC-V should use little-endian (no reverse order)
         let riscv_result = parser
             .parse_for_architecture("deadbeef", "riscv32")
             .unwrap();
-        assert_eq!(riscv_result, vec![0xef, 0xbe, 0xad, 0xde]);
+        assert_eq!(riscv_result, vec![0xde, 0xad, 0xbe, 0xef]);
 
-        // x86 should use little-endian
         let x86_result = parser.parse_for_architecture("deadbeef", "x86").unwrap();
-        assert_eq!(x86_result, vec![0xef, 0xbe, 0xad, 0xde]);
+        assert_eq!(x86_result, vec![0xde, 0xad, 0xbe, 0xef]);
     }
 
     #[test]
