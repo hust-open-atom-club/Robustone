@@ -3,7 +3,7 @@
 //! Provides centralized formatting functionality for instructions, operands,
 //! and immediate values used across all RISC-V extensions.
 
-use super::super::decoder::RiscVDecodedInstruction;
+use super::super::decoder::{RiscVDecodedInstruction, Xlen};
 use super::super::types::*;
 
 /// Trait for formatting decoded RISC-V instructions.
@@ -52,7 +52,9 @@ pub trait ImmediateFormatter {
 }
 
 /// Default implementation of instruction formatter.
-pub struct DefaultInstructionFormatter;
+pub struct DefaultInstructionFormatter {
+    xlen: Option<Xlen>,
+}
 
 impl InstructionFormatter for DefaultInstructionFormatter {
     fn create_decoded_instruction(
@@ -70,6 +72,40 @@ impl InstructionFormatter for DefaultInstructionFormatter {
             size,
             operands_detail,
         }
+    }
+
+    fn create_instruction_from_parts(
+        &self,
+        mnemonic: &str,
+        rd: u8,
+        rs1: u8,
+        rs2: u8,
+        imm: i64,
+        format: RiscVInstructionFormat,
+        rd_access: Access,
+        rs1_access: Access,
+        rs2_access: Access,
+    ) -> RiscVDecodedInstruction {
+        DefaultInstructionFormatter::create_instruction_from_parts(
+            self, mnemonic, rd, rs1, rs2, imm, format, rd_access, rs1_access, rs2_access,
+        )
+    }
+}
+
+impl DefaultInstructionFormatter {
+    /// Create a new default instruction formatter.
+    pub const fn new() -> Self {
+        Self { xlen: None }
+    }
+
+    /// Create a new default instruction formatter with XLEN.
+    pub const fn with_xlen(xlen: Xlen) -> Self {
+        Self { xlen: Some(xlen) }
+    }
+
+    /// Get the global default instruction formatter instance.
+    pub const fn instance() -> Self {
+        Self::new()
     }
 
     fn create_instruction_from_parts(
@@ -239,25 +275,19 @@ impl ImmediateFormatter for DefaultInstructionFormatter {
         if value >= 0 {
             self.format_immediate_auto(value)
         } else {
-            format!("0x{:x}", value as u64)
+            let uvalue = value as u64;
+            match self.xlen {
+                Some(Xlen::X32) => format!("0x{:x}", uvalue as u32),
+                Some(Xlen::X64) | None => format!("0x{:x}", uvalue),
+            }
         }
     }
 }
 
 impl DefaultInstructionFormatter {
-    /// Create a new default instruction formatter.
-    pub const fn new() -> Self {
-        Self
-    }
-
-    /// Get the global default instruction formatter instance.
-    pub const fn instance() -> &'static Self {
-        &DefaultInstructionFormatter
-    }
-
     /// Create a simple decoded instruction with just mnemonic and operands.
     pub fn simple_instruction(mnemonic: &str, operands: &str) -> RiscVDecodedInstruction {
-        Self::instance().create_decoded_instruction(
+        Self::new().create_decoded_instruction(
             mnemonic,
             operands.to_string(),
             RiscVInstructionFormat::I,
@@ -273,7 +303,7 @@ impl DefaultInstructionFormatter {
 
     /// Create an unknown compressed instruction placeholder.
     pub fn unknown_compressed_instruction(value: u16) -> RiscVDecodedInstruction {
-        Self::instance().create_decoded_instruction(
+        Self::new().create_decoded_instruction(
             "c.unknown",
             format!("0x{value:04x}"),
             RiscVInstructionFormat::CI,
@@ -444,7 +474,7 @@ pub mod convenience {
 
     /// Format an immediate value using automatic format selection.
     pub fn format_immediate(value: i64) -> String {
-        DefaultInstructionFormatter::instance().format_immediate_auto(value)
+        DefaultInstructionFormatter::new().format_immediate_auto(value)
     }
 
     /// Format a CSR address.

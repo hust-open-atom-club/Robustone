@@ -108,9 +108,9 @@ pub trait InstructionExtension: Sync {
 }
 
 /// Create all available standard RISC-V extensions.
-pub fn create_extensions() -> Vec<Box<dyn InstructionExtension>> {
+pub fn create_extensions(xlen: Xlen) -> Vec<Box<dyn InstructionExtension>> {
     vec![
-        Box::new(standard::Rvi::new()),
+        Box::new(standard::Rvi::new_with_xlen(xlen)),
         Box::new(standard::Rva::new()),
         Box::new(standard::Rvm::new()),
         Box::new(standard::Rvf::new()),

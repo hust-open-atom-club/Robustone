@@ -28,11 +28,16 @@ pub struct Rvi {
 impl Rvi {
     /// Create a new RV32I/RV64I extension instance.
     pub fn new() -> Self {
+        Self::new_with_xlen(Xlen::X32)
+    }
+
+    /// Create a new RV32I/RV64I extension instance with XLEN.
+    pub fn new_with_xlen(xlen: Xlen) -> Self {
         Self {
-            operand_factory: DefaultOperandFactory::new(),
-            formatter: DefaultInstructionFormatter::new(),
+            operand_factory: DefaultOperandFactory::with_xlen(xlen),
+            formatter: DefaultInstructionFormatter::with_xlen(xlen),
             register_manager: RegisterManager::new(),
-            operand_builder: OperandBuilder::new(),
+            operand_builder: OperandBuilder::with_xlen(xlen),
         }
     }
 
