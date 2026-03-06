@@ -1,10 +1,10 @@
 use robustone::*;
 
 fn main() {
-    let dispatcher = ArchitectureDispatcher::new();
+    let dispatcher = dispatcher();
 
     // Test the ADDI instruction - this should produce detailed operand information
-    let instruction = dispatcher.disassemble("13000513", "riscv32".to_string());
+    let instruction = dispatcher.disassemble("130101ff", "riscv32".to_string());
 
     println!("=== Basic Output ===");
     println!("{} {}", instruction.mnemonic, instruction.operands);
@@ -25,9 +25,9 @@ fn main() {
     // Test additional instructions
     println!("\n=== Testing Multiple Instructions ===");
     let test_instructions = vec![
-        ("97000000", "auipc zero, 0x97000"),
-        ("33000000", "add zero, zero, t0"),
-        ("13000513", "addi t0, t0, 5"),
+        ("37010000", "lui sp, 0"),
+        ("b3003100", "add ra, sp, gp"),
+        ("130101ff", "addi sp, sp, -0x10"),
     ];
 
     for (hex, _expected) in test_instructions {
