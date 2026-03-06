@@ -74,6 +74,7 @@ impl InstructionFormatter for DefaultInstructionFormatter {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn create_instruction_from_parts(
         &self,
         mnemonic: &str,
@@ -108,6 +109,7 @@ impl DefaultInstructionFormatter {
         Self::new()
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn create_instruction_from_parts(
         &self,
         mnemonic: &str,
