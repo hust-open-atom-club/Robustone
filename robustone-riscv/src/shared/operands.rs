@@ -4,6 +4,7 @@
 //! all RISC-V extensions to eliminate code duplication.
 
 use super::super::types::*;
+use crate::decoder::Xlen;
 
 /// Trait for creating RISC-V operands in extensions.
 pub trait OperandFactory {
@@ -30,10 +31,40 @@ pub trait OperandFormatter {
 
     /// Format a memory operand for display (offset(base)).
     fn format_memory_operand(&self, offset: i64, base_reg: &str) -> String;
+
+    /// Format a control flow offset (branch/jump target).
+    fn format_control_offset(&self, value: i64) -> String;
 }
 
 /// Default implementation of operand factory.
-pub struct DefaultOperandFactory;
+pub struct DefaultOperandFactory {
+    xlen: Option<Xlen>,
+}
+
+impl DefaultOperandFactory {
+    pub const fn new() -> Self {
+        Self { xlen: None }
+    }
+
+    pub const fn with_xlen(xlen: Xlen) -> Self {
+        Self { xlen: Some(xlen) }
+    }
+
+    /// Create a register operand (convenience method).
+    pub fn register(reg: u8, access: Access) -> RiscVOperand {
+        Self::new().make_register_operand(reg, access)
+    }
+
+    /// Create an immediate operand (convenience method).
+    pub fn immediate(imm: i64) -> RiscVOperand {
+        Self::new().make_immediate_operand(imm)
+    }
+
+    /// Create a memory operand (convenience method).
+    pub fn memory(base: u8, disp: i64) -> RiscVOperand {
+        Self::new().make_memory_operand(base, disp)
+    }
+}
 
 impl OperandFactory for DefaultOperandFactory {
     fn make_register_operand(&self, reg: u8, access: Access) -> RiscVOperand {
@@ -121,40 +152,17 @@ impl OperandFormatter for DefaultOperandFactory {
         let offset_str = self.format_immediate(offset);
         format!("{offset_str}({base_reg})")
     }
-}
-
-impl DefaultOperandFactory {
-    /// Create a new default operand factory.
-    pub const fn new() -> Self {
-        Self
-    }
-
-    /// Get the global default operand factory instance.
-    pub const fn instance() -> &'static Self {
-        &DefaultOperandFactory
-    }
 
     fn format_control_offset(&self, value: i64) -> String {
         if value >= 0 {
             self.format_immediate(value)
         } else {
-            format!("0x{:x}", value as u64)
+            let uvalue = value as u64;
+            match self.xlen {
+                Some(Xlen::X32) => format!("0x{:x}", uvalue as u32),
+                Some(Xlen::X64) | None => format!("0x{:x}", uvalue),
+            }
         }
-    }
-
-    /// Create a register operand (convenience method).
-    pub fn register(reg: u8, access: Access) -> RiscVOperand {
-        Self::instance().make_register_operand(reg, access)
-    }
-
-    /// Create an immediate operand (convenience method).
-    pub fn immediate(imm: i64) -> RiscVOperand {
-        Self::instance().make_immediate_operand(imm)
-    }
-
-    /// Create a memory operand (convenience method).
-    pub fn memory(base: u8, disp: i64) -> RiscVOperand {
-        Self::instance().make_memory_operand(base, disp)
     }
 }
 
@@ -173,7 +181,14 @@ impl OperandBuilder {
     /// Create a new operand builder.
     pub const fn new() -> Self {
         Self {
-            factory: DefaultOperandFactory,
+            factory: DefaultOperandFactory::new(),
+        }
+    }
+
+    /// Create a new operand builder with XLEN.
+    pub const fn with_xlen(xlen: Xlen) -> Self {
+        Self {
+            factory: DefaultOperandFactory::with_xlen(xlen),
         }
     }
 
@@ -380,12 +395,12 @@ pub mod convenience {
 
     /// Format an immediate value.
     pub fn format_immediate(value: i64) -> String {
-        DefaultOperandFactory::instance().format_immediate(value)
+        DefaultOperandFactory::new().format_immediate(value)
     }
 
     /// Format a CSR address.
     pub fn format_csr(csr: i64) -> String {
-        DefaultOperandFactory::instance().format_csr(csr)
+        DefaultOperandFactory::new().format_csr(csr)
     }
 }
 

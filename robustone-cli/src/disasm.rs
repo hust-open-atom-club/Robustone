@@ -2,15 +2,16 @@ use crate::config::{DisasmConfig, OutputConfig};
 use robustone_core::{ArchitectureDispatcher, DisasmError, Instruction};
 use robustone_riscv::RiscVHandler;
 
-fn create_dispatcher() -> ArchitectureDispatcher {
+fn create_dispatcher(arch: &str) -> ArchitectureDispatcher {
     let mut dispatcher = ArchitectureDispatcher::new();
-    dispatcher.register(Box::new(RiscVHandler::new()));
+    // Create handler based on architecture
+    let handler = match arch {
+        "riscv32" => RiscVHandler::rv32(),
+        "riscv64" | "riscv" => RiscVHandler::rv64(),
+        _ => RiscVHandler::new(),
+    };
+    dispatcher.register(Box::new(handler));
     dispatcher
-}
-
-// Shared dispatcher instance reused to avoid repeated initialisation costs.
-lazy_static::lazy_static! {
-    static ref DISPATCHER: ArchitectureDispatcher = create_dispatcher();
 }
 
 /// Result of a disassembly operation with additional metadata.
@@ -94,16 +95,16 @@ pub struct DisassemblyEngine {
 }
 
 impl DisassemblyEngine {
-    /// Create a new disassembly engine.
-    pub fn new() -> Self {
+    /// Create a new disassembly engine for the given architecture.
+    pub fn new(arch: &str) -> Self {
         Self {
-            dispatcher: create_dispatcher(),
+            dispatcher: create_dispatcher(arch),
         }
     }
 
-    /// Create a new engine instance (preferred method for thread safety).
+    /// Create a new engine instance for riscv64 (default).
     pub fn new_engine() -> Self {
-        Self::new()
+        Self::new("riscv64")
     }
 
     /// Disassemble bytes using the provided configuration.
@@ -237,7 +238,8 @@ impl DisassemblyFormatter {
 /// Convenience functions for backward compatibility.
 /// Disassembles the supplied byte tokens using the provided configuration.
 pub fn process_input(config: &DisasmConfig) -> Result<DisassemblyResult, DisasmError> {
-    let engine = DisassemblyEngine::new();
+    let arch = config.arch_name();
+    let engine = DisassemblyEngine::new(arch);
     engine.disassemble(config)
 }
 
@@ -260,7 +262,7 @@ mod tests {
 
     #[test]
     fn test_disassembly_engine() {
-        let engine = DisassemblyEngine::new();
+        let engine = DisassemblyEngine::new("riscv64");
         // The exact number of architectures may vary, so just check it's a reasonable number
         assert!(!engine.dispatcher.supported_architectures().is_empty()); // Basic sanity check
     }

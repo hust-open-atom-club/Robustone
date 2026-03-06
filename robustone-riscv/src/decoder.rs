@@ -27,7 +27,7 @@ pub struct RiscVDecoder {
 impl RiscVDecoder {
     /// Construct a decoder with the provided XLEN and extension bitmask.
     pub fn new(xlen: Xlen, extensions: Extensions) -> Self {
-        let extension_handlers = create_extensions();
+        let extension_handlers = create_extensions(xlen);
         Self {
             xlen,
             extensions,
