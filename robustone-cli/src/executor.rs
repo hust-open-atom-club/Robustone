@@ -20,7 +20,7 @@ impl CliExecutor {
     /// Create a new CLI executor.
     pub fn new() -> Self {
         Self {
-            engine: DisassemblyEngine::new(),
+            engine: DisassemblyEngine::new("riscv64"),
         }
     }
 
@@ -57,9 +57,12 @@ impl CliExecutor {
         // Validate the configuration for disassembly
         config.validate_for_disassembly()?;
 
+        // Create engine with correct architecture
+        let arch = config.arch_name();
+        let engine = DisassemblyEngine::new(arch);
+
         // Perform the disassembly
-        let result = self
-            .engine
+        let result = engine
             .disassemble(config)
             .map_err(|e| CliError::Disassembly(e.to_string()))?;
 

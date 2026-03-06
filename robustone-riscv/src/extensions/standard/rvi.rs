@@ -5,17 +5,17 @@
 //! memory operations, and system instructions that form the core of RISC-V.
 
 use super::Standard;
-use crate::riscv::decoder::{RiscVDecodedInstruction, Xlen};
-use crate::riscv::extensions::{Extensions, InstructionExtension};
-use crate::riscv::shared::{
+use crate::decoder::{RiscVDecodedInstruction, Xlen};
+use crate::extensions::{Extensions, InstructionExtension};
+use crate::shared::{
     InstructionFormatter, OperandFactory, RegisterNameProvider,
     encoding::ShamtExtractor,
     formatting::DefaultInstructionFormatter,
     operands::{DefaultOperandFactory, OperandBuilder, OperandFormatter},
     registers::RegisterManager,
 };
-use crate::riscv::types::*;
-use crate::types::error::DisasmError;
+use crate::types::*;
+use robustone_core::types::error::DisasmError;
 
 /// RV32I/RV64I Base Integer Extension
 pub struct Rvi {
@@ -28,11 +28,16 @@ pub struct Rvi {
 impl Rvi {
     /// Create a new RV32I/RV64I extension instance.
     pub fn new() -> Self {
+        Self::new_with_xlen(Xlen::X32)
+    }
+
+    /// Create a new RV32I/RV64I extension instance with XLEN.
+    pub fn new_with_xlen(xlen: Xlen) -> Self {
         Self {
-            operand_factory: DefaultOperandFactory::new(),
-            formatter: DefaultInstructionFormatter::new(),
+            operand_factory: DefaultOperandFactory::with_xlen(xlen),
+            formatter: DefaultInstructionFormatter::with_xlen(xlen),
             register_manager: RegisterManager::new(),
-            operand_builder: OperandBuilder::new(),
+            operand_builder: OperandBuilder::with_xlen(xlen),
         }
     }
 
@@ -726,7 +731,7 @@ impl Default for Rvi {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::riscv::extensions::thead::THead;
+    use crate::extensions::thead::THead;
     #[test]
     fn test_rvi_extension_creation() {
         let extension = Rvi::new();

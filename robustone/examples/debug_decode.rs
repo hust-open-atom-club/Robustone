@@ -1,19 +1,16 @@
 use robustone::*;
 
 fn main() {
-    let dispatcher = ArchitectureDispatcher::new();
+    let dispatcher = dispatcher();
 
     let test_instructions = vec![
-        "00000093", // addi ra, zero, 0
-        "00000193", // addi gp, zero, 0
-        "00000293", // addi t0, zero, 0
-        "00000313", // addi t1, zero, 0
-        "00000513", // addi a0, zero, 0
-        "00052503", // lw a0, 0(zero)
-        "13000513", // addi a0, zero, 304
-        "00000013", // addi zero, zero, 0
-        "00008067", // jalr zero, 0(ra)
-        "00100093", // addi ra, zero, 1
+        "93000000", // addi ra, zero, 0
+        "93010000", // addi gp, zero, 0
+        "93020000", // addi t0, zero, 0
+        "13030000", // addi t1, zero, 0
+        "13050000", // addi a0, zero, 0
+        "03250500", "130101ff", "13000000", // addi zero, zero, 0
+        "67800000", "93001000", // addi ra, zero, 1
         "4101",     // c.addi4spn
     ];
 

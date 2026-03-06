@@ -16,12 +16,12 @@ pub mod printer;
 pub mod shared;
 pub mod types;
 
-use crate::{
-    traits::ArchitectureHandler, types::error::DisasmError, types::instruction::Instruction,
-};
 use arch::RiscVInstructionDetail;
 use decoder::{RiscVDecoder, Xlen};
 use extensions::Extensions;
+use robustone_core::{
+    traits::ArchitectureHandler, types::error::DisasmError, types::instruction::Instruction,
+};
 use types::*;
 
 /// Architecture handler implementation for RISC-V targets.

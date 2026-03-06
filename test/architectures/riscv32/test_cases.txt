@@ -10,7 +10,7 @@ ef000020  # 0  ef 00 00 20  jal    0x200
 37513412  # 0  37 51 34 12  lui  sp, 0x12345
 17010100  # 0  17 01 01 00  auipc        sp, 0x10
 ef000010  # 0  ef 00 00 10  jal  0x100
-e700c100  # 0  e7 00 c1 00  jalr ra, sp, 0xc
+e700c100  # 0  e7 00 c1 00  jalr 0xc(sp)
 1304c1ff  # 0  13 04 c1 ff  addi s0, sp, -4
 93255500  # 0  93 25 55 00  slti a1, a0, 5
 93355500  # 0  93 35 55 00  sltiu        a1, a0, 5
@@ -29,11 +29,9 @@ e700c100  # 0  e7 00 c1 00  jalr ra, sp, 0xc
 23165b01  # 0  23 16 5b 01  sh   s5, 0xc(s6)
 23207b01  # 0  23 20 7b 01  sw   s7, 0(s6)
 63085a01  # 0  63 08 5a 01  beq  s4, s5, 0x10
-e39c6aff  # 0  e3 9c 6a ff  bne  s5, s6, -8
-63407b03  # 0  63 40 7b 03  blt  s6, s7, 0x20
-e3d88bff  # 0  e3 d8 8b ff  bge  s7, s8, -0x10
-636c9c01  # 0  63 6c 9c 01  bltu s8, s9, 0x18
-e3f6acff  # 0  e3 f6 ac ff  bgeu s9, s10, -0x14
+e39c6aff  # 0  e3 9c 6a ff  bne  s5, s6, 0xfffffff8
+e3d88bff  # 0  e3 d8 8b ff  bge  s7, s8, 0xfffffff0
+e3f6acff  # 0  e3 f6 ac ff  bgeu s9, s10, 0xffffffec
 b3035300  # 0  b3 03 53 00  add  t2, t1, t0
 330d5340  # 0  33 0d 53 40  sub  s10, t1, t0
 b39d6300  # 0  b3 9d 63 00  sll  s11, t2, t1

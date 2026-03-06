@@ -4,6 +4,7 @@
 //! all RISC-V extensions to eliminate code duplication.
 
 use super::super::types::*;
+use crate::decoder::Xlen;
 
 /// Trait for creating RISC-V operands in extensions.
 pub trait OperandFactory {
@@ -30,10 +31,40 @@ pub trait OperandFormatter {
 
     /// Format a memory operand for display (offset(base)).
     fn format_memory_operand(&self, offset: i64, base_reg: &str) -> String;
+
+    /// Format a control flow offset (branch/jump target).
+    fn format_control_offset(&self, value: i64) -> String;
 }
 
 /// Default implementation of operand factory.
-pub struct DefaultOperandFactory;
+pub struct DefaultOperandFactory {
+    xlen: Option<Xlen>,
+}
+
+impl DefaultOperandFactory {
+    pub const fn new() -> Self {
+        Self { xlen: None }
+    }
+
+    pub const fn with_xlen(xlen: Xlen) -> Self {
+        Self { xlen: Some(xlen) }
+    }
+
+    /// Create a register operand (convenience method).
+    pub fn register(reg: u8, access: Access) -> RiscVOperand {
+        Self::new().make_register_operand(reg, access)
+    }
+
+    /// Create an immediate operand (convenience method).
+    pub fn immediate(imm: i64) -> RiscVOperand {
+        Self::new().make_immediate_operand(imm)
+    }
+
+    /// Create a memory operand (convenience method).
+    pub fn memory(base: u8, disp: i64) -> RiscVOperand {
+        Self::new().make_memory_operand(base, disp)
+    }
+}
 
 impl OperandFactory for DefaultOperandFactory {
     fn make_register_operand(&self, reg: u8, access: Access) -> RiscVOperand {
@@ -121,32 +152,17 @@ impl OperandFormatter for DefaultOperandFactory {
         let offset_str = self.format_immediate(offset);
         format!("{offset_str}({base_reg})")
     }
-}
 
-impl DefaultOperandFactory {
-    /// Create a new default operand factory.
-    pub const fn new() -> Self {
-        Self
-    }
-
-    /// Get the global default operand factory instance.
-    pub const fn instance() -> &'static Self {
-        &DefaultOperandFactory
-    }
-
-    /// Create a register operand (convenience method).
-    pub fn register(reg: u8, access: Access) -> RiscVOperand {
-        Self::instance().make_register_operand(reg, access)
-    }
-
-    /// Create an immediate operand (convenience method).
-    pub fn immediate(imm: i64) -> RiscVOperand {
-        Self::instance().make_immediate_operand(imm)
-    }
-
-    /// Create a memory operand (convenience method).
-    pub fn memory(base: u8, disp: i64) -> RiscVOperand {
-        Self::instance().make_memory_operand(base, disp)
+    fn format_control_offset(&self, value: i64) -> String {
+        if value >= 0 {
+            self.format_immediate(value)
+        } else {
+            let uvalue = value as u64;
+            match self.xlen {
+                Some(Xlen::X32) => format!("0x{:x}", uvalue as u32),
+                Some(Xlen::X64) | None => format!("0x{:x}", uvalue),
+            }
+        }
     }
 }
 
@@ -165,7 +181,14 @@ impl OperandBuilder {
     /// Create a new operand builder.
     pub const fn new() -> Self {
         Self {
-            factory: DefaultOperandFactory,
+            factory: DefaultOperandFactory::new(),
+        }
+    }
+
+    /// Create a new operand builder with XLEN.
+    pub const fn with_xlen(xlen: Xlen) -> Self {
+        Self {
+            factory: DefaultOperandFactory::with_xlen(xlen),
         }
     }
 
@@ -184,13 +207,21 @@ impl OperandBuilder {
         )
     }
 
-    pub fn format_i_type(&self, _mnemonic: &str, rd: u8, rs1: u8, imm: i64) -> String {
-        format!(
-            "{}, {}, {}",
-            super::registers::get_register_name(rd),
-            super::registers::get_register_name(rs1),
-            self.factory.format_immediate(imm)
-        )
+    pub fn format_i_type(&self, mnemonic: &str, rd: u8, rs1: u8, imm: i64) -> String {
+        if mnemonic == "jalr" {
+            format!(
+                "{}({})",
+                self.factory.format_immediate(imm),
+                super::registers::get_register_name(rs1)
+            )
+        } else {
+            format!(
+                "{}, {}, {}",
+                super::registers::get_register_name(rd),
+                super::registers::get_register_name(rs1),
+                self.factory.format_immediate(imm)
+            )
+        }
     }
 
     pub fn format_s_type(&self, _mnemonic: &str, rs2: u8, rs1: u8, imm: i64) -> String {
@@ -203,7 +234,7 @@ impl OperandBuilder {
     }
 
     pub fn format_b_type(&self, mnemonic: &str, rs1: u8, rs2: u8, imm: i64) -> String {
-        let offset_str = self.factory.format_immediate(imm);
+        let offset_str = self.factory.format_control_offset(imm);
         if (mnemonic == "beqz" || mnemonic == "bnez") && rs2 == 0 {
             format!(
                 "{}, {}",
@@ -233,7 +264,7 @@ impl OperandBuilder {
     }
 
     pub fn format_j_type(&self, mnemonic: &str, rd: u8, imm: i64) -> String {
-        let imm_str = self.factory.format_immediate(imm);
+        let imm_str = self.factory.format_control_offset(imm);
         match (mnemonic, rd) {
             ("j", _) => imm_str,
             ("jal", 1) => imm_str,
@@ -364,12 +395,12 @@ pub mod convenience {
 
     /// Format an immediate value.
     pub fn format_immediate(value: i64) -> String {
-        DefaultOperandFactory::instance().format_immediate(value)
+        DefaultOperandFactory::new().format_immediate(value)
     }
 
     /// Format a CSR address.
     pub fn format_csr(csr: i64) -> String {
-        DefaultOperandFactory::instance().format_csr(csr)
+        DefaultOperandFactory::new().format_csr(csr)
     }
 }
 

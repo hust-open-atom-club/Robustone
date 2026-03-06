@@ -4,14 +4,14 @@
 //! which provides atomic memory operations for synchronization and concurrency.
 
 use super::Standard;
-use crate::riscv::decoder::{RiscVDecodedInstruction, Xlen};
-use crate::riscv::extensions::{Extensions, InstructionExtension};
-use crate::riscv::shared::{
+use crate::decoder::{RiscVDecodedInstruction, Xlen};
+use crate::extensions::{Extensions, InstructionExtension};
+use crate::shared::{
     operands::convenience,
     registers::{RegisterManager, RegisterNameProvider},
 };
-use crate::riscv::types::*;
-use crate::types::error::DisasmError;
+use crate::types::*;
+use robustone_core::types::error::DisasmError;
 
 /// RVA Atomic Instructions Extension
 pub struct Rva {

@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 robustone-core = { path = "../robustone-core" }
 robustone-cli = { path = "../robustone-cli" }
+robustone-riscv = { path = "../robustone-riscv" }
