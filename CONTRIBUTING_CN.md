@@ -8,6 +8,7 @@
 - [开发环境配置](#开发环境配置)
 - [Pre-commit 钩子](#pre-commit-钩子)
 - [代码规范](#代码规范)
+- [编码规范](#编码规范)
 - [测试](#测试)
 - [提交更改](#提交更改)
 - [Pull Request 检查清单](#pull-request-检查清单)
@@ -83,6 +84,10 @@ git commit --no-verify
 
 ## 代码规范
 
+本项目采用以下编码规范基线：
+- 主规范文档：[docs/coding-guidelines.md](docs/coding-guidelines.md)
+- 中文版：[docs/coding-guidelines-cn.md](docs/coding-guidelines-cn.md)
+
 ### Rust
 
 - 遵循 `rustfmt` 强制执行的代码风格
@@ -109,6 +114,24 @@ use super::types::*;
 - 最大行长度：120 字符
 - 适当使用类型提示
 - 配置位于 `pyproject.toml`
+
+## 编码规范
+
+Robustone 维护项目自己的编码规范，
+并参考 Asterinas 的 coding guidelines
+作为默认 code review 语言。
+在评审中优先使用短名引用规则，
+例如 `descriptive-names`、`propagate-errors`、`add-regression-tests`。
+
+如果需要查看规则原文细节，
+请直接通过 `docs/coding-guidelines.md` 中的链接查阅 Asterinas 对应页面。
+
+对于新增或修改代码，以下条目视为必须满足：
+- 命名准确、可读，并在需要时明确单位
+- 注释解释设计动机，而非复述代码行为
+- 函数职责聚焦、嵌套可控、错误路径清晰传播
+- 修复 bug 时补充回归测试
+- commit 保持原子，PR 主题保持聚焦
 
 ## 测试
 
@@ -177,6 +200,10 @@ git commit -m "feat: add support for XYZ instruction"
 - `test:` 测试添加或更改
 - `chore:` 维护任务
 
+主题行建议：
+- 使用祈使语气，描述清晰
+- 在可行情况下将主题行控制在 72 字符以内
+
 4. 推送并创建 Pull Request：
 
 ```bash
@@ -194,6 +221,9 @@ git push origin feature/your-feature-name
 - [ ] 新代码包含适当的测试
 - [ ] 公共 API 包含文档
 - [ ] 提交信息遵循上述格式
+- [ ] 命名与注释符合 `docs/coding-guidelines.md`
+- [ ] bug 修复在可行情况下包含回归测试
+- [ ] commit 原子、PR 主题聚焦
 
 ## 添加新架构
 

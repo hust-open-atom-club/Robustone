@@ -8,6 +8,7 @@ Thank you for your interest in contributing to Robustone. This document provides
 - [Development Setup](#development-setup)
 - [Pre-commit Hooks](#pre-commit-hooks)
 - [Code Style](#code-style)
+- [Coding Guidelines (Reference to Asterinas)](#coding-guidelines-reference-to-asterinas)
 - [Testing](#testing)
 - [Submitting Changes](#submitting-changes)
 - [Pull Request Checklist](#pull-request-checklist)
@@ -83,6 +84,10 @@ git commit --no-verify
 
 ## Code Style
 
+This project uses the following coding-guideline baseline:
+- Primary guide: [docs/coding-guidelines.md](docs/coding-guidelines.md)
+- Chinese version: [docs/coding-guidelines-cn.md](docs/coding-guidelines-cn.md)
+
 ### Rust
 
 - Follow the existing code style enforced by `rustfmt`
@@ -109,6 +114,23 @@ use super::types::*;
 - Maximum line length: 120 characters
 - Use type hints where practical
 - Configuration is in `pyproject.toml`
+
+## Coding Guidelines (Reference to Asterinas)
+
+Robustone maintains project guidelines with references to Asterinas
+as a common review language.
+When discussing code changes in reviews, prefer referencing guideline short names
+such as `descriptive-names`, `propagate-errors`, and `add-regression-tests`.
+
+If detailed rule wording is needed,
+consult Asterinas guideline pages directly via the links in `docs/coding-guidelines.md`.
+
+For practical use, treat the following as required in new or modified code:
+- Accurate, descriptive naming and explicit units in names where needed
+- Comments that explain rationale instead of restating code
+- Focused functions with controlled nesting and clear error propagation
+- Regression tests for bug fixes
+- Atomic commits and focused pull requests
 
 ## Testing
 
@@ -177,6 +199,10 @@ Commit message format:
 - `test:` for test additions or changes
 - `chore:` for maintenance tasks
 
+Subject line guidance:
+- Keep the subject imperative and descriptive
+- Keep the subject line at or below 72 characters when practical
+
 4. Push and create a pull request:
 
 ```bash
@@ -194,6 +220,9 @@ Before submitting your pull request, verify:
 - [ ] New code includes appropriate tests
 - [ ] Public APIs include documentation
 - [ ] Commit messages follow the format above
+- [ ] Naming and comments align with `docs/coding-guidelines.md`
+- [ ] Bug fixes include regression tests when practical
+- [ ] Commits are atomic and PR scope is focused
 
 ## Adding a New Architecture
 

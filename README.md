@@ -77,5 +77,6 @@ We welcome contributions. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 - Setting up the development environment
 - Installing and using pre-commit hooks
 - Code style requirements
+- Coding guidelines referencing Asterinas ([docs/coding-guidelines.md](docs/coding-guidelines.md))
 - Testing procedures
 - Submitting pull requests

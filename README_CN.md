@@ -78,5 +78,6 @@ python3 test/riscv32/test_vs_cstool.py
 - 开发环境配置
 - Pre-commit 钩子的安装和使用
 - 代码规范要求
+- 参考 Asterinas 的编码规范（[docs/coding-guidelines-cn.md](docs/coding-guidelines-cn.md)）
 - 测试流程
 - 提交 Pull Request

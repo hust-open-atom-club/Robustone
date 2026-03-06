@@ -12,6 +12,24 @@ Robustone is a Rust-based disassembly engine inspired by Capstone. It is structu
 
 The project also includes a `test` directory for parity testing against the original Capstone engine and a `third_party` directory for a submodule of the Capstone project.
 
+## Coding Guidelines Baseline
+
+Use project guidelines that reference Asterinas
+as the default coding standard for this repository:
+
+- Primary: `docs/coding-guidelines.md`
+- Chinese: `docs/coding-guidelines-cn.md`
+- For exact details, consult the linked Asterinas pages in those documents.
+
+When proposing or editing code, prioritize these rules:
+
+- Use descriptive and accurate names (`descriptive-names`, `accurate-names`)
+- Explain design rationale in comments (`explain-why`, `design-decisions`)
+- Keep functions focused and avoid deep nesting (`small-functions`, `minimize-nesting`)
+- Propagate errors with `?` in Rust (`propagate-errors`)
+- Add regression tests for bug fixes (`add-regression-tests`)
+- Keep commits atomic and pull requests focused (`atomic-commits`, `focused-prs`)
+
 ## Development Workflow
 
 The primary development workflows are managed through a `Makefile`.
