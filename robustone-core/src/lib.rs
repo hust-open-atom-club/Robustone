@@ -18,7 +18,7 @@
 //!
 //! 1. Create a new module in `src/` (e.g., `src/arm/`)
 //! 2. Implement the `ArchitectureHandler` trait for your architecture
-//! 3. Register the handler in `ArchitectureDispatcher::new()`
+//! 3. Register the handler in an `ArchitectureDispatcher`
 //!
 //! # Example
 //!
@@ -26,7 +26,7 @@
 //! use robustone_core::prelude::*;
 //! use robustone_core::ArchitectureDispatcher;
 //!
-//! let dispatcher = ArchitectureDispatcher::new();
+//! let dispatcher = ArchitectureDispatcher::default();
 //! match dispatcher.disassemble_bytes(&[0x93, 0x01, 0x00, 0x00], "riscv32", 0x1000) {
 //!     Ok((instruction, size)) => {
 //!         println!("Instruction: {} {}", instruction.mnemonic, instruction.operands);
@@ -41,7 +41,6 @@
 //! ```
 
 pub mod architecture;
-pub mod riscv;
 pub mod traits;
 pub mod types;
 pub mod utils;
@@ -82,25 +81,12 @@ pub struct ArchitectureDispatcher {
 }
 
 impl ArchitectureDispatcher {
-    /// Creates a new dispatcher and registers all available architecture handlers.
-    ///
-    /// This method automatically registers handlers for all supported architectures.
-    /// Currently supported architectures:
-    ///
-    /// - RISC-V (32-bit and 64-bit)
-    ///
-    /// # Returns
-    ///
-    /// A new `ArchitectureDispatcher` instance with all available handlers registered.
+    /// Creates a new empty dispatcher.
     pub fn new() -> Self {
-        let mut dispatcher = Self {
+        Self {
             handlers: Vec::new(),
             hex_parser: HexParser::new(),
-        };
-
-        dispatcher.register(Box::new(riscv::RiscVHandler::new()));
-
-        dispatcher
+        }
     }
 
     /// Registers an architecture handler with the dispatcher.
@@ -135,8 +121,8 @@ impl ArchitectureDispatcher {
     ///
     /// ```rust
     /// use robustone_core::ArchitectureDispatcher;
-    /// let dispatcher = ArchitectureDispatcher::new();
-    /// let instruction = dispatcher.disassemble("13000513", "riscv32".to_string());
+    /// let dispatcher = ArchitectureDispatcher::default();
+    /// let instruction = dispatcher.disassemble("130101ff", "riscv32".to_string());
     /// println!("Instruction: {} {}", instruction.mnemonic, instruction.operands);
     /// ```
     pub fn disassemble(&self, hex: &str, arch: String) -> Instruction {
@@ -202,7 +188,7 @@ impl ArchitectureDispatcher {
     ///
     /// ```rust
     /// use robustone_core::ArchitectureDispatcher;
-    /// let dispatcher = ArchitectureDispatcher::new();
+    /// let dispatcher = ArchitectureDispatcher::default();
     /// let bytes = [0x13, 0x05, 0x00, 0x00]; // addi a0, zero, 0
     /// match dispatcher.disassemble_bytes(&bytes, "riscv32", 0x1000) {
     ///     Ok((instruction, size)) => {
@@ -243,7 +229,7 @@ impl ArchitectureDispatcher {
     ///
     /// ```rust
     /// use robustone_core::ArchitectureDispatcher;
-    /// let dispatcher = ArchitectureDispatcher::new();
+    /// let dispatcher = ArchitectureDispatcher::default();
     /// let archs = dispatcher.supported_architectures();
     /// for arch in archs {
     ///     println!("Supported architecture: {}", arch);
@@ -271,7 +257,7 @@ impl ArchitectureDispatcher {
     ///
     /// ```rust
     /// use robustone_core::ArchitectureDispatcher;
-    /// let dispatcher = ArchitectureDispatcher::new();
+    /// let dispatcher = ArchitectureDispatcher::default();
     /// if dispatcher.supports_architecture("riscv32") {
     ///     println!("RISC-V 32-bit is supported!");
     /// }
@@ -318,26 +304,25 @@ mod tests {
 
     #[test]
     fn test_architecture_dispatcher_creation() {
-        let dispatcher = ArchitectureDispatcher::new();
+        let dispatcher = ArchitectureDispatcher::default();
         let archs = dispatcher.supported_architectures();
 
-        // Ensure RISC-V is present
-        assert!(archs.contains(&"riscv"));
+        assert!(archs.is_empty());
     }
 
     #[test]
     fn test_hex_parsing() {
-        let dispatcher = ArchitectureDispatcher::new();
+        let dispatcher = ArchitectureDispatcher::default();
 
         // Hex parsing should succeed for bare strings.
         let instruction = dispatcher.disassemble("deadbeef", "unknown".to_string());
         assert_eq!(instruction.mnemonic, "unknown");
-        assert_eq!(instruction.bytes, vec![0xef, 0xbe, 0xad, 0xde]);
+        assert_eq!(instruction.bytes, vec![0xde, 0xad, 0xbe, 0xef]);
         assert_eq!(instruction.size, 4);
 
         // Hex parsing should also accept a `0x` prefix.
         let instruction = dispatcher.disassemble("0x1234", "unknown".to_string());
-        assert_eq!(instruction.bytes, vec![0x34, 0x12]);
+        assert_eq!(instruction.bytes, vec![0x12, 0x34]);
         assert_eq!(instruction.size, 2);
     }
 }

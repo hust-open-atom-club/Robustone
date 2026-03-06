@@ -1,9 +1,16 @@
 use crate::config::{DisasmConfig, OutputConfig};
 use robustone_core::{ArchitectureDispatcher, DisasmError, Instruction};
+use robustone_riscv::RiscVHandler;
+
+fn create_dispatcher() -> ArchitectureDispatcher {
+    let mut dispatcher = ArchitectureDispatcher::new();
+    dispatcher.register(Box::new(RiscVHandler::new()));
+    dispatcher
+}
 
 // Shared dispatcher instance reused to avoid repeated initialisation costs.
 lazy_static::lazy_static! {
-    static ref DISPATCHER: ArchitectureDispatcher = ArchitectureDispatcher::new();
+    static ref DISPATCHER: ArchitectureDispatcher = create_dispatcher();
 }
 
 /// Result of a disassembly operation with additional metadata.
@@ -90,7 +97,7 @@ impl DisassemblyEngine {
     /// Create a new disassembly engine.
     pub fn new() -> Self {
         Self {
-            dispatcher: ArchitectureDispatcher::new(),
+            dispatcher: create_dispatcher(),
         }
     }
 
