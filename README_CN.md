@@ -41,13 +41,13 @@ third_party/
 CLI 镜像了经典的 `cstool` 用户体验。例如，要解码 RISC-V 指令并显示详细信息：
 
 ```bash
-make run -- riscv32 13000513 -d
+make run -- riscv32 130101ff -d
 ```
 
 或者，您可以使用 `RUN_ARGS` 变量。这样可以防止 `make` 错误解析 `-d` 等标志：
 
 ```bash
-make run RUN_ARGS="riscv32 13000513 -d"
+make run RUN_ARGS="riscv32 130101ff -d"
 ```
 
 ## 测试
