@@ -1,11 +1,6 @@
 use crate::config::{DisasmConfig, OutputConfig};
 use robustone_core::{ArchitectureDispatcher, DisasmError, Instruction};
 
-// Shared dispatcher instance reused to avoid repeated initialisation costs.
-lazy_static::lazy_static! {
-    static ref DISPATCHER: ArchitectureDispatcher = ArchitectureDispatcher::new();
-}
-
 /// Result of a disassembly operation with additional metadata.
 #[derive(Debug)]
 pub struct DisassemblyResult {
@@ -134,7 +129,7 @@ impl DisassemblyEngine {
                         // Skip the problematic byte and continue
                         result.add_error(err.to_string());
                         offset += 1;
-                        current_address += 1;
+                        current_address = current_address.saturating_add(1);
                     } else {
                         return Err(err);
                     }
@@ -175,13 +170,17 @@ impl DisassemblyFormatter {
             return output;
         }
 
-        let mut current_address = result.start_address;
+        let hex_width = result
+            .instructions
+            .iter()
+            .map(|instruction| instruction.bytes.len().saturating_mul(3).saturating_sub(1))
+            .max()
+            .unwrap_or(0);
 
         for instruction in &result.instructions {
-            let formatted = self.format_instruction(instruction, current_address);
+            let formatted = self.format_instruction(instruction, hex_width);
             output.push_str(&formatted);
             output.push('\n');
-            current_address += instruction.size as u64;
         }
 
         // Print errors if any occurred
@@ -193,8 +192,8 @@ impl DisassemblyFormatter {
     }
 
     /// Format a single instruction.
-    fn format_instruction(&self, instr: &Instruction, address: u64) -> String {
-        let address_str = format!("{address:2x}");
+    fn format_instruction(&self, instr: &Instruction, hex_width: usize) -> String {
+        let address_str = format!("{:x}", instr.address);
 
         let bytes_str = if self.output_config.show_hex {
             format!(
@@ -205,25 +204,81 @@ impl DisassemblyFormatter {
                     .map(|b| format!("{b:02x}"))
                     .collect::<Vec<_>>()
                     .join(" "),
-                width = self.output_config.hex_width
+                width = hex_width
             )
         } else {
             String::new()
         };
 
-        if instr.operands.is_empty() {
-            format!("{}  {}  {}", address_str, bytes_str, instr.mnemonic)
+        let mut line = if self.output_config.show_hex {
+            if instr.operands.is_empty() {
+                format!("{address_str}  {bytes_str}  {}", instr.mnemonic)
+            } else {
+                format!(
+                    "{address_str}  {bytes_str}  {}\t{}",
+                    instr.mnemonic, instr.operands
+                )
+            }
         } else {
-            format!(
-                "{}  {}  {}\t{}",
-                address_str, bytes_str, instr.mnemonic, instr.operands
-            )
+            if instr.operands.is_empty() {
+                format!("{address_str}    {}", instr.mnemonic)
+            } else {
+                format!("{address_str}    {}\t{}", instr.mnemonic, instr.operands)
+            }
+        };
+
+        if self.output_config.show_detail_sections {
+            let detail_lines = self.format_detail_sections(instr);
+            if !detail_lines.is_empty() {
+                line.push('\n');
+                line.push_str(&detail_lines.join("\n"));
+            }
         }
+
+        line
+    }
+
+    fn format_detail_sections(&self, instr: &Instruction) -> Vec<String> {
+        let Some(detail) = &instr.detail else {
+            return Vec::new();
+        };
+
+        let mut detail_lines = Vec::new();
+        let registers_read = detail.registers_read();
+        if !registers_read.is_empty() {
+            let registers = registers_read
+                .iter()
+                .map(|reg_id| format_register_name(detail.architecture_name(), *reg_id))
+                .collect::<Vec<_>>()
+                .join(", ");
+            detail_lines.push(format!("\tRegisters read: {registers}"));
+        }
+
+        let registers_written = detail.registers_written();
+        if !registers_written.is_empty() {
+            let registers = registers_written
+                .iter()
+                .map(|reg_id| format_register_name(detail.architecture_name(), *reg_id))
+                .collect::<Vec<_>>()
+                .join(", ");
+            detail_lines.push(format!("\tRegisters written: {registers}"));
+        }
+
+        detail_lines
     }
 
     /// Print the disassembly result directly to stdout.
     pub fn print(&self, result: &DisassemblyResult) {
         print!("{}", self.format(result));
+    }
+}
+
+fn format_register_name(architecture_name: &str, reg_id: u32) -> String {
+    match architecture_name {
+        "riscv" => robustone_core::riscv::types::RiscVRegister::from_id(reg_id)
+            .name()
+            .to_string(),
+        _ => reg_id.to_string(),
     }
 }
 

@@ -145,7 +145,8 @@ impl CliExecutor {
 
     /// Validate CLI arguments without executing disassembly.
     pub fn validate_only(&self) -> Result<()> {
-        let cli = Cli::parse();
+        let cli = Cli::try_parse_from(std::env::args_os())
+            .map_err(|error| CliError::InvalidCommand(error.to_string()))?;
         cli.validate()?;
         Ok(())
     }

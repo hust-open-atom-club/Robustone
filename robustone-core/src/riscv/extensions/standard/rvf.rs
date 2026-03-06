@@ -110,6 +110,33 @@ impl Rvf {
         })
     }
 
+    fn decode_fp_r_type_with_rm(
+        &self,
+        mnemonic: &str,
+        rd: u8,
+        rs1: u8,
+        rs2: u8,
+        rm: u8,
+    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+        Ok(RiscVDecodedInstruction {
+            mnemonic: mnemonic.to_string(),
+            operands: format!(
+                "{}, {}, {}, {}",
+                self.register_manager.fp_register_name(rd),
+                self.register_manager.fp_register_name(rs1),
+                self.register_manager.fp_register_name(rs2),
+                rounding_mode_name(rm),
+            ),
+            format: RiscVInstructionFormat::R,
+            size: 4,
+            operands_detail: vec![
+                convenience::register(rd, Access::write()),
+                convenience::register(rs1, Access::read()),
+                convenience::register(rs2, Access::read()),
+            ],
+        })
+    }
+
     fn decode_fp_r4_type(
         &self,
         mnemonic: &str,
@@ -169,6 +196,87 @@ impl Rvf {
             ],
         })
     }
+
+    fn decode_fp_int_type_with_rm(
+        &self,
+        mnemonic: &str,
+        rd: u8,
+        rs1: u8,
+        rd_is_fp: bool,
+        rs1_is_fp: bool,
+        rm: u8,
+    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+        let rd_name = if rd_is_fp {
+            self.register_manager.fp_register_name(rd)
+        } else {
+            self.register_manager.int_register_name(rd)
+        };
+        let rs1_name = if rs1_is_fp {
+            self.register_manager.fp_register_name(rs1)
+        } else {
+            self.register_manager.int_register_name(rs1)
+        };
+
+        Ok(RiscVDecodedInstruction {
+            mnemonic: mnemonic.to_string(),
+            operands: format!("{rd_name}, {rs1_name}, {}", rounding_mode_name(rm)),
+            format: RiscVInstructionFormat::R,
+            size: 4,
+            operands_detail: vec![
+                convenience::register(rd, Access::write()),
+                convenience::register(rs1, Access::read()),
+            ],
+        })
+    }
+
+    fn decode_fp_unary_type_with_rm(
+        &self,
+        mnemonic: &str,
+        rd: u8,
+        rs1: u8,
+        rm: u8,
+    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+        Ok(RiscVDecodedInstruction {
+            mnemonic: mnemonic.to_string(),
+            operands: format!(
+                "{}, {}, {}",
+                self.register_manager.fp_register_name(rd),
+                self.register_manager.fp_register_name(rs1),
+                rounding_mode_name(rm),
+            ),
+            format: RiscVInstructionFormat::R,
+            size: 4,
+            operands_detail: vec![
+                convenience::register(rd, Access::write()),
+                convenience::register(rs1, Access::read()),
+            ],
+        })
+    }
+
+    fn decode_fp_compare_type(
+        &self,
+        mnemonic: &str,
+        rd: u8,
+        rs1: u8,
+        rs2: u8,
+    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+        Ok(RiscVDecodedInstruction {
+            mnemonic: mnemonic.to_string(),
+            operands: format!(
+                "{}, {}, {}",
+                self.register_manager.int_register_name(rd),
+                self.register_manager.fp_register_name(rs1),
+                self.register_manager.fp_register_name(rs2)
+            ),
+            format: RiscVInstructionFormat::R,
+            size: 4,
+            operands_detail: vec![
+                convenience::register(rd, Access::write()),
+                convenience::register(rs1, Access::read()),
+                convenience::register(rs2, Access::read()),
+            ],
+        })
+    }
 }
 
 impl InstructionExtension for Rvf {
@@ -205,18 +313,30 @@ impl InstructionExtension for Rvf {
                 Some(self.decode_store_fp(rs2, rs1, imm_s))
             }
             Self::OPCODE_FMADD => {
+                if (funct7 & 0b11) != 0b00 {
+                    return None;
+                }
                 let rs3 = (funct7 >> 2) & 0x1F;
                 Some(self.decode_fp_r4_type("fmadd.s", rd, rs1, rs2, rs3))
             }
             Self::OPCODE_FMSUB => {
+                if (funct7 & 0b11) != 0b00 {
+                    return None;
+                }
                 let rs3 = (funct7 >> 2) & 0x1F;
                 Some(self.decode_fp_r4_type("fmsub.s", rd, rs1, rs2, rs3))
             }
             Self::OPCODE_FNMSUB => {
+                if (funct7 & 0b11) != 0b00 {
+                    return None;
+                }
                 let rs3 = (funct7 >> 2) & 0x1F;
                 Some(self.decode_fp_r4_type("fnmsub.s", rd, rs1, rs2, rs3))
             }
             Self::OPCODE_FNMADD => {
+                if (funct7 & 0b11) != 0b00 {
+                    return None;
+                }
                 let rs3 = (funct7 >> 2) & 0x1F;
                 Some(self.decode_fp_r4_type("fnmadd.s", rd, rs1, rs2, rs3))
             }
@@ -230,73 +350,121 @@ impl InstructionExtension for Rvf {
                 }
 
                 match (funct5, funct3) {
-                    (0b00000, 0b000) => Some(self.decode_fp_r_type("fadd.s", rd, rs1, rs2)),
-                    (0b00001, 0b000) => Some(self.decode_fp_r_type("fsub.s", rd, rs1, rs2)),
-                    (0b00010, 0b000) => Some(self.decode_fp_r_type("fmul.s", rd, rs1, rs2)),
-                    (0b00011, 0b000) => Some(self.decode_fp_r_type("fdiv.s", rd, rs1, rs2)),
-                    (0b01011, 0b000) => Some(self.decode_fp_r_type("fsqrt.s", rd, rs1, rs2)), // rs2 ignored
+                    (0b00000, rm) => {
+                        Some(self.decode_fp_r_type_with_rm("fadd.s", rd, rs1, rs2, rm))
+                    }
+                    (0b00001, rm) => {
+                        Some(self.decode_fp_r_type_with_rm("fsub.s", rd, rs1, rs2, rm))
+                    }
+                    (0b00010, rm) => {
+                        Some(self.decode_fp_r_type_with_rm("fmul.s", rd, rs1, rs2, rm))
+                    }
+                    (0b00011, rm) => {
+                        Some(self.decode_fp_r_type_with_rm("fdiv.s", rd, rs1, rs2, rm))
+                    }
+                    (0b01011, rm) => {
+                        Some(self.decode_fp_unary_type_with_rm("fsqrt.s", rd, rs1, rm))
+                    }
                     (0b00100, 0b000) => Some(self.decode_fp_r_type("fsgnj.s", rd, rs1, rs2)),
                     (0b00100, 0b001) => Some(self.decode_fp_r_type("fsgnjn.s", rd, rs1, rs2)),
                     (0b00100, 0b010) => Some(self.decode_fp_r_type("fsgnjx.s", rd, rs1, rs2)),
                     (0b00101, 0b000) => Some(self.decode_fp_r_type("fmin.s", rd, rs1, rs2)),
                     (0b00101, 0b001) => Some(self.decode_fp_r_type("fmax.s", rd, rs1, rs2)),
-                    (0b11000, 0b000) => {
-                        Some(self.decode_fp_int_type("fcvt.w.s", rd, rs1, rs2, false, true))
-                    } // rs2 ignored
-                    (0b11000, 0b001) => {
-                        Some(self.decode_fp_int_type("fcvt.wu.s", rd, rs1, rs2, false, true))
-                    } // rs2 ignored
-                    (0b11000, 0b010) => {
-                        if xlen == Xlen::X64 {
-                            Some(self.decode_fp_int_type("fcvt.l.s", rd, rs1, rs2, false, true)) // rs2 ignored
-                        } else {
-                            Some(Err(DisasmError::DecodingError(
-                                "fcvt.l.s requires RV64".to_string(),
-                            )))
+                    (0b11000, rm) => match rs2 {
+                        0 => Some(
+                            self.decode_fp_int_type_with_rm("fcvt.w.s", rd, rs1, false, true, rm),
+                        ),
+                        1 => Some(self.decode_fp_int_type_with_rm(
+                            "fcvt.wu.s",
+                            rd,
+                            rs1,
+                            false,
+                            true,
+                            rm,
+                        )),
+                        2 => {
+                            if xlen == Xlen::X64 {
+                                Some(self.decode_fp_int_type_with_rm(
+                                    "fcvt.l.s", rd, rs1, false, true, rm,
+                                ))
+                            } else {
+                                Some(Err(DisasmError::DecodingError(
+                                    "fcvt.l.s requires RV64".to_string(),
+                                )))
+                            }
                         }
-                    }
-                    (0b11000, 0b011) => {
-                        if xlen == Xlen::X64 {
-                            Some(self.decode_fp_int_type("fcvt.lu.s", rd, rs1, rs2, false, true)) // rs2 ignored
-                        } else {
-                            Some(Err(DisasmError::DecodingError(
-                                "fcvt.lu.s requires RV64".to_string(),
-                            )))
+                        3 => {
+                            if xlen == Xlen::X64 {
+                                Some(self.decode_fp_int_type_with_rm(
+                                    "fcvt.lu.s",
+                                    rd,
+                                    rs1,
+                                    false,
+                                    true,
+                                    rm,
+                                ))
+                            } else {
+                                Some(Err(DisasmError::DecodingError(
+                                    "fcvt.lu.s requires RV64".to_string(),
+                                )))
+                            }
                         }
-                    }
+                        _ => Some(Err(DisasmError::DecodingError(
+                            "Invalid F-extension integer conversion".to_string(),
+                        ))),
+                    },
                     (0b11100, 0b000) => {
                         Some(self.decode_fp_int_type("fmv.x.w", rd, rs1, rs2, false, true))
                     } // rs2 ignored
-                    (0b10100, 0b010) => Some(self.decode_fp_r_type("feq.s", rd, rs1, rs2)),
-                    (0b10100, 0b001) => Some(self.decode_fp_r_type("flt.s", rd, rs1, rs2)),
-                    (0b10100, 0b000) => Some(self.decode_fp_r_type("fle.s", rd, rs1, rs2)),
+                    (0b10100, 0b010) => Some(self.decode_fp_compare_type("feq.s", rd, rs1, rs2)),
+                    (0b10100, 0b001) => Some(self.decode_fp_compare_type("flt.s", rd, rs1, rs2)),
+                    (0b10100, 0b000) => Some(self.decode_fp_compare_type("fle.s", rd, rs1, rs2)),
                     (0b11100, 0b001) => {
                         Some(self.decode_fp_int_type("fclass.s", rd, rs1, rs2, false, true))
                     } // rs2 ignored
-                    (0b11010, 0b000) => {
-                        Some(self.decode_fp_int_type("fcvt.s.w", rd, rs1, rs2, true, false))
-                    } // rs2 ignored
-                    (0b11010, 0b001) => {
-                        Some(self.decode_fp_int_type("fcvt.s.wu", rd, rs1, rs2, true, false))
-                    } // rs2 ignored
-                    (0b11010, 0b010) => {
-                        if xlen == Xlen::X64 {
-                            Some(self.decode_fp_int_type("fcvt.s.l", rd, rs1, rs2, true, false)) // rs2 ignored
-                        } else {
-                            Some(Err(DisasmError::DecodingError(
-                                "fcvt.s.l requires RV64".to_string(),
-                            )))
+                    (0b11010, rm) => match rs2 {
+                        0 => Some(
+                            self.decode_fp_int_type_with_rm("fcvt.s.w", rd, rs1, true, false, rm),
+                        ),
+                        1 => Some(self.decode_fp_int_type_with_rm(
+                            "fcvt.s.wu",
+                            rd,
+                            rs1,
+                            true,
+                            false,
+                            rm,
+                        )),
+                        2 => {
+                            if xlen == Xlen::X64 {
+                                Some(self.decode_fp_int_type_with_rm(
+                                    "fcvt.s.l", rd, rs1, true, false, rm,
+                                ))
+                            } else {
+                                Some(Err(DisasmError::DecodingError(
+                                    "fcvt.s.l requires RV64".to_string(),
+                                )))
+                            }
                         }
-                    }
-                    (0b11010, 0b011) => {
-                        if xlen == Xlen::X64 {
-                            Some(self.decode_fp_int_type("fcvt.s.lu", rd, rs1, rs2, true, false)) // rs2 ignored
-                        } else {
-                            Some(Err(DisasmError::DecodingError(
-                                "fcvt.s.lu requires RV64".to_string(),
-                            )))
+                        3 => {
+                            if xlen == Xlen::X64 {
+                                Some(self.decode_fp_int_type_with_rm(
+                                    "fcvt.s.lu",
+                                    rd,
+                                    rs1,
+                                    true,
+                                    false,
+                                    rm,
+                                ))
+                            } else {
+                                Some(Err(DisasmError::DecodingError(
+                                    "fcvt.s.lu requires RV64".to_string(),
+                                )))
+                            }
                         }
-                    }
+                        _ => Some(Err(DisasmError::DecodingError(
+                            "Invalid F-extension floating conversion".to_string(),
+                        ))),
+                    },
                     (0b11110, 0b000) => {
                         Some(self.decode_fp_int_type("fmv.w.x", rd, rs1, rs2, true, false))
                     } // rs2 ignored
@@ -339,5 +507,17 @@ impl InstructionExtension for Rvf {
 impl Default for Rvf {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+fn rounding_mode_name(rm: u8) -> &'static str {
+    match rm {
+        0b000 => "rne",
+        0b001 => "rtz",
+        0b010 => "rdn",
+        0b011 => "rup",
+        0b100 => "rmm",
+        0b111 => "dyn",
+        _ => "invalid",
     }
 }

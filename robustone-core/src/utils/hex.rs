@@ -9,7 +9,9 @@ use crate::utils::Endianness;
 
 /// Parser for hexadecimal strings with various formats and prefixes.
 ///
-/// Endianness for parsing (can be overridden per architecture)
+/// This parser preserves the byte order exactly as it appears in the input.
+/// Architecture endianness is handled later when consumers interpret those bytes
+/// as integers or instruction words.
 ///
 /// This struct provides methods to parse hexadecimal strings into byte vectors,
 /// handling common formats like:
@@ -18,17 +20,17 @@ use crate::utils::Endianness;
 /// - Mixed case: "DeAdBeEf"
 /// - Spaced: "de ad be ef"
 #[derive(Debug, Default)]
-pub struct HexParser(Endianness);
+pub struct HexParser;
 
 impl HexParser {
-    /// Creates a new hex parser with default little-endian ordering.
+    /// Creates a new hex parser.
     pub fn new() -> Self {
-        Self::default()
+        Self
     }
 
-    /// Creates a hex parser with specified default endianness.
-    pub fn with_endianness(endianness: Endianness) -> Self {
-        Self(endianness)
+    /// Creates a hex parser and keeps the provided endianness for API compatibility.
+    pub fn with_endianness(_endianness: Endianness) -> Self {
+        Self
     }
 
     /// Parses a hexadecimal string into a byte vector.
@@ -42,23 +44,23 @@ impl HexParser {
     ///
     /// Returns a vector of bytes on success, or a DisasmError on failure.
     ///
+    /// The returned bytes stay in the same order as the textual input.
+    ///
     /// # Examples
     ///
     /// ```rust
     /// use robustone_core::prelude::*;
     /// let parser = HexParser::new();
     /// let bytes = parser.parse("deadbeef", None).unwrap();
-    /// assert_eq!(bytes, vec![0xef, 0xbe, 0xad, 0xde]);
+    /// assert_eq!(bytes, vec![0xde, 0xad, 0xbe, 0xef]);
     /// ```
     pub fn parse(
         &self,
         hex_str: &str,
-        endianness: Option<Endianness>,
+        _endianness: Option<Endianness>,
     ) -> Result<Vec<u8>, DisasmError> {
         let cleaned = self.clean_hex_string(hex_str)?;
-        let bytes = self.convert_to_bytes(&cleaned)?;
-        let final_endianness = endianness.unwrap_or(self.0);
-        Ok(self.apply_endianness(bytes, &final_endianness))
+        self.convert_to_bytes(&cleaned)
     }
 
     /// Parses a hex string with architecture-specific byte order handling.
@@ -79,8 +81,8 @@ impl HexParser {
         hex_str: &str,
         arch_name: &str,
     ) -> Result<Vec<u8>, DisasmError> {
-        let endianness = self.determine_architecture_endianness(arch_name);
-        self.parse(hex_str, Some(endianness))
+        let _endianness = self.determine_architecture_endianness(arch_name);
+        self.parse(hex_str, None)
     }
 
     /// Cleans and normalizes a hexadecimal string.
@@ -134,19 +136,6 @@ impl HexParser {
         }
     }
 
-    /// Applies endianness conversion to the byte vector.
-    /// Input bytes are in the order they appear in the hex string (big-endian textual order).
-    /// For little-endian targets, this reverses the bytes to match memory layout.
-    fn apply_endianness(&self, mut bytes: Vec<u8>, endianness: &Endianness) -> Vec<u8> {
-        match endianness {
-            Endianness::Big => bytes,
-            Endianness::Little => {
-                bytes.reverse();
-                bytes
-            }
-        }
-    }
-
     /// Determines the appropriate endianness for a given architecture.
     ///
     /// This method contains architecture-specific knowledge about byte ordering.
@@ -180,39 +169,38 @@ mod tests {
     fn test_basic_hex_parsing() {
         let parser = HexParser::new();
         let result = parser.parse("deadbeef", None).unwrap();
-        assert_eq!(result, vec![0xef, 0xbe, 0xad, 0xde]);
+        assert_eq!(result, vec![0xde, 0xad, 0xbe, 0xef]);
     }
 
     #[test]
     fn test_hex_with_prefix() {
         let parser = HexParser::new();
         let result = parser.parse("0x1234", None).unwrap();
-        assert_eq!(result, vec![0x34, 0x12]);
+        assert_eq!(result, vec![0x12, 0x34]);
     }
 
     #[test]
     fn test_hex_with_whitespace() {
         let parser = HexParser::new();
         let result = parser.parse("de ad be ef", None).unwrap();
-        assert_eq!(result, vec![0xef, 0xbe, 0xad, 0xde]);
+        assert_eq!(result, vec![0xde, 0xad, 0xbe, 0xef]);
     }
 
     #[test]
     fn test_mixed_case_hex() {
         let parser = HexParser::new();
         let result = parser.parse("DeAdBeEf", None).unwrap();
-        assert_eq!(result, vec![0xef, 0xbe, 0xad, 0xde]);
+        assert_eq!(result, vec![0xde, 0xad, 0xbe, 0xef]);
     }
 
     #[test]
     fn test_endianness_handling() {
         let parser = HexParser::new();
 
-        // Little-endian (default)
+        // The parser preserves the textual byte order regardless of architecture endianness.
         let le_result = parser.parse("12345678", Some(Endianness::Little)).unwrap();
-        assert_eq!(le_result, vec![0x78, 0x56, 0x34, 0x12]);
+        assert_eq!(le_result, vec![0x12, 0x34, 0x56, 0x78]);
 
-        // Big-endian
         let be_result = parser.parse("12345678", Some(Endianness::Big)).unwrap();
         assert_eq!(be_result, vec![0x12, 0x34, 0x56, 0x78]);
     }
@@ -221,15 +209,14 @@ mod tests {
     fn test_architecture_specific_parsing() {
         let parser = HexParser::new();
 
-        // RISC-V should use little-endian (no reverse order)
+        // Architecture-specific parsing also preserves input order.
         let riscv_result = parser
             .parse_for_architecture("deadbeef", "riscv32")
             .unwrap();
-        assert_eq!(riscv_result, vec![0xef, 0xbe, 0xad, 0xde]);
+        assert_eq!(riscv_result, vec![0xde, 0xad, 0xbe, 0xef]);
 
-        // x86 should use little-endian
         let x86_result = parser.parse_for_architecture("deadbeef", "x86").unwrap();
-        assert_eq!(x86_result, vec![0xef, 0xbe, 0xad, 0xde]);
+        assert_eq!(x86_result, vec![0xde, 0xad, 0xbe, 0xef]);
     }
 
     #[test]

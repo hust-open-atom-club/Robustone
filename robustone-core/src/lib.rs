@@ -27,7 +27,7 @@
 //! use robustone_core::ArchitectureDispatcher;
 //!
 //! let dispatcher = ArchitectureDispatcher::new();
-//! match dispatcher.disassemble_bytes(&[0x93, 0x01, 0x00, 0x00], "riscv32", 0x1000) {
+//! match dispatcher.disassemble_bytes(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0x1000) {
 //!     Ok((instruction, size)) => {
 //!         println!("Instruction: {} {}", instruction.mnemonic, instruction.operands);
 //!     }
@@ -136,7 +136,7 @@ impl ArchitectureDispatcher {
     /// ```rust
     /// use robustone_core::ArchitectureDispatcher;
     /// let dispatcher = ArchitectureDispatcher::new();
-    /// let instruction = dispatcher.disassemble("13000513", "riscv32".to_string());
+    /// let instruction = dispatcher.disassemble("93001000", "riscv32".to_string());
     /// println!("Instruction: {} {}", instruction.mnemonic, instruction.operands);
     /// ```
     pub fn disassemble(&self, hex: &str, arch: String) -> Instruction {
@@ -203,7 +203,7 @@ impl ArchitectureDispatcher {
     /// ```rust
     /// use robustone_core::ArchitectureDispatcher;
     /// let dispatcher = ArchitectureDispatcher::new();
-    /// let bytes = [0x13, 0x05, 0x00, 0x00]; // addi a0, zero, 0
+    /// let bytes = [0x93, 0x00, 0x10, 0x00]; // addi ra, zero, 1
     /// match dispatcher.disassemble_bytes(&bytes, "riscv32", 0x1000) {
     ///     Ok((instruction, size)) => {
     ///         println!("Instruction: {} {}", instruction.mnemonic, instruction.operands);
@@ -221,7 +221,7 @@ impl ArchitectureDispatcher {
         // Find the first handler that supports this architecture
         for handler in &self.handlers {
             if handler.supports(arch) {
-                return handler.disassemble(bytes, address);
+                return handler.disassemble(bytes, arch, address);
             }
         }
 
@@ -332,12 +332,12 @@ mod tests {
         // Hex parsing should succeed for bare strings.
         let instruction = dispatcher.disassemble("deadbeef", "unknown".to_string());
         assert_eq!(instruction.mnemonic, "unknown");
-        assert_eq!(instruction.bytes, vec![0xef, 0xbe, 0xad, 0xde]);
+        assert_eq!(instruction.bytes, vec![0xde, 0xad, 0xbe, 0xef]);
         assert_eq!(instruction.size, 4);
 
         // Hex parsing should also accept a `0x` prefix.
         let instruction = dispatcher.disassemble("0x1234", "unknown".to_string());
-        assert_eq!(instruction.bytes, vec![0x34, 0x12]);
+        assert_eq!(instruction.bytes, vec![0x12, 0x34]);
         assert_eq!(instruction.size, 2);
     }
 }

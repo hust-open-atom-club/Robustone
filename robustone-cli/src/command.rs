@@ -1,5 +1,6 @@
 use crate::error::{CliError, Result};
 use crate::utils::validate_architecture_legacy as validate_architecture;
+use crate::utils::{parse_address_legacy, parse_hex_code_legacy};
 use clap::Parser;
 
 /// Robustone - Capstone-compatible disassembly engine CLI tool (cstool style)
@@ -21,11 +22,11 @@ Examples: riscv32, riscv64, arm+thumb, arm+v8, x86+intel, x86+att"
     #[arg(value_parser = validate_architecture)]
     pub arch_mode: Option<String>,
 
-    /// Hexadecimal machine code to disassemble (for example `"00100093"`).
+    /// Hexadecimal machine code bytes to disassemble (for example `"93001000"`).
     #[arg(
         help = "Hexadecimal machine code to disassemble",
         long_help = "Provide the machine code as a hexadecimal string to be disassembled.\n\
-Example: \"00100093\" for RISC-V addi instruction"
+Example: \"93001000\" for the RISC-V bytes `addi ra, zero, 1`"
     )]
     #[arg(value_names = ["HEX_CODE"])]
     pub hex_code: Option<String>,
@@ -53,8 +54,8 @@ If not provided, defaults to 0. Prefix with 0x or use plain hex."
     #[arg(
         short = 'a',
         long = "alias-regs",
-        help = "Use Capstone register aliases instead of LLVM names",
-        long_help = "Display register names using Capstone's alias naming convention rather than LLVM-style names"
+        help = "Reserved alias-register output mode",
+        long_help = "Reserved for backends that support switching register naming styles. The current RISC-V backend already prints Capstone-style aliases by default."
     )]
     pub alias_regs: bool,
 
@@ -71,8 +72,8 @@ If not provided, defaults to 0. Prefix with 0x or use plain hex."
     #[arg(
         short = 'u',
         long = "unsigned-immediate",
-        help = "Display immediates in unsigned format",
-        long_help = "Display immediate values as unsigned integers instead of signed values"
+        help = "Reserved unsigned-immediate output mode",
+        long_help = "Reserved for backends that support preserving immediate bit-width metadata during formatting."
     )]
     pub unsigned_immediate: bool,
 
@@ -117,27 +118,15 @@ impl Cli {
     }
 
     /// Validate hexadecimal code input.
-    fn validate_hex_code(&self) -> Result<Option<Vec<u8>>> {
+    fn validate_hex_code(&self) -> Result<Option<String>> {
         match &self.hex_code {
             Some(code) => {
-                let clean_code = code
-                    .trim()
-                    .replace("0x", "")
-                    .replace("0X", "")
-                    .replace(" ", "");
-                if clean_code.is_empty() {
+                if code.trim().is_empty() {
                     return Err(CliError::validation("hex_code", "Empty hex code provided"));
                 }
 
-                let trimmed_code = if clean_code.len() % 4 != 0 {
-                    &clean_code[..clean_code.len() - clean_code.len() % 4]
-                } else {
-                    &clean_code
-                };
-
-                hex::decode(trimmed_code)
-                    .map(Some)
-                    .map_err(|e| CliError::validation("hex_code", format!("Invalid hex code: {e}")))
+                parse_hex_code_legacy(code)?;
+                Ok(Some(code.trim().to_string()))
             }
             None => Ok(None),
         }
@@ -147,14 +136,11 @@ impl Cli {
     fn validate_address(&self) -> Result<Option<u64>> {
         match &self.address {
             Some(addr) => {
-                let clean_addr = addr.trim().replace("0x", "").replace("0X", "");
-                if clean_addr.is_empty() {
+                if addr.trim().is_empty() {
                     return Err(CliError::validation("address", "Empty address provided"));
                 }
 
-                u64::from_str_radix(&clean_addr, 16).map(Some).map_err(|_| {
-                    CliError::validation("address", "Invalid hexadecimal address format")
-                })
+                parse_address_legacy(addr).map(Some)
             }
             None => Ok(None),
         }
@@ -175,7 +161,7 @@ impl Cli {
 #[derive(Debug, Clone)]
 pub struct ValidatedConfig {
     pub arch_mode: Option<String>,
-    pub hex_code: Option<Vec<u8>>,
+    pub hex_code: Option<String>,
     pub address: Option<u64>,
     pub detailed: bool,
     pub alias_regs: bool,

@@ -32,8 +32,14 @@ use crate::types::instruction::Instruction;
 /// pub struct MyArchitectureHandler;
 ///
 /// impl ArchitectureHandler for MyArchitectureHandler {
-///     fn disassemble(&self, bytes: &[u8], addr: u64) -> Result<(Instruction, usize), DisasmError> {
+///     fn disassemble(
+///         &self,
+///         bytes: &[u8],
+///         arch_name: &str,
+///         addr: u64,
+///     ) -> Result<(Instruction, usize), DisasmError> {
 ///         // Architecture-specific disassembly logic here
+///         let _ = arch_name;
 ///         todo!("Implement actual disassembly logic")
 ///     }
 ///
@@ -56,6 +62,7 @@ pub trait ArchitectureHandler: Sync {
     /// # Arguments
     ///
     /// * `bytes` - Raw instruction bytes to decode
+    /// * `arch_name` - The requested architecture or mode variant
     /// * `addr` - The address where these bytes would be located in memory
     ///
     /// # Returns
@@ -70,7 +77,12 @@ pub trait ArchitectureHandler: Sync {
     /// - The bytes cannot be decoded as a valid instruction
     /// - The input is malformed or incomplete
     /// - An architecture-specific error occurs
-    fn disassemble(&self, bytes: &[u8], addr: u64) -> Result<(Instruction, usize), DisasmError>;
+    fn disassemble(
+        &self,
+        bytes: &[u8],
+        arch_name: &str,
+        addr: u64,
+    ) -> Result<(Instruction, usize), DisasmError>;
 
     /// Returns the canonical name of this architecture.
     ///

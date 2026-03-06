@@ -67,10 +67,7 @@ pub fn disassemble_hex(hex_code: &str, architecture: &str, address: Option<u64>)
 
     let config = DisasmConfig::from_validated_config(ValidatedConfig {
         arch_mode: Some(architecture.to_string()),
-        hex_code: Some(
-            hex::decode(hex_code)
-                .map_err(|e| CliError::validation("hex_code", format!("Invalid hex: {e}")))?,
-        ),
+        hex_code: Some(hex_code.to_string()),
         address,
         detailed: false,
         alias_regs: false,
@@ -116,21 +113,38 @@ pub fn validate_architecture(arch_str: &str) -> std::result::Result<String, Stri
 }
 
 #[cfg(test)]
-mod tests {
+mod smoke_tests {
     use super::*;
+    use robustone_core::Instruction;
 
     #[test]
-    fn test_modern_api() {
-        let cli = RobustoneCli::new();
-        // This may succeed or fail depending on CLI args, so just test the API
-        let _result = cli.validate_config(); // Just test that the method works
+    fn test_default_cli_wrapper() {
+        let cli = RobustoneCli::default();
+        let config = DisasmConfig::from_validated_config(ValidatedConfig {
+            arch_mode: Some("riscv32".to_string()),
+            hex_code: Some("93001000".to_string()),
+            address: Some(0x1000),
+            detailed: false,
+            alias_regs: false,
+            real_detail: false,
+            skip_data: false,
+            unsigned_immediate: false,
+            version: false,
+        })
+        .expect("configuration should be valid");
+
+        let output = cli
+            .execute_minimal(&config)
+            .expect("disassembly should succeed");
+        assert!(output.contains("li"));
     }
 
     #[test]
     fn test_disassemble_hex() {
-        let result = disassemble_hex("00100093", "riscv32", Some(0x1000));
-        // This will likely fail due to missing core implementation, but tests the API
-        assert!(result.is_ok() || result.is_err());
+        let result = disassemble_hex("93001000", "riscv32", Some(0x1000))
+            .expect("RISC-V bytes should disassemble");
+
+        assert!(result.contains("li"));
     }
 
     #[test]
@@ -139,4 +153,13 @@ mod tests {
         assert!(utils::parse_address("0x1000").is_ok());
         assert!(utils::parse_hex_code("1234").is_ok());
     }
+
+    #[test]
+    fn test_instruction_default_is_available() {
+        let instruction = Instruction::default();
+        assert_eq!(instruction.mnemonic, "unknown");
+    }
 }
+
+#[cfg(test)]
+mod tests;

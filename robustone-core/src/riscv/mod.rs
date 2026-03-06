@@ -26,36 +26,48 @@ use types::*;
 
 /// Architecture handler implementation for RISC-V targets.
 pub struct RiscVHandler {
-    /// Decoder used to translate raw bytes into structured instructions.
-    decoder: RiscVDecoder,
+    rv32_decoder: RiscVDecoder,
+    rv64_decoder: RiscVDecoder,
 }
 
 impl RiscVHandler {
-    /// Creates a new handler configured for 64-bit RISC-V with GC extensions.
+    /// Creates a new handler with both RV32GC and RV64GC decoders.
     pub fn new() -> Self {
         Self {
-            decoder: RiscVDecoder::rv64gc(),
+            rv32_decoder: RiscVDecoder::rv32gc(),
+            rv64_decoder: RiscVDecoder::rv64gc(),
         }
     }
 
     /// Creates a handler targeting RV32GC.
     pub fn rv32() -> Self {
-        Self {
-            decoder: RiscVDecoder::rv32gc(),
-        }
+        Self::new()
     }
 
     /// Creates a handler targeting RV64GC.
     pub fn rv64() -> Self {
-        Self {
-            decoder: RiscVDecoder::rv64gc(),
-        }
+        Self::new()
     }
 
     /// Creates a handler with custom XLEN and extension flags.
     pub fn with_extensions(xlen: Xlen, extensions: Extensions) -> Self {
-        Self {
-            decoder: RiscVDecoder::new(xlen, extensions),
+        match xlen {
+            Xlen::X32 => Self {
+                rv32_decoder: RiscVDecoder::new(Xlen::X32, extensions),
+                rv64_decoder: RiscVDecoder::rv64gc(),
+            },
+            Xlen::X64 => Self {
+                rv32_decoder: RiscVDecoder::rv32gc(),
+                rv64_decoder: RiscVDecoder::new(Xlen::X64, extensions),
+            },
+        }
+    }
+
+    fn decoder_for_arch(&self, arch_name: &str) -> Result<&RiscVDecoder, DisasmError> {
+        match arch_name {
+            "riscv32" => Ok(&self.rv32_decoder),
+            "riscv64" | "riscv" => Ok(&self.rv64_decoder),
+            _ => Err(DisasmError::UnsupportedArchitecture(arch_name.to_string())),
         }
     }
 }
@@ -67,9 +79,16 @@ impl Default for RiscVHandler {
 }
 
 impl ArchitectureHandler for RiscVHandler {
-    fn disassemble(&self, bytes: &[u8], addr: u64) -> Result<(Instruction, usize), DisasmError> {
+    fn disassemble(
+        &self,
+        bytes: &[u8],
+        arch_name: &str,
+        addr: u64,
+    ) -> Result<(Instruction, usize), DisasmError> {
+        let decoder = self.decoder_for_arch(arch_name)?;
+
         // Decode the instruction with the dedicated RISC-V decoder.
-        let decoded = self.decoder.decode(bytes, addr)?;
+        let decoded = decoder.decode(bytes, addr)?;
 
         // Create simple instruction detail with register information
         let mut riscv_detail = RiscVInstructionDetail::new();

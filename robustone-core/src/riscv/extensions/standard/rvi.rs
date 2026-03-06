@@ -128,8 +128,9 @@ impl Rvi {
         mnemonic: &str,
         rd: u8,
         imm: i64,
+        xlen: Xlen,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let operands = self.operand_builder.format_j_type(mnemonic, rd, imm);
+        let operands = self.format_jump_operands(mnemonic, rd, imm, xlen);
         let operands_detail = vec![
             self.operand_factory
                 .make_register_operand(rd, Access::read_write()),
@@ -151,7 +152,7 @@ impl Rvi {
         rs1: u8,
         imm: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let operands = self.operand_builder.format_i_type(mnemonic, rd, rs1, imm);
+        let (mnemonic, operands) = self.format_i_operands(mnemonic, rd, rs1, imm);
         let operands_detail = vec![
             self.operand_factory
                 .make_register_operand(rd, Access::write()),
@@ -221,8 +222,9 @@ impl Rvi {
         rs1: u8,
         rs2: u8,
         imm: i64,
+        xlen: Xlen,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let operands = self.operand_builder.format_b_type(mnemonic, rs1, rs2, imm);
+        let operands = self.format_branch_operands(mnemonic, rs1, rs2, imm, xlen);
         let operands_detail = vec![
             self.operand_factory
                 .make_register_operand(rs1, Access::read()),
@@ -239,6 +241,89 @@ impl Rvi {
         ))
     }
 
+    fn format_i_operands<'a>(
+        &self,
+        mnemonic: &'a str,
+        rd: u8,
+        rs1: u8,
+        imm: i64,
+    ) -> (&'a str, String) {
+        if mnemonic == "addi" && rs1 == 0 && rd != 0 {
+            return (
+                "li",
+                format!(
+                    "{}, {}",
+                    self.register_manager.int_register_name(rd),
+                    self.operand_factory.format_immediate(imm)
+                ),
+            );
+        }
+
+        (
+            mnemonic,
+            self.operand_builder.format_i_type(mnemonic, rd, rs1, imm),
+        )
+    }
+
+    fn format_jump_operands(&self, mnemonic: &str, rd: u8, imm: i64, xlen: Xlen) -> String {
+        let imm_str = self.format_pc_relative_immediate(imm, xlen);
+        match (mnemonic, rd) {
+            ("j", _) => imm_str,
+            ("jal", 1) => imm_str,
+            _ => format!(
+                "{}, {}",
+                self.register_manager.int_register_name(rd),
+                imm_str
+            ),
+        }
+    }
+
+    fn format_jalr_operands(&self, rd: u8, rs1: u8, imm: i64) -> String {
+        let base = self.register_manager.int_register_name(rs1);
+        let target = if imm == 0 {
+            format!("({base})")
+        } else {
+            format!("{}({base})", self.operand_factory.format_immediate(imm))
+        };
+
+        if rd == 1 {
+            target
+        } else {
+            format!("{}, {target}", self.register_manager.int_register_name(rd))
+        }
+    }
+
+    fn format_branch_operands(
+        &self,
+        mnemonic: &str,
+        rs1: u8,
+        rs2: u8,
+        imm: i64,
+        xlen: Xlen,
+    ) -> String {
+        let offset = self.format_pc_relative_immediate(imm, xlen);
+        if (mnemonic == "beqz" || mnemonic == "bnez") && rs2 == 0 {
+            format!("{}, {offset}", self.register_manager.int_register_name(rs1))
+        } else {
+            format!(
+                "{}, {}, {offset}",
+                self.register_manager.int_register_name(rs1),
+                self.register_manager.int_register_name(rs2)
+            )
+        }
+    }
+
+    fn format_pc_relative_immediate(&self, imm: i64, xlen: Xlen) -> String {
+        if imm >= 0 {
+            return self.operand_factory.format_immediate(imm);
+        }
+
+        match xlen {
+            Xlen::X32 => format!("0x{:x}", imm as u32),
+            Xlen::X64 => format!("0x{:x}", imm as u64),
+        }
+    }
+
     // Specific instruction type decoders
     fn decode_auipc(&self, rd: u8, imm_u: i64) -> Result<RiscVDecodedInstruction, DisasmError> {
         self.decode_u_type("auipc", rd, imm_u)
@@ -248,9 +333,14 @@ impl Rvi {
         self.decode_u_type("lui", rd, imm_u)
     }
 
-    fn decode_jal(&self, rd: u8, imm_j: i64) -> Result<RiscVDecodedInstruction, DisasmError> {
+    fn decode_jal(
+        &self,
+        rd: u8,
+        imm_j: i64,
+        xlen: Xlen,
+    ) -> Result<RiscVDecodedInstruction, DisasmError> {
         let mnemonic = if rd == 0 { "j" } else { "jal" };
-        self.decode_j_type(mnemonic, rd, imm_j)
+        self.decode_j_type(mnemonic, rd, imm_j, xlen)
     }
 
     fn decode_jalr(
@@ -259,7 +349,21 @@ impl Rvi {
         rs1: u8,
         imm_i: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        self.decode_i_type("jalr", rd, rs1, imm_i)
+        let operands = self.format_jalr_operands(rd, rs1, imm_i);
+        let operands_detail = vec![
+            self.operand_factory
+                .make_register_operand(rd, Access::write()),
+            self.operand_factory
+                .make_register_operand(rs1, Access::read()),
+            self.operand_factory.make_immediate_operand(imm_i),
+        ];
+        Ok(self.formatter.create_decoded_instruction(
+            "jalr",
+            operands,
+            RiscVInstructionFormat::I,
+            4,
+            operands_detail,
+        ))
     }
 
     fn decode_branch(
@@ -268,20 +372,21 @@ impl Rvi {
         rs1: u8,
         rs2: u8,
         imm_b: i64,
+        xlen: Xlen,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         match funct3 {
             Self::FUNCT3_BRANCH_BEQ => {
                 let mnemonic = if rs2 == 0 { "beqz" } else { "beq" };
-                self.decode_b_type(mnemonic, rs1, rs2, imm_b)
+                self.decode_b_type(mnemonic, rs1, rs2, imm_b, xlen)
             }
             Self::FUNCT3_BRANCH_BNE => {
                 let mnemonic = if rs2 == 0 { "bnez" } else { "bne" };
-                self.decode_b_type(mnemonic, rs1, rs2, imm_b)
+                self.decode_b_type(mnemonic, rs1, rs2, imm_b, xlen)
             }
-            Self::FUNCT3_BRANCH_BLT => self.decode_b_type("blt", rs1, rs2, imm_b),
-            Self::FUNCT3_BRANCH_BGE => self.decode_b_type("bge", rs1, rs2, imm_b),
-            Self::FUNCT3_BRANCH_BLTU => self.decode_b_type("bltu", rs1, rs2, imm_b),
-            Self::FUNCT3_BRANCH_BGEU => self.decode_b_type("bgeu", rs1, rs2, imm_b),
+            Self::FUNCT3_BRANCH_BLT => self.decode_b_type("blt", rs1, rs2, imm_b, xlen),
+            Self::FUNCT3_BRANCH_BGE => self.decode_b_type("bge", rs1, rs2, imm_b, xlen),
+            Self::FUNCT3_BRANCH_BLTU => self.decode_b_type("bltu", rs1, rs2, imm_b, xlen),
+            Self::FUNCT3_BRANCH_BGEU => self.decode_b_type("bgeu", rs1, rs2, imm_b, xlen),
             _ => Err(DisasmError::DecodingError(
                 "Invalid branch funct3".to_string(),
             )),
@@ -667,9 +772,9 @@ impl InstructionExtension for Rvi {
         match opcode {
             Self::OPCODE_LUI => Some(self.decode_lui(rd, imm_u)),
             Self::OPCODE_AUIPC => Some(self.decode_auipc(rd, imm_u)),
-            Self::OPCODE_JAL => Some(self.decode_jal(rd, imm_j)),
+            Self::OPCODE_JAL => Some(self.decode_jal(rd, imm_j, xlen)),
             Self::OPCODE_JALR => Some(self.decode_jalr(rd, rs1, imm_i)),
-            Self::OPCODE_BRANCH => Some(self.decode_branch(funct3, rs1, rs2, imm_b)),
+            Self::OPCODE_BRANCH => Some(self.decode_branch(funct3, rs1, rs2, imm_b, xlen)),
             Self::OPCODE_LOAD => Some(self.decode_load(funct3, rd, rs1, imm_i, xlen)),
             Self::OPCODE_STORE => Some(self.decode_store(funct3, rs2, rs1, imm_s, xlen)),
             Self::OPCODE_MISC_MEM => Some(self.decode_misc_mem(funct3)),

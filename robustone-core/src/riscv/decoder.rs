@@ -4,7 +4,6 @@
 //! is implemented as a separate module, making the codebase more maintainable
 //! and easier to extend with new instructions.
 
-use super::extensions::standard::Standard;
 use super::extensions::{Extensions, InstructionExtension, create_extensions};
 use super::types::*;
 use crate::types::error::DisasmError;
@@ -214,10 +213,6 @@ impl RiscVDecoder {
             | ((instruction >> 6) & 0x1) << 6          // imm[6] from instruction[6]
             | ((instruction >> 9) & 0x3) << 7; // imm[8:7] from instruction[9:8]
 
-        if !self.extensions.standard.contains(Standard::C) {
-            eprintln!("Warning: Decoding compressed instruction while C extension is disabled");
-        }
-
         // Try each enabled extension for compressed instructions
         for extension in &self.extension_handlers {
             if !extension.is_enabled(&self.extensions) {
@@ -314,6 +309,7 @@ pub struct RiscVDecodedInstruction {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::riscv::extensions::standard::Standard;
 
     #[test]
     fn test_refactored_decoder_creation() {
@@ -341,13 +337,7 @@ mod tests {
         let instruction = ((100u32 << 20) | (2u32 << 15)) | (1u32 << 7) | 0b0010011;
         let bytes = instruction.to_le_bytes();
 
-        println!("Testing ADDI instruction: 0x{instruction:08x}");
-        println!("Bytes: {bytes:?}");
-
         let result = decoder.decode(&bytes, 0);
-        if let Err(e) = &result {
-            println!("Decoding error: {e:?}");
-        }
         assert!(result.is_ok(), "Failed to decode instruction: {result:?}");
 
         let instr = result.unwrap();

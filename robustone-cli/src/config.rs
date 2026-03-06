@@ -1,6 +1,7 @@
 use crate::arch::ArchitectureSpec;
 use crate::command::{DisplayOptions, ValidatedConfig};
 use crate::error::{CliError, Result};
+use robustone_core::utils::HexParser;
 
 /// High-level disassembly configuration that unifies all options.
 #[derive(Debug, Clone)]
@@ -21,17 +22,23 @@ impl DisasmConfig {
         })?;
         let arch_spec = ArchitectureSpec::parse(&arch_mode)
             .map_err(|e| CliError::parse("architecture", e.to_string()))?;
+        let display_options = config.display_options();
+
+        validate_display_options(&display_options)?;
 
         // Get hex bytes (already validated in command.rs)
-        let hex_bytes = config.hex_code.take().ok_or_else(|| {
+        let hex_input = config.hex_code.take().ok_or_else(|| {
             CliError::validation("hex_code", "Hexadecimal code is required for disassembly")
         })?;
+        let hex_bytes = HexParser::new()
+            .parse_for_architecture(&hex_input, &arch_mode)
+            .map_err(|error| CliError::validation("hex_code", error.to_string()))?;
 
         Ok(DisasmConfig {
             arch_spec,
             hex_bytes,
             start_address: config.address_or_default(),
-            display_options: config.display_options(),
+            display_options,
             skip_data: config.skip_data,
         })
     }
@@ -109,19 +116,15 @@ impl DisasmConfig {
 #[derive(Debug, Clone)]
 pub struct OutputConfig {
     pub show_hex: bool,
-    pub show_bytes: bool,
-    pub address_width: usize,
-    pub hex_width: usize,
+    pub show_detail_sections: bool,
 }
 
 impl OutputConfig {
     /// Create output configuration based on display options.
     pub fn from_display_options(display: &DisplayOptions) -> Self {
         Self {
-            show_hex: display.detailed,
-            show_bytes: display.real_detail,
-            address_width: 8,
-            hex_width: 8,
+            show_hex: display.detailed || display.real_detail,
+            show_detail_sections: display.real_detail,
         }
     }
 
@@ -129,11 +132,26 @@ impl OutputConfig {
     pub fn minimal() -> Self {
         Self {
             show_hex: false,
-            show_bytes: false,
-            address_width: 0,
-            hex_width: 0,
+            show_detail_sections: false,
         }
     }
+}
+
+fn validate_display_options(display: &DisplayOptions) -> Result<()> {
+    if display.alias_regs {
+        return Err(CliError::InvalidCommand(
+            "`--alias-regs` is not supported yet; current output already uses Capstone-style register names"
+                .to_string(),
+        ));
+    }
+
+    if display.unsigned_immediate {
+        return Err(CliError::InvalidCommand(
+            "`--unsigned-immediate` is not supported yet".to_string(),
+        ));
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -145,7 +163,7 @@ mod tests {
     fn test_config_creation() {
         let config = ValidatedConfig {
             arch_mode: Some("riscv32".to_string()),
-            hex_code: Some(vec![0x93, 0x00, 0x10, 0x00]),
+            hex_code: Some("93001000".to_string()),
             address: Some(0x1000),
             detailed: true,
             alias_regs: false,
@@ -172,6 +190,6 @@ mod tests {
 
         let output = OutputConfig::from_display_options(&display);
         assert!(output.show_hex);
-        assert!(!output.show_bytes);
+        assert!(!output.show_detail_sections);
     }
 }
