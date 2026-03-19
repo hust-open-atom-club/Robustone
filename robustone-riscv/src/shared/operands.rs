@@ -322,7 +322,7 @@ impl Default for OperandBuilder {
 }
 
 /// CSR name lookup function.
-fn csr_name_lookup(csr: u16) -> Option<&'static str> {
+pub(crate) fn csr_name_lookup(csr: u16) -> Option<&'static str> {
     match csr {
         0x000 => Some("ustatus"),
         0x001 => Some("fflags"),

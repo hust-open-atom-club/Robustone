@@ -59,6 +59,8 @@ impl CMov {
                 convenience::register(rs1, Access::read()),
                 convenience::register(rs2, Access::read()),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 }

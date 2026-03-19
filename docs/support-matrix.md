@@ -8,7 +8,7 @@ This matrix documents what the repository supports today and what it intentional
 |-------|----------------|-------|
 | CLI compatibility | Partial | `robustone` accepts `arch+mode` style input, raw hex bytes, addresses, and detail-oriented output flags for the implemented backends. |
 | Semantic compatibility | Partial | The parity harness currently verifies curated `riscv32` and `riscv64` instruction suites against Capstone. |
-| API compatibility | Limited | The public Rust API exposes `ArchitectureDispatcher` and `Instruction`; it is not yet a Capstone handle/options/detail clone. |
+| API compatibility | Partial | The public Rust API now exposes both the legacy `Instruction` wrapper and the lower-level `ArchitectureDispatcher::decode_instruction` IR entrypoint, but it is not yet a Capstone handle/options/detail clone. |
 
 ## Decode Backends
 
@@ -26,11 +26,12 @@ This matrix documents what the repository supports today and what it intentional
 | Standard extension modules (`I`, `M`, `A`, `F`, `D`, `C`) | Present in code | Decoder modules exist; broader published instruction-coverage percentages are not available yet. |
 | Detailed text output (`-d`) | Implemented | Verified locally with `make run RUN_ARGS="riscv32 93001000 -d"`. |
 | Real detail output (`-r`) | Implemented in current CLI formatter | Existing tests cover detail display, but the project does not yet publish a stable structured detail schema. |
+| Canonical shared IR | Implemented for the RISC-V decode path | `ArchitectureDispatcher::decode_instruction` returns canonical mnemonics plus rendering hints for Capstone-style aliases. |
 | Register read/write detail | Implemented | The RISC-V backend populates read/write register detail today. |
 | Groups / implicit register sets as structured public data | Not implemented | These are not yet exposed as first-class IR data. |
-| Canonical-vs-alias formatter profiles | Not implemented | The current backend prints Capstone-style aliases by default. |
-| Structured JSON output | Not implemented | Text output is the current public output path. |
-| Structured decode-error taxonomy | Not implemented | Decode fallback is still string-first and relies on `unknown`-style behavior in several paths. |
+| Canonical-vs-alias formatter profiles | Partial | The RISC-V printer now has Capstone-style and canonical profiles, but only the Capstone-style path is exposed through the CLI by default. |
+| Structured JSON output | Implemented | `robustone --json ...` renders structured JSON built from the shared decode IR. |
+| Structured decode-error taxonomy | Partial | The low-level decode API returns `DecodeFailure` variants such as `need_more_bytes` and `invalid_encoding`, but not every extension path emits the full target taxonomy yet. |
 
 ## Repository Entry Points
 
@@ -38,6 +39,7 @@ This matrix documents what the repository supports today and what it intentional
 |---------|--------|-------|
 | `make build` | Verified | Builds the top-level crate in debug mode. |
 | `make run RUN_ARGS="riscv32 93001000 -d"` | Verified | Produces a RISC-V disassembly with detail output. |
+| `cargo run --manifest-path robustone/Cargo.toml -- --json riscv32 93001000` | Verified | Produces structured JSON backed by the shared decode IR. |
 | `make test` | Verified | Builds Capstone if needed, runs parity tests, then runs top-level crate tests. |
 | `python3 test/run_tests.py --list` | Verified | Lists the currently configured parity suites. |
 | `cargo test --workspace --all-features` | Verified | Runs workspace Rust tests and doctests. |
@@ -45,6 +47,6 @@ This matrix documents what the repository supports today and what it intentional
 ## Known Gaps and Non-Goals
 
 - Parser coverage is broader than decode-backend coverage; the CLI help surface should not be read as proof that every architecture listed there can be decoded today.
-- The current public API is string-first. A shared decoder IR and structured output remain roadmap items.
+- The repository now exposes a shared decode IR, but the Capstone-style CLI formatter still keeps some compatibility-oriented display behavior for parity purposes.
 - The repository does not yet publish golden/property/fuzz results as first-class support claims.
 - `--alias-regs` and `--unsigned-immediate` remain reserved CLI options rather than implemented output modes.
