@@ -8,6 +8,8 @@
   "expected_ir": {
     "mnemonic": "addi",
     "render_hint_mnemonic": "li",
-    "hidden_operands": [1]
+    "hidden_operands": [1],
+    "groups": ["arithmetic"],
+    "operand_kinds": ["register", "register", "immediate"]
   }
 }

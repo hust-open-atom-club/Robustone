@@ -21,8 +21,10 @@ struct ExpectedText {
 #[derive(Debug, Deserialize)]
 struct ExpectedIr {
     mnemonic: String,
-    render_hint_mnemonic: String,
+    render_hint_mnemonic: Option<String>,
     hidden_operands: Vec<usize>,
+    groups: Vec<String>,
+    operand_kinds: Vec<String>,
 }
 
 fn load_case(path: &str) -> GoldenCase {
@@ -36,9 +38,7 @@ fn load_case(path: &str) -> GoldenCase {
     serde_json::from_str(&data).expect("golden fixture should parse")
 }
 
-#[test]
-fn test_addi_li_golden_fixture() {
-    let case = load_case("addi_li.json");
+fn assert_case(case: GoldenCase) {
     let dispatcher = ArchitectureDispatcher::new();
 
     let compatibility = dispatcher.disassemble(&case.hex, case.arch.clone());
@@ -54,10 +54,32 @@ fn test_addi_li_golden_fixture() {
     assert_eq!(decoded.mnemonic, case.expected_ir.mnemonic);
     assert_eq!(
         decoded.render_hints.capstone_mnemonic.as_deref(),
-        Some(case.expected_ir.render_hint_mnemonic.as_str())
+        case.expected_ir.render_hint_mnemonic.as_deref()
     );
     assert_eq!(
         decoded.render_hints.capstone_hidden_operands,
         case.expected_ir.hidden_operands
     );
+    assert_eq!(decoded.groups, case.expected_ir.groups);
+    let operand_kinds = decoded
+        .operands
+        .iter()
+        .map(|operand| match operand {
+            robustone_core::ir::Operand::Register { .. } => "register",
+            robustone_core::ir::Operand::Immediate { .. } => "immediate",
+            robustone_core::ir::Operand::Text { .. } => "text",
+            robustone_core::ir::Operand::Memory { .. } => "memory",
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(operand_kinds, case.expected_ir.operand_kinds);
+}
+
+#[test]
+fn test_addi_li_golden_fixture() {
+    assert_case(load_case("addi_li.json"));
+}
+
+#[test]
+fn test_fadd_s_golden_fixture() {
+    assert_case(load_case("fadd_s.json"));
 }

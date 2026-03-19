@@ -11,6 +11,8 @@ pub enum RiscVOperandType {
     Register,
     /// Immediate operand.
     Immediate,
+    /// Rounding mode operand.
+    RoundingMode,
     /// Memory operand.
     Memory,
 }
@@ -42,6 +44,8 @@ pub enum RiscVOperandValue {
     Register(u32),
     /// Immediate literal.
     Immediate(i64),
+    /// Floating-point rounding mode selector.
+    RoundingMode(u8),
     /// Memory addressing mode.
     Memory(RiscVMemoryOperand),
 }
@@ -79,6 +83,19 @@ impl Access {
             read: false,
             write: false,
         }
+    }
+}
+
+/// Converts a floating-point rounding mode selector into its mnemonic.
+pub fn rounding_mode_name(rm: u8) -> &'static str {
+    match rm {
+        0b000 => "rne",
+        0b001 => "rtz",
+        0b010 => "rdn",
+        0b011 => "rup",
+        0b100 => "rmm",
+        0b111 => "dyn",
+        _ => "invalid",
     }
 }
 
@@ -371,7 +388,10 @@ impl RiscVRegister {
         }
     }
 
-    /// Converts a raw register ID (x0=0, x1=1, …, x31=31) into the enum representation.
+    /// Converts a raw register ID into the enum representation.
+    ///
+    /// Integer registers use `0..=31`.
+    /// Floating-point registers use `32..=63`.
     pub fn from_id(id: u32) -> Self {
         match id {
             0 => RiscVRegister::X0,
@@ -406,6 +426,38 @@ impl RiscVRegister {
             29 => RiscVRegister::X29,
             30 => RiscVRegister::X30,
             31 => RiscVRegister::X31,
+            32 => RiscVRegister::F0_32,
+            33 => RiscVRegister::F1_32,
+            34 => RiscVRegister::F2_32,
+            35 => RiscVRegister::F3_32,
+            36 => RiscVRegister::F4_32,
+            37 => RiscVRegister::F5_32,
+            38 => RiscVRegister::F6_32,
+            39 => RiscVRegister::F7_32,
+            40 => RiscVRegister::F8_32,
+            41 => RiscVRegister::F9_32,
+            42 => RiscVRegister::F10_32,
+            43 => RiscVRegister::F11_32,
+            44 => RiscVRegister::F12_32,
+            45 => RiscVRegister::F13_32,
+            46 => RiscVRegister::F14_32,
+            47 => RiscVRegister::F15_32,
+            48 => RiscVRegister::F16_32,
+            49 => RiscVRegister::F17_32,
+            50 => RiscVRegister::F18_32,
+            51 => RiscVRegister::F19_32,
+            52 => RiscVRegister::F20_32,
+            53 => RiscVRegister::F21_32,
+            54 => RiscVRegister::F22_32,
+            55 => RiscVRegister::F23_32,
+            56 => RiscVRegister::F24_32,
+            57 => RiscVRegister::F25_32,
+            58 => RiscVRegister::F26_32,
+            59 => RiscVRegister::F27_32,
+            60 => RiscVRegister::F28_32,
+            61 => RiscVRegister::F29_32,
+            62 => RiscVRegister::F30_32,
+            63 => RiscVRegister::F31_32,
             _ => RiscVRegister::Invalid,
         }
     }

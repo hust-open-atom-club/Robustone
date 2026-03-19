@@ -133,7 +133,7 @@ impl RiscVDecoder {
                 opcode, funct3, funct7, rd, rs1, rs2, funct12, imm_i, imm_s, imm_b, imm_u, imm_j,
                 self.xlen,
             ) {
-                return result;
+                return result.map_err(|error| self.normalize_extension_error(error));
             }
         }
 
@@ -254,7 +254,7 @@ impl RiscVDecoder {
                 uimm_clsp,
                 uimm_fldsp,
             ) {
-                return result;
+                return result.map_err(|error| self.normalize_extension_error(error));
             }
         }
 
@@ -266,6 +266,17 @@ impl RiscVDecoder {
         match self.xlen {
             Xlen::X32 => "riscv32",
             Xlen::X64 => "riscv64",
+        }
+    }
+
+    fn normalize_extension_error(&self, error: DisasmError) -> DisasmError {
+        match error {
+            DisasmError::DecodingError(detail) => DisasmError::decode_failure(
+                crate::types::error::DecodeErrorKind::InvalidEncoding,
+                Some(self.mode_name().to_string()),
+                detail,
+            ),
+            other => other,
         }
     }
 
@@ -375,6 +386,9 @@ impl RiscVDecodedInstruction {
                         Operand::Register { register }
                     }
                     RiscVOperandValue::Immediate(value) => Operand::Immediate { value: *value },
+                    RiscVOperandValue::RoundingMode(rm) => Operand::Text {
+                        value: rounding_mode_name(*rm).to_string(),
+                    },
                     RiscVOperandValue::Memory(memory) => {
                         let base = Some(RegisterId::riscv(memory.base));
                         if let Some(base_register) = base {
@@ -398,6 +412,9 @@ impl RiscVDecodedInstruction {
             None
         };
 
+        let (implicit_registers_read, implicit_registers_written) =
+            infer_implicit_registers(&canonical_mnemonic);
+
         DecodedInstruction {
             architecture: ArchitectureId::Riscv,
             address,
@@ -409,8 +426,8 @@ impl RiscVDecodedInstruction {
             operands,
             registers_read,
             registers_written,
-            implicit_registers_read: Vec::new(),
-            implicit_registers_written: Vec::new(),
+            implicit_registers_read,
+            implicit_registers_written,
             groups: infer_groups(&canonical_mnemonic),
             status: DecodeStatus::Success,
             render_hints: RenderHints {
@@ -422,13 +439,20 @@ impl RiscVDecodedInstruction {
 }
 
 fn infer_groups(mnemonic: &str) -> Vec<String> {
-    let group = if mnemonic.starts_with('b') || matches!(mnemonic, "c.beqz" | "c.bnez") {
-        "branch"
-    } else if mnemonic.contains("jal")
-        || matches!(mnemonic, "j" | "c.j" | "c.jal" | "c.jr" | "c.jalr")
+    let mut groups = Vec::new();
+
+    if mnemonic.starts_with("c.") {
+        groups.push("compressed".to_string());
+    }
+
+    if mnemonic.starts_with('b') || matches!(mnemonic, "c.beqz" | "c.bnez") {
+        groups.push("branch".to_string());
+    }
+    if mnemonic.contains("jal") || matches!(mnemonic, "j" | "c.j" | "c.jal" | "c.jr" | "c.jalr")
     {
-        "control_flow"
-    } else if matches!(
+        groups.push("control_flow".to_string());
+    }
+    if matches!(
         mnemonic,
         "lb"
             | "lh"
@@ -442,21 +466,42 @@ fn infer_groups(mnemonic: &str) -> Vec<String> {
             | "c.lw"
             | "c.lwsp"
     ) {
-        "load"
-    } else if matches!(
+        groups.push("load".to_string());
+    }
+    if matches!(
         mnemonic,
         "sb" | "sh" | "sw" | "sd" | "fsw" | "fsd" | "c.sw" | "c.swsp"
     ) {
-        "store"
-    } else if mnemonic.starts_with("amo") || mnemonic.starts_with("lr.") || mnemonic.starts_with("sc.") {
-        "atomic"
-    } else if mnemonic.starts_with("csr") || mnemonic == "ecall" || mnemonic == "ebreak" {
-        "system"
-    } else {
-        "arithmetic"
-    };
+        groups.push("store".to_string());
+    }
+    if mnemonic.starts_with("amo") || mnemonic.starts_with("lr.") || mnemonic.starts_with("sc.") {
+        groups.push("atomic".to_string());
+    }
+    if mnemonic.starts_with('f') || mnemonic.contains(".s") || mnemonic.contains(".d") {
+        groups.push("floating_point".to_string());
+    }
+    if mnemonic.starts_with("fcvt") || mnemonic.starts_with("fmv") || mnemonic.starts_with("fclass")
+    {
+        groups.push("conversion".to_string());
+    }
+    if mnemonic.starts_with("feq") || mnemonic.starts_with("flt") || mnemonic.starts_with("fle") {
+        groups.push("compare".to_string());
+    }
+    if mnemonic.starts_with("csr") || mnemonic == "ecall" || mnemonic == "ebreak" {
+        groups.push("system".to_string());
+    }
+    if groups.is_empty() {
+        groups.push("arithmetic".to_string());
+    }
 
-    vec![group.to_string()]
+    groups
+}
+
+fn infer_implicit_registers(mnemonic: &str) -> (Vec<RegisterId>, Vec<RegisterId>) {
+    match mnemonic {
+        "c.jal" | "c.jalr" => (Vec::new(), vec![RegisterId::riscv(1)]),
+        _ => (Vec::new(), Vec::new()),
+    }
 }
 
 #[cfg(test)]

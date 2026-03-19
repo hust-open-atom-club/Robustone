@@ -1,0 +1,15 @@
+{
+  "arch": "riscv64",
+  "hex": "d3027300",
+  "expected_capstone": {
+    "mnemonic": "fadd.s",
+    "operands": "ft5, ft6, ft7, rne"
+  },
+  "expected_ir": {
+    "mnemonic": "fadd.s",
+    "render_hint_mnemonic": null,
+    "hidden_operands": [],
+    "groups": ["floating_point"],
+    "operand_kinds": ["register", "register", "register", "text"]
+  }
+}

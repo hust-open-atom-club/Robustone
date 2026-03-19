@@ -4,7 +4,9 @@
 
 use super::decoder::RiscVDecodedInstruction;
 use super::shared::operands::csr_name_lookup;
+use super::shared::{OperandFormatter, operands::DefaultOperandFactory};
 use super::types::*;
+use robustone_core::ir::DecodedInstruction;
 use robustone_core::Instruction;
 
 /// Text formatting profiles for the RISC-V formatter.
@@ -55,15 +57,7 @@ impl RiscVPrinter {
 
     /// Formats an immediate according to the active configuration.
     fn format_immediate(&self, imm: i64) -> String {
-        if imm > 0xFF {
-            format!("0x{imm:x}")
-        } else if imm >= 0 {
-            format!("{imm}")
-        } else if imm < -0xFF {
-            format!("-0x{imm:x}")
-        } else {
-            format!("{imm}")
-        }
+        DefaultOperandFactory::new().format_immediate(imm)
     }
 
     /// Formats a register operand.
@@ -83,21 +77,8 @@ impl RiscVPrinter {
 
     /// Formats a memory operand using `offset(base)` syntax.
     fn format_memory_operand(&self, base: u32, disp: i64) -> String {
-        if disp == 0 {
-            format!("({})", self.format_register(base))
-        } else if disp > 0 {
-            format!(
-                "{}({})",
-                self.format_immediate(disp),
-                self.format_register(base)
-            )
-        } else {
-            format!(
-                "-{}({})",
-                self.format_immediate(-disp),
-                self.format_register(base)
-            )
-        }
+        DefaultOperandFactory::new()
+            .format_memory_operand(disp, &self.format_register(base))
     }
 
     /// Formats a single operand into its textual form.
@@ -105,6 +86,7 @@ impl RiscVPrinter {
         match &operand.value {
             RiscVOperandValue::Register(reg_id) => self.format_register(*reg_id),
             RiscVOperandValue::Immediate(imm) => self.format_immediate(*imm),
+            RiscVOperandValue::RoundingMode(rm) => rounding_mode_name(*rm).to_string(),
             RiscVOperandValue::Memory(mem) => self.format_memory_operand(mem.base, mem.disp),
         }
     }
@@ -124,22 +106,59 @@ impl RiscVPrinter {
 
     /// Render a structured RISC-V decode result into mnemonic and operand text.
     pub fn render_decoded_parts(&self, decoded: &RiscVDecodedInstruction) -> (String, String) {
-        if matches!(self.profile, RiscVTextProfile::Capstone) {
-            return (decoded.mnemonic.clone(), decoded.operands.clone());
-        }
+        self.render_decoded_parts_with_ir(decoded, &decoded.to_ir("riscv32", 0, vec![]))
+    }
 
+    /// Render a structured RISC-V decode result using the shared IR metadata.
+    pub fn render_decoded_parts_with_ir(
+        &self,
+        decoded: &RiscVDecodedInstruction,
+        ir: &DecodedInstruction,
+    ) -> (String, String) {
         let mnemonic = match self.profile {
-            RiscVTextProfile::Capstone => decoded.mnemonic.clone(),
+            RiscVTextProfile::Capstone => ir
+                .render_hints
+                .capstone_mnemonic
+                .clone()
+                .unwrap_or_else(|| decoded.canonical_mnemonic().to_string()),
             RiscVTextProfile::Canonical => decoded.canonical_mnemonic().to_string(),
         };
 
-        let operands = decoded
+        let hidden_operands = if matches!(self.profile, RiscVTextProfile::Capstone) {
+            ir.render_hints.capstone_hidden_operands.as_slice()
+        } else {
+            &[]
+        };
+
+        let visible_operands = decoded
             .operands_detail
             .iter()
             .enumerate()
-            .map(|(index, operand)| self.format_decoded_operand(&mnemonic, index, operand))
-            .collect::<Vec<_>>()
-            .join(", ");
+            .filter(|(index, _)| !hidden_operands.contains(index))
+            .collect::<Vec<_>>();
+
+        let operands = if mnemonic == "jalr" {
+            self.format_jalr_operands(&visible_operands)
+        } else if mnemonic.starts_with("lr.") {
+            self.format_load_reserved_operands(&visible_operands)
+        } else if mnemonic.starts_with("sc.") || mnemonic.starts_with("amo") {
+            self.format_atomic_operands(&visible_operands)
+        } else {
+            let last_visible_index = visible_operands.last().map(|(index, _)| *index);
+            visible_operands
+                .iter()
+                .map(|(index, operand)| {
+                    self.format_decoded_operand(
+                        &mnemonic,
+                        *index,
+                        operand,
+                        ir.mode.as_str(),
+                        last_visible_index,
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(", ")
+        };
 
         (mnemonic, operands)
     }
@@ -149,12 +168,23 @@ impl RiscVPrinter {
         mnemonic: &str,
         index: usize,
         operand: &RiscVOperand,
+        mode: &str,
+        last_visible_index: Option<usize>,
     ) -> String {
         match &operand.value {
             RiscVOperandValue::Immediate(value) if self.is_csr_operand(mnemonic, index) => {
                 csr_name_lookup(*value as u16)
                     .map(str::to_string)
                     .unwrap_or_else(|| self.format_immediate(*value))
+            }
+            RiscVOperandValue::Immediate(value)
+                if last_visible_index == Some(index) && self.is_control_flow_mnemonic(mnemonic) =>
+            {
+                self.format_control_flow_immediate(*value, mode)
+            }
+            RiscVOperandValue::Memory(memory) => {
+                let base = self.format_register(memory.base);
+                DefaultOperandFactory::new().format_memory_operand(memory.disp, &base)
             }
             _ => self.format_operand(operand),
         }
@@ -165,6 +195,136 @@ impl RiscVPrinter {
             "csrrw", "csrrs", "csrrc", "csrrwi", "csrrsi", "csrrci", "csrr", "csrc", "csrw",
         ];
         csr_mnemonics.contains(&mnemonic) && index == 1
+    }
+
+    fn is_control_flow_mnemonic(&self, mnemonic: &str) -> bool {
+        matches!(
+            mnemonic,
+            "j" | "jal" | "jalr" | "beq" | "bne" | "blt" | "bge" | "bltu" | "bgeu"
+                | "beqz" | "bnez" | "c.j" | "c.jal" | "c.beqz" | "c.bnez"
+        )
+    }
+
+    fn format_control_flow_immediate(&self, value: i64, mode: &str) -> String {
+        if value >= 0 {
+            return DefaultOperandFactory::new().format_immediate(value);
+        }
+
+        match mode {
+            "riscv64" | "riscv" => format!("0x{:x}", value as u64),
+            _ => format!("0x{:x}", value as u32),
+        }
+    }
+
+    fn format_jalr_operands(&self, operands: &[(usize, &RiscVOperand)]) -> String {
+        let mut visible = operands.iter().map(|(_, operand)| *operand);
+        match (visible.next(), visible.next(), visible.next()) {
+            (
+                Some(RiscVOperand {
+                    value: RiscVOperandValue::Register(rd),
+                    ..
+                }),
+                Some(RiscVOperand {
+                    value: RiscVOperandValue::Register(rs1),
+                    ..
+                }),
+                Some(RiscVOperand {
+                    value: RiscVOperandValue::Immediate(imm),
+                    ..
+                }),
+            ) => {
+                let target = DefaultOperandFactory::new()
+                    .format_memory_operand(*imm, &self.format_register(*rs1));
+                format!("{}, {target}", self.format_register(*rd))
+            }
+            (
+                Some(RiscVOperand {
+                    value: RiscVOperandValue::Register(rs1),
+                    ..
+                }),
+                Some(RiscVOperand {
+                    value: RiscVOperandValue::Immediate(imm),
+                    ..
+                }),
+                None,
+            ) => DefaultOperandFactory::new().format_memory_operand(*imm, &self.format_register(*rs1)),
+            _ => operands
+                .iter()
+                .map(|(_, operand)| self.format_operand(operand))
+                .collect::<Vec<_>>()
+                .join(", "),
+        }
+    }
+
+    fn format_load_reserved_operands(&self, operands: &[(usize, &RiscVOperand)]) -> String {
+        match operands {
+            [
+                (
+                    _,
+                    RiscVOperand {
+                        value: RiscVOperandValue::Register(rd),
+                        ..
+                    },
+                ),
+                (
+                    _,
+                    RiscVOperand {
+                        value: RiscVOperandValue::Register(_zero),
+                        ..
+                    },
+                ),
+                (
+                    _,
+                    RiscVOperand {
+                        value: RiscVOperandValue::Register(base),
+                        ..
+                    },
+                ),
+            ] => format!("{}, ({})", self.format_register(*rd), self.format_register(*base)),
+            _ => operands
+                .iter()
+                .map(|(_, operand)| self.format_operand(operand))
+                .collect::<Vec<_>>()
+                .join(", "),
+        }
+    }
+
+    fn format_atomic_operands(&self, operands: &[(usize, &RiscVOperand)]) -> String {
+        match operands {
+            [
+                (
+                    _,
+                    RiscVOperand {
+                        value: RiscVOperandValue::Register(first),
+                        ..
+                    },
+                ),
+                (
+                    _,
+                    RiscVOperand {
+                        value: RiscVOperandValue::Register(second),
+                        ..
+                    },
+                ),
+                (
+                    _,
+                    RiscVOperand {
+                        value: RiscVOperandValue::Register(base),
+                        ..
+                    },
+                ),
+            ] => format!(
+                "{}, {}, ({})",
+                self.format_register(*first),
+                self.format_register(*second),
+                self.format_register(*base)
+            ),
+            _ => operands
+                .iter()
+                .map(|(_, operand)| self.format_operand(operand))
+                .collect::<Vec<_>>()
+                .join(", "),
+        }
     }
 
     /// Renders the instruction mnemonic and operand list.
@@ -294,11 +454,11 @@ mod tests {
         let printer = RiscVPrinter::new();
 
         // Positive values
-        assert_eq!(printer.format_immediate(10), "10");
+        assert_eq!(printer.format_immediate(10), "0xa");
         assert_eq!(printer.format_immediate(0x1000), "0x1000");
 
         // Negative values
-        assert_eq!(printer.format_immediate(-10), "-10");
+        assert_eq!(printer.format_immediate(-10), "-0xa");
         // assert_eq!(printer.format_immediate(-0x1000), "-0x1000");
 
         // Zero
@@ -326,13 +486,13 @@ mod tests {
         let printer = RiscVPrinter::new().with_alias_regs(true);
 
         // Base register only
-        assert_eq!(printer.format_memory_operand(2, 0), "(sp)");
+        assert_eq!(printer.format_memory_operand(2, 0), "0(sp)");
 
         // Positive offset
-        assert_eq!(printer.format_memory_operand(10, 100), "100(a0)");
+        assert_eq!(printer.format_memory_operand(10, 100), "0x64(a0)");
 
         // Negative offset
-        assert_eq!(printer.format_memory_operand(10, -100), "-100(a0)");
+        assert_eq!(printer.format_memory_operand(10, -100), "-0x64(a0)");
     }
 
     #[test]
@@ -353,7 +513,7 @@ mod tests {
             access: Access::read(),
             value: RiscVOperandValue::Immediate(42),
         };
-        assert_eq!(printer.format_operand(&imm_op), "42");
+        assert_eq!(printer.format_operand(&imm_op), "0x2a");
 
         // Memory operand
         let mem_op = RiscVOperand {
@@ -361,7 +521,7 @@ mod tests {
             access: Access::read(),
             value: RiscVOperandValue::Memory(RiscVMemoryOperand { base: 2, disp: 100 }),
         };
-        assert_eq!(printer.format_operand(&mem_op), "100(sp)");
+        assert_eq!(printer.format_operand(&mem_op), "0x64(sp)");
     }
 
     #[test]

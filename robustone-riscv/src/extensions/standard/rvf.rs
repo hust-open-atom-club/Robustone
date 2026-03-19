@@ -26,6 +26,14 @@ impl Rvf {
         }
     }
 
+    fn reg_operand(&self, reg: u8, access: Access, is_fp: bool) -> RiscVOperand {
+        if is_fp {
+            convenience::fp_register(reg, access)
+        } else {
+            convenience::register(reg, access)
+        }
+    }
+
     // F-extension opcodes
     const OPCODE_LOAD_FP: u32 = 0b000_0111;
     const OPCODE_STORE_FP: u32 = 0b010_0111;
@@ -56,7 +64,7 @@ impl Rvf {
             format: RiscVInstructionFormat::I,
             size: 4,
             operands_detail: vec![
-                convenience::register(rd, Access::write()),
+                self.reg_operand(rd, Access::write(), true),
                 convenience::memory(rs1, imm),
             ],
             canonical_mnemonic: None,
@@ -81,7 +89,7 @@ impl Rvf {
             format: RiscVInstructionFormat::S,
             size: 4,
             operands_detail: vec![
-                convenience::register(rs2, Access::read()),
+                self.reg_operand(rs2, Access::read(), true),
                 convenience::memory(rs1, imm),
             ],
             canonical_mnemonic: None,
@@ -107,9 +115,9 @@ impl Rvf {
             format: RiscVInstructionFormat::R,
             size: 4,
             operands_detail: vec![
-                convenience::register(rd, Access::write()),
-                convenience::register(rs1, Access::read()),
-                convenience::register(rs2, Access::read()),
+                self.reg_operand(rd, Access::write(), true),
+                self.reg_operand(rs1, Access::read(), true),
+                self.reg_operand(rs2, Access::read(), true),
             ],
             canonical_mnemonic: None,
             render_hints: Default::default(),
@@ -136,9 +144,10 @@ impl Rvf {
             format: RiscVInstructionFormat::R,
             size: 4,
             operands_detail: vec![
-                convenience::register(rd, Access::write()),
-                convenience::register(rs1, Access::read()),
-                convenience::register(rs2, Access::read()),
+                self.reg_operand(rd, Access::write(), true),
+                self.reg_operand(rs1, Access::read(), true),
+                self.reg_operand(rs2, Access::read(), true),
+                convenience::rounding_mode(rm),
             ],
             canonical_mnemonic: None,
             render_hints: Default::default(),
@@ -165,10 +174,10 @@ impl Rvf {
             format: RiscVInstructionFormat::R4,
             size: 4,
             operands_detail: vec![
-                convenience::register(rd, Access::write()),
-                convenience::register(rs1, Access::read()),
-                convenience::register(rs2, Access::read()),
-                convenience::register(rs3, Access::read()),
+                self.reg_operand(rd, Access::write(), true),
+                self.reg_operand(rs1, Access::read(), true),
+                self.reg_operand(rs2, Access::read(), true),
+                self.reg_operand(rs3, Access::read(), true),
             ],
             canonical_mnemonic: None,
             render_hints: Default::default(),
@@ -201,8 +210,8 @@ impl Rvf {
             format: RiscVInstructionFormat::R,
             size: 4,
             operands_detail: vec![
-                convenience::register(rd, Access::write()),
-                convenience::register(rs1, Access::read()),
+                self.reg_operand(rd, Access::write(), rd_is_fp),
+                self.reg_operand(rs1, Access::read(), rs1_is_fp),
             ],
             canonical_mnemonic: None,
             render_hints: Default::default(),
@@ -235,8 +244,9 @@ impl Rvf {
             format: RiscVInstructionFormat::R,
             size: 4,
             operands_detail: vec![
-                convenience::register(rd, Access::write()),
-                convenience::register(rs1, Access::read()),
+                self.reg_operand(rd, Access::write(), rd_is_fp),
+                self.reg_operand(rs1, Access::read(), rs1_is_fp),
+                convenience::rounding_mode(rm),
             ],
             canonical_mnemonic: None,
             render_hints: Default::default(),
@@ -261,8 +271,9 @@ impl Rvf {
             format: RiscVInstructionFormat::R,
             size: 4,
             operands_detail: vec![
-                convenience::register(rd, Access::write()),
-                convenience::register(rs1, Access::read()),
+                self.reg_operand(rd, Access::write(), true),
+                self.reg_operand(rs1, Access::read(), true),
+                convenience::rounding_mode(rm),
             ],
             canonical_mnemonic: None,
             render_hints: Default::default(),
@@ -287,9 +298,9 @@ impl Rvf {
             format: RiscVInstructionFormat::R,
             size: 4,
             operands_detail: vec![
-                convenience::register(rd, Access::write()),
-                convenience::register(rs1, Access::read()),
-                convenience::register(rs2, Access::read()),
+                self.reg_operand(rd, Access::write(), false),
+                self.reg_operand(rs1, Access::read(), true),
+                self.reg_operand(rs2, Access::read(), true),
             ],
             canonical_mnemonic: None,
             render_hints: Default::default(),

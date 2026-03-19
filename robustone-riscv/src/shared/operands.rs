@@ -60,6 +60,24 @@ impl DefaultOperandFactory {
         Self::new().make_immediate_operand(imm)
     }
 
+    /// Create a rounding-mode operand.
+    pub fn rounding_mode(rm: u8) -> RiscVOperand {
+        RiscVOperand {
+            op_type: RiscVOperandType::RoundingMode,
+            access: Access::read(),
+            value: RiscVOperandValue::RoundingMode(rm),
+        }
+    }
+
+    /// Create a floating-point register operand (convenience method).
+    pub fn fp_register(reg: u8, access: Access) -> RiscVOperand {
+        RiscVOperand {
+            op_type: RiscVOperandType::Register,
+            access,
+            value: RiscVOperandValue::Register(32 + reg as u32),
+        }
+    }
+
     /// Create a memory operand (convenience method).
     pub fn memory(base: u8, disp: i64) -> RiscVOperand {
         Self::new().make_memory_operand(base, disp)
@@ -386,6 +404,16 @@ pub mod convenience {
     /// Create an immediate operand.
     pub fn immediate(imm: i64) -> RiscVOperand {
         DefaultOperandFactory::immediate(imm)
+    }
+
+    /// Create a rounding-mode operand.
+    pub fn rounding_mode(rm: u8) -> RiscVOperand {
+        DefaultOperandFactory::rounding_mode(rm)
+    }
+
+    /// Create a floating-point register operand.
+    pub fn fp_register(reg: u8, access: Access) -> RiscVOperand {
+        DefaultOperandFactory::fp_register(reg, access)
     }
 
     /// Create a memory operand.

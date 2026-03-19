@@ -116,7 +116,7 @@ impl ArchitectureHandler for RiscVHandler {
     ) -> Result<(Instruction, usize), DisasmError> {
         let (decoded, ir) = self.decode_with_context(bytes, arch_name, addr)?;
         let printer = RiscVPrinter::new().with_profile(RiscVTextProfile::Capstone);
-        let (mnemonic, operands) = printer.render_decoded_parts(&decoded);
+        let (mnemonic, operands) = printer.render_decoded_parts_with_ir(&decoded, &ir);
 
         let mut riscv_detail = RiscVInstructionDetail::new();
         for register in &ir.registers_read {
@@ -168,7 +168,7 @@ mod tests {
     fn test_riscv_register_from_id() {
         assert_eq!(RiscVRegister::from_id(0), RiscVRegister::X0);
         assert_eq!(RiscVRegister::from_id(1), RiscVRegister::X1);
-        assert_eq!(RiscVRegister::from_id(32), RiscVRegister::Invalid);
+        assert_eq!(RiscVRegister::from_id(32), RiscVRegister::F0_32);
         assert_eq!(RiscVRegister::from_id(100), RiscVRegister::Invalid);
     }
 
