@@ -1,0 +1,26 @@
+[package]
+name = "robustone-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+robustone-core = { path = "../robustone-core" }
+
+[[bin]]
+name = "decode_riscv"
+path = "fuzz_targets/decode_riscv.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "format_riscv_json"
+path = "fuzz_targets/format_riscv_json.rs"
+test = false
+doc = false
+bench = false
