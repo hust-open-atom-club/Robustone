@@ -10,3 +10,5 @@ virt-py
 AGENTS.md
 RFC.md
 .humanize/
+fuzz/artifacts/
+fuzz/corpus/

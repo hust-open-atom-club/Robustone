@@ -44,6 +44,9 @@ This matrix documents what the repository supports today and what it intentional
 | `make test` | Verified | Builds Capstone if needed, runs parity tests, then runs top-level crate tests. |
 | `python3 test/run_tests.py --list` | Verified | Lists the currently configured parity suites. |
 | `cargo test --workspace --all-features` | Verified | Runs workspace Rust tests and doctests. |
+| `cargo bench -p robustone-core --bench riscv_decode` | Verified | Produces the current local decode baseline recorded in `docs/benchmark-baselines.md`. |
+| `cargo +nightly fuzz run decode_riscv -- -max_total_time=5` | Verified | Completed successfully as a local fuzz smoke run. |
+| `cargo +nightly fuzz run format_riscv_json -- -max_total_time=5` | Verified | Completed successfully as a local fuzz smoke run. |
 
 ## Known Gaps and Non-Goals
 
