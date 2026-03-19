@@ -49,6 +49,7 @@ pre-commit install --hook-type pre-push
 ```bash
 make build
 make check
+cargo test --workspace --all-features
 ```
 
 ## Pre-commit 钩子
@@ -134,8 +135,8 @@ make test
 # 快速一致性测试（20 个用例）
 make test-quick
 
-# 仅运行 Rust 单元测试
-cargo test --manifest-path robustone/Cargo.toml
+# 运行完整 Rust workspace 测试
+cargo test --workspace --all-features
 
 # 仅运行一致性测试
 make test-parity
@@ -146,7 +147,7 @@ make test-parity
 添加新指令或功能时：
 
 1. 在相关 Rust 模块中添加单元测试
-2. 在 `test/` 目录中添加一致性测试用例
+2. 在 `test/architectures/<arch>/test_cases.txt` 中添加一致性测试用例
 3. 验证配置：`make test-validate`
 
 ## 提交更改
@@ -203,7 +204,7 @@ git push origin feature/your-feature-name
 2. 实现 `ArchitectureHandler` trait
 3. 在 `robustone-core/Cargo.toml` 中添加 feature flag
 4. 在 `ArchitectureDispatcher::new()` 中注册处理器
-5. 在 `test/<arch>/` 中添加一致性测试
+5. 在 `test/architectures/<arch>/` 中添加一致性测试
 6. 更新文档
 
 ## 问题咨询
