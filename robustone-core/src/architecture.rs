@@ -6,7 +6,7 @@
 use std::fmt;
 use std::fmt::Display;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Architecture {
     RiscV32,
     RiscV64,

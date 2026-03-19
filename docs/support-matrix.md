@@ -32,6 +32,7 @@ This matrix documents what the repository supports today and what it intentional
 | Canonical-vs-alias formatter profiles | Partial | The RISC-V printer now has Capstone-style and canonical profiles, but only the Capstone-style path is exposed through the CLI by default. |
 | Structured JSON output | Implemented | `robustone --json ...` renders structured JSON built from the shared decode IR. |
 | Structured decode-error taxonomy | Partial | The low-level decode API returns `DecodeFailure` variants such as `need_more_bytes` and `invalid_encoding`, but not every extension path emits the full target taxonomy yet. |
+| Golden/property/fuzz scaffolding | Implemented as repository structure | `tests/golden/`, `tests/property/`, `tests/differential/`, `robustone-core/tests/*.rs`, and `fuzz/` are now present, though coverage is still early. |
 
 ## Repository Entry Points
 
@@ -48,5 +49,5 @@ This matrix documents what the repository supports today and what it intentional
 
 - Parser coverage is broader than decode-backend coverage; the CLI help surface should not be read as proof that every architecture listed there can be decoded today.
 - The repository now exposes a shared decode IR, but the Capstone-style CLI formatter still keeps some compatibility-oriented display behavior for parity purposes.
-- The repository does not yet publish golden/property/fuzz results as first-class support claims.
+- The repository now contains golden/property/fuzz scaffolding, but the coverage remains RISC-V-first and does not yet amount to a complete cross-architecture claim.
 - `--alias-regs` and `--unsigned-immediate` remain reserved CLI options rather than implemented output modes.

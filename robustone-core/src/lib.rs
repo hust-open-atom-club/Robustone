@@ -41,6 +41,7 @@
 //! ```
 
 pub mod architecture;
+pub mod common;
 pub mod ir;
 pub mod traits;
 pub mod types;
@@ -53,6 +54,7 @@ pub mod utils;
 /// using the disassembly engine.
 pub mod prelude {
     pub use crate::architecture::{Architecture, is_address_aligned};
+    pub use crate::common::ArchitectureProfile;
     pub use crate::ir::{ArchitectureId, DecodeStatus, DecodedInstruction, Operand, RegisterId};
     pub use crate::traits::{ArchitectureHandler, BasicInstructionDetail, Detail};
     pub use crate::types::{DisasmError, Instruction};
@@ -234,6 +236,16 @@ impl ArchitectureDispatcher {
         }
 
         Err(DisasmError::UnsupportedArchitecture(arch.to_string()))
+    }
+
+    /// Decode bytes using an explicit architecture profile.
+    pub fn decode_with_profile(
+        &self,
+        bytes: &[u8],
+        profile: &crate::common::ArchitectureProfile,
+        address: u64,
+    ) -> Result<(DecodedInstruction, usize), DisasmError> {
+        self.decode_instruction(bytes, profile.mode_name, address)
     }
 
     /// Returns a list of all registered architecture names.

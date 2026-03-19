@@ -1,0 +1,13 @@
+{
+  "arch": "riscv32",
+  "hex": "93001000",
+  "expected_capstone": {
+    "mnemonic": "li",
+    "operands": "ra, 1"
+  },
+  "expected_ir": {
+    "mnemonic": "addi",
+    "render_hint_mnemonic": "li",
+    "hidden_operands": [1]
+  }
+}

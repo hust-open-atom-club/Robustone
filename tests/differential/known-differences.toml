@@ -1,0 +1,8 @@
+# Differential output differences intentionally accepted by the repository.
+# Keep this file empty until a divergence is understood and documented.
+
+[[difference]]
+arch = "riscv32"
+hex = ""
+reason = "placeholder entry - replace or remove when a real known difference is accepted"
+active = false

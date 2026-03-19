@@ -111,6 +111,8 @@ The commands above were verified locally on 2026-03-19.
 - CI workflow: `.github/workflows/ci.yml`
 - Support matrix: [docs/support-matrix.md](docs/support-matrix.md)
 - Roadmap: [docs/roadmap.md](docs/roadmap.md)
+- New ISA checklist: [docs/isa-checklist.md](docs/isa-checklist.md)
+- Release checklist: [docs/release-checklist.md](docs/release-checklist.md)
 - Test framework guide: [test/README.md](test/README.md)
 
 ## Contributing
