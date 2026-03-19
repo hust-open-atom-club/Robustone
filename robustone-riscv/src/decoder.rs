@@ -403,13 +403,15 @@ impl RiscVDecodedInstruction {
             address,
             mode: arch_name.to_string(),
             mnemonic: canonical_mnemonic.clone(),
-            opcode_id: Some(canonical_mnemonic),
+            opcode_id: Some(canonical_mnemonic.clone()),
             size: self.size,
             raw_bytes,
             operands,
             registers_read,
             registers_written,
-            groups: Vec::new(),
+            implicit_registers_read: Vec::new(),
+            implicit_registers_written: Vec::new(),
+            groups: infer_groups(&canonical_mnemonic),
             status: DecodeStatus::Success,
             render_hints: RenderHints {
                 capstone_mnemonic,
@@ -417,6 +419,44 @@ impl RiscVDecodedInstruction {
             },
         }
     }
+}
+
+fn infer_groups(mnemonic: &str) -> Vec<String> {
+    let group = if mnemonic.starts_with('b') || matches!(mnemonic, "c.beqz" | "c.bnez") {
+        "branch"
+    } else if mnemonic.contains("jal")
+        || matches!(mnemonic, "j" | "c.j" | "c.jal" | "c.jr" | "c.jalr")
+    {
+        "control_flow"
+    } else if matches!(
+        mnemonic,
+        "lb"
+            | "lh"
+            | "lw"
+            | "ld"
+            | "lbu"
+            | "lhu"
+            | "lwu"
+            | "flw"
+            | "fld"
+            | "c.lw"
+            | "c.lwsp"
+    ) {
+        "load"
+    } else if matches!(
+        mnemonic,
+        "sb" | "sh" | "sw" | "sd" | "fsw" | "fsd" | "c.sw" | "c.swsp"
+    ) {
+        "store"
+    } else if mnemonic.starts_with("amo") || mnemonic.starts_with("lr.") || mnemonic.starts_with("sc.") {
+        "atomic"
+    } else if mnemonic.starts_with("csr") || mnemonic == "ecall" || mnemonic == "ebreak" {
+        "system"
+    } else {
+        "arithmetic"
+    };
+
+    vec![group.to_string()]
 }
 
 #[cfg(test)]

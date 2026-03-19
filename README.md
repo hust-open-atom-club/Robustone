@@ -112,7 +112,9 @@ The commands above were verified locally on 2026-03-19.
 - Support matrix: [docs/support-matrix.md](docs/support-matrix.md)
 - Roadmap: [docs/roadmap.md](docs/roadmap.md)
 - New ISA checklist: [docs/isa-checklist.md](docs/isa-checklist.md)
+- Benchmark baselines: [docs/benchmark-baselines.md](docs/benchmark-baselines.md)
 - Release checklist: [docs/release-checklist.md](docs/release-checklist.md)
+- Versioning policy: [docs/versioning-policy.md](docs/versioning-policy.md)
 - Test framework guide: [test/README.md](test/README.md)
 
 ## Contributing

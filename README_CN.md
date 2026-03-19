@@ -112,7 +112,9 @@ cargo run --manifest-path robustone/Cargo.toml -- --json riscv32 93001000
 - 支持矩阵：[`docs/support-matrix.md`](docs/support-matrix.md)
 - 路线图：[`docs/roadmap.md`](docs/roadmap.md)
 - 新 ISA 清单：[`docs/isa-checklist.md`](docs/isa-checklist.md)
+- 基准基线：[`docs/benchmark-baselines.md`](docs/benchmark-baselines.md)
 - 发布清单：[`docs/release-checklist.md`](docs/release-checklist.md)
+- 版本策略：[`docs/versioning-policy.md`](docs/versioning-policy.md)
 - 测试框架说明：[`test/README.md`](test/README.md)
 
 ## 贡献
