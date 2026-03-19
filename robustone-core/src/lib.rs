@@ -41,6 +41,7 @@
 //! ```
 
 pub mod architecture;
+pub mod ir;
 pub mod traits;
 pub mod types;
 pub mod utils;
@@ -52,11 +53,13 @@ pub mod utils;
 /// using the disassembly engine.
 pub mod prelude {
     pub use crate::architecture::{Architecture, is_address_aligned};
+    pub use crate::ir::{ArchitectureId, DecodeStatus, DecodedInstruction, Operand, RegisterId};
     pub use crate::traits::{ArchitectureHandler, BasicInstructionDetail, Detail};
     pub use crate::types::{DisasmError, Instruction};
     pub use crate::utils::{Endianness, HexParser};
 }
 
+pub use ir::DecodedInstruction;
 pub use traits::ArchitectureHandler;
 pub use traits::instruction::Detail;
 pub use types::error::DisasmError;
@@ -138,6 +141,7 @@ impl ArchitectureDispatcher {
                     operands: format!("(parse error: {hex})"),
                     size: 0,
                     detail: None,
+                    decoded: None,
                 };
             }
         };
@@ -155,6 +159,7 @@ impl ArchitectureDispatcher {
                     operands: format!("0x{}", hex.trim_start_matches("0x")),
                     size,
                     detail: None,
+                    decoded: None,
                 }
             }
         }
@@ -212,6 +217,22 @@ impl ArchitectureDispatcher {
         }
 
         // No handler found for this architecture
+        Err(DisasmError::UnsupportedArchitecture(arch.to_string()))
+    }
+
+    /// Decode raw instruction bytes into the shared IR.
+    pub fn decode_instruction(
+        &self,
+        bytes: &[u8],
+        arch: &str,
+        address: u64,
+    ) -> Result<(DecodedInstruction, usize), DisasmError> {
+        for handler in &self.handlers {
+            if handler.supports(arch) {
+                return handler.decode_instruction(bytes, arch, address);
+            }
+        }
+
         Err(DisasmError::UnsupportedArchitecture(arch.to_string()))
     }
 
@@ -301,6 +322,7 @@ impl Default for ArchitectureDispatcher {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::error::DecodeErrorKind;
 
     #[test]
     fn test_architecture_dispatcher_creation() {
@@ -324,5 +346,36 @@ mod tests {
         let instruction = dispatcher.disassemble("0x1234", "unknown".to_string());
         assert_eq!(instruction.bytes, vec![0x12, 0x34]);
         assert_eq!(instruction.size, 2);
+    }
+
+    #[test]
+    fn test_low_level_decode_api_returns_ir() {
+        let dispatcher = ArchitectureDispatcher::new();
+        let (decoded, size) = dispatcher
+            .decode_instruction(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
+            .expect("decode should succeed");
+
+        assert_eq!(size, 4);
+        assert_eq!(decoded.mnemonic, "addi");
+        assert_eq!(
+            decoded.render_hints.capstone_mnemonic.as_deref(),
+            Some("li")
+        );
+        assert_eq!(decoded.render_hints.capstone_hidden_operands, vec![1]);
+    }
+
+    #[test]
+    fn test_invalid_encoding_returns_structured_error() {
+        let dispatcher = ArchitectureDispatcher::new();
+        let error = dispatcher
+            .decode_instruction(&[0xff, 0xff, 0xff, 0xff], "riscv32", 0)
+            .expect_err("invalid encoding should fail");
+
+        match error {
+            DisasmError::DecodeFailure { kind, .. } => {
+                assert_eq!(kind, DecodeErrorKind::InvalidEncoding);
+            }
+            other => panic!("expected structured decode failure, got {other:?}"),
+        }
     }
 }

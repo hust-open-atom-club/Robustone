@@ -59,6 +59,8 @@ impl Rvd {
                 convenience::register(rd, Access::write()),
                 convenience::memory(rs1, imm),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -82,6 +84,8 @@ impl Rvd {
                 convenience::register(rs2, Access::read()),
                 convenience::memory(rs1, imm),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -107,6 +111,37 @@ impl Rvd {
                 convenience::register(rs1, Access::read()),
                 convenience::register(rs2, Access::read()),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
+        })
+    }
+
+    fn decode_fp_r_type_with_rm(
+        &self,
+        mnemonic: &str,
+        rd: u8,
+        rs1: u8,
+        rs2: u8,
+        rm: u8,
+    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+        Ok(RiscVDecodedInstruction {
+            mnemonic: mnemonic.to_string(),
+            operands: format!(
+                "{}, {}, {}, {}",
+                self.register_manager.fp_register_name(rd),
+                self.register_manager.fp_register_name(rs1),
+                self.register_manager.fp_register_name(rs2),
+                rounding_mode_name(rm),
+            ),
+            format: RiscVInstructionFormat::R,
+            size: 4,
+            operands_detail: vec![
+                convenience::register(rd, Access::write()),
+                convenience::register(rs1, Access::read()),
+                convenience::register(rs2, Access::read()),
+            ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -135,6 +170,8 @@ impl Rvd {
                 convenience::register(rs2, Access::read()),
                 convenience::register(rs3, Access::read()),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -167,6 +204,95 @@ impl Rvd {
                 convenience::register(rd, Access::write()),
                 convenience::register(rs1, Access::read()),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
+        })
+    }
+
+    fn decode_fp_int_type_with_rm(
+        &self,
+        mnemonic: &str,
+        rd: u8,
+        rs1: u8,
+        rd_is_fp: bool,
+        rs1_is_fp: bool,
+        rm: u8,
+    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+        let rd_name = if rd_is_fp {
+            self.register_manager.fp_register_name(rd)
+        } else {
+            self.register_manager.int_register_name(rd)
+        };
+        let rs1_name = if rs1_is_fp {
+            self.register_manager.fp_register_name(rs1)
+        } else {
+            self.register_manager.int_register_name(rs1)
+        };
+
+        Ok(RiscVDecodedInstruction {
+            mnemonic: mnemonic.to_string(),
+            operands: format!("{rd_name}, {rs1_name}, {}", rounding_mode_name(rm)),
+            format: RiscVInstructionFormat::R,
+            size: 4,
+            operands_detail: vec![
+                convenience::register(rd, Access::write()),
+                convenience::register(rs1, Access::read()),
+            ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
+        })
+    }
+
+    fn decode_fp_unary_type_with_rm(
+        &self,
+        mnemonic: &str,
+        rd: u8,
+        rs1: u8,
+        rm: u8,
+    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+        Ok(RiscVDecodedInstruction {
+            mnemonic: mnemonic.to_string(),
+            operands: format!(
+                "{}, {}, {}",
+                self.register_manager.fp_register_name(rd),
+                self.register_manager.fp_register_name(rs1),
+                rounding_mode_name(rm),
+            ),
+            format: RiscVInstructionFormat::R,
+            size: 4,
+            operands_detail: vec![
+                convenience::register(rd, Access::write()),
+                convenience::register(rs1, Access::read()),
+            ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
+        })
+    }
+
+    fn decode_fp_compare_type(
+        &self,
+        mnemonic: &str,
+        rd: u8,
+        rs1: u8,
+        rs2: u8,
+    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+        Ok(RiscVDecodedInstruction {
+            mnemonic: mnemonic.to_string(),
+            operands: format!(
+                "{}, {}, {}",
+                self.register_manager.int_register_name(rd),
+                self.register_manager.fp_register_name(rs1),
+                self.register_manager.fp_register_name(rs2)
+            ),
+            format: RiscVInstructionFormat::R,
+            size: 4,
+            operands_detail: vec![
+                convenience::register(rd, Access::write()),
+                convenience::register(rs1, Access::read()),
+                convenience::register(rs2, Access::read()),
+            ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 }
@@ -205,18 +331,30 @@ impl InstructionExtension for Rvd {
                 Some(self.decode_store_fp(rs2, rs1, imm_s))
             }
             Self::OPCODE_FMADD => {
+                if (funct7 & 0b11) != 0b01 {
+                    return None;
+                }
                 let rs3 = (funct7 >> 2) & 0x1F;
                 Some(self.decode_fp_r4_type("fmadd.d", rd, rs1, rs2, rs3))
             }
             Self::OPCODE_FMSUB => {
+                if (funct7 & 0b11) != 0b01 {
+                    return None;
+                }
                 let rs3 = (funct7 >> 2) & 0x1F;
                 Some(self.decode_fp_r4_type("fmsub.d", rd, rs1, rs2, rs3))
             }
             Self::OPCODE_FNMSUB => {
+                if (funct7 & 0b11) != 0b01 {
+                    return None;
+                }
                 let rs3 = (funct7 >> 2) & 0x1F;
                 Some(self.decode_fp_r4_type("fnmsub.d", rd, rs1, rs2, rs3))
             }
             Self::OPCODE_FNMADD => {
+                if (funct7 & 0b11) != 0b01 {
+                    return None;
+                }
                 let rs3 = (funct7 >> 2) & 0x1F;
                 Some(self.decode_fp_r4_type("fnmadd.d", rd, rs1, rs2, rs3))
             }
@@ -232,77 +370,121 @@ impl InstructionExtension for Rvd {
                 }
 
                 match (funct5, funct3) {
-                    (0b00000, 0b000) => Some(self.decode_fp_r_type("fadd.d", rd, rs1, rs2)),
-                    (0b00001, 0b000) => Some(self.decode_fp_r_type("fsub.d", rd, rs1, rs2)),
-                    (0b00010, 0b000) => Some(self.decode_fp_r_type("fmul.d", rd, rs1, rs2)),
-                    (0b00011, 0b000) => Some(self.decode_fp_r_type("fdiv.d", rd, rs1, rs2)),
-                    (0b01011, 0b000) => Some(self.decode_fp_r_type("fsqrt.d", rd, rs1, rs2)), // rs2 ignored
+                    (0b00000, rm) => {
+                        Some(self.decode_fp_r_type_with_rm("fadd.d", rd, rs1, rs2, rm))
+                    }
+                    (0b00001, rm) => {
+                        Some(self.decode_fp_r_type_with_rm("fsub.d", rd, rs1, rs2, rm))
+                    }
+                    (0b00010, rm) => {
+                        Some(self.decode_fp_r_type_with_rm("fmul.d", rd, rs1, rs2, rm))
+                    }
+                    (0b00011, rm) => {
+                        Some(self.decode_fp_r_type_with_rm("fdiv.d", rd, rs1, rs2, rm))
+                    }
+                    (0b01011, rm) => {
+                        Some(self.decode_fp_unary_type_with_rm("fsqrt.d", rd, rs1, rm))
+                    }
                     (0b00100, 0b000) => Some(self.decode_fp_r_type("fsgnj.d", rd, rs1, rs2)),
                     (0b00100, 0b001) => Some(self.decode_fp_r_type("fsgnjn.d", rd, rs1, rs2)),
                     (0b00100, 0b010) => Some(self.decode_fp_r_type("fsgnjx.d", rd, rs1, rs2)),
                     (0b00101, 0b000) => Some(self.decode_fp_r_type("fmin.d", rd, rs1, rs2)),
                     (0b00101, 0b001) => Some(self.decode_fp_r_type("fmax.d", rd, rs1, rs2)),
-                    (0b11000, 0b000) => {
-                        Some(self.decode_fp_int_type("fcvt.w.d", rd, rs1, rs2, false, true))
-                    } // rs2 ignored
-                    (0b11000, 0b001) => {
-                        Some(self.decode_fp_int_type("fcvt.wu.d", rd, rs1, rs2, false, true))
-                    } // rs2 ignored
-                    (0b11000, 0b010) => {
-                        if xlen == Xlen::X64 {
-                            Some(self.decode_fp_int_type("fcvt.l.d", rd, rs1, rs2, false, true))
-                        // rs2 ignored
-                        } else {
-                            Some(Err(DisasmError::DecodingError(
-                                "fcvt.l.d requires RV64".to_string(),
-                            )))
+                    (0b11000, rm) => match rs2 {
+                        0 => Some(
+                            self.decode_fp_int_type_with_rm("fcvt.w.d", rd, rs1, false, true, rm),
+                        ),
+                        1 => Some(self.decode_fp_int_type_with_rm(
+                            "fcvt.wu.d",
+                            rd,
+                            rs1,
+                            false,
+                            true,
+                            rm,
+                        )),
+                        2 => {
+                            if xlen == Xlen::X64 {
+                                Some(self.decode_fp_int_type_with_rm(
+                                    "fcvt.l.d", rd, rs1, false, true, rm,
+                                ))
+                            } else {
+                                Some(Err(DisasmError::DecodingError(
+                                    "fcvt.l.d requires RV64".to_string(),
+                                )))
+                            }
                         }
-                    }
-                    (0b11000, 0b011) => {
-                        if xlen == Xlen::X64 {
-                            Some(self.decode_fp_int_type("fcvt.lu.d", rd, rs1, rs2, false, true))
-                        // rs2 ignored
-                        } else {
-                            Some(Err(DisasmError::DecodingError(
-                                "fcvt.lu.d requires RV64".to_string(),
-                            )))
+                        3 => {
+                            if xlen == Xlen::X64 {
+                                Some(self.decode_fp_int_type_with_rm(
+                                    "fcvt.lu.d",
+                                    rd,
+                                    rs1,
+                                    false,
+                                    true,
+                                    rm,
+                                ))
+                            } else {
+                                Some(Err(DisasmError::DecodingError(
+                                    "fcvt.lu.d requires RV64".to_string(),
+                                )))
+                            }
                         }
-                    }
+                        _ => Some(Err(DisasmError::DecodingError(
+                            "Invalid D-extension integer conversion".to_string(),
+                        ))),
+                    },
                     (0b11100, 0b000) => {
                         Some(self.decode_fp_int_type("fmv.x.d", rd, rs1, rs2, false, true))
                     } // rs2 ignored
-                    (0b10100, 0b010) => Some(self.decode_fp_r_type("feq.d", rd, rs1, rs2)),
-                    (0b10100, 0b001) => Some(self.decode_fp_r_type("flt.d", rd, rs1, rs2)),
-                    (0b10100, 0b000) => Some(self.decode_fp_r_type("fle.d", rd, rs1, rs2)),
+                    (0b10100, 0b010) => Some(self.decode_fp_compare_type("feq.d", rd, rs1, rs2)),
+                    (0b10100, 0b001) => Some(self.decode_fp_compare_type("flt.d", rd, rs1, rs2)),
+                    (0b10100, 0b000) => Some(self.decode_fp_compare_type("fle.d", rd, rs1, rs2)),
                     (0b11100, 0b001) => {
                         Some(self.decode_fp_int_type("fclass.d", rd, rs1, rs2, false, true))
                     } // rs2 ignored
-                    (0b11010, 0b000) => {
-                        Some(self.decode_fp_int_type("fcvt.d.w", rd, rs1, rs2, true, false))
-                    } // rs2 ignored
-                    (0b11010, 0b001) => {
-                        Some(self.decode_fp_int_type("fcvt.d.wu", rd, rs1, rs2, true, false))
-                    } // rs2 ignored
-                    (0b11010, 0b010) => {
-                        if xlen == Xlen::X64 {
-                            Some(self.decode_fp_int_type("fcvt.d.l", rd, rs1, rs2, true, false))
-                        // rs2 ignored
-                        } else {
-                            Some(Err(DisasmError::DecodingError(
-                                "fcvt.d.l requires RV64".to_string(),
-                            )))
+                    (0b11010, rm) => match rs2 {
+                        0 => Some(
+                            self.decode_fp_int_type_with_rm("fcvt.d.w", rd, rs1, true, false, rm),
+                        ),
+                        1 => Some(self.decode_fp_int_type_with_rm(
+                            "fcvt.d.wu",
+                            rd,
+                            rs1,
+                            true,
+                            false,
+                            rm,
+                        )),
+                        2 => {
+                            if xlen == Xlen::X64 {
+                                Some(self.decode_fp_int_type_with_rm(
+                                    "fcvt.d.l", rd, rs1, true, false, rm,
+                                ))
+                            } else {
+                                Some(Err(DisasmError::DecodingError(
+                                    "fcvt.d.l requires RV64".to_string(),
+                                )))
+                            }
                         }
-                    }
-                    (0b11010, 0b011) => {
-                        if xlen == Xlen::X64 {
-                            Some(self.decode_fp_int_type("fcvt.d.lu", rd, rs1, rs2, true, false))
-                        // rs2 ignored
-                        } else {
-                            Some(Err(DisasmError::DecodingError(
-                                "fcvt.d.lu requires RV64".to_string(),
-                            )))
+                        3 => {
+                            if xlen == Xlen::X64 {
+                                Some(self.decode_fp_int_type_with_rm(
+                                    "fcvt.d.lu",
+                                    rd,
+                                    rs1,
+                                    true,
+                                    false,
+                                    rm,
+                                ))
+                            } else {
+                                Some(Err(DisasmError::DecodingError(
+                                    "fcvt.d.lu requires RV64".to_string(),
+                                )))
+                            }
                         }
-                    }
+                        _ => Some(Err(DisasmError::DecodingError(
+                            "Invalid D-extension floating conversion".to_string(),
+                        ))),
+                    },
                     (0b11110, 0b000) => {
                         Some(self.decode_fp_int_type("fmv.d.x", rd, rs1, rs2, true, false))
                     } // rs2 ignored
@@ -347,5 +529,17 @@ impl InstructionExtension for Rvd {
 impl Default for Rvd {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+fn rounding_mode_name(rm: u8) -> &'static str {
+    match rm {
+        0b000 => "rne",
+        0b001 => "rtz",
+        0b010 => "rdn",
+        0b011 => "rup",
+        0b100 => "rmm",
+        0b111 => "dyn",
+        _ => "invalid",
     }
 }

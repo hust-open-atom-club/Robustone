@@ -76,6 +76,14 @@ If not provided, defaults to 0. Prefix with 0x or use plain hex."
     )]
     pub unsigned_immediate: bool,
 
+    /// Emit structured JSON instead of the human-readable view.
+    #[arg(
+        long = "json",
+        help = "Render structured JSON output",
+        long_help = "Render the disassembly result as structured JSON built from the shared decode IR."
+    )]
+    pub json: bool,
+
     // Decoding options group
     /// `-s`: enable SKIPDATA mode to step past undecodable bytes.
     #[arg(
@@ -112,6 +120,7 @@ impl Cli {
             real_detail: self.real_detail,
             skip_data: self.skip_data,
             unsigned_immediate: self.unsigned_immediate,
+            json: self.json,
             version: self.version,
         })
     }
@@ -182,6 +191,7 @@ pub struct ValidatedConfig {
     pub real_detail: bool,
     pub skip_data: bool,
     pub unsigned_immediate: bool,
+    pub json: bool,
     pub version: bool,
 }
 
@@ -203,6 +213,7 @@ impl ValidatedConfig {
             alias_regs: self.alias_regs,
             real_detail: self.real_detail,
             unsigned_immediate: self.unsigned_immediate,
+            json: self.json,
         }
     }
 }
@@ -214,4 +225,5 @@ pub struct DisplayOptions {
     pub alias_regs: bool,
     pub real_detail: bool,
     pub unsigned_immediate: bool,
+    pub json: bool,
 }

@@ -72,6 +72,8 @@ impl Rva {
                 convenience::register(rs2, Access::read()),
                 convenience::register(rs1, Access::read()),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -107,6 +109,8 @@ impl Rva {
                 convenience::register(rs2, Access::read()),
                 convenience::register(rs1, Access::read()),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 }
