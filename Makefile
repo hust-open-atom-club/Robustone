@@ -24,7 +24,7 @@ endif
 
 RUN_ARGS ?=
 
-.PHONY: format run build check check-clippy check-pylint check-fmt check-all test test-parity test-validate clean-help virt-env
+.PHONY: format run build check check-clippy check-pylint check-fmt check-all test test-parity test-validate clean-help help virt-env
 
 virt-env:
 	$(PYTHON) -m venv virt-py
@@ -93,11 +93,11 @@ clean-help:
 	@echo "Available targets:"
 	@echo ""
 	@echo "Build & Check:"
-	@echo "  build        - Build the project"
-	@echo "  check        - Run cargo check (basic compilation check)"
-	@echo "  check-clippy - Run clippy lints (with -D warnings)"
-	@echo "  check-fmt    - Check code formatting"
-	@echo "  check-all    - Run all checks (check + clippy + fmt)"
+	@echo "  build        - Build the CLI crate in debug mode"
+	@echo "  check        - Run repository checks (fmt, clippy, black, pylint)"
+	@echo "  check-clippy - Run Rust clippy lints (with -D warnings)"
+	@echo "  check-fmt    - Check Rust and Python formatting"
+	@echo "  check-all    - Run the full repository check suite"
 	@echo "  format       - Format code with rustfmt"
 	@echo ""
 	@echo "Testing:"
@@ -109,7 +109,10 @@ clean-help:
 	@echo ""
 	@echo "Utility:"
 	@echo "  run          - Run the CLI with args (usage: make run -- <args>)"
-	@echo "  clean-help   - Show this help message"
+	@echo "  help         - Show this help message"
+	@echo "  clean-help   - Backward-compatible alias for help"
 	@echo ""
 	@echo "For more test options, see test/Makefile or run:"
 	@echo "  cd test && make help"
+
+help: clean-help

@@ -49,6 +49,7 @@ pre-commit install --hook-type pre-push
 ```bash
 make build
 make check
+cargo test --workspace --all-features
 ```
 
 ## Pre-commit Hooks
@@ -134,8 +135,8 @@ For faster iteration during development:
 # Quick parity test (20 cases)
 make test-quick
 
-# Rust unit tests only
-cargo test --manifest-path robustone/Cargo.toml
+# Full Rust workspace tests
+cargo test --workspace --all-features
 
 # Parity tests only
 make test-parity
@@ -146,7 +147,7 @@ make test-parity
 When adding new instructions or features:
 
 1. Add unit tests in the relevant Rust module
-2. Add parity test cases in `test/` directory
+2. Add parity test cases under `test/architectures/<arch>/test_cases.txt`
 3. Validate configurations: `make test-validate`
 
 ## Submitting Changes
@@ -203,7 +204,7 @@ When implementing support for a new architecture:
 2. Implement the `ArchitectureHandler` trait
 3. Add a feature flag in `robustone-core/Cargo.toml`
 4. Register the handler in `ArchitectureDispatcher::new()`
-5. Add parity tests in `test/<arch>/`
+5. Add parity tests under `test/architectures/<arch>/`
 6. Update documentation
 
 ## Questions

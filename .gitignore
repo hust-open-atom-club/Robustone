@@ -9,3 +9,4 @@ target/
 virt-py
 AGENTS.md
 RFC.md
+.humanize/

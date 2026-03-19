@@ -2,6 +2,20 @@
 
 Robustone is an experimental disassembly engine written in Rust by the HUST Open Atom Club. Inspired by the Capstone project, it explores how Rust's strong safety guarantees can be used to deliver a Capstone-compatible experience with a cleaner codebase and modern tooling.
 
+## Compatibility Boundary
+
+Robustone tracks Capstone compatibility in three separate layers:
+
+- CLI compatibility: keep the command-line UX close to `cstool`, including `arch+mode` syntax, raw hex input, and detail-oriented output flags.
+- Semantic compatibility: keep decoded mnemonics, operand formatting, register naming, and detail output aligned on the instruction streams covered by the parity harness.
+- API compatibility: expose equivalent Rust semantics where practical, while explicitly documenting where the current Rust API is not a Capstone handle/options/detail clone.
+
+Current repository status:
+
+- Implemented decode backends: `riscv`, `riscv32`, and `riscv64`
+- Public support matrix: [docs/support-matrix.md](docs/support-matrix.md)
+- Versioned roadmap: [docs/roadmap.md](docs/roadmap.md)
+
 ## Requirements
 
 - [Rust](https://www.rust-lang.org/tools/install) 1.75 or newer (edition 2021).
@@ -14,8 +28,11 @@ Robustone is an experimental disassembly engine written in Rust by the HUST Open
 robustone/         # Metadata crate including both library and binary
 robustone-core/    # Architecture-specific decoding and formatting (Rust port of Capstone)
 robustone-cli/     # Command-line parsing, input validation, and presentation logic
+docs/              # Roadmap, support matrix, and project documentation
+Makefile           # Repository entrypoints for build, check, run, and test
 test/
-	riscv32/       # Python scripts and fixtures for RISC-V parity checks
+	architectures/ # Parity-test configs and curated instruction corpora
+	run_tests.py   # Main parity-test entrypoint
 third_party/
 	capstone/      # Optional checkout of the original Capstone project (used by tests)
 Cargo.toml     	   # Workspace manifest
@@ -28,16 +45,18 @@ Clone the repository (including the submodules, if any) and install the toolchai
 | Target        | Description |
 | ------------- | ----------- |
 | `make build`  | Compile the crate in debug mode. |
-| `make check`  | Run `cargo check` for fast type verification. |
+| `make check`  | Run repository checks (`rustfmt`, `clippy`, `black`, and `pylint`). |
 | `make format` | Format the Rust codebase with `rustfmt`. |
 | `make run`    | Launch the CLI in debug mode (accepts the same arguments as `cargo run`). |
 | `make test`   | Build Capstone (if missing), run parity tests, and execute the Rust unit tests. |
+| `make test-quick` | Run a smaller parity-test slice for faster iteration. |
+| `make help`   | Print the repository command summary. |
 
-The `test` target downloads Capstone into `third_party/capstone` on first use, builds the comparison tool, runs `test/riscv32/test_vs_cstool.py`, and finally executes `cargo test`.
+The `test` target downloads Capstone into `third_party/capstone` on first use, builds the comparison tool with `test/scripts/build_cstool.sh`, runs `python3 test/run_tests.py --all`, and finally executes `cargo test --manifest-path robustone/Cargo.toml`.
 
 ## Running the CLI
 
-The CLI mirrors the classic `cstool` UX. For example, to decode a RISC-V instruction with detailed output:
+The CLI mirrors the classic `cstool` UX for the RISC-V backends that are implemented today. For example, to decode a RISC-V instruction with detailed output:
 
 ```bash
 make run -- riscv32 130101ff -d
@@ -47,6 +66,12 @@ Alternatively, use the `RUN_ARGS` variable. This prevents `make` from misinterpr
 
 ```bash
 make run RUN_ARGS="riscv32 130101ff -d"
+```
+
+To inspect the currently advertised CLI surface:
+
+```bash
+cargo run --manifest-path robustone/Cargo.toml -- --help
 ```
 
 ## Testing
@@ -60,15 +85,26 @@ make test
 This command:
 
 1. Ensures Capstone is available under `third_party/capstone` (clones the repository if necessary).
-2. Builds Capstone's `cstool` helper using `test/build_cstool.sh`.
-3. Executes the Python parity harness `test/riscv32/test_vs_cstool.py` and compares Robustone output with Capstone across the curated instruction list.
-4. Runs `cargo test` for Rust unit coverage.
+2. Builds Capstone's `cstool` helper using `test/scripts/build_cstool.sh`.
+3. Executes the Python parity harness `python3 test/run_tests.py --all`.
+4. Runs `cargo test --manifest-path robustone/Cargo.toml` for the top-level crate tests.
 
-If you only need to validate the Python comparison script, run it directly:
+Additional useful verification commands:
 
 ```bash
-python3 test/riscv32/test_vs_cstool.py
+python3 test/run_tests.py --list
+python3 test/run_tests.py --arch riscv32 --limit 20 --verbose
+cargo test --workspace --all-features
 ```
+
+The commands above were verified locally on 2026-03-19.
+
+## CI and Project Docs
+
+- CI workflow: `.github/workflows/ci.yml`
+- Support matrix: [docs/support-matrix.md](docs/support-matrix.md)
+- Roadmap: [docs/roadmap.md](docs/roadmap.md)
+- Test framework guide: [test/README.md](test/README.md)
 
 ## Contributing
 
