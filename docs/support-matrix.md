@@ -28,7 +28,7 @@ This matrix documents what the repository supports today and what it intentional
 | Real detail output (`-r`) | Implemented in current CLI formatter | Existing tests cover detail display, but the project does not yet publish a stable structured detail schema. |
 | Canonical shared IR | Implemented for the RISC-V decode path | `ArchitectureDispatcher::decode_instruction` returns canonical mnemonics plus rendering hints for Capstone-style aliases. |
 | Register read/write detail | Implemented | The RISC-V backend populates read/write register detail today. |
-| Groups / implicit register sets as structured public data | Not implemented | These are not yet exposed as first-class IR data. |
+| Groups / implicit register sets as structured public data | Partial | The shared IR now carries group and implicit-register fields; the RISC-V path populates them for the implemented instruction families, but the model is still evolving. |
 | Canonical-vs-alias formatter profiles | Partial | The RISC-V printer now has Capstone-style and canonical profiles, but only the Capstone-style path is exposed through the CLI by default. |
 | Structured JSON output | Implemented | `robustone --json ...` renders structured JSON built from the shared decode IR. |
 | Structured decode-error taxonomy | Partial | The low-level decode API returns `DecodeFailure` variants such as `need_more_bytes` and `invalid_encoding`, but not every extension path emits the full target taxonomy yet. |

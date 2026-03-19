@@ -46,6 +46,7 @@ impl RegisterId {
 pub enum Operand {
     Register { register: RegisterId },
     Immediate { value: i64 },
+    Text { value: String },
     Memory {
         base: Option<RegisterId>,
         displacement: i64,
