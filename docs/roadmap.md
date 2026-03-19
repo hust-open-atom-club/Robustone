@@ -17,6 +17,7 @@ As of 2026-03-19, the repository has:
 - RISC-V decode backends for `riscv`, `riscv32`, and `riscv64`
 - A top-level `Makefile` with build, check, run, and parity-test entrypoints
 - A Python parity harness under `test/` with `riscv32` and `riscv64` suites
+- Shared-IR, golden-test, property-test, and fuzz-workspace scaffolding for the RISC-V path
 - GitHub Actions workflows that run formatting, linting, workspace tests, parity integration tests, and multi-platform builds
 
 The project does not yet have:

@@ -5,6 +5,9 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
   release:
     types: [ published ]
 
@@ -168,3 +171,23 @@ jobs:
 
     - name: Run tests for target
       run: cargo test --workspace --target ${{ matrix.target }}
+
+  fuzz-smoke:
+    name: Fuzz Smoke
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@nightly
+
+    - name: Install cargo-fuzz
+      run: cargo install cargo-fuzz
+
+    - name: Run decode fuzz smoke
+      run: cargo fuzz run decode_riscv -- -max_total_time=15
+
+    - name: Run JSON fuzz smoke
+      run: cargo fuzz run format_riscv_json -- -max_total_time=15

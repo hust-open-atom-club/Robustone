@@ -111,6 +111,8 @@ cargo run --manifest-path robustone/Cargo.toml -- --json riscv32 93001000
 - CI 工作流：`.github/workflows/ci.yml`
 - 支持矩阵：[`docs/support-matrix.md`](docs/support-matrix.md)
 - 路线图：[`docs/roadmap.md`](docs/roadmap.md)
+- 新 ISA 清单：[`docs/isa-checklist.md`](docs/isa-checklist.md)
+- 发布清单：[`docs/release-checklist.md`](docs/release-checklist.md)
 - 测试框架说明：[`test/README.md`](test/README.md)
 
 ## 贡献
