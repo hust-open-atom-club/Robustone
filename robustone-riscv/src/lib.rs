@@ -17,46 +17,76 @@ pub mod shared;
 pub mod types;
 
 use arch::RiscVInstructionDetail;
+use decoder::RiscVDecodedInstruction;
 use decoder::{RiscVDecoder, Xlen};
 use extensions::Extensions;
 use robustone_core::{
-    traits::ArchitectureHandler, types::error::DisasmError, types::instruction::Instruction,
+    ir::DecodedInstruction,
+    traits::ArchitectureHandler,
+    types::error::DisasmError,
+    types::instruction::Instruction,
 };
 use types::*;
+use printer::{RiscVPrinter, RiscVTextProfile};
 
 /// Architecture handler implementation for RISC-V targets.
 pub struct RiscVHandler {
-    /// Decoder used to translate raw bytes into structured instructions.
-    decoder: RiscVDecoder,
+    rv32_decoder: RiscVDecoder,
+    rv64_decoder: RiscVDecoder,
 }
 
 impl RiscVHandler {
-    /// Creates a new handler configured for 64-bit RISC-V with GC extensions.
+    /// Creates a new handler with both RV32GC and RV64GC decoders.
     pub fn new() -> Self {
         Self {
-            decoder: RiscVDecoder::rv64gc(),
+            rv32_decoder: RiscVDecoder::rv32gc(),
+            rv64_decoder: RiscVDecoder::rv64gc(),
         }
     }
 
     /// Creates a handler targeting RV32GC.
     pub fn rv32() -> Self {
-        Self {
-            decoder: RiscVDecoder::rv32gc(),
-        }
+        Self::new()
     }
 
     /// Creates a handler targeting RV64GC.
     pub fn rv64() -> Self {
-        Self {
-            decoder: RiscVDecoder::rv64gc(),
-        }
+        Self::new()
     }
 
     /// Creates a handler with custom XLEN and extension flags.
     pub fn with_extensions(xlen: Xlen, extensions: Extensions) -> Self {
-        Self {
-            decoder: RiscVDecoder::new(xlen, extensions),
+        match xlen {
+            Xlen::X32 => Self {
+                rv32_decoder: RiscVDecoder::new(Xlen::X32, extensions),
+                rv64_decoder: RiscVDecoder::rv64gc(),
+            },
+            Xlen::X64 => Self {
+                rv32_decoder: RiscVDecoder::rv32gc(),
+                rv64_decoder: RiscVDecoder::new(Xlen::X64, extensions),
+            },
         }
+    }
+
+    fn decoder_for_arch(&self, arch_name: &str) -> Result<&RiscVDecoder, DisasmError> {
+        match arch_name {
+            "riscv32" => Ok(&self.rv32_decoder),
+            "riscv64" | "riscv" => Ok(&self.rv64_decoder),
+            _ => Err(DisasmError::UnsupportedArchitecture(arch_name.to_string())),
+        }
+    }
+
+    fn decode_with_context(
+        &self,
+        bytes: &[u8],
+        arch_name: &str,
+        addr: u64,
+    ) -> Result<(RiscVDecodedInstruction, DecodedInstruction), DisasmError> {
+        let decoder = self.decoder_for_arch(arch_name)?;
+        let decoded = decoder.decode(bytes, addr)?;
+        let raw_bytes = bytes[..decoded.size].to_vec();
+        let ir = decoded.to_ir(arch_name, addr, raw_bytes);
+        Ok((decoded, ir))
     }
 }
 
@@ -67,39 +97,38 @@ impl Default for RiscVHandler {
 }
 
 impl ArchitectureHandler for RiscVHandler {
-    fn disassemble(&self, bytes: &[u8], addr: u64) -> Result<(Instruction, usize), DisasmError> {
-        // Decode the instruction with the dedicated RISC-V decoder.
-        let decoded = self.decoder.decode(bytes, addr)?;
+    fn decode_instruction(
+        &self,
+        bytes: &[u8],
+        arch_name: &str,
+        addr: u64,
+    ) -> Result<(DecodedInstruction, usize), DisasmError> {
+        let (_, decoded) = self.decode_with_context(bytes, arch_name, addr)?;
+        let size = decoded.size;
+        Ok((decoded, size))
+    }
 
-        // Create simple instruction detail with register information
+    fn disassemble(
+        &self,
+        bytes: &[u8],
+        arch_name: &str,
+        addr: u64,
+    ) -> Result<(Instruction, usize), DisasmError> {
+        let (decoded, ir) = self.decode_with_context(bytes, arch_name, addr)?;
+        let printer = RiscVPrinter::new().with_profile(RiscVTextProfile::Capstone);
+        let (mnemonic, operands) = printer.render_decoded_parts(&decoded);
+
         let mut riscv_detail = RiscVInstructionDetail::new();
-
-        // Track register usage from operands
-        for operand in &decoded.operands_detail {
-            if matches!(operand.op_type, RiscVOperandType::Register) {
-                if operand.access.read
-                    && let RiscVOperandValue::Register(reg) = operand.value
-                {
-                    riscv_detail = riscv_detail.reads_register(reg);
-                }
-                if operand.access.write
-                    && let RiscVOperandValue::Register(reg) = operand.value
-                {
-                    riscv_detail = riscv_detail.writes_register(reg);
-                }
-            }
+        for register in &ir.registers_read {
+            riscv_detail = riscv_detail.reads_register(register.id);
+        }
+        for register in &ir.registers_written {
+            riscv_detail = riscv_detail.writes_register(register.id);
         }
 
-        Ok((
-            Instruction::with_detail(
-                addr,
-                bytes[..decoded.size].to_vec(),
-                decoded.mnemonic,
-                decoded.operands,
-                Box::new(riscv_detail),
-            ),
-            decoded.size,
-        ))
+        let size = decoded.size;
+        let instruction = Instruction::from_decoded(ir, mnemonic, operands, Some(Box::new(riscv_detail)));
+        Ok((instruction, size))
     }
 
     fn name(&self) -> &'static str {
@@ -114,6 +143,7 @@ impl ArchitectureHandler for RiscVHandler {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::riscv::types::{Access, RiscVRegister};
 
     #[test]
     fn test_riscv_handler_creation() {

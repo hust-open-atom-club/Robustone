@@ -21,11 +21,10 @@ As of 2026-03-19, the repository has:
 
 The project does not yet have:
 
-- A shared decoder IR
-- Structured decode-error categories beyond string-first fallback behavior
-- JSON output
 - A Capstone-style handle/options/detail API
 - Published golden/property/fuzz coverage beyond the current parity harness
+- Shared architecture scaffolding for a second ISA
+- Benchmark and release-engineering baselines
 
 ## Milestones
 
@@ -39,7 +38,7 @@ The project does not yet have:
 
 - Replace string-first decoder output with IR-first decode results.
 - Publish explicit RISC-V support/error boundaries, including canonical-vs-alias formatting policy.
-- Add structured machine-readable output, starting with canonical JSON.
+- Keep the machine-readable/JSON path aligned with the same decode result used by the human-readable formatter.
 
 ### v0.3: Correctness Matrix and API Split
 

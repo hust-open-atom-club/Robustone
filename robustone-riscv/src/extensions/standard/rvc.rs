@@ -43,6 +43,8 @@ impl Rvc {
                 convenience::register(2, Access::read()),
                 convenience::immediate(imm_val),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -61,6 +63,8 @@ impl Rvc {
                 convenience::register(rd, Access::read_write()),
                 convenience::immediate(imm_val),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -78,6 +82,8 @@ impl Rvc {
                 convenience::register(rd, Access::read_write()),
                 convenience::register(rs2, Access::read()),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -95,6 +101,8 @@ impl Rvc {
                 convenience::register(rd, Access::write()),
                 convenience::register(rs2, Access::read()),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -105,6 +113,8 @@ impl Rvc {
             format: RiscVInstructionFormat::CR,
             size: 2,
             operands_detail: vec![convenience::register(rd, Access::read())],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -115,6 +125,8 @@ impl Rvc {
             format: RiscVInstructionFormat::CR,
             size: 2,
             operands_detail: vec![convenience::register(rd, Access::read())],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -139,6 +151,8 @@ impl Rvc {
                 convenience::register(rd + 8, Access::write()),
                 convenience::memory(rs1 + 8, imm_val),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -163,6 +177,8 @@ impl Rvc {
                 convenience::register(rs2 + 8, Access::read()),
                 convenience::memory(rs1 + 8, imm_val),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -181,6 +197,8 @@ impl Rvc {
                 convenience::register(rd, Access::write()),
                 convenience::memory(2, imm_val),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -199,6 +217,8 @@ impl Rvc {
                 convenience::register(rs2, Access::read()),
                 convenience::memory(2, imm_val),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -216,6 +236,8 @@ impl Rvc {
                 convenience::register(rd, Access::read_write()),
                 convenience::immediate(imm),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -233,6 +255,8 @@ impl Rvc {
                 convenience::register(rd, Access::write()),
                 convenience::immediate(imm),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -271,6 +295,8 @@ impl Rvc {
                 convenience::register(rd + 8, Access::read_write()),
                 convenience::register(rs2 + 8, Access::read()),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -281,6 +307,8 @@ impl Rvc {
             format: RiscVInstructionFormat::CJ,
             size: 2,
             operands_detail: vec![convenience::immediate(imm)],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -291,6 +319,8 @@ impl Rvc {
             format: RiscVInstructionFormat::CJ,
             size: 2,
             operands_detail: vec![convenience::immediate(imm)],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -308,6 +338,8 @@ impl Rvc {
                 convenience::register(rs1 + 8, Access::read()),
                 convenience::immediate(imm),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -325,6 +357,8 @@ impl Rvc {
                 convenience::register(rs1 + 8, Access::read()),
                 convenience::immediate(imm),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -342,6 +376,8 @@ impl Rvc {
                 convenience::register(rd, Access::read_write()),
                 convenience::immediate(imm),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -352,6 +388,8 @@ impl Rvc {
             format: RiscVInstructionFormat::CI,
             size: 2,
             operands_detail: vec![],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 
@@ -362,6 +400,8 @@ impl Rvc {
             format: RiscVInstructionFormat::CI,
             size: 2,
             operands_detail: vec![],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 }

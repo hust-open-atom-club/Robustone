@@ -74,6 +74,12 @@ To inspect the currently advertised CLI surface:
 cargo run --manifest-path robustone/Cargo.toml -- --help
 ```
 
+To emit structured JSON from the shared decode IR:
+
+```bash
+cargo run --manifest-path robustone/Cargo.toml -- --json riscv32 93001000
+```
+
 ## Testing
 
 Run the full regression suite from the repository root:
@@ -95,6 +101,7 @@ Additional useful verification commands:
 python3 test/run_tests.py --list
 python3 test/run_tests.py --arch riscv32 --limit 20 --verbose
 cargo test --workspace --all-features
+cargo run --manifest-path robustone/Cargo.toml -- --json riscv32 93001000
 ```
 
 The commands above were verified locally on 2026-03-19.

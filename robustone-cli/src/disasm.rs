@@ -1,6 +1,7 @@
 use crate::config::{DisasmConfig, OutputConfig};
 use robustone_core::{ArchitectureDispatcher, DisasmError, Instruction};
 use robustone_riscv::RiscVHandler;
+use serde_json::json;
 
 fn create_dispatcher(arch: &str) -> ArchitectureDispatcher {
     let mut dispatcher = ArchitectureDispatcher::new();
@@ -177,6 +178,10 @@ impl DisassemblyFormatter {
 
     /// Format the disassembly result for display.
     pub fn format(&self, result: &DisassemblyResult) -> String {
+        if self.output_config.json {
+            return self.format_json(result);
+        }
+
         let mut output = String::new();
 
         if result.instructions.is_empty() {
@@ -198,6 +203,33 @@ impl DisassemblyFormatter {
         }
 
         output
+    }
+
+    /// Format the disassembly result as structured JSON.
+    pub fn format_json(&self, result: &DisassemblyResult) -> String {
+        let instructions = result
+            .instructions
+            .iter()
+            .map(|instruction| {
+                json!({
+                    "address": instruction.address,
+                    "mnemonic": instruction.mnemonic,
+                    "operands": instruction.operands,
+                    "size": instruction.size,
+                    "bytes": instruction.bytes,
+                    "decoded": instruction.decoded,
+                })
+            })
+            .collect::<Vec<_>>();
+
+        serde_json::to_string_pretty(&json!({
+            "architecture": result.architecture,
+            "start_address": result.start_address,
+            "bytes_processed": result.bytes_processed,
+            "errors": result.errors,
+            "instructions": instructions,
+        }))
+        .expect("JSON serialization should not fail")
     }
 
     /// Format a single instruction.
@@ -259,6 +291,9 @@ pub fn print_instructions(result: &DisassemblyResult, config: &DisasmConfig) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::arch::ArchitectureSpec;
+    use crate::command::DisplayOptions;
+    use serde_json::Value;
 
     #[test]
     fn test_disassembly_engine() {
@@ -276,5 +311,34 @@ mod tests {
         result.add_error("test error".to_string());
         assert_eq!(result.error_count(), 1);
         assert!(!result.is_successful());
+    }
+
+    #[test]
+    fn test_json_formatter_includes_decoded_ir() {
+        let engine = DisassemblyEngine::new();
+        let config = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
+            hex_bytes: vec![0x93, 0x00, 0x10, 0x00],
+            start_address: 0,
+            display_options: DisplayOptions {
+                detailed: false,
+                alias_regs: false,
+                real_detail: false,
+                unsigned_immediate: false,
+                json: true,
+            },
+            skip_data: false,
+        };
+        let result = engine.disassemble(&config).unwrap();
+        let formatter = DisassemblyFormatter::new(OutputConfig {
+            show_hex: false,
+            show_detail_sections: false,
+            json: true,
+        });
+        let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
+
+        assert_eq!(parsed["architecture"], "riscv32");
+        assert_eq!(parsed["instructions"][0]["mnemonic"], "li");
+        assert_eq!(parsed["instructions"][0]["decoded"]["mnemonic"], "addi");
     }
 }

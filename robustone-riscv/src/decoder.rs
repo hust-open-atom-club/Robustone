@@ -7,6 +7,9 @@
 use super::extensions::standard::Standard;
 use super::extensions::{Extensions, InstructionExtension, create_extensions};
 use super::types::*;
+use robustone_core::ir::{
+    ArchitectureId, DecodeStatus, DecodedInstruction, Operand, RegisterId, RenderHints,
+};
 use robustone_core::types::error::DisasmError;
 
 /// RISC-V XLEN (register width) indicator.
@@ -52,7 +55,11 @@ impl RiscVDecoder {
         address: u64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         if bytes.is_empty() {
-            return Err(DisasmError::DecodingError("No bytes provided".to_string()));
+            return Err(DisasmError::decode_failure(
+                crate::types::error::DecodeErrorKind::NeedMoreBytes,
+                Some(self.mode_name().to_string()),
+                "no bytes provided",
+            ));
         }
 
         // Decoding priority:
@@ -66,8 +73,10 @@ impl RiscVDecoder {
             // Standard instruction (low bits equal `0b11`) or fallback when compression fails.
             self.decode_standard_instruction(bytes, address)
         } else {
-            Err(DisasmError::DecodingError(
-                "Incomplete instruction".to_string(),
+            Err(DisasmError::decode_failure(
+                crate::types::error::DecodeErrorKind::NeedMoreBytes,
+                Some(self.mode_name().to_string()),
+                "incomplete instruction",
             ))
         }
     }
@@ -253,6 +262,13 @@ impl RiscVDecoder {
         self.decode_c_unknown(instruction)
     }
 
+    fn mode_name(&self) -> &'static str {
+        match self.xlen {
+            Xlen::X32 => "riscv32",
+            Xlen::X64 => "riscv64",
+        }
+    }
+
     // Helper methods
     fn sign_extend(&self, value: u32, bits: u8) -> i64 {
         let sign_bit = 1 << (bits - 1);
@@ -276,39 +292,131 @@ impl RiscVDecoder {
         &self,
         instruction: u32,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "unknown".to_string(),
-            operands: format!("0x{instruction:08x}"),
-            format: RiscVInstructionFormat::I,
-            size: 4,
-            operands_detail: vec![],
-        })
+        Err(DisasmError::decode_failure(
+            crate::types::error::DecodeErrorKind::InvalidEncoding,
+            Some(self.mode_name().to_string()),
+            format!("unrecognized standard instruction 0x{instruction:08x}"),
+        ))
     }
 
     fn decode_c_unknown(&self, instruction: u16) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "c.unknown".to_string(),
-            operands: format!("0x{instruction:04x}"),
-            format: RiscVInstructionFormat::CI,
-            size: 2,
-            operands_detail: vec![],
-        })
+        Err(DisasmError::decode_failure(
+            crate::types::error::DecodeErrorKind::InvalidEncoding,
+            Some(self.mode_name().to_string()),
+            format!("unrecognized compressed instruction 0x{instruction:04x}"),
+        ))
     }
+}
+
+/// Rendering hints used by the RISC-V text formatter.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct RiscVRenderHints {
+    pub hidden_operands: Vec<usize>,
 }
 
 /// Fully decoded instruction payload tailored for the CLI output.
 #[derive(Debug, Clone)]
 pub struct RiscVDecodedInstruction {
-    /// Instruction mnemonic.
+    /// Preferred display mnemonic for Capstone-like output.
     pub mnemonic: String,
-    /// Formatted operand string.
+    /// Legacy formatted operand string retained for compatibility while the
+    /// formatter migrates to the structured operands below.
     pub operands: String,
+    /// Canonical mnemonic used by the shared IR. When absent, `mnemonic` is
+    /// already canonical.
+    pub canonical_mnemonic: Option<String>,
     /// Instruction format discriminator.
     pub format: RiscVInstructionFormat,
     /// Size of the instruction in bytes.
     pub size: usize,
     /// Structured operand details for downstream consumption.
     pub operands_detail: Vec<RiscVOperand>,
+    /// Display hints for Capstone-like formatting.
+    pub render_hints: RiscVRenderHints,
+}
+
+impl RiscVDecodedInstruction {
+    /// Mark this decoded instruction as an alias-friendly presentation of the
+    /// provided canonical mnemonic.
+    pub fn with_canonical_alias(
+        mut self,
+        canonical_mnemonic: impl Into<String>,
+        hidden_operands: Vec<usize>,
+    ) -> Self {
+        self.canonical_mnemonic = Some(canonical_mnemonic.into());
+        self.render_hints.hidden_operands = hidden_operands;
+        self
+    }
+
+    /// Return the canonical mnemonic for this instruction.
+    pub fn canonical_mnemonic(&self) -> &str {
+        self.canonical_mnemonic
+            .as_deref()
+            .unwrap_or(self.mnemonic.as_str())
+    }
+
+    /// Convert the RISC-V decode result into the shared IR.
+    pub fn to_ir(&self, arch_name: &str, address: u64, raw_bytes: Vec<u8>) -> DecodedInstruction {
+        let mut registers_read = Vec::new();
+        let mut registers_written = Vec::new();
+        let operands = self
+            .operands_detail
+            .iter()
+            .map(|operand| {
+                match &operand.value {
+                    RiscVOperandValue::Register(reg) => {
+                        let register = RegisterId::riscv(*reg);
+                        if operand.access.read {
+                            registers_read.push(register);
+                        }
+                        if operand.access.write {
+                            registers_written.push(register);
+                        }
+                        Operand::Register { register }
+                    }
+                    RiscVOperandValue::Immediate(value) => Operand::Immediate { value: *value },
+                    RiscVOperandValue::Memory(memory) => {
+                        let base = Some(RegisterId::riscv(memory.base));
+                        if let Some(base_register) = base {
+                            registers_read.push(base_register);
+                        }
+                        Operand::Memory {
+                            base,
+                            displacement: memory.disp,
+                        }
+                    }
+                }
+            })
+            .collect();
+
+        let canonical_mnemonic = self.canonical_mnemonic().to_string();
+        let capstone_mnemonic = if self.canonical_mnemonic.is_some()
+            || !self.render_hints.hidden_operands.is_empty()
+        {
+            Some(self.mnemonic.clone())
+        } else {
+            None
+        };
+
+        DecodedInstruction {
+            architecture: ArchitectureId::Riscv,
+            address,
+            mode: arch_name.to_string(),
+            mnemonic: canonical_mnemonic.clone(),
+            opcode_id: Some(canonical_mnemonic),
+            size: self.size,
+            raw_bytes,
+            operands,
+            registers_read,
+            registers_written,
+            groups: Vec::new(),
+            status: DecodeStatus::Success,
+            render_hints: RenderHints {
+                capstone_mnemonic,
+                capstone_hidden_operands: self.render_hints.hidden_operands.clone(),
+            },
+        }
+    }
 }
 
 #[cfg(test)]

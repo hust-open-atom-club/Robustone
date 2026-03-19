@@ -68,9 +68,11 @@ impl InstructionFormatter for DefaultInstructionFormatter {
         RiscVDecodedInstruction {
             mnemonic: mnemonic.to_string(),
             operands,
+            canonical_mnemonic: None,
             format,
             size,
             operands_detail,
+            render_hints: Default::default(),
         }
     }
 

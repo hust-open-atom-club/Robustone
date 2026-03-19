@@ -2,8 +2,17 @@
 //!
 //! Inspired by Capstone's printer to maintain compatible output formatting.
 
+use super::decoder::RiscVDecodedInstruction;
+use super::shared::operands::csr_name_lookup;
 use super::types::*;
 use robustone_core::Instruction;
+
+/// Text formatting profiles for the RISC-V formatter.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RiscVTextProfile {
+    Capstone,
+    Canonical,
+}
 
 /// Pretty-printer for RISC-V instructions.
 pub struct RiscVPrinter {
@@ -11,6 +20,8 @@ pub struct RiscVPrinter {
     alias_regs: bool,
     /// Whether immediates should be rendered as unsigned values when possible.
     unsigned_immediate: bool,
+    /// Selected rendering profile.
+    profile: RiscVTextProfile,
 }
 
 impl RiscVPrinter {
@@ -19,6 +30,7 @@ impl RiscVPrinter {
         Self {
             alias_regs: false,
             unsigned_immediate: false,
+            profile: RiscVTextProfile::Capstone,
         }
     }
 
@@ -31,6 +43,13 @@ impl RiscVPrinter {
     /// Enables or disables unsigned immediate formatting.
     pub fn with_unsigned_immediate(mut self, unsigned_immediate: bool) -> Self {
         self.unsigned_immediate = unsigned_immediate;
+        self
+    }
+
+    /// Select the text rendering profile.
+    pub fn with_profile(mut self, profile: RiscVTextProfile) -> Self {
+        self.profile = profile;
+        self.alias_regs = matches!(profile, RiscVTextProfile::Capstone);
         self
     }
 
@@ -101,6 +120,51 @@ impl RiscVPrinter {
                 .collect::<Vec<_>>()
                 .join(", ")
         }
+    }
+
+    /// Render a structured RISC-V decode result into mnemonic and operand text.
+    pub fn render_decoded_parts(&self, decoded: &RiscVDecodedInstruction) -> (String, String) {
+        if matches!(self.profile, RiscVTextProfile::Capstone) {
+            return (decoded.mnemonic.clone(), decoded.operands.clone());
+        }
+
+        let mnemonic = match self.profile {
+            RiscVTextProfile::Capstone => decoded.mnemonic.clone(),
+            RiscVTextProfile::Canonical => decoded.canonical_mnemonic().to_string(),
+        };
+
+        let operands = decoded
+            .operands_detail
+            .iter()
+            .enumerate()
+            .map(|(index, operand)| self.format_decoded_operand(&mnemonic, index, operand))
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        (mnemonic, operands)
+    }
+
+    fn format_decoded_operand(
+        &self,
+        mnemonic: &str,
+        index: usize,
+        operand: &RiscVOperand,
+    ) -> String {
+        match &operand.value {
+            RiscVOperandValue::Immediate(value) if self.is_csr_operand(mnemonic, index) => {
+                csr_name_lookup(*value as u16)
+                    .map(str::to_string)
+                    .unwrap_or_else(|| self.format_immediate(*value))
+            }
+            _ => self.format_operand(operand),
+        }
+    }
+
+    fn is_csr_operand(&self, mnemonic: &str, index: usize) -> bool {
+        let csr_mnemonics = [
+            "csrrw", "csrrs", "csrrc", "csrrwi", "csrrsi", "csrrci", "csrr", "csrc", "csrw",
+        ];
+        csr_mnemonics.contains(&mnemonic) && index == 1
     }
 
     /// Renders the instruction mnemonic and operand list.
@@ -210,6 +274,7 @@ pub mod format {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::riscv::decoder::RiscVDecoder;
 
     #[test]
     fn test_printer_creation() {
@@ -297,5 +362,16 @@ mod tests {
             value: RiscVOperandValue::Memory(RiscVMemoryOperand { base: 2, disp: 100 }),
         };
         assert_eq!(printer.format_operand(&mem_op), "100(sp)");
+    }
+
+    #[test]
+    fn test_canonical_profile_renders_full_operands() {
+        let decoder = RiscVDecoder::rv32gc();
+        let decoded = decoder.decode(&[0x93, 0x00, 0x10, 0x00], 0).unwrap();
+        let printer = RiscVPrinter::new().with_profile(RiscVTextProfile::Canonical);
+        let (mnemonic, operands) = printer.render_decoded_parts(&decoded);
+
+        assert_eq!(mnemonic, "addi");
+        assert_eq!(operands, "x1, x0, 1");
     }
 }

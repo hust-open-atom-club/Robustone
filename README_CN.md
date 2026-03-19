@@ -74,6 +74,12 @@ make run RUN_ARGS="riscv32 130101ff -d"
 cargo run --manifest-path robustone/Cargo.toml -- --help
 ```
 
+如果需要从共享解码 IR 导出结构化 JSON，请运行：
+
+```bash
+cargo run --manifest-path robustone/Cargo.toml -- --json riscv32 93001000
+```
+
 ## 测试
 
 从仓库根目录运行完整的回归测试套件：
@@ -95,6 +101,7 @@ make test
 python3 test/run_tests.py --list
 python3 test/run_tests.py --arch riscv32 --limit 20 --verbose
 cargo test --workspace --all-features
+cargo run --manifest-path robustone/Cargo.toml -- --json riscv32 93001000
 ```
 
 以上命令已于 2026-03-19 在本地验证通过。

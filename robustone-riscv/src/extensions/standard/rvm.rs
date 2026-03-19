@@ -70,6 +70,8 @@ impl Rvm {
                 self.operand_factory
                     .make_register_operand(rs2, Access::read()),
             ],
+            canonical_mnemonic: None,
+            render_hints: Default::default(),
         })
     }
 

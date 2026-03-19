@@ -1,5 +1,6 @@
 //! Instruction type definition.
 
+use crate::ir::DecodedInstruction;
 use crate::traits::instruction::{BasicInstructionDetail, Detail};
 
 /// Decoded instruction returned by the disassembler.
@@ -11,6 +12,7 @@ pub struct Instruction {
     pub operands: String,
     pub size: usize,
     pub detail: Option<Box<dyn Detail>>,
+    pub decoded: Option<DecodedInstruction>,
 }
 
 impl Default for Instruction {
@@ -22,6 +24,7 @@ impl Default for Instruction {
             operands: String::new(),
             size: 0,
             detail: None,
+            decoded: None,
         }
     }
 }
@@ -36,6 +39,7 @@ impl Instruction {
             operands,
             size,
             detail: None,
+            decoded: None,
         }
     }
 
@@ -54,6 +58,7 @@ impl Instruction {
             operands,
             size,
             detail: Some(detail),
+            decoded: None,
         }
     }
 
@@ -73,6 +78,7 @@ impl Instruction {
             operands,
             size,
             detail: Some(Box::new(detail)),
+            decoded: None,
         }
     }
 
@@ -86,6 +92,25 @@ impl Instruction {
             operands: hex_repr,
             size,
             detail: None,
+            decoded: None,
+        }
+    }
+
+    /// Build a compatibility wrapper from a structured decoded instruction.
+    pub fn from_decoded(
+        decoded: DecodedInstruction,
+        mnemonic: String,
+        operands: String,
+        detail: Option<Box<dyn Detail>>,
+    ) -> Self {
+        Self {
+            address: decoded.address,
+            bytes: decoded.raw_bytes.clone(),
+            mnemonic,
+            operands,
+            size: decoded.size,
+            detail,
+            decoded: Some(decoded),
         }
     }
 
@@ -114,6 +139,7 @@ mod tests {
         assert_eq!(instruction.mnemonic, "nop");
         assert_eq!(instruction.size, 2);
         assert!(instruction.detail.is_none());
+        assert!(instruction.decoded.is_none());
     }
 
     #[test]
