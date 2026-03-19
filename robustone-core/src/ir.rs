@@ -76,6 +76,10 @@ pub struct DecodedInstruction {
     pub registers_read: Vec<RegisterId>,
     pub registers_written: Vec<RegisterId>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub implicit_registers_read: Vec<RegisterId>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub implicit_registers_written: Vec<RegisterId>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub groups: Vec<String>,
     pub status: DecodeStatus,
     #[serde(default)]
