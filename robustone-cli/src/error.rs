@@ -27,6 +27,8 @@ pub enum CliError {
     MissingArgument(String),
     /// Invalid command request.
     InvalidCommand(String),
+    /// Output was already rendered for the caller; only an exit code remains.
+    Reported(i32),
 }
 
 impl CliError {
@@ -59,6 +61,24 @@ impl CliError {
             architecture: error.architecture_name().map(str::to_string),
         }
     }
+
+    /// Create an error that carries only an exit code because output was already rendered.
+    pub fn reported(exit_code: i32) -> Self {
+        Self::Reported(exit_code)
+    }
+
+    /// Return the process exit code that should be used for this error.
+    pub fn exit_code(&self) -> i32 {
+        match self {
+            CliError::Reported(code) => *code,
+            _ => 1,
+        }
+    }
+
+    /// Return whether this error was already fully rendered for the caller.
+    pub fn is_reported(&self) -> bool {
+        matches!(self, CliError::Reported(_))
+    }
 }
 
 impl fmt::Display for CliError {
@@ -90,6 +110,7 @@ impl fmt::Display for CliError {
             CliError::Generic(msg) => write!(f, "Error: {msg}"),
             CliError::MissingArgument(msg) => write!(f, "Missing required argument: {msg}"),
             CliError::InvalidCommand(msg) => write!(f, "Invalid command: {msg}"),
+            CliError::Reported(_) => Ok(()),
         }
     }
 }

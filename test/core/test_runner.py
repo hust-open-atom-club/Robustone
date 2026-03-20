@@ -2,12 +2,20 @@
 Main test runner for the Robustone test framework.
 """
 
+import ast
 import os
 import sys
 import time
-import tomllib
 from pathlib import Path
 from typing import List, Optional
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - exercised on Python < 3.11
+    try:
+        import tomli as tomllib  # type: ignore[assignment]
+    except ModuleNotFoundError:  # pragma: no cover - exercised when tomli is absent
+        tomllib = None  # type: ignore[assignment]
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(PROJECT_ROOT)
@@ -24,6 +32,43 @@ from comparator import (
 from utils import run_command, parse_test_case, find_repo_root
 
 # pylint: enable=wrong-import-position
+
+
+def _parse_known_differences_fallback(text: str) -> dict:
+    """Parse the tiny known-differences TOML subset without third-party deps."""
+    differences = []
+    current = None
+
+    for raw_line in text.splitlines():
+        line = raw_line.split("#", 1)[0].strip()
+        if not line:
+            continue
+
+        if line == "[[difference]]":
+            if current:
+                differences.append(current)
+            current = {}
+            continue
+
+        if current is None:
+            continue
+
+        key, separator, value = line.partition("=")
+        if not separator:
+            raise ValueError(f"Invalid known-differences entry: {raw_line}")
+
+        key = key.strip()
+        value = value.strip()
+        if value.lower() in {"true", "false"}:
+            parsed = value.lower() == "true"
+        else:
+            parsed = ast.literal_eval(value)
+        current[key] = parsed
+
+    if current:
+        differences.append(current)
+
+    return {"difference": differences}
 
 
 class TestRunner:
@@ -184,8 +229,11 @@ class TestRunner:
         if not path.exists():
             return {}
 
-        with path.open("rb") as handle:
-            data = tomllib.load(handle)
+        if tomllib is not None:
+            with path.open("rb") as handle:
+                data = tomllib.load(handle)
+        else:
+            data = _parse_known_differences_fallback(path.read_text(encoding="utf-8"))
 
         differences = {}
         for entry in data.get("difference", []):
