@@ -1,8 +1,9 @@
 use crate::config::{DisasmConfig, OutputConfig};
-use robustone_core::ir::{ArchitectureId, TextRenderProfile};
-use robustone_core::{ArchitectureDispatcher, DisasmError, Instruction};
-use robustone_core::{RenderedDisassembly, RenderedInstruction, RenderedIssue};
-use robustone_riscv::printer::{RiscVPrinter, RiscVTextProfile};
+use robustone_core::ir::TextRenderProfile;
+use robustone_core::{
+    ArchitectureDispatcher, DisasmError, Instruction, render_disassembly, render_instruction_text,
+};
+use robustone_core::{RenderOptions, RenderedIssue};
 use robustone_riscv::{RiscVHandler, types::RiscVRegister};
 use serde::Serialize;
 
@@ -306,27 +307,20 @@ impl DisassemblyFormatter {
 
     /// Format the disassembly result as structured JSON.
     pub fn format_json(&self, result: &DisassemblyResult) -> String {
-        let instructions = result
-            .instructions
-            .iter()
-            .map(|instruction| {
-                let _ = self.render_instruction_text(instruction);
-                RenderedInstruction::from_instruction(instruction, self.output_config.text_profile)
-            })
-            .collect::<Vec<_>>();
         let errors = result
             .errors
             .iter()
             .map(DisassemblyIssue::to_rendered_issue)
             .collect::<Vec<_>>();
 
-        serde_json::to_string_pretty(&RenderedDisassembly {
-            architecture: result.architecture.clone(),
-            start_address: result.start_address,
-            bytes_processed: result.bytes_processed,
+        serde_json::to_string_pretty(&render_disassembly(
+            result.architecture.clone(),
+            result.start_address,
+            result.bytes_processed,
             errors,
-            instructions,
-        })
+            &result.instructions,
+            self.render_options(),
+        ))
         .expect("JSON serialization should not fail")
     }
 
@@ -421,27 +415,15 @@ impl DisassemblyFormatter {
     }
 
     fn render_instruction_text(&self, instr: &Instruction) -> (String, String) {
-        if let Some(decoded) = &instr.decoded
-            && decoded.architecture == ArchitectureId::Riscv
-        {
-            let profile = match self.output_config.text_profile {
-                TextRenderProfile::Capstone => RiscVTextProfile::Capstone,
-                TextRenderProfile::Canonical => RiscVTextProfile::Canonical,
-                TextRenderProfile::VerboseDebug => RiscVTextProfile::VerboseDebug,
-            };
-            let alias_regs = self.output_config.alias_regs
-                || !matches!(
-                    self.output_config.text_profile,
-                    TextRenderProfile::Canonical
-                );
-            let printer = RiscVPrinter::new()
-                .with_profile(profile)
-                .with_alias_regs(alias_regs)
-                .with_unsigned_immediate(self.output_config.unsigned_immediate);
-            return printer.render_ir_parts(decoded);
-        }
+        render_instruction_text(instr, self.render_options())
+    }
 
-        instr.rendered_text_parts(self.output_config.text_profile)
+    fn render_options(&self) -> RenderOptions {
+        RenderOptions {
+            text_profile: self.output_config.text_profile,
+            alias_regs: self.output_config.alias_regs,
+            unsigned_immediate: self.output_config.unsigned_immediate,
+        }
     }
 }
 
@@ -665,5 +647,29 @@ mod tests {
 
         assert_eq!(parsed["instructions"][0]["mnemonic"], "addi");
         assert_eq!(parsed["instructions"][0]["operands"], "x1, x0, 1");
+    }
+
+    #[test]
+    fn test_json_formatter_respects_unsigned_immediate_option() {
+        let engine = DisassemblyEngine::new();
+        let config = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
+            hex_bytes: vec![0x13, 0x01, 0x01, 0xff],
+            start_address: 0,
+            display_options: DisplayOptions {
+                detailed: false,
+                alias_regs: false,
+                real_detail: false,
+                unsigned_immediate: true,
+                json: true,
+            },
+            skip_data: false,
+        };
+        let result = engine.disassemble(&config).unwrap();
+        let formatter =
+            DisassemblyFormatter::new(OutputConfig::from_display_options(&config.display_options));
+        let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
+
+        assert_eq!(parsed["instructions"][0]["operands"], "sp, sp, 0xfffffff0");
     }
 }

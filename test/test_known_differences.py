@@ -79,6 +79,38 @@ class KnownDifferenceTests(unittest.TestCase):
             updated = runner.apply_known_difference("riscv32", result)
             self.assertEqual(updated.result, ComparisonResult.DOCUMENTATION_DRIFT)
 
+    def test_command_failure_is_not_masked(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            whitelist = repo_root / "tests" / "differential"
+            whitelist.mkdir(parents=True, exist_ok=True)
+            (whitelist / "known-differences.toml").write_text(
+                textwrap.dedent(
+                    """
+                    [[difference]]
+                    arch = "riscv32"
+                    hex = "deadbeef"
+                    reason = "accepted parity gap"
+                    active = true
+                    """
+                ).strip()
+                + "\n",
+                encoding="utf-8",
+            )
+
+            runner = TestRunner(repo_root=repo_root)
+            result = TestCaseResult(
+                hex_input="deadbeef",
+                result=ComparisonResult.COMMAND_FAILURE,
+                expected_output="expected",
+                robustone_output="robustone",
+                cstool_output="cstool",
+                note="",
+            )
+
+            updated = runner.apply_known_difference("riscv32", result)
+            self.assertEqual(updated.result, ComparisonResult.COMMAND_FAILURE)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -183,10 +183,7 @@ class TestRunner:
         if not reason:
             return result
 
-        if result.result not in (
-            ComparisonResult.MISMATCH,
-            ComparisonResult.COMMAND_FAILURE,
-        ):
+        if result.result != ComparisonResult.MISMATCH:
             return result
 
         note = f"known-difference: {reason}"
