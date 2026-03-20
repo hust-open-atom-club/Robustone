@@ -7,7 +7,7 @@ use super::Standard;
 use crate::ir::DecodedInstruction;
 use crate::riscv::decoder::{Xlen, build_riscv_decoded_instruction};
 use crate::riscv::extensions::{
-    Extensions, InstructionExtension, invalid_encoding, unimplemented_instruction,
+    Extensions, InstructionExtension, invalid_encoding, unimplemented_instruction, unsupported_mode,
 };
 use crate::riscv::shared::{
     encoding::convenience as encoding_conv, operands::convenience, registers::RegisterManager,
@@ -389,12 +389,14 @@ impl InstructionExtension for Rvc {
                 "c.ld",
                 "compressed RV64 load-double path is not implemented",
             )),
+            (0b00, 0b011) => Some(Err(unsupported_mode("c.ld requires RV64"))),
             (0b00, 0b010) => Some(self.decode_c_lw(rdp, rs1p, uimm_cl)),
             (0b00, 0b110) => Some(self.decode_c_sw(rs2p, rs1p, uimm_cs)),
             (0b00, 0b111) if xlen == Xlen::X64 => Some(self.decode_c_unimplemented(
                 "c.sd",
                 "compressed RV64 store-double path is not implemented",
             )),
+            (0b00, 0b111) => Some(Err(unsupported_mode("c.sd requires RV64"))),
 
             // C1 opcode (quarters 1)
             (0b01, 0b000) => Some(self.decode_c_addi(rd_full, imm_ci)),
@@ -430,6 +432,7 @@ impl InstructionExtension for Rvc {
                 "c.ldsp",
                 "compressed RV64 stack load-double path is not implemented",
             )),
+            (0b10, 0b011) => Some(Err(unsupported_mode("c.ldsp requires RV64"))),
             (0b10, 0b100) => {
                 let bit12 = ((instruction >> 12) & 0x1) as u8;
                 match (bit12, rd_full, rs2_full) {
@@ -446,6 +449,7 @@ impl InstructionExtension for Rvc {
                 "c.sdsp",
                 "compressed RV64 stack store-double path is not implemented",
             )),
+            (0b10, 0b111) => Some(Err(unsupported_mode("c.sdsp requires RV64"))),
 
             _ => Some(self.decode_c_unknown(instruction)),
         }
