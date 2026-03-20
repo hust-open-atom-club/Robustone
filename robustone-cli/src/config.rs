@@ -118,6 +118,8 @@ impl DisasmConfig {
 #[derive(Debug, Clone)]
 pub struct OutputConfig {
     pub text_profile: TextRenderProfile,
+    pub alias_regs: bool,
+    pub unsigned_immediate: bool,
     pub show_hex: bool,
     pub show_detail_sections: bool,
     pub json: bool,
@@ -132,6 +134,8 @@ impl OutputConfig {
             } else {
                 TextRenderProfile::Capstone
             },
+            alias_regs: display.alias_regs,
+            unsigned_immediate: display.unsigned_immediate,
             show_hex: display.detailed || display.real_detail,
             show_detail_sections: display.real_detail,
             json: display.json,
@@ -142,6 +146,8 @@ impl OutputConfig {
     pub fn minimal() -> Self {
         Self {
             text_profile: TextRenderProfile::Capstone,
+            alias_regs: false,
+            unsigned_immediate: false,
             show_hex: false,
             show_detail_sections: false,
             json: false,
@@ -152,6 +158,8 @@ impl OutputConfig {
     pub fn canonical_json() -> Self {
         Self {
             text_profile: TextRenderProfile::Canonical,
+            alias_regs: false,
+            unsigned_immediate: false,
             show_hex: false,
             show_detail_sections: false,
             json: true,
@@ -160,19 +168,7 @@ impl OutputConfig {
 }
 
 fn validate_display_options(display: &DisplayOptions) -> Result<()> {
-    if display.alias_regs {
-        return Err(CliError::InvalidCommand(
-            "`--alias-regs` is not supported yet; current output already uses Capstone-style register names"
-                .to_string(),
-        ));
-    }
-
-    if display.unsigned_immediate {
-        return Err(CliError::InvalidCommand(
-            "`--unsigned-immediate` is not supported yet".to_string(),
-        ));
-    }
-
+    let _ = display;
     Ok(())
 }
 
@@ -214,6 +210,8 @@ mod tests {
 
         let output = OutputConfig::from_display_options(&display);
         assert_eq!(output.text_profile, TextRenderProfile::Capstone);
+        assert!(!output.alias_regs);
+        assert!(!output.unsigned_immediate);
         assert!(output.show_hex);
         assert!(!output.show_detail_sections);
         assert!(!output.json);
