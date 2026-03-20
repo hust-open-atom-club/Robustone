@@ -25,6 +25,7 @@ class KnownDifferenceTests(unittest.TestCase):
                     [[difference]]
                     arch = "riscv32"
                     hex = "deadbeef"
+                    surface = "text"
                     reason = "accepted parity gap"
                     active = true
                     """
@@ -58,6 +59,7 @@ class KnownDifferenceTests(unittest.TestCase):
                     [[difference]]
                     arch = "riscv32"
                     hex = "deadbeef"
+                    surface = "text"
                     reason = "accepted parity gap"
                     active = true
                     """
@@ -90,6 +92,7 @@ class KnownDifferenceTests(unittest.TestCase):
                     [[difference]]
                     arch = "riscv32"
                     hex = "deadbeef"
+                    surface = "text"
                     reason = "accepted parity gap"
                     active = true
                     """

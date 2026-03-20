@@ -5,16 +5,16 @@
 //! memory operations, and system instructions that form the core of RISC-V.
 
 use super::Standard;
-use crate::decoder::Xlen;
-use crate::extensions::{Extensions, InstructionExtension};
-use crate::shared::{
+use crate::ir::DecodedInstruction;
+use crate::riscv::decoder::Xlen;
+use crate::riscv::extensions::{Extensions, InstructionExtension, invalid_encoding};
+use crate::riscv::shared::{
     InstructionFormatter, OperandFactory, encoding::ShamtExtractor,
     formatting::DefaultInstructionFormatter, operands::DefaultOperandFactory,
     registers::RegisterManager,
 };
-use crate::types::*;
-use robustone_core::ir::DecodedInstruction;
-use robustone_core::types::error::DisasmError;
+use crate::riscv::types::*;
+use crate::types::error::DisasmError;
 
 /// RV32I/RV64I Base Integer Extension
 pub struct Rvi {
@@ -129,7 +129,7 @@ impl Rvi {
             4,
             vec![
                 self.operand_factory
-                    .make_register_operand(rd, Access::read_write()),
+                    .make_register_operand(rd, Access::write()),
                 self.operand_factory.make_immediate_operand(imm),
             ],
         ))
@@ -289,9 +289,7 @@ impl Rvi {
             Self::FUNCT3_BRANCH_BGE => self.decode_b_type("bge", rs1, rs2, imm_b),
             Self::FUNCT3_BRANCH_BLTU => self.decode_b_type("bltu", rs1, rs2, imm_b),
             Self::FUNCT3_BRANCH_BGEU => self.decode_b_type("bgeu", rs1, rs2, imm_b),
-            _ => Err(DisasmError::DecodingError(
-                "Invalid branch funct3".to_string(),
-            )),
+            _ => Err(invalid_encoding("invalid branch funct3")),
         }
     }
 
@@ -311,11 +309,7 @@ impl Rvi {
             Self::FUNCT3_LOAD_LBU => "lbu",
             Self::FUNCT3_LOAD_LHU => "lhu",
             Self::FUNCT3_LOAD_LWU if xlen == Xlen::X64 => "lwu",
-            _ => {
-                return Err(DisasmError::DecodingError(
-                    "Invalid load funct3".to_string(),
-                ));
-            }
+            _ => return Err(invalid_encoding("invalid load funct3")),
         };
 
         Ok(self.formatter.create_decoded_instruction(
@@ -343,11 +337,7 @@ impl Rvi {
             Self::FUNCT3_STORE_SH => "sh",
             Self::FUNCT3_STORE_SW => "sw",
             Self::FUNCT3_STORE_SD if xlen == Xlen::X64 => "sd",
-            _ => {
-                return Err(DisasmError::DecodingError(
-                    "Invalid store funct3".to_string(),
-                ));
-            }
+            _ => return Err(invalid_encoding("invalid store funct3")),
         };
         self.decode_s_type(mnemonic, rs2, rs1, imm_s)
     }
@@ -373,9 +363,7 @@ impl Rvi {
                     let shamt = ShamtExtractor::extract_shamt(imm_i, xlen);
                     self.decode_i_type("slli", rd, rs1, shamt)
                 } else {
-                    Err(DisasmError::DecodingError(
-                        "Invalid slli funct7".to_string(),
-                    ))
+                    Err(invalid_encoding("invalid slli funct7"))
                 }
             }
             Self::FUNCT3_OP_SRL_SRA => match funct7 {
@@ -387,13 +375,9 @@ impl Rvi {
                     let shamt = ShamtExtractor::extract_shamt(imm_i, xlen);
                     self.decode_i_type("srai", rd, rs1, shamt)
                 }
-                _ => Err(DisasmError::DecodingError(
-                    "Invalid shift funct7".to_string(),
-                )),
+                _ => Err(invalid_encoding("invalid shift funct7")),
             },
-            _ => Err(DisasmError::DecodingError(
-                "Invalid op-imm funct3".to_string(),
-            )),
+            _ => Err(invalid_encoding("invalid op-imm funct3")),
         }
     }
 
@@ -405,13 +389,6 @@ impl Rvi {
         rs1: u8,
         rs2: u8,
     ) -> Result<DecodedInstruction, DisasmError> {
-        // Skip M-extension instructions (funct7 == 0b0000001)
-        if funct7 == Self::FUNCT7_OP_MUL {
-            return Err(DisasmError::DecodingError(
-                "M-extension instruction".to_string(),
-            ));
-        }
-
         match (funct3, funct7) {
             (Self::FUNCT3_OP_ADD_SUB, Self::FUNCT7_OP_ADD) => {
                 self.decode_r_type("add", rd, rs1, rs2)
@@ -431,9 +408,7 @@ impl Rvi {
             }
             (Self::FUNCT3_OP_OR, Self::FUNCT7_OP_ADD) => self.decode_r_type("or", rd, rs1, rs2),
             (Self::FUNCT3_OP_AND, Self::FUNCT7_OP_ADD) => self.decode_r_type("and", rd, rs1, rs2),
-            _ => Err(DisasmError::DecodingError(
-                "Invalid op instruction encoding".to_string(),
-            )),
+            _ => Err(invalid_encoding("invalid op instruction encoding")),
         }
     }
 
@@ -451,21 +426,15 @@ impl Rvi {
                 if funct7 == 0 {
                     self.decode_i_type("slliw", rd, rs1, imm_i)
                 } else {
-                    Err(DisasmError::DecodingError(
-                        "Invalid slliw funct7".to_string(),
-                    ))
+                    Err(invalid_encoding("invalid slliw funct7"))
                 }
             }
             Self::FUNCT3_OP_SRL_SRA => match funct7 {
                 Self::FUNCT7_OP_SRL => self.decode_i_type("srliw", rd, rs1, imm_i),
                 Self::FUNCT7_OP_SRA => self.decode_i_type("sraiw", rd, rs1, imm_i),
-                _ => Err(DisasmError::DecodingError(
-                    "Invalid 32-bit shift funct7".to_string(),
-                )),
+                _ => Err(invalid_encoding("invalid 32-bit shift funct7")),
             },
-            _ => Err(DisasmError::DecodingError(
-                "Invalid op-imm32 funct3".to_string(),
-            )),
+            _ => Err(invalid_encoding("invalid op-imm32 funct3")),
         }
     }
 
@@ -491,23 +460,33 @@ impl Rvi {
             (Self::FUNCT3_OP_SRL_SRA, Self::FUNCT7_OP_SRA) => {
                 self.decode_r_type("sraw", rd, rs1, rs2)
             }
-            _ => Err(DisasmError::DecodingError(
-                "Invalid op-32 instruction encoding".to_string(),
-            )),
+            _ => Err(invalid_encoding("invalid op-32 instruction encoding")),
         }
     }
 
-    fn decode_misc_mem(&self, funct3: u8) -> Result<DecodedInstruction, DisasmError> {
+    fn decode_misc_mem(&self, funct3: u8, imm_i: i64) -> Result<DecodedInstruction, DisasmError> {
         match funct3 {
             Self::FUNCT3_MISC_MEM_FENCE => {
-                Ok(DefaultInstructionFormatter::simple_instruction("fence", ""))
+                let imm_bits = imm_i as u16;
+                let predecessor = ((imm_bits >> 4) & 0xf) as i64;
+                let successor = (imm_bits & 0xf) as i64;
+                Ok(self
+                    .formatter
+                    .create_decoded_instruction(
+                        "fence",
+                        RiscVInstructionFormat::I,
+                        4,
+                        vec![
+                            self.operand_factory.make_immediate_operand(predecessor),
+                            self.operand_factory.make_immediate_operand(successor),
+                        ],
+                    )
+                    .with_hidden_operands(vec![0, 1]))
             }
             Self::FUNCT3_MISC_MEM_FENCE_I => Ok(DefaultInstructionFormatter::simple_instruction(
                 "fence.i", "",
             )),
-            _ => Err(DisasmError::DecodingError(
-                "Invalid misc mem funct3".to_string(),
-            )),
+            _ => Err(invalid_encoding("invalid misc mem funct3")),
         }
     }
 
@@ -547,9 +526,7 @@ impl Rvi {
             Self::FUNCT3_SYSTEM_CSRRCI => {
                 self.decode_csr_instruction_imm("csrrci", rd, rs1 as i64, funct12 as i64)
             }
-            _ => Err(DisasmError::DecodingError(
-                "Invalid system funct3".to_string(),
-            )),
+            _ => Err(invalid_encoding("invalid system funct3")),
         }
     }
 
@@ -655,16 +632,14 @@ impl InstructionExtension for Rvi {
             Self::OPCODE_BRANCH => Some(self.decode_branch(funct3, rs1, rs2, imm_b, xlen)),
             Self::OPCODE_LOAD => Some(self.decode_load(funct3, rd, rs1, imm_i, xlen)),
             Self::OPCODE_STORE => Some(self.decode_store(funct3, rs2, rs1, imm_s, xlen)),
-            Self::OPCODE_MISC_MEM => Some(self.decode_misc_mem(funct3)),
+            Self::OPCODE_MISC_MEM => Some(self.decode_misc_mem(funct3, imm_i)),
             Self::OPCODE_OP_IMM => Some(self.decode_op_imm(funct3, funct7, rd, rs1, imm_i, xlen)),
-            Self::OPCODE_OP => match self.decode_op(funct3, funct7, rd, rs1, rs2) {
-                Ok(inst) => Some(Ok(inst)),
-                Err(DisasmError::DecodingError(msg)) if msg.contains("M-extension") => None,
-                Err(e) => Some(Err(e)),
-            },
+            Self::OPCODE_OP if funct7 == Self::FUNCT7_OP_MUL => None,
+            Self::OPCODE_OP => Some(self.decode_op(funct3, funct7, rd, rs1, rs2)),
             Self::OPCODE_OP_IMM_32 if xlen == Xlen::X64 => {
                 Some(self.decode_op_imm_32(funct3, funct7, rd, rs1, imm_i))
             }
+            Self::OPCODE_OP_32 if xlen == Xlen::X64 && funct7 == Self::FUNCT7_OP_MUL => None,
             Self::OPCODE_OP_32 if xlen == Xlen::X64 => {
                 Some(self.decode_op_32(funct3, funct7, rd, rs1, rs2))
             }

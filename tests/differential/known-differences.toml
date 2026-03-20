@@ -4,5 +4,6 @@
 [[difference]]
 arch = "riscv32"
 hex = ""
+surface = "text"
 reason = "placeholder entry - replace or remove when a real known difference is accepted"
 active = false

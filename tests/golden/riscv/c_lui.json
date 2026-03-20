@@ -6,10 +6,10 @@
     "operands": "a6, 1"
   },
   "expected_ir": {
-    "mnemonic": "lui",
-    "render_hint_mnemonic": null,
+    "mnemonic": "c.lui",
+    "render_hint_mnemonic": "lui",
     "hidden_operands": [],
-    "groups": ["arithmetic"],
+    "groups": ["compressed"],
     "operand_kinds": ["register", "immediate"]
   }
 }
