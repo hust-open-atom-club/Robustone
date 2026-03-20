@@ -1,5 +1,7 @@
 use std::fmt;
 
+use robustone_core::DisasmError;
+
 /// Unified CLI error type that consolidates all error categories.
 #[derive(Debug, Clone)]
 pub enum CliError {
@@ -8,7 +10,11 @@ pub enum CliError {
     /// Configuration validation failure.
     Configuration(String),
     /// Disassembly backend failure.
-    Disassembly(String),
+    Disassembly {
+        kind: String,
+        message: String,
+        architecture: Option<String>,
+    },
     /// Validation errors with detailed context.
     Validation { field: String, message: String },
     /// Parse errors with detailed context.
@@ -44,6 +50,15 @@ impl CliError {
     pub fn generic(message: impl Into<String>) -> Self {
         Self::Generic(message.into())
     }
+
+    /// Create a structured disassembly error from the core layer.
+    pub fn disassembly(error: &DisasmError) -> Self {
+        Self::Disassembly {
+            kind: error.stable_kind().to_string(),
+            message: error.detail_message(),
+            architecture: error.architecture_name().map(str::to_string),
+        }
+    }
 }
 
 impl fmt::Display for CliError {
@@ -51,7 +66,20 @@ impl fmt::Display for CliError {
         match self {
             CliError::Architecture(msg) => write!(f, "Architecture error: {msg}"),
             CliError::Configuration(msg) => write!(f, "Configuration error: {msg}"),
-            CliError::Disassembly(msg) => write!(f, "Disassembly error: {msg}"),
+            CliError::Disassembly {
+                kind,
+                message,
+                architecture,
+            } => {
+                if let Some(architecture) = architecture {
+                    write!(
+                        f,
+                        "Disassembly error [{kind}] for {architecture}: {message}"
+                    )
+                } else {
+                    write!(f, "Disassembly error [{kind}]: {message}")
+                }
+            }
             CliError::Validation { field, message } => {
                 write!(f, "Validation error for '{field}': {message}")
             }

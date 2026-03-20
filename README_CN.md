@@ -113,6 +113,7 @@ cargo run --manifest-path robustone/Cargo.toml -- --json riscv32 93001000
 - CI 工作流：`.github/workflows/ci.yml`（执行 `make check`、`cargo test --workspace --all-features`、`make test`，并提供定时 fuzz smoke）
 - 支持矩阵：[`docs/support-matrix.md`](docs/support-matrix.md)
 - 路线图：[`docs/roadmap.md`](docs/roadmap.md)
+- 已知差异：[`tests/differential/known-differences.toml`](tests/differential/known-differences.toml)
 - 新 ISA 清单：[`docs/isa-checklist.md`](docs/isa-checklist.md)
 - 基准基线：[`docs/benchmark-baselines.md`](docs/benchmark-baselines.md)
 - 发布清单：[`docs/release-checklist.md`](docs/release-checklist.md)

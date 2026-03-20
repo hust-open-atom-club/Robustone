@@ -1,6 +1,6 @@
 //! Instruction type definition.
 
-use crate::ir::DecodedInstruction;
+use crate::ir::{DecodedInstruction, TextRenderProfile};
 use crate::traits::instruction::{BasicInstructionDetail, Detail};
 
 /// Decoded instruction returned by the disassembler.
@@ -118,17 +118,25 @@ impl Instruction {
         self.mnemonic == "unknown"
     }
 
+    /// Return text rendered from the shared IR when available, otherwise fall
+    /// back to the legacy compatibility fields.
+    pub fn rendered_text_parts(&self, profile: TextRenderProfile) -> (String, String) {
+        self.decoded
+            .as_ref()
+            .map(|decoded| decoded.render_text_parts(profile))
+            .unwrap_or_else(|| (self.mnemonic.clone(), self.operands.clone()))
+    }
+
     pub fn assembly_line(&self) -> String {
-        format!(
-            "0x{:08x}: {:<7} {}",
-            self.address, self.mnemonic, self.operands
-        )
+        let (mnemonic, operands) = self.rendered_text_parts(TextRenderProfile::Capstone);
+        format!("0x{:08x}: {:<7} {}", self.address, mnemonic, operands)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ir::{ArchitectureId, DecodeStatus, Operand, RegisterId, RenderHints};
 
     #[test]
     fn test_instruction_creation() {
@@ -162,5 +170,43 @@ mod tests {
 
         let formatted = instruction.assembly_line();
         assert_eq!(formatted, "0x00000100: mov     rax, rbx");
+    }
+
+    #[test]
+    fn test_rendered_text_parts_prefer_decoded_ir() {
+        let decoded = DecodedInstruction {
+            architecture: ArchitectureId::Riscv,
+            address: 0,
+            mode: "riscv32".to_string(),
+            mnemonic: "addi".to_string(),
+            opcode_id: Some("addi".to_string()),
+            size: 4,
+            raw_bytes: vec![0x93, 0x00, 0x10, 0x00],
+            operands: vec![
+                Operand::Register {
+                    register: RegisterId::riscv(1),
+                },
+                Operand::Register {
+                    register: RegisterId::riscv(0),
+                },
+                Operand::Immediate { value: 1 },
+            ],
+            registers_read: vec![RegisterId::riscv(0)],
+            registers_written: vec![RegisterId::riscv(1)],
+            implicit_registers_read: Vec::new(),
+            implicit_registers_written: Vec::new(),
+            groups: vec!["arithmetic".to_string()],
+            status: DecodeStatus::Success,
+            render_hints: RenderHints {
+                capstone_mnemonic: Some("li".to_string()),
+                capstone_hidden_operands: vec![1],
+            },
+        };
+        let instruction =
+            Instruction::from_decoded(decoded, "legacy".to_string(), "legacy".to_string(), None);
+
+        let (mnemonic, operands) = instruction.rendered_text_parts(TextRenderProfile::Capstone);
+        assert_eq!(mnemonic, "li");
+        assert_eq!(operands, "ra, 1");
     }
 }

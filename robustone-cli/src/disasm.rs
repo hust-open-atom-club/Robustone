@@ -1,6 +1,8 @@
 use crate::config::{DisasmConfig, OutputConfig};
+use robustone_core::ir::TextRenderProfile;
 use robustone_core::{ArchitectureDispatcher, DisasmError, Instruction};
 use robustone_riscv::RiscVHandler;
+use serde::Serialize;
 use serde_json::json;
 
 fn create_dispatcher(arch: &str) -> ArchitectureDispatcher {
@@ -14,6 +16,80 @@ fn create_dispatcher(arch: &str) -> ArchitectureDispatcher {
     dispatcher.register(Box::new(handler));
     dispatcher
 }
+
+/// Structured error information captured during disassembly.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DisassemblyIssue {
+    pub kind: String,
+    pub operation: String,
+    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub architecture: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub address: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input_offset: Option<usize>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub raw_bytes: Vec<u8>,
+}
+
+impl DisassemblyIssue {
+    /// Create a minimal issue for tests or formatter-only failures.
+    pub fn generic(message: impl Into<String>) -> Self {
+        Self {
+            kind: "error".to_string(),
+            operation: "unknown".to_string(),
+            message: message.into(),
+            architecture: None,
+            address: None,
+            input_offset: None,
+            raw_bytes: Vec::new(),
+        }
+    }
+
+    /// Capture a structured issue from a core disassembly error.
+    pub fn from_core_error(
+        error: &DisasmError,
+        operation: impl Into<String>,
+        architecture: impl Into<String>,
+        address: u64,
+        input_offset: usize,
+        raw_bytes: &[u8],
+    ) -> Self {
+        Self {
+            kind: error.stable_kind().to_string(),
+            operation: operation.into(),
+            message: error.detail_message(),
+            architecture: Some(
+                error
+                    .architecture_name()
+                    .map(str::to_string)
+                    .unwrap_or_else(|| architecture.into()),
+            ),
+            address: Some(address),
+            input_offset: Some(input_offset),
+            raw_bytes: raw_bytes.iter().take(8).copied().collect(),
+        }
+    }
+
+    /// Render the issue into the human-readable CLI form.
+    pub fn display_message(&self) -> String {
+        let mut parts = vec![format!("[{}] {}", self.kind, self.message)];
+        if let Some(architecture) = &self.architecture {
+            parts.push(format!("arch={architecture}"));
+        }
+        if let Some(address) = self.address {
+            parts.push(format!("addr=0x{address:x}"));
+        }
+        if let Some(offset) = self.input_offset {
+            parts.push(format!("offset={offset}"));
+        }
+        if !self.raw_bytes.is_empty() {
+            parts.push(format!("bytes={}", hex::encode(&self.raw_bytes)));
+        }
+        parts.join(" | ")
+    }
+}
 /// Result of a disassembly operation with additional metadata.
 #[derive(Debug)]
 pub struct DisassemblyResult {
@@ -21,7 +97,7 @@ pub struct DisassemblyResult {
     pub start_address: u64,
     pub architecture: String,
     pub bytes_processed: usize,
-    pub errors: Vec<String>,
+    pub errors: Vec<DisassemblyIssue>,
 }
 
 impl DisassemblyResult {
@@ -43,7 +119,7 @@ impl DisassemblyResult {
     }
 
     /// Add an error to the result.
-    pub fn add_error(&mut self, error: String) {
+    pub fn add_error(&mut self, error: DisassemblyIssue) {
         self.errors.push(error);
     }
 
@@ -140,7 +216,14 @@ impl DisassemblyEngine {
                 Err(err) => {
                     if config.skip_data {
                         // Skip the problematic byte and continue
-                        result.add_error(err.to_string());
+                        result.add_error(DisassemblyIssue::from_core_error(
+                            &err,
+                            "decode_instruction",
+                            arch_name,
+                            current_address,
+                            offset,
+                            slice,
+                        ));
                         offset += 1;
                         current_address = current_address.saturating_add(1);
                     } else {
@@ -202,7 +285,7 @@ impl DisassemblyFormatter {
 
         // Print errors if any occurred
         for error in &result.errors {
-            output.push_str(&format!("; Error: {error}\n"));
+            output.push_str(&format!("; Error: {}\n", error.display_message()));
         }
 
         output
@@ -214,10 +297,12 @@ impl DisassemblyFormatter {
             .instructions
             .iter()
             .map(|instruction| {
+                let (mnemonic, operands) =
+                    instruction.rendered_text_parts(TextRenderProfile::Capstone);
                 json!({
                     "address": instruction.address,
-                    "mnemonic": instruction.mnemonic,
-                    "operands": instruction.operands,
+                    "mnemonic": mnemonic,
+                    "operands": operands,
                     "size": instruction.size,
                     "bytes": instruction.bytes,
                     "decoded": instruction.decoded,
@@ -238,6 +323,7 @@ impl DisassemblyFormatter {
     /// Format a single instruction.
     fn format_instruction(&self, instr: &Instruction, hex_width: usize) -> String {
         let address_str = format!("{:x}", instr.address);
+        let (mnemonic, operands) = instr.rendered_text_parts(TextRenderProfile::Capstone);
 
         let bytes_str = if self.output_config.show_hex {
             format!(
@@ -255,18 +341,15 @@ impl DisassemblyFormatter {
         };
 
         let mut line = if self.output_config.show_hex {
-            if instr.operands.is_empty() {
-                format!("{address_str}  {bytes_str}  {}", instr.mnemonic)
+            if operands.is_empty() {
+                format!("{address_str}  {bytes_str}  {mnemonic}")
             } else {
-                format!(
-                    "{address_str}  {bytes_str}  {}\t{}",
-                    instr.mnemonic, instr.operands
-                )
+                format!("{address_str}  {bytes_str}  {mnemonic}\t{operands}")
             }
-        } else if instr.operands.is_empty() {
-            format!("{address_str}    {}", instr.mnemonic)
+        } else if operands.is_empty() {
+            format!("{address_str}    {mnemonic}")
         } else {
-            format!("{address_str}    {}\t{}", instr.mnemonic, instr.operands)
+            format!("{address_str}    {mnemonic}\t{operands}")
         };
 
         if self.output_config.show_detail_sections {
@@ -350,6 +433,7 @@ mod tests {
     use super::*;
     use crate::arch::ArchitectureSpec;
     use crate::command::DisplayOptions;
+    use robustone_core::ir::{ArchitectureId, DecodeStatus, Operand, RegisterId, RenderHints};
     use serde_json::Value;
 
     #[test]
@@ -365,7 +449,7 @@ mod tests {
         assert_eq!(result.instruction_count(), 0);
         assert!(result.is_successful());
 
-        result.add_error("test error".to_string());
+        result.add_error(DisassemblyIssue::generic("test error"));
         assert_eq!(result.error_count(), 1);
         assert!(!result.is_successful());
     }
@@ -397,5 +481,83 @@ mod tests {
         assert_eq!(parsed["architecture"], "riscv32");
         assert_eq!(parsed["instructions"][0]["mnemonic"], "li");
         assert_eq!(parsed["instructions"][0]["decoded"]["mnemonic"], "addi");
+    }
+
+    #[test]
+    fn test_formatter_prefers_decoded_ir_over_legacy_instruction_text() {
+        let decoded = robustone_core::DecodedInstruction {
+            architecture: ArchitectureId::Riscv,
+            address: 0,
+            mode: "riscv32".to_string(),
+            mnemonic: "addi".to_string(),
+            opcode_id: Some("addi".to_string()),
+            size: 4,
+            raw_bytes: vec![0x93, 0x00, 0x10, 0x00],
+            operands: vec![
+                Operand::Register {
+                    register: RegisterId::riscv(1),
+                },
+                Operand::Register {
+                    register: RegisterId::riscv(0),
+                },
+                Operand::Immediate { value: 1 },
+            ],
+            registers_read: vec![RegisterId::riscv(0)],
+            registers_written: vec![RegisterId::riscv(1)],
+            implicit_registers_read: Vec::new(),
+            implicit_registers_written: Vec::new(),
+            groups: vec!["arithmetic".to_string()],
+            status: DecodeStatus::Success,
+            render_hints: RenderHints {
+                capstone_mnemonic: Some("li".to_string()),
+                capstone_hidden_operands: vec![1],
+            },
+        };
+        let instruction =
+            Instruction::from_decoded(decoded, "legacy".to_string(), "legacy".to_string(), None);
+        let result = DisassemblyResult {
+            instructions: vec![instruction],
+            start_address: 0,
+            architecture: "riscv32".to_string(),
+            bytes_processed: 4,
+            errors: Vec::new(),
+        };
+        let formatter = DisassemblyFormatter::new(OutputConfig::minimal());
+        let output = formatter.format(&result);
+
+        assert!(output.contains("li\t"));
+        assert!(output.contains("ra, 1"));
+        assert!(!output.contains("legacy"));
+    }
+
+    #[test]
+    fn test_json_formatter_emits_structured_errors() {
+        let engine = DisassemblyEngine::new();
+        let config = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
+            hex_bytes: vec![0xff, 0xff],
+            start_address: 0x40,
+            display_options: DisplayOptions {
+                detailed: false,
+                alias_regs: false,
+                real_detail: false,
+                unsigned_immediate: false,
+                json: true,
+            },
+            skip_data: true,
+        };
+        let result = engine.disassemble(&config).unwrap();
+        let formatter = DisassemblyFormatter::new(OutputConfig {
+            show_hex: false,
+            show_detail_sections: false,
+            json: true,
+        });
+        let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
+
+        assert_eq!(parsed["errors"][0]["kind"], "need_more_bytes");
+        assert_eq!(parsed["errors"][0]["architecture"], "riscv32");
+        assert_eq!(parsed["errors"][0]["address"], 0x40);
+        assert_eq!(parsed["errors"][0]["input_offset"], 0);
+        assert_eq!(parsed["errors"][0]["raw_bytes"][0], 0xff);
     }
 }
