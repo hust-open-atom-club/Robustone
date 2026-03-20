@@ -36,6 +36,14 @@ fn test_architecture_spec_accepts_endianness_modifiers() {
 }
 
 #[test]
+fn test_architecture_spec_accepts_cstool_style_modifier_sets() {
+    assert!(ArchitectureSpec::parse("arm+noregname").is_ok());
+    assert!(ArchitectureSpec::parse("mips+nodollar").is_ok());
+    assert!(ArchitectureSpec::parse("ppc+percentage").is_ok());
+    assert!(ArchitectureSpec::parse("x86+noregname").is_err());
+}
+
+#[test]
 fn test_config_preserves_input_byte_order() {
     let args = vec!["robustone", "riscv32", "93001000"];
     let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
