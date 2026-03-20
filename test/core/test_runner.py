@@ -5,6 +5,7 @@ Main test runner for the Robustone test framework.
 import os
 import sys
 import time
+import tomllib
 from pathlib import Path
 from typing import List, Optional
 
@@ -13,7 +14,12 @@ sys.path.append(PROJECT_ROOT)
 
 # pylint: disable=wrong-import-position
 from arch_config import ArchConfig, validate_config
-from comparator import OutputComparator, TestCaseResult, ArchTestSummary
+from comparator import (
+    OutputComparator,
+    TestCaseResult,
+    ArchTestSummary,
+    ComparisonResult,
+)
 from utils import run_command, parse_test_case, find_repo_root
 
 # pylint: enable=wrong-import-position
@@ -40,6 +46,7 @@ class TestRunner:
         self.cstool_bin = (
             self.repo_root / "third_party" / "capstone" / "cstool" / "cstool"
         )
+        self.known_differences = self._load_known_differences()
 
     def ensure_binaries(self, verbose: bool = False) -> None:
         """
@@ -147,6 +154,47 @@ class TestRunner:
             execution_time_ms=execution_time,
         )
 
+    def _load_known_differences(self) -> dict:
+        """Load active known-difference entries keyed by (arch, hex_input)."""
+        path = self.repo_root / "tests" / "differential" / "known-differences.toml"
+        if not path.exists():
+            return {}
+
+        with path.open("rb") as handle:
+            data = tomllib.load(handle)
+
+        differences = {}
+        for entry in data.get("difference", []):
+            if not entry.get("active", False):
+                continue
+            arch = str(entry.get("arch", "")).strip()
+            hex_input = str(entry.get("hex", "")).strip().lower()
+            reason = str(entry.get("reason", "")).strip()
+            if arch and hex_input:
+                differences[(arch, hex_input)] = reason
+        return differences
+
+    def apply_known_difference(
+        self, arch_name: str, result: TestCaseResult
+    ) -> TestCaseResult:
+        """Downgrade expected divergences according to the active whitelist."""
+        key = (arch_name, result.hex_input.lower())
+        reason = self.known_differences.get(key)
+        if not reason:
+            return result
+
+        if result.result not in (
+            ComparisonResult.MISMATCH,
+            ComparisonResult.COMMAND_FAILURE,
+            ComparisonResult.DOCUMENTATION_DRIFT,
+        ):
+            return result
+
+        note = f"known-difference: {reason}"
+        result.note = f"{result.note} | {note}" if result.note else note
+        result.result = ComparisonResult.MATCH
+        return result
+
     def run_arch_tests(
         self,
         config: ArchConfig,
@@ -199,6 +247,7 @@ class TestRunner:
                 print(f"[{i:3d}/{len(test_cases)}] Testing {hex_input}")
 
             result = self.run_test_case(config, hex_input, expected, note, verbose)
+            result = self.apply_known_difference(config.name, result)
             results.append(result)
 
             # Print immediate result

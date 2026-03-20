@@ -2,7 +2,7 @@
 
 1. Run `cargo test --workspace --all-features`.
 2. Run `make test`.
-3. Run `cargo bench -p robustone-core --bench riscv_decode` and record all three baseline classes:
+3. Run `cargo bench -p robustone-core --bench riscv_decode` and `cargo bench -p robustone-cli --bench cli_end_to_end`, then record all three baseline classes:
    - pure decode throughput
    - detail overhead
    - CLI end-to-end cost

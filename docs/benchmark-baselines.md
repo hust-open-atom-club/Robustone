@@ -3,6 +3,7 @@
 These measurements were recorded locally on 2026-03-20 with:
 
 - `cargo bench -p robustone-core --bench riscv_decode`
+- `cargo bench -p robustone-cli --bench cli_end_to_end`
 
 ## Current Baseline
 
@@ -10,7 +11,8 @@ These measurements were recorded locally on 2026-03-20 with:
 |-----------|--------|
 | `riscv32_decode_ir` | `815.06 ns` to `819.98 ns` |
 | `riscv32_detail_overhead` | `1.0724 us` to `1.0748 us` |
-| `riscv32_cli_end_to_end` | `1.6670 us` to `1.6872 us` |
+| `riscv32_compat_text_render` | `1.6670 us` to `1.6872 us` |
+| `riscv32_cli_end_to_end` | `16.121 us` to `16.617 us` |
 
 These numbers are intended as in-repo baselines, not performance claims across machines.
 

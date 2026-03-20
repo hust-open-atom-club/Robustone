@@ -166,6 +166,7 @@ name = "robustone-cli"
 version = "0.0.0"
 dependencies = [
  "clap",
+ "criterion",
  "hex",
  "lazy_static",
  "robustone-core",
