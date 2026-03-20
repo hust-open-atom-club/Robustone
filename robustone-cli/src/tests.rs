@@ -24,6 +24,18 @@ fn test_architecture_spec_rejects_incompatible_modifier() {
 }
 
 #[test]
+fn test_architecture_spec_accepts_endianness_modifiers() {
+    let arm_be = ArchitectureSpec::parse("arm+be").expect("arm+be should parse");
+    assert_eq!(arm_be.arch, Architecture::ArmBE);
+
+    let mips_le = ArchitectureSpec::parse("mips+little").expect("mips+little should parse");
+    assert_eq!(mips_le.arch, Architecture::MipsEL);
+
+    let ppc_be = ArchitectureSpec::parse("ppc+be").expect("ppc+be should parse");
+    assert_eq!(ppc_be.arch, Architecture::PowerPC32BE);
+}
+
+#[test]
 fn test_config_preserves_input_byte_order() {
     let args = vec!["robustone", "riscv32", "93001000"];
     let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");

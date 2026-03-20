@@ -72,7 +72,7 @@ impl ArchitectureSpec {
         }
 
         // Interpret the base architecture token.
-        let arch = Architecture::from_str(parts[0])
+        let mut arch = Architecture::from_str(parts[0])
             .map_err(|_| ParseError::UnknownArchitecture(parts[0].to_string()))?;
 
         let mut mode = arch.default_mode();
@@ -80,50 +80,18 @@ impl ArchitectureSpec {
 
         // Apply modifiers according to Capstone semantics.
         for modifier in &parts[1..] {
-            match modifier.to_lowercase().as_str() {
-                // x86 syntax options
-                "att" | "at&t" => options.push("att".to_string()),
-                "intel" => options.push("intel".to_string()),
-                "masm" => options.push("masm".to_string()),
-                "nasm" => options.push("nasm".to_string()),
-
-                // Common syntax toggles
-                "noregname" => options.push("noregname".to_string()),
-                "regalias" => options.push("regalias".to_string()),
-                "moto" => options.push("moto".to_string()),
-                "percentage" => options.push("percentage".to_string()),
-                "nodollar" => options.push("nodollar".to_string()),
-
-                // ARM mode options
-                "thumb" => options.push("thumb".to_string()),
-                "m" | "micro" => options.push("m".to_string()),
-                "v8" => options.push("v8".to_string()),
-
-                // AArch64 options
-                "apple" => options.push("apple".to_string()),
-
-                // MIPS options
-                "nofloat" => options.push("nofloat".to_string()),
-                "ptr64" => options.push("ptr64".to_string()),
-
-                // PowerPC options
-                "aix" => options.push("aix".to_string()),
-                "booke" => options.push("booke".to_string()),
-                "maix" => options.push("maix".to_string()),
-                "msync" => options.push("msync".to_string()),
-                "qpx" => options.push("qpx".to_string()),
-                "ps" => options.push("ps".to_string()),
-                "spe" => options.push("spe".to_string()),
-
-                // SPARC options
-                "v9" => options.push("v9".to_string()),
-
-                // Endianness modifiers
-                "little" | "le" => mode |= 0x0, // CS_MODE_LITTLE_ENDIAN
-                "big" | "be" => mode |= 0x100,  // CS_MODE_BIG_ENDIAN
-
-                _ => return Err(ParseError::UnknownOption(modifier.to_string())),
+            let canonical_modifier = normalize_modifier(modifier);
+            if !arch.supports_modifier(&canonical_modifier) {
+                return Err(ParseError::UnknownOption(modifier.to_string()));
             }
+
+            if matches!(canonical_modifier.as_str(), "be" | "le") {
+                arch = arch.apply_endianness_modifier(&canonical_modifier)?;
+                mode = arch.default_mode();
+                continue;
+            }
+
+            options.push(canonical_modifier);
         }
 
         Ok(ArchitectureSpec {
@@ -147,6 +115,75 @@ impl std::fmt::Debug for ArchitectureSpec {
 }
 
 impl Architecture {
+    fn supports_modifier(&self, modifier: &str) -> bool {
+        match self {
+            Architecture::Arm | Architecture::ArmLE | Architecture::ArmBE | Architecture::Thumb => {
+                matches!(modifier, "thumb" | "m" | "v8" | "be" | "le")
+            }
+            Architecture::Aarch64 | Architecture::Aarch64BE => {
+                matches!(modifier, "apple" | "be" | "le")
+            }
+            Architecture::X86_16 | Architecture::X86_32 | Architecture::X86_64 => matches!(
+                modifier,
+                "att"
+                    | "intel"
+                    | "masm"
+                    | "nasm"
+                    | "noregname"
+                    | "regalias"
+                    | "percentage"
+                    | "nodollar"
+            ),
+            Architecture::Mips
+            | Architecture::MipsEL
+            | Architecture::Mips64
+            | Architecture::MipsEL64 => matches!(modifier, "nofloat" | "ptr64" | "be" | "le"),
+            Architecture::PowerPC32
+            | Architecture::PowerPC32BE
+            | Architecture::PowerPC64
+            | Architecture::PowerPC64BE => {
+                matches!(
+                    modifier,
+                    "aix" | "booke" | "maix" | "msync" | "qpx" | "ps" | "spe" | "be" | "le"
+                )
+            }
+            Architecture::Sparc | Architecture::SparcLE | Architecture::Sparc64 => {
+                matches!(modifier, "v9" | "be" | "le")
+            }
+            _ => false,
+        }
+    }
+
+    fn apply_endianness_modifier(&self, modifier: &str) -> std::result::Result<Self, ParseError> {
+        match (self, modifier) {
+            (Architecture::Arm | Architecture::ArmBE, "be") => Ok(Architecture::ArmBE),
+            (Architecture::Arm | Architecture::ArmLE, "le") => Ok(Architecture::ArmLE),
+            (Architecture::Aarch64 | Architecture::Aarch64BE, "be") => Ok(Architecture::Aarch64BE),
+            (Architecture::Aarch64 | Architecture::Aarch64BE, "le") => Ok(Architecture::Aarch64),
+            (Architecture::Mips, "be") | (Architecture::Mips64, "be") => Ok(self.clone()),
+            (Architecture::MipsEL, "le") | (Architecture::MipsEL64, "le") => Ok(self.clone()),
+            (Architecture::Mips, "le") => Ok(Architecture::MipsEL),
+            (Architecture::Mips64, "le") => Ok(Architecture::MipsEL64),
+            (Architecture::MipsEL, "be") => Ok(Architecture::Mips),
+            (Architecture::MipsEL64, "be") => Ok(Architecture::Mips64),
+            (Architecture::PowerPC32 | Architecture::PowerPC32BE, "be") => {
+                Ok(Architecture::PowerPC32BE)
+            }
+            (Architecture::PowerPC32 | Architecture::PowerPC32BE, "le") => {
+                Ok(Architecture::PowerPC32)
+            }
+            (Architecture::PowerPC64 | Architecture::PowerPC64BE, "be") => {
+                Ok(Architecture::PowerPC64BE)
+            }
+            (Architecture::PowerPC64 | Architecture::PowerPC64BE, "le") => {
+                Ok(Architecture::PowerPC64)
+            }
+            (Architecture::Sparc | Architecture::SparcLE, "be") => Ok(Architecture::Sparc),
+            (Architecture::Sparc | Architecture::SparcLE, "le") => Ok(Architecture::SparcLE),
+            _ => Err(ParseError::UnknownOption(modifier.to_string())),
+        }
+    }
+
     pub fn default_mode(&self) -> u32 {
         match self {
             Architecture::Riscv32 | Architecture::Riscv64 | Architecture::Riscv32E => 0x0,
@@ -220,6 +257,16 @@ impl Architecture {
                 "Invalid <arch+mode>: {input}. Supported: riscv32, riscv64, riscv32e, arm, armle, armbe, thumb, aarch64, aarch64be, x16, x32, x64, mips, mipsel, mips64, mips64el, ppc, ppc32, ppc64, sparc, sparc64, systemz, and others"
             )),
         }
+    }
+}
+
+fn normalize_modifier(modifier: &str) -> String {
+    match modifier.to_lowercase().as_str() {
+        "at&t" => "att".to_string(),
+        "micro" => "m".to_string(),
+        "big" => "be".to_string(),
+        "little" => "le".to_string(),
+        canonical => canonical.to_string(),
     }
 }
 
