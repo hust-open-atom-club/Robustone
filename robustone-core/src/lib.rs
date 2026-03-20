@@ -43,6 +43,7 @@
 pub mod architecture;
 pub mod common;
 pub mod ir;
+pub mod render;
 pub mod traits;
 pub mod types;
 pub mod utils;
@@ -56,12 +57,14 @@ pub mod prelude {
     pub use crate::architecture::{Architecture, is_address_aligned};
     pub use crate::common::ArchitectureProfile;
     pub use crate::ir::{ArchitectureId, DecodeStatus, DecodedInstruction, Operand, RegisterId};
+    pub use crate::render::{RenderedDisassembly, RenderedInstruction, RenderedIssue};
     pub use crate::traits::{ArchitectureHandler, BasicInstructionDetail, Detail};
     pub use crate::types::{DisasmError, Instruction};
     pub use crate::utils::{Endianness, HexParser};
 }
 
 pub use ir::DecodedInstruction;
+pub use render::{RenderedDisassembly, RenderedInstruction, RenderedIssue};
 pub use traits::ArchitectureHandler;
 pub use traits::instruction::Detail;
 pub use types::error::DisasmError;
@@ -214,7 +217,7 @@ impl ArchitectureDispatcher {
         // Find the first handler that supports this architecture
         for handler in &self.handlers {
             if handler.supports(arch) {
-                return handler.disassemble(bytes, address);
+                return handler.disassemble(bytes, arch, address);
             }
         }
 
