@@ -60,4 +60,5 @@ This matrix documents what the repository supports today and what it intentional
 - The repository now exposes a shared decode IR, but the Capstone-style CLI formatter still keeps some compatibility-oriented display behavior for parity purposes.
 - The repository now contains golden/property/fuzz scaffolding, but the coverage remains RISC-V-first and does not yet amount to a complete cross-architecture claim.
 - Accepted or investigated output differences belong in `tests/differential/known-differences.toml`; that file is the canonical repository record for parity exceptions.
-- `--alias-regs` and `--unsigned-immediate` remain reserved CLI options rather than implemented output modes.
+- `--alias-regs` is currently a compatibility-accepted no-op for the RISC-V CLI because Capstone-style alias names are already the default outward register view.
+- `--unsigned-immediate` is implemented for the current RISC-V formatter path and renders negative immediates using an unsigned hexadecimal view.
