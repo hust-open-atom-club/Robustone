@@ -118,33 +118,37 @@ impl Architecture {
     fn supports_modifier(&self, modifier: &str) -> bool {
         match self {
             Architecture::Arm | Architecture::ArmLE | Architecture::ArmBE | Architecture::Thumb => {
-                matches!(modifier, "thumb" | "m" | "v8" | "be" | "le")
+                matches!(modifier, "thumb" | "m" | "v8" | "noregname" | "regalias" | "be" | "le")
             }
             Architecture::Aarch64 | Architecture::Aarch64BE => {
-                matches!(modifier, "apple" | "be" | "le")
+                matches!(modifier, "apple" | "noregname" | "regalias" | "be" | "le")
             }
-            Architecture::X86_16 | Architecture::X86_32 | Architecture::X86_64 => matches!(
-                modifier,
-                "att"
-                    | "intel"
-                    | "masm"
-                    | "nasm"
-                    | "noregname"
-                    | "regalias"
-                    | "percentage"
-                    | "nodollar"
-            ),
+            Architecture::X86_16 | Architecture::X86_32 | Architecture::X86_64 => {
+                matches!(modifier, "att" | "intel" | "masm" | "nasm")
+            }
             Architecture::Mips
             | Architecture::MipsEL
             | Architecture::Mips64
-            | Architecture::MipsEL64 => matches!(modifier, "nofloat" | "ptr64" | "be" | "le"),
+            | Architecture::MipsEL64 => {
+                matches!(modifier, "nofloat" | "ptr64" | "noregname" | "nodollar" | "be" | "le")
+            }
             Architecture::PowerPC32
             | Architecture::PowerPC32BE
             | Architecture::PowerPC64
             | Architecture::PowerPC64BE => {
                 matches!(
                     modifier,
-                    "aix" | "booke" | "maix" | "msync" | "qpx" | "ps" | "spe" | "be" | "le"
+                    "aix"
+                        | "booke"
+                        | "maix"
+                        | "msync"
+                        | "qpx"
+                        | "ps"
+                        | "spe"
+                        | "noregname"
+                        | "percentage"
+                        | "be"
+                        | "le"
                 )
             }
             Architecture::Sparc | Architecture::SparcLE | Architecture::Sparc64 => {
