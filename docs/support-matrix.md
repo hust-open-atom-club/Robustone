@@ -46,7 +46,8 @@ This matrix documents what the repository supports today and what it intentional
 | `python3 test/run_tests.py --list` | Verified | Lists the currently configured parity suites. |
 | `make test-quick` | Verified | Runs a reduced parity slice for fast local feedback. |
 | `cargo test --workspace --all-features` | Verified | Runs workspace Rust tests and doctests. |
-| `cargo bench -p robustone-core --bench riscv_decode` | Verified | Records pure decode throughput, detail overhead, and CLI end-to-end baselines in `docs/benchmark-baselines.md`; it is not part of the default repository validation set. |
+| `cargo bench -p robustone-core --bench riscv_decode` | Verified | Records pure decode throughput and detail-overhead baselines in `docs/benchmark-baselines.md`; it is not part of the default repository validation set. |
+| `cargo bench -p robustone-cli --bench cli_end_to_end` | Verified | Records the real CLI end-to-end baseline through `robustone-cli` argument parsing, config building, executor wiring, and formatter rendering. |
 | `cd fuzz && cargo fuzz run decode_riscv -- -max_total_time=5` | Documented | Used for scheduled fuzz smoke validation; not required for the default local workflow. |
 | `cd fuzz && cargo fuzz run format_riscv_json -- -max_total_time=5` | Documented | Used for scheduled fuzz smoke validation; not required for the default local workflow. |
 
