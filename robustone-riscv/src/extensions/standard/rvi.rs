@@ -5,7 +5,7 @@
 //! memory operations, and system instructions that form the core of RISC-V.
 
 use super::Standard;
-use crate::decoder::{RiscVDecodedInstruction, Xlen};
+use crate::decoder::Xlen;
 use crate::extensions::{Extensions, InstructionExtension};
 use crate::shared::{
     InstructionFormatter, OperandFactory, encoding::ShamtExtractor,
@@ -13,6 +13,7 @@ use crate::shared::{
     registers::RegisterManager,
 };
 use crate::types::*;
+use robustone_core::ir::DecodedInstruction;
 use robustone_core::types::error::DisasmError;
 
 /// RV32I/RV64I Base Integer Extension
@@ -103,7 +104,7 @@ impl Rvi {
         mnemonic: &str,
         rd: u8,
         imm: i64,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         Ok(self.formatter.create_decoded_instruction(
             mnemonic,
             RiscVInstructionFormat::U,
@@ -121,7 +122,7 @@ impl Rvi {
         mnemonic: &str,
         rd: u8,
         imm: i64,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         Ok(self.formatter.create_decoded_instruction(
             mnemonic,
             RiscVInstructionFormat::J,
@@ -140,7 +141,7 @@ impl Rvi {
         rd: u8,
         rs1: u8,
         imm: i64,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         let instruction = self.formatter.create_decoded_instruction(
             mnemonic,
             RiscVInstructionFormat::I,
@@ -167,7 +168,7 @@ impl Rvi {
         rd: u8,
         rs1: u8,
         rs2: u8,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         Ok(self.formatter.create_decoded_instruction(
             mnemonic,
             RiscVInstructionFormat::R,
@@ -189,7 +190,7 @@ impl Rvi {
         rs2: u8,
         rs1: u8,
         imm: i64,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         Ok(self.formatter.create_decoded_instruction(
             mnemonic,
             RiscVInstructionFormat::S,
@@ -208,7 +209,7 @@ impl Rvi {
         rs1: u8,
         rs2: u8,
         imm: i64,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         let instruction = self.formatter.create_decoded_instruction(
             mnemonic,
             RiscVInstructionFormat::B,
@@ -230,11 +231,11 @@ impl Rvi {
     }
 
     // Specific instruction type decoders
-    fn decode_auipc(&self, rd: u8, imm_u: i64) -> Result<RiscVDecodedInstruction, DisasmError> {
+    fn decode_auipc(&self, rd: u8, imm_u: i64) -> Result<DecodedInstruction, DisasmError> {
         self.decode_u_type("auipc", rd, imm_u)
     }
 
-    fn decode_lui(&self, rd: u8, imm_u: i64) -> Result<RiscVDecodedInstruction, DisasmError> {
+    fn decode_lui(&self, rd: u8, imm_u: i64) -> Result<DecodedInstruction, DisasmError> {
         self.decode_u_type("lui", rd, imm_u)
     }
 
@@ -243,7 +244,7 @@ impl Rvi {
         rd: u8,
         imm_j: i64,
         _xlen: Xlen,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         let instruction = self.decode_j_type("jal", rd, imm_j)?;
         match rd {
             0 => Ok(instruction.with_capstone_alias("j", vec![0])),
@@ -252,12 +253,7 @@ impl Rvi {
         }
     }
 
-    fn decode_jalr(
-        &self,
-        rd: u8,
-        rs1: u8,
-        imm_i: i64,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    fn decode_jalr(&self, rd: u8, rs1: u8, imm_i: i64) -> Result<DecodedInstruction, DisasmError> {
         let instruction = self.formatter.create_decoded_instruction(
             "jalr",
             RiscVInstructionFormat::I,
@@ -285,7 +281,7 @@ impl Rvi {
         rs2: u8,
         imm_b: i64,
         _xlen: Xlen,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         match funct3 {
             Self::FUNCT3_BRANCH_BEQ => self.decode_b_type("beq", rs1, rs2, imm_b),
             Self::FUNCT3_BRANCH_BNE => self.decode_b_type("bne", rs1, rs2, imm_b),
@@ -306,7 +302,7 @@ impl Rvi {
         rs1: u8,
         imm_i: i64,
         xlen: Xlen,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         let mnemonic = match funct3 {
             Self::FUNCT3_LOAD_LB => "lb",
             Self::FUNCT3_LOAD_LH => "lh",
@@ -341,7 +337,7 @@ impl Rvi {
         rs1: u8,
         imm_s: i64,
         xlen: Xlen,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         let mnemonic = match funct3 {
             Self::FUNCT3_STORE_SB => "sb",
             Self::FUNCT3_STORE_SH => "sh",
@@ -364,7 +360,7 @@ impl Rvi {
         rs1: u8,
         imm_i: i64,
         xlen: Xlen,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         match funct3 {
             Self::FUNCT3_OP_ADD_SUB => self.decode_i_type("addi", rd, rs1, imm_i),
             Self::FUNCT3_OP_SLT => self.decode_i_type("slti", rd, rs1, imm_i),
@@ -408,7 +404,7 @@ impl Rvi {
         rd: u8,
         rs1: u8,
         rs2: u8,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         // Skip M-extension instructions (funct7 == 0b0000001)
         if funct7 == Self::FUNCT7_OP_MUL {
             return Err(DisasmError::DecodingError(
@@ -448,7 +444,7 @@ impl Rvi {
         rd: u8,
         rs1: u8,
         imm_i: i64,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         match funct3 {
             Self::FUNCT3_OP_ADD_SUB => self.decode_i_type("addiw", rd, rs1, imm_i),
             Self::FUNCT3_OP_SLL => {
@@ -480,7 +476,7 @@ impl Rvi {
         rd: u8,
         rs1: u8,
         rs2: u8,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         match (funct3, funct7) {
             (Self::FUNCT3_OP_ADD_SUB, Self::FUNCT7_OP_ADD) => {
                 self.decode_r_type("addw", rd, rs1, rs2)
@@ -501,7 +497,7 @@ impl Rvi {
         }
     }
 
-    fn decode_misc_mem(&self, funct3: u8) -> Result<RiscVDecodedInstruction, DisasmError> {
+    fn decode_misc_mem(&self, funct3: u8) -> Result<DecodedInstruction, DisasmError> {
         match funct3 {
             Self::FUNCT3_MISC_MEM_FENCE => {
                 Ok(DefaultInstructionFormatter::simple_instruction("fence", ""))
@@ -522,7 +518,7 @@ impl Rvi {
         rs1: u8,
         _imm_i: i64,
         funct12: u32,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         match funct3 {
             Self::FUNCT3_SYSTEM_PRIV => match funct12 {
                 Self::FUNCT12_SYSTEM_ECALL => {
@@ -563,7 +559,7 @@ impl Rvi {
         rd: u8,
         rs1: u8,
         csr: i64,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         // Handle pseudo-instructions: csrr, csrc, csrw
         // csrrs with rs1=0 → csrr
         // csrrc with rs1=0 → csrc
@@ -609,7 +605,7 @@ impl Rvi {
         rd: u8,
         zimm: i64,
         csr: i64,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         let _ = &self.register_manager;
         Ok(self.formatter.create_decoded_instruction(
             mnemonic,
@@ -650,7 +646,7 @@ impl InstructionExtension for Rvi {
         imm_u: i64,
         imm_j: i64,
         xlen: Xlen,
-    ) -> Option<Result<RiscVDecodedInstruction, DisasmError>> {
+    ) -> Option<Result<DecodedInstruction, DisasmError>> {
         match opcode {
             Self::OPCODE_LUI => Some(self.decode_lui(rd, imm_u)),
             Self::OPCODE_AUIPC => Some(self.decode_auipc(rd, imm_u)),
@@ -698,7 +694,7 @@ impl InstructionExtension for Rvi {
         _uimm_css: u16,
         _uimm_clsp: u16,
         _uimm_fldsp: u16,
-    ) -> Option<Result<RiscVDecodedInstruction, DisasmError>> {
+    ) -> Option<Result<DecodedInstruction, DisasmError>> {
         // RV32I/RV64I extension doesn't handle compressed instructions
         None
     }

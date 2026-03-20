@@ -443,4 +443,19 @@ mod tests {
             other => panic!("expected unsupported mode, got {other:?}"),
         }
     }
+
+    #[test]
+    fn test_unimplemented_compressed_rv64_returns_structured_error() {
+        let dispatcher = ArchitectureDispatcher::new();
+        let error = dispatcher
+            .decode_instruction(&[0x00, 0x60], "riscv64", 0)
+            .expect_err("legal but unimplemented compressed RV64 instruction should fail");
+
+        match error {
+            DisasmError::DecodeFailure { kind, .. } => {
+                assert_eq!(kind, DecodeErrorKind::UnimplementedInstruction);
+            }
+            other => panic!("expected unimplemented instruction, got {other:?}"),
+        }
+    }
 }

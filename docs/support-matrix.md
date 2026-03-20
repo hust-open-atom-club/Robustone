@@ -31,7 +31,7 @@ This matrix documents what the repository supports today and what it intentional
 | Groups / implicit register sets as structured public data | Partial | The shared IR now carries group and implicit-register fields; the RISC-V path populates them for the implemented instruction families, but the model is still evolving. |
 | Canonical-vs-alias formatter profiles | Partial | The RISC-V printer now has Capstone-style and canonical profiles, but only the Capstone-style path is exposed through the CLI by default. |
 | Structured JSON output | Implemented | `robustone --json ...` renders structured JSON built from the shared decode IR. |
-| Structured decode-error taxonomy | Partial | The low-level decode API returns `DecodeFailure` variants such as `need_more_bytes` and `invalid_encoding`, but not every extension path emits the full target taxonomy yet. |
+| Structured decode-error taxonomy | Partial | The low-level decode API now emits `need_more_bytes`, `invalid_encoding`, `unsupported_extension`, and `unimplemented_instruction` on real paths, but the taxonomy is not yet complete across every extension family. |
 | Golden/property/fuzz scaffolding | Implemented as repository structure | `tests/golden/`, `tests/property/`, `tests/differential/`, `robustone-core/tests/*.rs`, and `fuzz/` are now present, though coverage is still early. |
 
 ## Repository Entry Points
@@ -46,7 +46,7 @@ This matrix documents what the repository supports today and what it intentional
 | `python3 test/run_tests.py --list` | Verified | Lists the currently configured parity suites. |
 | `make test-quick` | Verified | Runs a reduced parity slice for fast local feedback. |
 | `cargo test --workspace --all-features` | Verified | Runs workspace Rust tests and doctests. |
-| `cargo bench -p robustone-core --bench riscv_decode` | Documented | Produces the decode baseline recorded in `docs/benchmark-baselines.md`; it is not part of the default repository validation set. |
+| `cargo bench -p robustone-core --bench riscv_decode` | Verified | Records pure decode throughput, detail overhead, and CLI end-to-end baselines in `docs/benchmark-baselines.md`; it is not part of the default repository validation set. |
 | `cd fuzz && cargo fuzz run decode_riscv -- -max_total_time=5` | Documented | Used for scheduled fuzz smoke validation; not required for the default local workflow. |
 | `cd fuzz && cargo fuzz run format_riscv_json -- -max_total_time=5` | Documented | Used for scheduled fuzz smoke validation; not required for the default local workflow. |
 

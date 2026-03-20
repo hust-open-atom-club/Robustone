@@ -89,12 +89,13 @@ impl RiscVDecoder {
     pub fn decode(
         &self,
         bytes: &[u8],
+        arch_name: &str,
         address: u64,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         if bytes.is_empty() {
             return Err(DisasmError::decode_failure(
                 crate::types::error::DecodeErrorKind::NeedMoreBytes,
-                Some(self.mode_name().to_string()),
+                Some(arch_name.to_string()),
                 "no bytes provided",
             ));
         }
@@ -108,18 +109,22 @@ impl RiscVDecoder {
             if !self.extensions.standard.contains(Standard::C) {
                 return Err(DisasmError::decode_failure(
                     crate::types::error::DecodeErrorKind::UnsupportedExtension,
-                    Some(self.mode_name().to_string()),
+                    Some(arch_name.to_string()),
                     "compressed instruction requires C extension",
                 ));
             }
-            self.decode_compressed_instruction(bytes, address)
+            let decoded = self.decode_compressed_instruction(bytes, address)?;
+            let raw_bytes = bytes[..decoded.size].to_vec();
+            Ok(decoded.with_context(arch_name, address, raw_bytes))
         } else if bytes.len() >= 4 {
             // Standard instruction (low bits equal `0b11`) or fallback when compression fails.
-            self.decode_standard_instruction(bytes, address)
+            let decoded = self.decode_standard_instruction(bytes, address)?;
+            let raw_bytes = bytes[..decoded.size].to_vec();
+            Ok(decoded.with_context(arch_name, address, raw_bytes))
         } else {
             Err(DisasmError::decode_failure(
                 crate::types::error::DecodeErrorKind::NeedMoreBytes,
-                Some(self.mode_name().to_string()),
+                Some(arch_name.to_string()),
                 "incomplete instruction",
             ))
         }
@@ -130,7 +135,7 @@ impl RiscVDecoder {
         &self,
         bytes: &[u8],
         _address: u64,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         let instruction = (bytes[0] as u32)
             | ((bytes[1] as u32) << 8)
             | ((bytes[2] as u32) << 16)
@@ -193,24 +198,12 @@ impl RiscVDecoder {
         self.decode_unknown_instruction(instruction)
     }
 
-    /// Decode directly into the shared IR with the provided mode / address context.
-    pub fn decode_ir(
-        &self,
-        bytes: &[u8],
-        arch_name: &str,
-        address: u64,
-    ) -> Result<DecodedInstruction, DisasmError> {
-        let decoded = self.decode(bytes, address)?;
-        let raw_bytes = bytes[..decoded.size].to_vec();
-        Ok(decoded.to_ir(arch_name, address, raw_bytes))
-    }
-
     /// Decode a 16-bit compressed instruction using extension modules.
     fn decode_compressed_instruction(
         &self,
         bytes: &[u8],
         _address: u64,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         // cstool compatibility: interpret bytes in reverse order for 16-bit instructions
         let instruction = ((bytes[1] as u16) << 8) | (bytes[0] as u16);
         let opcode = instruction & 0x03;
@@ -286,10 +279,6 @@ impl RiscVDecoder {
             | ((instruction >> 12) & 0x1) << 4         // imm[4] from instruction[12]
             | ((instruction >> 6) & 0x1) << 6          // imm[6] from instruction[6]
             | ((instruction >> 9) & 0x3) << 7; // imm[8:7] from instruction[9:8]
-
-        if !self.extensions.standard.contains(Standard::C) {
-            eprintln!("Warning: Decoding compressed instruction while C extension is disabled");
-        }
 
         // Try each enabled extension for compressed instructions
         for extension in &self.extension_handlers {
@@ -417,7 +406,7 @@ impl RiscVDecoder {
     fn decode_unknown_instruction(
         &self,
         instruction: u32,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         Err(DisasmError::decode_failure(
             crate::types::error::DecodeErrorKind::InvalidEncoding,
             Some(self.mode_name().to_string()),
@@ -425,7 +414,7 @@ impl RiscVDecoder {
         ))
     }
 
-    fn decode_c_unknown(&self, instruction: u16) -> Result<RiscVDecodedInstruction, DisasmError> {
+    fn decode_c_unknown(&self, instruction: u16) -> Result<DecodedInstruction, DisasmError> {
         Err(DisasmError::decode_failure(
             crate::types::error::DecodeErrorKind::InvalidEncoding,
             Some(self.mode_name().to_string()),
@@ -434,122 +423,63 @@ impl RiscVDecoder {
     }
 }
 
-/// Rendering hints used by the RISC-V text formatter.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct RiscVRenderHints {
-    pub capstone_mnemonic: Option<String>,
-    pub hidden_operands: Vec<usize>,
-}
-
-/// Structured RISC-V decode payload emitted by extension decoders before any
-/// user-visible text rendering happens.
-#[derive(Debug, Clone)]
-pub struct RiscVDecodedInstruction {
-    /// Canonical mnemonic / opcode identity for the instruction.
-    pub mnemonic: String,
-    /// Instruction format discriminator.
-    pub format: RiscVInstructionFormat,
-    /// Size of the instruction in bytes.
-    pub size: usize,
-    /// Structured operand details for downstream consumption.
-    pub operands_detail: Vec<RiscVOperand>,
-    /// Display hints for Capstone-like formatting.
-    pub render_hints: RiscVRenderHints,
-}
-
-impl RiscVDecodedInstruction {
-    /// Create a structured decode result with canonical mnemonic and operands.
-    pub fn new(
-        mnemonic: impl Into<String>,
-        format: RiscVInstructionFormat,
-        size: usize,
-        operands_detail: Vec<RiscVOperand>,
-    ) -> Self {
-        Self {
-            mnemonic: mnemonic.into(),
-            format,
-            size,
-            operands_detail,
-            render_hints: Default::default(),
-        }
-    }
-
-    /// Mark this decoded instruction as using a Capstone-compatible alias for
-    /// outward text rendering.
-    pub fn with_capstone_alias(
-        mut self,
-        capstone_mnemonic: impl Into<String>,
-        hidden_operands: Vec<usize>,
-    ) -> Self {
-        self.render_hints.capstone_mnemonic = Some(capstone_mnemonic.into());
-        self.render_hints.hidden_operands = hidden_operands;
-        self
-    }
-
-    /// Hide the specified operands in the Capstone-compatible outward view.
-    pub fn with_hidden_operands(mut self, hidden_operands: Vec<usize>) -> Self {
-        self.render_hints.hidden_operands = hidden_operands;
-        self
-    }
-
-    /// Convert the RISC-V decode result into the shared IR.
-    pub fn to_ir(&self, arch_name: &str, address: u64, raw_bytes: Vec<u8>) -> DecodedInstruction {
-        let mut registers_read = Vec::new();
-        let mut registers_written = Vec::new();
-        let operands = self
-            .operands_detail
-            .iter()
-            .map(|operand| match &operand.value {
-                RiscVOperandValue::Register(reg) => {
-                    let register = RegisterId::riscv(*reg);
-                    if operand.access.read {
-                        registers_read.push(register);
-                    }
-                    if operand.access.write {
-                        registers_written.push(register);
-                    }
-                    Operand::Register { register }
+pub(crate) fn build_riscv_decoded_instruction(
+    mnemonic: impl Into<String>,
+    _format: RiscVInstructionFormat,
+    size: usize,
+    operands_detail: Vec<RiscVOperand>,
+) -> DecodedInstruction {
+    let mnemonic = mnemonic.into();
+    let mut registers_read = Vec::new();
+    let mut registers_written = Vec::new();
+    let operands = operands_detail
+        .iter()
+        .map(|operand| match &operand.value {
+            RiscVOperandValue::Register(reg) => {
+                let register = RegisterId::riscv(*reg);
+                if operand.access.read {
+                    registers_read.push(register);
                 }
-                RiscVOperandValue::Immediate(value) => Operand::Immediate { value: *value },
-                RiscVOperandValue::RoundingMode(rm) => Operand::Text {
-                    value: rounding_mode_name(*rm).to_string(),
-                },
-                RiscVOperandValue::Memory(memory) => {
-                    let base = Some(RegisterId::riscv(memory.base));
-                    if let Some(base_register) = base {
-                        registers_read.push(base_register);
-                    }
-                    Operand::Memory {
-                        base,
-                        displacement: memory.disp,
-                    }
+                if operand.access.write {
+                    registers_written.push(register);
                 }
-            })
-            .collect();
-
-        let (implicit_registers_read, implicit_registers_written) =
-            infer_implicit_registers(&self.mnemonic);
-
-        DecodedInstruction {
-            architecture: ArchitectureId::Riscv,
-            address,
-            mode: arch_name.to_string(),
-            mnemonic: self.mnemonic.clone(),
-            opcode_id: Some(self.mnemonic.clone()),
-            size: self.size,
-            raw_bytes,
-            operands,
-            registers_read,
-            registers_written,
-            implicit_registers_read,
-            implicit_registers_written,
-            groups: infer_groups(&self.mnemonic),
-            status: DecodeStatus::Success,
-            render_hints: RenderHints {
-                capstone_mnemonic: self.render_hints.capstone_mnemonic.clone(),
-                capstone_hidden_operands: self.render_hints.hidden_operands.clone(),
+                Operand::Register { register }
+            }
+            RiscVOperandValue::Immediate(value) => Operand::Immediate { value: *value },
+            RiscVOperandValue::RoundingMode(rm) => Operand::Text {
+                value: rounding_mode_name(*rm).to_string(),
             },
-        }
+            RiscVOperandValue::Memory(memory) => {
+                let base = Some(RegisterId::riscv(memory.base));
+                if let Some(base_register) = base {
+                    registers_read.push(base_register);
+                }
+                Operand::Memory {
+                    base,
+                    displacement: memory.disp,
+                }
+            }
+        })
+        .collect();
+
+    let (implicit_registers_read, implicit_registers_written) = infer_implicit_registers(&mnemonic);
+
+    DecodedInstruction {
+        architecture: ArchitectureId::Riscv,
+        address: 0,
+        mode: String::new(),
+        mnemonic: mnemonic.clone(),
+        opcode_id: Some(mnemonic.clone()),
+        size,
+        raw_bytes: Vec::new(),
+        operands,
+        registers_read,
+        registers_written,
+        implicit_registers_read,
+        implicit_registers_written,
+        groups: infer_groups(&mnemonic),
+        status: DecodeStatus::Success,
+        render_hints: RenderHints::default(),
     }
 }
 
@@ -611,6 +541,7 @@ fn infer_implicit_registers(mnemonic: &str) -> (Vec<RegisterId>, Vec<RegisterId>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::riscv::extensions::standard::Standard;
 
     #[test]
     fn test_refactored_decoder_creation() {
@@ -638,13 +569,7 @@ mod tests {
         let instruction = ((100u32 << 20) | (2u32 << 15)) | (1u32 << 7) | 0b0010011;
         let bytes = instruction.to_le_bytes();
 
-        println!("Testing ADDI instruction: 0x{instruction:08x}");
-        println!("Bytes: {bytes:?}");
-
-        let result = decoder.decode(&bytes, 0);
-        if let Err(e) = &result {
-            println!("Decoding error: {e:?}");
-        }
+        let result = decoder.decode(&bytes, "riscv32", 0);
         assert!(result.is_ok(), "Failed to decode instruction: {result:?}");
 
         let instr = result.unwrap();
@@ -658,7 +583,7 @@ mod tests {
 
         // Test C.ADDI x1, 1 -> 0x0505
         let bytes = [0x05, 0x05];
-        let result = decoder.decode(&bytes, 0);
+        let result = decoder.decode(&bytes, "riscv32", 0);
         assert!(result.is_ok());
 
         let instr = result.unwrap();

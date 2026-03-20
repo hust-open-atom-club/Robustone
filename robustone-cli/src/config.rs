@@ -3,6 +3,8 @@ use crate::command::{DisplayOptions, ValidatedConfig};
 use crate::error::{CliError, Result};
 use robustone_core::utils::HexParser;
 
+use robustone_core::ir::TextRenderProfile;
+
 /// High-level disassembly configuration that unifies all options.
 #[derive(Debug, Clone)]
 pub struct DisasmConfig {
@@ -115,6 +117,7 @@ impl DisasmConfig {
 /// Configuration for output formatting and display options.
 #[derive(Debug, Clone)]
 pub struct OutputConfig {
+    pub text_profile: TextRenderProfile,
     pub show_hex: bool,
     pub show_detail_sections: bool,
     pub json: bool,
@@ -124,6 +127,11 @@ impl OutputConfig {
     /// Create output configuration based on display options.
     pub fn from_display_options(display: &DisplayOptions) -> Self {
         Self {
+            text_profile: if display.real_detail {
+                TextRenderProfile::VerboseDebug
+            } else {
+                TextRenderProfile::Capstone
+            },
             show_hex: display.detailed || display.real_detail,
             show_detail_sections: display.real_detail,
             json: display.json,
@@ -133,9 +141,20 @@ impl OutputConfig {
     /// Create minimal output configuration for brief display.
     pub fn minimal() -> Self {
         Self {
+            text_profile: TextRenderProfile::Capstone,
             show_hex: false,
             show_detail_sections: false,
             json: false,
+        }
+    }
+
+    /// Create canonical JSON output configuration for programmatic use.
+    pub fn canonical_json() -> Self {
+        Self {
+            text_profile: TextRenderProfile::Canonical,
+            show_hex: false,
+            show_detail_sections: false,
+            json: true,
         }
     }
 }
@@ -194,6 +213,7 @@ mod tests {
         };
 
         let output = OutputConfig::from_display_options(&display);
+        assert_eq!(output.text_profile, TextRenderProfile::Capstone);
         assert!(output.show_hex);
         assert!(!output.show_detail_sections);
         assert!(!output.json);

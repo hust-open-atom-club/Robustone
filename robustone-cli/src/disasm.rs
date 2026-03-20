@@ -1,5 +1,4 @@
 use crate::config::{DisasmConfig, OutputConfig};
-use robustone_core::ir::TextRenderProfile;
 use robustone_core::{ArchitectureDispatcher, DisasmError, Instruction};
 use robustone_riscv::RiscVHandler;
 use serde::Serialize;
@@ -298,7 +297,7 @@ impl DisassemblyFormatter {
             .iter()
             .map(|instruction| {
                 let (mnemonic, operands) =
-                    instruction.rendered_text_parts(TextRenderProfile::Capstone);
+                    instruction.rendered_text_parts(self.output_config.text_profile);
                 json!({
                     "address": instruction.address,
                     "mnemonic": mnemonic,
@@ -323,7 +322,7 @@ impl DisassemblyFormatter {
     /// Format a single instruction.
     fn format_instruction(&self, instr: &Instruction, hex_width: usize) -> String {
         let address_str = format!("{:x}", instr.address);
-        let (mnemonic, operands) = instr.rendered_text_parts(TextRenderProfile::Capstone);
+        let (mnemonic, operands) = instr.rendered_text_parts(self.output_config.text_profile);
 
         let bytes_str = if self.output_config.show_hex {
             format!(
@@ -472,6 +471,7 @@ mod tests {
         };
         let result = engine.disassemble(&config).unwrap();
         let formatter = DisassemblyFormatter::new(OutputConfig {
+            text_profile: robustone_core::ir::TextRenderProfile::Capstone,
             show_hex: false,
             show_detail_sections: false,
             json: true,
@@ -548,6 +548,7 @@ mod tests {
         };
         let result = engine.disassemble(&config).unwrap();
         let formatter = DisassemblyFormatter::new(OutputConfig {
+            text_profile: robustone_core::ir::TextRenderProfile::Capstone,
             show_hex: false,
             show_detail_sections: false,
             json: true,
@@ -559,5 +560,58 @@ mod tests {
         assert_eq!(parsed["errors"][0]["address"], 0x40);
         assert_eq!(parsed["errors"][0]["input_offset"], 0);
         assert_eq!(parsed["errors"][0]["raw_bytes"][0], 0xff);
+    }
+
+    #[test]
+    fn test_json_formatter_emits_unimplemented_instruction_errors() {
+        let engine = DisassemblyEngine::new();
+        let config = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("riscv64").unwrap(),
+            hex_bytes: vec![0x00, 0x60],
+            start_address: 0,
+            display_options: DisplayOptions {
+                detailed: false,
+                alias_regs: false,
+                real_detail: false,
+                unsigned_immediate: false,
+                json: true,
+            },
+            skip_data: true,
+        };
+        let result = engine.disassemble(&config).unwrap();
+        let formatter = DisassemblyFormatter::new(OutputConfig {
+            text_profile: robustone_core::ir::TextRenderProfile::Capstone,
+            show_hex: false,
+            show_detail_sections: false,
+            json: true,
+        });
+        let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
+
+        assert_eq!(parsed["errors"][0]["kind"], "unimplemented_instruction");
+        assert_eq!(parsed["errors"][0]["architecture"], "riscv");
+    }
+
+    #[test]
+    fn test_canonical_json_profile_uses_canonical_text() {
+        let engine = DisassemblyEngine::new();
+        let config = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
+            hex_bytes: vec![0x93, 0x00, 0x10, 0x00],
+            start_address: 0,
+            display_options: DisplayOptions {
+                detailed: false,
+                alias_regs: false,
+                real_detail: false,
+                unsigned_immediate: false,
+                json: true,
+            },
+            skip_data: false,
+        };
+        let result = engine.disassemble(&config).unwrap();
+        let formatter = DisassemblyFormatter::new(OutputConfig::canonical_json());
+        let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
+
+        assert_eq!(parsed["instructions"][0]["mnemonic"], "addi");
+        assert_eq!(parsed["instructions"][0]["operands"], "x1, x0, 1");
     }
 }
