@@ -7,10 +7,7 @@
 use super::THead;
 use crate::decoder::{RiscVDecodedInstruction, Xlen};
 use crate::extensions::{Extensions, InstructionExtension};
-use crate::shared::{
-    operands::convenience,
-    registers::{RegisterManager, RegisterNameProvider},
-};
+use crate::shared::{operands::convenience, registers::RegisterManager};
 use crate::types::*;
 use robustone_core::types::error::DisasmError;
 
@@ -44,24 +41,17 @@ impl CMov {
         rs1: u8,
         rs2: u8,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: mnemonic.to_string(),
-            operands: format!(
-                "{}, {}, {}",
-                self.register_manager.int_register_name(rd),
-                self.register_manager.int_register_name(rs1),
-                self.register_manager.int_register_name(rs2)
-            ),
-            format: RiscVInstructionFormat::R,
-            size: 4,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            mnemonic,
+            RiscVInstructionFormat::R,
+            4,
+            vec![
                 convenience::register(rd, Access::write()),
                 convenience::register(rs1, Access::read()),
                 convenience::register(rs2, Access::read()),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 }
 
@@ -168,7 +158,10 @@ mod tests {
         assert!(result.is_some());
         let instr = result.unwrap().unwrap();
         assert_eq!(instr.mnemonic, "th.mveqz");
-        assert_eq!(instr.operands, "ra, sp, gp");
+        let rendered = instr
+            .to_ir("riscv32", 0, vec![0; 4])
+            .render_capstone_text_parts();
+        assert_eq!(rendered.1, "ra, sp, gp");
         assert_eq!(instr.size, 4);
     }
 
@@ -183,7 +176,10 @@ mod tests {
         assert!(result.is_some());
         let instr = result.unwrap().unwrap();
         assert_eq!(instr.mnemonic, "th.mvnez");
-        assert_eq!(instr.operands, "ra, sp, gp");
+        let rendered = instr
+            .to_ir("riscv32", 0, vec![0; 4])
+            .render_capstone_text_parts();
+        assert_eq!(rendered.1, "ra, sp, gp");
         assert_eq!(instr.size, 4);
     }
 
