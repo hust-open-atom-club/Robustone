@@ -74,6 +74,42 @@ CSTOOL_ADDI_DETAIL = """
 \t\toperands[2].access: READ
 """.strip()
 
+CSTOOL_MCYCLE_DETAIL = """
+ 0  73 15 04 b0  csrrw\t\t\ta0, mcycle, s0
+\tID: 189 (csrrw)
+\top_count: 3
+\t\toperands[0].type: REG = a0
+\t\toperands[0].access: WRITE
+\t\toperands[1].type: CSR = mcycle
+\t\toperands[1].access: READ | WRITE
+\t\toperands[2].type: REG = s0
+\t\toperands[2].access: READ
+""".strip()
+
+ROBUSTONE_MCYCLE_JSON = """
+{
+  "instructions": [
+    {
+      "decoded": {
+        "mnemonic": "csrrw",
+        "opcode_id": "csrrw",
+        "operands": [
+          { "kind": "register", "register": { "architecture": "riscv", "id": 10 } },
+          { "kind": "immediate", "value": 2816 },
+          { "kind": "register", "register": { "architecture": "riscv", "id": 8 } }
+        ],
+        "registers_read": [
+          { "architecture": "riscv", "id": 8 }
+        ],
+        "registers_written": [
+          { "architecture": "riscv", "id": 10 }
+        ]
+      }
+    }
+  ]
+}
+""".strip()
+
 
 class DifferentialSurfaceTests(unittest.TestCase):
     def test_semantic_detail_surface_can_fail_independently(self):
@@ -171,6 +207,25 @@ class DifferentialSurfaceTests(unittest.TestCase):
 
             self.assertEqual(updated.result, ComparisonResult.MATCH)
             self.assertTrue(all(surface.matched for surface in updated.surface_results))
+
+    def test_semantic_surface_accepts_symbolic_csr_names(self):
+        comparator = OutputComparator()
+        result = comparator.create_test_result(
+            hex_input="731504b0",
+            expected="",
+            robustone_out="0  73 15 04 b0  csrrw\ta0, 0xb00, s0",
+            cstool_out="0  73 15 04 b0  csrrw\ta0, mcycle, s0",
+            note="",
+            robustone_semantic_out=ROBUSTONE_MCYCLE_JSON,
+            cstool_semantic_out=CSTOOL_MCYCLE_DETAIL,
+        )
+
+        self.assertEqual(result.result, ComparisonResult.MISMATCH)
+        self.assertEqual(
+            result.surface_results[1].surface, ComparisonSurface.SEMANTIC_DETAIL
+        )
+        self.assertTrue(result.surface_results[1].matched)
+        self.assertEqual(result.robustone_exit_code, 0)
 
 
 if __name__ == "__main__":
