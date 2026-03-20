@@ -80,6 +80,14 @@ impl Extensions {
             ));
         }
 
+        if standard.contains(Standard::D) && !standard.contains(Standard::F) {
+            return Err(crate::types::error::DisasmError::decode_failure(
+                crate::types::error::DecodeErrorKind::UnsupportedExtension,
+                None::<String>,
+                "RISC-V profiles cannot enable D without F",
+            ));
+        }
+
         Ok(Self { standard, thead })
     }
 }

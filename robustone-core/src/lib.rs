@@ -494,6 +494,28 @@ mod tests {
     }
 
     #[test]
+    fn test_decode_with_profile_rejects_d_without_f() {
+        let dispatcher = ArchitectureDispatcher::new();
+        let profile = crate::common::ArchitectureProfile::riscv(
+            crate::architecture::Architecture::RiscV32,
+            "riscv32",
+            32,
+            vec!["I", "D"],
+        );
+
+        let error = dispatcher
+            .decode_with_profile(&[0xd3, 0x02, 0x73, 0x00], &profile, 0)
+            .expect_err("D without F should be rejected when building the profile");
+
+        match error {
+            DisasmError::DecodeFailure { kind, .. } => {
+                assert_eq!(kind, DecodeErrorKind::UnsupportedExtension);
+            }
+            other => panic!("expected unsupported extension, got {other:?}"),
+        }
+    }
+
+    #[test]
     fn test_rv64_only_lr_d_reports_unsupported_mode_on_rv32() {
         let dispatcher = ArchitectureDispatcher::new();
         let (decoded, size) = dispatcher
