@@ -30,6 +30,7 @@ impl Rvm {
 
     // M-extension opcodes (same as base opcodes, but distinguished by funct7)
     const OPCODE_OP: u32 = 0b011_0011;
+    const OPCODE_OP_32: u32 = 0b011_1011;
 
     // M-extension funct3 values
     const FUNCT3_OP_ADD_SUB: u8 = 0b000;
@@ -86,6 +87,23 @@ impl Rvm {
             _ => Err(invalid_encoding("invalid M-extension funct3")),
         }
     }
+
+    fn decode_mul_word(
+        &self,
+        funct3: u8,
+        rd: u8,
+        rs1: u8,
+        rs2: u8,
+    ) -> Result<DecodedInstruction, DisasmError> {
+        match funct3 {
+            Self::FUNCT3_OP_ADD_SUB => self.decode_r_type("mulw", rd, rs1, rs2),
+            Self::FUNCT3_OP_XOR => self.decode_r_type("divw", rd, rs1, rs2),
+            Self::FUNCT3_OP_SRL_SRA => self.decode_r_type("divuw", rd, rs1, rs2),
+            Self::FUNCT3_OP_OR => self.decode_r_type("remw", rd, rs1, rs2),
+            Self::FUNCT3_OP_AND => self.decode_r_type("remuw", rd, rs1, rs2),
+            _ => Err(invalid_encoding("invalid M-extension word funct3")),
+        }
+    }
 }
 
 impl InstructionExtension for Rvm {
@@ -112,11 +130,14 @@ impl InstructionExtension for Rvm {
         _imm_b: i64,
         _imm_u: i64,
         _imm_j: i64,
-        _xlen: Xlen,
+        xlen: Xlen,
     ) -> Option<Result<DecodedInstruction, DisasmError>> {
-        // Only handle OP opcode with M-extension funct7
+        // Only handle OP / OP-32 opcodes with M-extension funct7
         if opcode == Self::OPCODE_OP && funct7 == Self::FUNCT7_OP_MUL {
             Some(self.decode_mul(funct3, rd, rs1, rs2))
+        } else if opcode == Self::OPCODE_OP_32 && funct7 == Self::FUNCT7_OP_MUL && xlen == Xlen::X64
+        {
+            Some(self.decode_mul_word(funct3, rd, rs1, rs2))
         } else {
             None
         }

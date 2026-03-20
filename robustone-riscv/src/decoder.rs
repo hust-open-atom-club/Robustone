@@ -515,10 +515,12 @@ fn infer_groups(mnemonic: &str) -> Vec<String> {
     if mnemonic.starts_with("amo") || mnemonic.starts_with("lr.") || mnemonic.starts_with("sc.") {
         groups.push("atomic".to_string());
     }
-    if (mnemonic.starts_with('f') && !matches!(mnemonic, "fence" | "fence.i"))
-        || mnemonic.contains(".s")
-        || mnemonic.contains(".d")
-    {
+    let has_fp_suffix = mnemonic.ends_with(".s")
+        || mnemonic.ends_with(".d")
+        || mnemonic.contains(".s.")
+        || mnemonic.contains(".d.");
+
+    if (mnemonic.starts_with('f') && !matches!(mnemonic, "fence" | "fence.i")) || has_fp_suffix {
         groups.push("floating_point".to_string());
     }
     if mnemonic.starts_with("fcvt") || mnemonic.starts_with("fmv") || mnemonic.starts_with("fclass")

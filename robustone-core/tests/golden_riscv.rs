@@ -93,6 +93,26 @@ fn test_c_lui_golden_fixture() {
 }
 
 #[test]
+fn test_c_addiw_golden_fixture() {
+    assert_case(load_case("c_addiw.json"));
+}
+
+#[test]
+fn test_c_subw_golden_fixture() {
+    assert_case(load_case("c_subw.json"));
+}
+
+#[test]
+fn test_c_addw_golden_fixture() {
+    assert_case(load_case("c_addw.json"));
+}
+
+#[test]
+fn test_mulw_golden_fixture() {
+    assert_case(load_case("mulw.json"));
+}
+
+#[test]
 fn test_c_jr_golden_fixture() {
     assert_case(load_case("c_jr.json"));
 }

@@ -1,0 +1,15 @@
+{
+  "arch": "riscv64",
+  "hex": "8520",
+  "expected_capstone": {
+    "mnemonic": "addiw",
+    "operands": "ra, ra, 1"
+  },
+  "expected_ir": {
+    "mnemonic": "c.addiw",
+    "render_hint_mnemonic": "addiw",
+    "hidden_operands": [],
+    "groups": ["compressed"],
+    "operand_kinds": ["register", "register", "immediate"]
+  }
+}

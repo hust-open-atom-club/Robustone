@@ -679,6 +679,54 @@ mod tests {
     }
 
     #[test]
+    fn test_text_formatter_renders_rv64c_mode_sensitive_aliases() {
+        let engine = DisassemblyEngine::new();
+        let config = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("riscv64").unwrap(),
+            hex_bytes: vec![0x05, 0x9c],
+            start_address: 0,
+            display_options: DisplayOptions {
+                detailed: false,
+                alias_regs: false,
+                real_detail: false,
+                unsigned_immediate: false,
+                json: false,
+            },
+            skip_data: false,
+        };
+        let result = engine.disassemble(&config).unwrap();
+        let formatter = DisassemblyFormatter::new(OutputConfig::minimal());
+        let output = formatter.format(&result);
+
+        assert!(output.contains("subw\ts0, s0, s1"));
+    }
+
+    #[test]
+    fn test_json_formatter_preserves_rv64c_mode_sensitive_ir() {
+        let engine = DisassemblyEngine::new();
+        let config = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("riscv64").unwrap(),
+            hex_bytes: vec![0x85, 0x20],
+            start_address: 0,
+            display_options: DisplayOptions {
+                detailed: false,
+                alias_regs: false,
+                real_detail: false,
+                unsigned_immediate: false,
+                json: true,
+            },
+            skip_data: false,
+        };
+        let result = engine.disassemble(&config).unwrap();
+        let formatter = DisassemblyFormatter::new(OutputConfig::canonical_json());
+        let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
+
+        assert_eq!(parsed["instructions"][0]["mnemonic"], "c.addiw");
+        assert_eq!(parsed["instructions"][0]["decoded"]["mnemonic"], "c.addiw");
+        assert_eq!(parsed["instructions"][0]["operands"], "x1, x1, 1");
+    }
+
+    #[test]
     fn test_canonical_json_profile_uses_canonical_text() {
         let engine = DisassemblyEngine::new();
         let config = DisasmConfig {

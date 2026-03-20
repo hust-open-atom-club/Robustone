@@ -1,0 +1,15 @@
+{
+  "arch": "riscv64",
+  "hex": "bb003102",
+  "expected_capstone": {
+    "mnemonic": "mulw",
+    "operands": "ra, sp, gp"
+  },
+  "expected_ir": {
+    "mnemonic": "mulw",
+    "render_hint_mnemonic": null,
+    "hidden_operands": [],
+    "groups": ["arithmetic"],
+    "operand_kinds": ["register", "register", "register"]
+  }
+}
