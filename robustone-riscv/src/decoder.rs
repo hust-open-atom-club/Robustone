@@ -375,15 +375,6 @@ impl RiscVDecoder {
 
     fn normalize_extension_error(&self, error: DisasmError) -> DisasmError {
         match error {
-            DisasmError::DecodingError(detail) => DisasmError::decode_failure(
-                if detail.contains("not implemented") {
-                    crate::types::error::DecodeErrorKind::UnimplementedInstruction
-                } else {
-                    crate::types::error::DecodeErrorKind::InvalidEncoding
-                },
-                Some(self.mode_name().to_string()),
-                detail,
-            ),
             DisasmError::DecodeFailure {
                 kind,
                 architecture: None,
@@ -524,7 +515,10 @@ fn infer_groups(mnemonic: &str) -> Vec<String> {
     if mnemonic.starts_with("amo") || mnemonic.starts_with("lr.") || mnemonic.starts_with("sc.") {
         groups.push("atomic".to_string());
     }
-    if mnemonic.starts_with('f') || mnemonic.contains(".s") || mnemonic.contains(".d") {
+    if (mnemonic.starts_with('f') && !matches!(mnemonic, "fence" | "fence.i"))
+        || mnemonic.contains(".s")
+        || mnemonic.contains(".d")
+    {
         groups.push("floating_point".to_string());
     }
     if mnemonic.starts_with("fcvt") || mnemonic.starts_with("fmv") || mnemonic.starts_with("fclass")

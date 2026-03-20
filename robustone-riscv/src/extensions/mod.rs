@@ -4,8 +4,8 @@
 //! extensions, organized into separate modules for better maintainability.
 
 use super::decoder::Xlen;
-use robustone_core::ir::DecodedInstruction;
-use robustone_core::types::error::DisasmError;
+use crate::ir::DecodedInstruction;
+use crate::types::error::{DecodeErrorKind, DisasmError};
 
 // Submodules grouping standard and custom-specific extensions.
 pub mod standard;
@@ -157,4 +157,20 @@ pub fn create_extensions() -> Vec<Box<dyn InstructionExtension>> {
         Box::new(standard::Rvc::new()),
         Box::new(thead::CMov::new()),
     ]
+}
+
+pub(crate) fn invalid_encoding(detail: impl Into<String>) -> DisasmError {
+    DisasmError::decode_failure(DecodeErrorKind::InvalidEncoding, None::<String>, detail)
+}
+
+pub(crate) fn unimplemented_instruction(detail: impl Into<String>) -> DisasmError {
+    DisasmError::decode_failure(
+        DecodeErrorKind::UnimplementedInstruction,
+        None::<String>,
+        detail,
+    )
+}
+
+pub(crate) fn unsupported_mode(detail: impl Into<String>) -> DisasmError {
+    DisasmError::decode_failure(DecodeErrorKind::UnsupportedMode, None::<String>, detail)
 }

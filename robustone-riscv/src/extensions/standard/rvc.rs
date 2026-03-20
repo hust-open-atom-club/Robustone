@@ -4,14 +4,16 @@
 //! which provides 16-bit compressed versions of common instructions to improve code density.
 
 use super::Standard;
-use crate::decoder::{Xlen, build_riscv_decoded_instruction};
-use crate::extensions::{Extensions, InstructionExtension};
-use crate::shared::{
+use crate::ir::DecodedInstruction;
+use crate::riscv::decoder::{Xlen, build_riscv_decoded_instruction};
+use crate::riscv::extensions::{
+    Extensions, InstructionExtension, invalid_encoding, unimplemented_instruction,
+};
+use crate::riscv::shared::{
     encoding::convenience as encoding_conv, operands::convenience, registers::RegisterManager,
 };
-use crate::types::*;
-use robustone_core::ir::DecodedInstruction;
-use robustone_core::types::error::DisasmError;
+use crate::riscv::types::*;
+use crate::types::error::DisasmError;
 
 /// RVC Compressed Instructions Extension
 pub struct Rvc {
@@ -58,14 +60,15 @@ impl Rvc {
     fn decode_c_lui(&self, rd: u8, imm: i64) -> Result<DecodedInstruction, DisasmError> {
         let _ = &self.register_manager;
         Ok(build_riscv_decoded_instruction(
-            "lui",
+            "c.lui",
             RiscVInstructionFormat::CI,
             2,
             vec![
                 convenience::register(rd, Access::write()),
                 convenience::immediate(imm),
             ],
-        ))
+        )
+        .with_capstone_alias("lui", Vec::new()))
     }
 
     fn decode_c_add(&self, rd: u8, rs2: u8) -> Result<DecodedInstruction, DisasmError> {
@@ -213,11 +216,7 @@ impl Rvc {
             (0b11, 0b01) => "c.xor",
             (0b11, 0b10) => "c.or",
             (0b11, 0b11) => "c.and",
-            _ => {
-                return Err(DisasmError::DecodingError(
-                    "Invalid C.ALU encoding".to_string(),
-                ));
-            }
+            _ => return Err(invalid_encoding("invalid C.ALU encoding")),
         };
 
         let _ = &self.register_manager;
@@ -308,11 +307,9 @@ impl Rvc {
     }
 
     fn decode_c_unknown(&self, instruction: u16) -> Result<DecodedInstruction, DisasmError> {
-        Err(DisasmError::decode_failure(
-            crate::types::error::DecodeErrorKind::InvalidEncoding,
-            None::<String>,
-            format!("unrecognized compressed instruction 0x{instruction:04x}"),
-        ))
+        Err(invalid_encoding(format!(
+            "unrecognized compressed instruction 0x{instruction:04x}"
+        )))
     }
 
     fn decode_c_unimplemented(
@@ -320,13 +317,9 @@ impl Rvc {
         mnemonic: &str,
         detail: &str,
     ) -> Result<DecodedInstruction, DisasmError> {
-        Err(DisasmError::decode_failure(
-            crate::types::error::DecodeErrorKind::UnimplementedInstruction,
-            None::<String>,
-            format!(
-                "{mnemonic} is a legal compressed instruction but is not implemented: {detail}"
-            ),
-        ))
+        Err(unimplemented_instruction(format!(
+            "{mnemonic} is a legal compressed instruction but is not implemented: {detail}"
+        )))
     }
 }
 

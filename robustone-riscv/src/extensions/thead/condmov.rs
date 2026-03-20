@@ -5,12 +5,12 @@
 //! whether another register is zero or non-zero.
 
 use super::THead;
-use crate::decoder::{Xlen, build_riscv_decoded_instruction};
-use crate::extensions::{Extensions, InstructionExtension};
-use crate::shared::{operands::convenience, registers::RegisterManager};
-use crate::types::*;
-use robustone_core::ir::DecodedInstruction;
-use robustone_core::types::error::DisasmError;
+use crate::ir::DecodedInstruction;
+use crate::riscv::decoder::{Xlen, build_riscv_decoded_instruction};
+use crate::riscv::extensions::{Extensions, InstructionExtension, invalid_encoding};
+use crate::riscv::shared::{operands::convenience, registers::RegisterManager};
+use crate::riscv::types::*;
+use crate::types::error::DisasmError;
 
 /// XTheadCondMov Conditional Move Extension
 pub struct CMov {
@@ -105,9 +105,7 @@ impl InstructionExtension for CMov {
         match funct2 {
             Self::FUNCT2_MVEQZ => Some(self.decode_r_type("th.mveqz", rd, rs1, rs2)),
             Self::FUNCT2_MVNEZ => Some(self.decode_r_type("th.mvnez", rd, rs1, rs2)),
-            _ => Some(Err(DisasmError::DecodingError(
-                "Invalid XTheadCondMov funct2".to_string(),
-            ))),
+            _ => Some(Err(invalid_encoding("invalid XTheadCondMov funct2"))),
         }
     }
 

@@ -19,6 +19,7 @@ from comparator import (
     TestCaseResult,
     ArchTestSummary,
     ComparisonResult,
+    ComparisonSurface,
 )
 from utils import run_command, parse_test_case, find_repo_root
 
@@ -131,10 +132,27 @@ class TestRunner:
             config.cstool_arch,
             hex_input,
         ] + config.cstool_flags
+        semantic_robustone_cmd = [
+            str(self.robustone_bin),
+            "--json",
+            "--detailed",
+            "--real-detail",
+            config.robustone_arch,
+            hex_input,
+        ] + config.robustone_flags
+        semantic_cstool_cmd = [
+            str(self.cstool_bin),
+            "-d",
+            "-r",
+            config.cstool_arch,
+            hex_input,
+        ] + config.cstool_flags
 
         # Execute commands
         rob_code, rob_out, rob_err = run_command(robustone_cmd)
         cs_code, cs_out, cs_err = run_command(cstool_cmd)
+        rob_sem_code, rob_sem_out, rob_sem_err = run_command(semantic_robustone_cmd)
+        cs_sem_code, cs_sem_out, cs_sem_err = run_command(semantic_cstool_cmd)
 
         if verbose:
             print(f"Running Result: {rob_out}")
@@ -152,10 +170,16 @@ class TestRunner:
             robustone_stderr=rob_err,
             cstool_stderr=cs_err,
             execution_time_ms=execution_time,
+            robustone_semantic_out=rob_sem_out,
+            cstool_semantic_out=cs_sem_out,
+            robustone_semantic_exit_code=rob_sem_code,
+            cstool_semantic_exit_code=cs_sem_code,
+            robustone_semantic_stderr=rob_sem_err,
+            cstool_semantic_stderr=cs_sem_err,
         )
 
     def _load_known_differences(self) -> dict:
-        """Load active known-difference entries keyed by (arch, hex_input)."""
+        """Load active known-difference entries keyed by (arch, hex_input, surface)."""
         path = self.repo_root / "tests" / "differential" / "known-differences.toml"
         if not path.exists():
             return {}
@@ -169,26 +193,53 @@ class TestRunner:
                 continue
             arch = str(entry.get("arch", "")).strip()
             hex_input = str(entry.get("hex", "")).strip().lower()
+            surface = str(entry.get("surface", "")).strip().lower()
             reason = str(entry.get("reason", "")).strip()
-            if arch and hex_input:
-                differences[(arch, hex_input)] = reason
+            if arch and hex_input and surface in {s.value for s in ComparisonSurface}:
+                differences[(arch, hex_input, surface)] = reason
         return differences
 
     def apply_known_difference(
         self, arch_name: str, result: TestCaseResult
     ) -> TestCaseResult:
         """Downgrade expected divergences according to the active whitelist."""
-        key = (arch_name, result.hex_input.lower())
-        reason = self.known_differences.get(key)
-        if not reason:
-            return result
-
         if result.result != ComparisonResult.MISMATCH:
             return result
 
-        note = f"known-difference: {reason}"
-        result.note = f"{result.note} | {note}" if result.note else note
-        result.result = ComparisonResult.MATCH
+        if not result.surface_results:
+            reason = self.known_differences.get(
+                (arch_name, result.hex_input.lower(), ComparisonSurface.TEXT.value)
+            )
+            if not reason:
+                return result
+            note = f"known-difference[{ComparisonSurface.TEXT.value}]: {reason}"
+            result.note = f"{result.note} | {note}" if result.note else note
+            result.result = ComparisonResult.MATCH
+            return result
+
+        allowlisted_surfaces = []
+        for surface_result in result.surface_results:
+            if surface_result.matched:
+                continue
+            reason = self.known_differences.get(
+                (arch_name, result.hex_input.lower(), surface_result.surface.value)
+            )
+            if not reason:
+                continue
+            surface_result.matched = True
+            allowlisted_surfaces.append((surface_result.surface.value, reason))
+
+        if not allowlisted_surfaces:
+            return result
+
+        notes = [
+            f"known-difference[{surface}]: {reason}"
+            for surface, reason in allowlisted_surfaces
+        ]
+        suffix = " | ".join(notes)
+        result.note = f"{result.note} | {suffix}" if result.note else suffix
+        if all(surface.matched for surface in result.surface_results):
+            result.result = ComparisonResult.MATCH
         return result
 
     def run_arch_tests(

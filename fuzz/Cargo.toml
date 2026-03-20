@@ -12,6 +12,8 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 robustone-core = { path = "../robustone-core" }
+robustone-cli = { path = "../robustone-cli" }
+clap = { version = "4.5.50", features = ["cargo", "derive"] }
 
 [[bin]]
 name = "decode_riscv"
@@ -23,6 +25,27 @@ bench = false
 [[bin]]
 name = "format_riscv_json"
 path = "fuzz_targets/format_riscv_json.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "hex_parser"
+path = "fuzz_targets/hex_parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "format_riscv_text"
+path = "fuzz_targets/format_riscv_text.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "cli_argument_combinations"
+path = "fuzz_targets/cli_argument_combinations.rs"
 test = false
 doc = false
 bench = false

@@ -279,22 +279,19 @@ impl DisassemblyFormatter {
         }
 
         let mut output = String::new();
+        if !result.instructions.is_empty() {
+            let hex_width = result
+                .instructions
+                .iter()
+                .map(|instruction| instruction.bytes.len().saturating_mul(3).saturating_sub(1))
+                .max()
+                .unwrap_or(0);
 
-        if result.instructions.is_empty() {
-            return output;
-        }
-
-        let hex_width = result
-            .instructions
-            .iter()
-            .map(|instruction| instruction.bytes.len().saturating_mul(3).saturating_sub(1))
-            .max()
-            .unwrap_or(0);
-
-        for instruction in &result.instructions {
-            let formatted = self.format_instruction(instruction, hex_width);
-            output.push_str(&formatted);
-            output.push('\n');
+            for instruction in &result.instructions {
+                let formatted = self.format_instruction(instruction, hex_width);
+                output.push_str(&formatted);
+                output.push('\n');
+            }
         }
 
         // Print errors if any occurred
@@ -671,5 +668,98 @@ mod tests {
         let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
 
         assert_eq!(parsed["instructions"][0]["operands"], "sp, sp, 0xfffffff0");
+    }
+
+    #[test]
+    fn test_text_formatter_emits_structured_error_kinds() {
+        let result = DisassemblyResult {
+            instructions: Vec::new(),
+            start_address: 0,
+            architecture: "riscv32".to_string(),
+            bytes_processed: 0,
+            errors: vec![
+                DisassemblyIssue::from_core_error(
+                    &DisasmError::decode_failure(
+                        robustone_core::types::error::DecodeErrorKind::InvalidEncoding,
+                        Some("riscv32".to_string()),
+                        "invalid test encoding",
+                    ),
+                    "decode_instruction",
+                    "riscv32",
+                    0,
+                    0,
+                    &[0xff, 0xff, 0xff, 0xff],
+                ),
+                DisassemblyIssue::from_core_error(
+                    &DisasmError::decode_failure(
+                        robustone_core::types::error::DecodeErrorKind::UnsupportedExtension,
+                        Some("riscv32".to_string()),
+                        "instruction requires F extension",
+                    ),
+                    "decode_instruction",
+                    "riscv32",
+                    4,
+                    4,
+                    &[0xd3, 0x02, 0x73, 0x00],
+                ),
+                DisassemblyIssue::from_core_error(
+                    &DisasmError::decode_failure(
+                        robustone_core::types::error::DecodeErrorKind::UnimplementedInstruction,
+                        Some("riscv64".to_string()),
+                        "c.fldsp is a legal compressed instruction but is not implemented",
+                    ),
+                    "decode_instruction",
+                    "riscv64",
+                    8,
+                    8,
+                    &[0x00, 0x60],
+                ),
+            ],
+        };
+
+        let formatter = DisassemblyFormatter::new(OutputConfig::minimal());
+        let output = formatter.format(&result);
+
+        assert!(output.contains("[invalid_encoding] invalid test encoding"));
+        assert!(output.contains("[unsupported_extension] instruction requires F extension"));
+        assert!(output.contains(
+            "[unimplemented_instruction] c.fldsp is a legal compressed instruction but is not implemented"
+        ));
+    }
+
+    #[test]
+    fn test_canonical_text_and_json_share_register_rendering() {
+        let engine = DisassemblyEngine::new();
+        let config = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
+            hex_bytes: vec![0x93, 0x00, 0x10, 0x00],
+            start_address: 0,
+            display_options: DisplayOptions {
+                detailed: false,
+                alias_regs: false,
+                real_detail: false,
+                unsigned_immediate: false,
+                json: false,
+            },
+            skip_data: false,
+        };
+        let result = engine.disassemble(&config).unwrap();
+
+        let text_formatter = DisassemblyFormatter::new(OutputConfig {
+            text_profile: robustone_core::ir::TextRenderProfile::Canonical,
+            alias_regs: false,
+            unsigned_immediate: false,
+            show_hex: false,
+            show_detail_sections: false,
+            json: false,
+        });
+        let json_formatter = DisassemblyFormatter::new(OutputConfig::canonical_json());
+
+        let text_output = text_formatter.format(&result);
+        let parsed: Value = serde_json::from_str(&json_formatter.format(&result)).unwrap();
+
+        assert!(text_output.contains("addi\tx1, x0, 1"));
+        assert_eq!(parsed["instructions"][0]["mnemonic"], "addi");
+        assert_eq!(parsed["instructions"][0]["operands"], "x1, x0, 1");
     }
 }

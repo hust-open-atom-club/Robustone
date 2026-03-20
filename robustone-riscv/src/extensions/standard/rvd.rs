@@ -4,12 +4,14 @@
 //! which provides IEEE 754 double-precision floating-point operations.
 
 use super::Standard;
-use crate::decoder::{Xlen, build_riscv_decoded_instruction};
-use crate::extensions::{Extensions, InstructionExtension};
-use crate::shared::{operands::convenience, registers::RegisterManager};
-use crate::types::*;
-use robustone_core::ir::DecodedInstruction;
-use robustone_core::types::error::DisasmError;
+use crate::ir::DecodedInstruction;
+use crate::riscv::decoder::{Xlen, build_riscv_decoded_instruction};
+use crate::riscv::extensions::{
+    Extensions, InstructionExtension, invalid_encoding, unsupported_mode,
+};
+use crate::riscv::shared::{operands::convenience, registers::RegisterManager};
+use crate::riscv::types::*;
+use crate::types::error::DisasmError;
 
 /// RVD Double-Precision Floating-Point Extension
 pub struct Rvd {
@@ -291,9 +293,7 @@ impl InstructionExtension for Rvd {
 
                 if fmt != 0b01 {
                     // Only double-precision (fmt=01)
-                    return Some(Err(DisasmError::DecodingError(
-                        "Invalid D-extension fmt".to_string(),
-                    )));
+                    return Some(Err(invalid_encoding("invalid D-extension fmt")));
                 }
 
                 match (funct5, funct3) {
@@ -335,9 +335,7 @@ impl InstructionExtension for Rvd {
                                     "fcvt.l.d", rd, rs1, false, true, rm,
                                 ))
                             } else {
-                                Some(Err(DisasmError::DecodingError(
-                                    "fcvt.l.d requires RV64".to_string(),
-                                )))
+                                Some(Err(unsupported_mode("fcvt.l.d requires RV64")))
                             }
                         }
                         3 => {
@@ -351,13 +349,11 @@ impl InstructionExtension for Rvd {
                                     rm,
                                 ))
                             } else {
-                                Some(Err(DisasmError::DecodingError(
-                                    "fcvt.lu.d requires RV64".to_string(),
-                                )))
+                                Some(Err(unsupported_mode("fcvt.lu.d requires RV64")))
                             }
                         }
-                        _ => Some(Err(DisasmError::DecodingError(
-                            "Invalid D-extension integer conversion".to_string(),
+                        _ => Some(Err(invalid_encoding(
+                            "invalid D-extension integer conversion",
                         ))),
                     },
                     (0b11100, 0b000) => {
@@ -387,9 +383,7 @@ impl InstructionExtension for Rvd {
                                     "fcvt.d.l", rd, rs1, true, false, rm,
                                 ))
                             } else {
-                                Some(Err(DisasmError::DecodingError(
-                                    "fcvt.d.l requires RV64".to_string(),
-                                )))
+                                Some(Err(unsupported_mode("fcvt.d.l requires RV64")))
                             }
                         }
                         3 => {
@@ -403,13 +397,11 @@ impl InstructionExtension for Rvd {
                                     rm,
                                 ))
                             } else {
-                                Some(Err(DisasmError::DecodingError(
-                                    "fcvt.d.lu requires RV64".to_string(),
-                                )))
+                                Some(Err(unsupported_mode("fcvt.d.lu requires RV64")))
                             }
                         }
-                        _ => Some(Err(DisasmError::DecodingError(
-                            "Invalid D-extension floating conversion".to_string(),
+                        _ => Some(Err(invalid_encoding(
+                            "invalid D-extension floating conversion",
                         ))),
                     },
                     (0b11110, 0b000) => {
@@ -417,9 +409,7 @@ impl InstructionExtension for Rvd {
                     } // rs2 ignored
                     (0b01000, 0b000) => Some(self.decode_fp_r_type("fcvt.d.s", rd, rs1, rs2)), // fmt=00, rs2 is rs1
                     (0b01000, 0b001) => Some(self.decode_fp_r_type("fcvt.s.d", rd, rs1, rs2)), // fmt=01, rs2 is rs1
-                    _ => Some(Err(DisasmError::DecodingError(
-                        "Invalid D-extension encoding".to_string(),
-                    ))),
+                    _ => Some(Err(invalid_encoding("invalid D-extension encoding"))),
                 }
             }
             _ => None,
