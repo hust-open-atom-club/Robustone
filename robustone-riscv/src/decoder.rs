@@ -376,10 +376,23 @@ impl RiscVDecoder {
     fn normalize_extension_error(&self, error: DisasmError) -> DisasmError {
         match error {
             DisasmError::DecodingError(detail) => DisasmError::decode_failure(
-                crate::types::error::DecodeErrorKind::InvalidEncoding,
+                if detail.contains("not implemented") {
+                    crate::types::error::DecodeErrorKind::UnimplementedInstruction
+                } else {
+                    crate::types::error::DecodeErrorKind::InvalidEncoding
+                },
                 Some(self.mode_name().to_string()),
                 detail,
             ),
+            DisasmError::DecodeFailure {
+                kind,
+                architecture: None,
+                detail,
+            } => DisasmError::DecodeFailure {
+                kind,
+                architecture: Some(self.mode_name().to_string()),
+                detail,
+            },
             other => other,
         }
     }

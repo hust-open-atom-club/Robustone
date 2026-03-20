@@ -1,10 +1,10 @@
 use crate::config::{DisasmConfig, OutputConfig};
 use robustone_core::ir::{ArchitectureId, TextRenderProfile};
-use robustone_core::riscv::printer::{RiscVPrinter, RiscVTextProfile};
 use robustone_core::{ArchitectureDispatcher, DisasmError, Instruction};
-use robustone_riscv::RiscVHandler;
+use robustone_core::{RenderedDisassembly, RenderedInstruction, RenderedIssue};
+use robustone_riscv::printer::{RiscVPrinter, RiscVTextProfile};
+use robustone_riscv::{RiscVHandler, types::RiscVRegister};
 use serde::Serialize;
-use serde_json::json;
 
 fn create_dispatcher(arch: &str) -> ArchitectureDispatcher {
     let mut dispatcher = ArchitectureDispatcher::new();
@@ -89,6 +89,18 @@ impl DisassemblyIssue {
             parts.push(format!("bytes={}", hex::encode(&self.raw_bytes)));
         }
         parts.join(" | ")
+    }
+
+    fn to_rendered_issue(&self) -> RenderedIssue {
+        RenderedIssue {
+            kind: self.kind.clone(),
+            operation: self.operation.clone(),
+            message: self.message.clone(),
+            architecture: self.architecture.clone(),
+            address: self.address,
+            input_offset: self.input_offset,
+            raw_bytes: self.raw_bytes.clone(),
+        }
     }
 }
 /// Result of a disassembly operation with additional metadata.
@@ -298,25 +310,23 @@ impl DisassemblyFormatter {
             .instructions
             .iter()
             .map(|instruction| {
-                let (mnemonic, operands) = self.render_instruction_text(instruction);
-                json!({
-                    "address": instruction.address,
-                    "mnemonic": mnemonic,
-                    "operands": operands,
-                    "size": instruction.size,
-                    "bytes": instruction.bytes,
-                    "decoded": instruction.decoded,
-                })
+                let _ = self.render_instruction_text(instruction);
+                RenderedInstruction::from_instruction(instruction, self.output_config.text_profile)
             })
             .collect::<Vec<_>>();
+        let errors = result
+            .errors
+            .iter()
+            .map(DisassemblyIssue::to_rendered_issue)
+            .collect::<Vec<_>>();
 
-        serde_json::to_string_pretty(&json!({
-            "architecture": result.architecture,
-            "start_address": result.start_address,
-            "bytes_processed": result.bytes_processed,
-            "errors": result.errors,
-            "instructions": instructions,
-        }))
+        serde_json::to_string_pretty(&RenderedDisassembly {
+            architecture: result.architecture.clone(),
+            start_address: result.start_address,
+            bytes_processed: result.bytes_processed,
+            errors,
+            instructions,
+        })
         .expect("JSON serialization should not fail")
     }
 
@@ -437,9 +447,7 @@ impl DisassemblyFormatter {
 
 fn format_register_name(architecture_name: &str, reg_id: u32) -> String {
     match architecture_name {
-        "riscv" => robustone_core::riscv::types::RiscVRegister::from_id(reg_id)
-            .name()
-            .to_string(),
+        "riscv" => RiscVRegister::from_id(reg_id).name().to_string(),
         _ => reg_id.to_string(),
     }
 }
