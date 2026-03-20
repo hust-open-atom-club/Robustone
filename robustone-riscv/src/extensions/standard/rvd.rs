@@ -4,10 +4,11 @@
 //! which provides IEEE 754 double-precision floating-point operations.
 
 use super::Standard;
-use crate::decoder::{RiscVDecodedInstruction, Xlen};
+use crate::decoder::{Xlen, build_riscv_decoded_instruction};
 use crate::extensions::{Extensions, InstructionExtension};
 use crate::shared::{operands::convenience, registers::RegisterManager};
 use crate::types::*;
+use robustone_core::ir::DecodedInstruction;
 use robustone_core::types::error::DisasmError;
 
 /// RVD Double-Precision Floating-Point Extension
@@ -44,14 +45,9 @@ impl Rvd {
     const FUNCT3_LOAD_FLD: u8 = 0b011;
     const FUNCT3_STORE_FSD: u8 = 0b011;
 
-    fn decode_load_fp(
-        &self,
-        rd: u8,
-        rs1: u8,
-        imm: i64,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    fn decode_load_fp(&self, rd: u8, rs1: u8, imm: i64) -> Result<DecodedInstruction, DisasmError> {
         let _ = &self.register_manager;
-        Ok(RiscVDecodedInstruction::new(
+        Ok(build_riscv_decoded_instruction(
             "fld",
             RiscVInstructionFormat::I,
             4,
@@ -67,9 +63,9 @@ impl Rvd {
         rs2: u8,
         rs1: u8,
         imm: i64,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         let _ = &self.register_manager;
-        Ok(RiscVDecodedInstruction::new(
+        Ok(build_riscv_decoded_instruction(
             "fsd",
             RiscVInstructionFormat::S,
             4,
@@ -86,9 +82,9 @@ impl Rvd {
         rd: u8,
         rs1: u8,
         rs2: u8,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         let _ = &self.register_manager;
-        Ok(RiscVDecodedInstruction::new(
+        Ok(build_riscv_decoded_instruction(
             mnemonic,
             RiscVInstructionFormat::R,
             4,
@@ -107,9 +103,9 @@ impl Rvd {
         rs1: u8,
         rs2: u8,
         rm: u8,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         let _ = &self.register_manager;
-        Ok(RiscVDecodedInstruction::new(
+        Ok(build_riscv_decoded_instruction(
             mnemonic,
             RiscVInstructionFormat::R,
             4,
@@ -129,9 +125,9 @@ impl Rvd {
         rs1: u8,
         rs2: u8,
         rs3: u8,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         let _ = &self.register_manager;
-        Ok(RiscVDecodedInstruction::new(
+        Ok(build_riscv_decoded_instruction(
             mnemonic,
             RiscVInstructionFormat::R4,
             4,
@@ -152,9 +148,9 @@ impl Rvd {
         _rs2: u8,
         rd_is_fp: bool,
         rs1_is_fp: bool,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         let _ = &self.register_manager;
-        Ok(RiscVDecodedInstruction::new(
+        Ok(build_riscv_decoded_instruction(
             mnemonic,
             RiscVInstructionFormat::R,
             4,
@@ -173,9 +169,9 @@ impl Rvd {
         rd_is_fp: bool,
         rs1_is_fp: bool,
         rm: u8,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         let _ = &self.register_manager;
-        Ok(RiscVDecodedInstruction::new(
+        Ok(build_riscv_decoded_instruction(
             mnemonic,
             RiscVInstructionFormat::R,
             4,
@@ -193,9 +189,9 @@ impl Rvd {
         rd: u8,
         rs1: u8,
         rm: u8,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         let _ = &self.register_manager;
-        Ok(RiscVDecodedInstruction::new(
+        Ok(build_riscv_decoded_instruction(
             mnemonic,
             RiscVInstructionFormat::R,
             4,
@@ -213,9 +209,9 @@ impl Rvd {
         rd: u8,
         rs1: u8,
         rs2: u8,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         let _ = &self.register_manager;
-        Ok(RiscVDecodedInstruction::new(
+        Ok(build_riscv_decoded_instruction(
             mnemonic,
             RiscVInstructionFormat::R,
             4,
@@ -253,7 +249,7 @@ impl InstructionExtension for Rvd {
         _imm_u: i64,
         _imm_j: i64,
         xlen: Xlen,
-    ) -> Option<Result<RiscVDecodedInstruction, DisasmError>> {
+    ) -> Option<Result<DecodedInstruction, DisasmError>> {
         match opcode {
             Self::OPCODE_LOAD_FP if funct3 == Self::FUNCT3_LOAD_FLD => {
                 Some(self.decode_load_fp(rd, rs1, imm_i))
@@ -451,7 +447,7 @@ impl InstructionExtension for Rvd {
         _uimm_css: u16,
         _uimm_clsp: u16,
         _uimm_fldsp: u16,
-    ) -> Option<Result<RiscVDecodedInstruction, DisasmError>> {
+    ) -> Option<Result<DecodedInstruction, DisasmError>> {
         // RVD extension doesn't handle compressed instructions in this implementation
         None
     }

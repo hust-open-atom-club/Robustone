@@ -3,8 +3,9 @@
 //! Provides centralized formatting functionality for instructions, operands,
 //! and immediate values used across all RISC-V extensions.
 
-use super::super::decoder::RiscVDecodedInstruction;
 use super::super::types::*;
+use crate::ir::DecodedInstruction;
+use crate::riscv::decoder::build_riscv_decoded_instruction;
 
 /// Trait for formatting decoded RISC-V instructions.
 #[allow(clippy::too_many_arguments)]
@@ -16,7 +17,7 @@ pub trait InstructionFormatter {
         format: RiscVInstructionFormat,
         size: usize,
         operands_detail: Vec<RiscVOperand>,
-    ) -> RiscVDecodedInstruction;
+    ) -> DecodedInstruction;
 
     /// Create a decoded instruction using the operand builder.
     fn create_instruction_from_parts(
@@ -30,7 +31,7 @@ pub trait InstructionFormatter {
         rd_access: Access,
         rs1_access: Access,
         rs2_access: Access,
-    ) -> RiscVDecodedInstruction;
+    ) -> DecodedInstruction;
 }
 
 /// Trait for immediate value formatting with different formats.
@@ -58,8 +59,8 @@ impl InstructionFormatter for DefaultInstructionFormatter {
         format: RiscVInstructionFormat,
         size: usize,
         operands_detail: Vec<RiscVOperand>,
-    ) -> RiscVDecodedInstruction {
-        RiscVDecodedInstruction::new(mnemonic, format, size, operands_detail)
+    ) -> DecodedInstruction {
+        build_riscv_decoded_instruction(mnemonic, format, size, operands_detail)
     }
 
     fn create_instruction_from_parts(
@@ -73,7 +74,7 @@ impl InstructionFormatter for DefaultInstructionFormatter {
         rd_access: Access,
         rs1_access: Access,
         rs2_access: Access,
-    ) -> RiscVDecodedInstruction {
+    ) -> DecodedInstruction {
         use super::operands::convenience;
         use super::registers::get_register_name;
 
@@ -174,18 +175,18 @@ impl DefaultInstructionFormatter {
     }
 
     /// Create a simple decoded instruction with just mnemonic and operands.
-    pub fn simple_instruction(mnemonic: &str, operands: &str) -> RiscVDecodedInstruction {
+    pub fn simple_instruction(mnemonic: &str, operands: &str) -> DecodedInstruction {
         let _ = operands;
         Self::instance().create_decoded_instruction(mnemonic, RiscVInstructionFormat::I, 4, vec![])
     }
 
     /// Create an unknown instruction placeholder.
-    pub fn unknown_instruction(value: u32) -> RiscVDecodedInstruction {
+    pub fn unknown_instruction(value: u32) -> DecodedInstruction {
         Self::simple_instruction("unknown", &format!("0x{value:08x}"))
     }
 
     /// Create an unknown compressed instruction placeholder.
-    pub fn unknown_compressed_instruction(value: u16) -> RiscVDecodedInstruction {
+    pub fn unknown_compressed_instruction(value: u16) -> DecodedInstruction {
         let _ = value;
         Self::instance().create_decoded_instruction(
             "c.unknown",
@@ -396,17 +397,17 @@ pub mod convenience {
     }
 
     /// Create a simple decoded instruction.
-    pub fn simple_instruction(mnemonic: &str, operands: &str) -> RiscVDecodedInstruction {
+    pub fn simple_instruction(mnemonic: &str, operands: &str) -> DecodedInstruction {
         DefaultInstructionFormatter::simple_instruction(mnemonic, operands)
     }
 
     /// Create an unknown instruction.
-    pub fn unknown_instruction(value: u32) -> RiscVDecodedInstruction {
+    pub fn unknown_instruction(value: u32) -> DecodedInstruction {
         DefaultInstructionFormatter::unknown_instruction(value)
     }
 
     /// Create an unknown compressed instruction.
-    pub fn unknown_compressed_instruction(value: u16) -> RiscVDecodedInstruction {
+    pub fn unknown_compressed_instruction(value: u16) -> DecodedInstruction {
         DefaultInstructionFormatter::unknown_compressed_instruction(value)
     }
 }
@@ -433,10 +434,10 @@ mod tests {
         );
 
         assert_eq!(instruction.mnemonic, "add");
-        assert_eq!(instruction.format, RiscVInstructionFormat::R);
         assert_eq!(instruction.size, 4);
+        assert_eq!(instruction.operands.len(), 3);
         let rendered = instruction
-            .to_ir("riscv32", 0, vec![0; 4])
+            .with_context("riscv32", 0, vec![0; 4])
             .render_capstone_text_parts();
         assert_eq!(rendered.1, "ra, sp, gp");
     }
@@ -491,6 +492,6 @@ mod tests {
 
         let unknown = convenience::unknown_instruction(0x12345678);
         assert_eq!(unknown.mnemonic, "unknown");
-        assert!(unknown.operands_detail.is_empty());
+        assert!(unknown.operands.is_empty());
     }
 }

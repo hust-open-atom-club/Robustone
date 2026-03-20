@@ -2,11 +2,10 @@
 //!
 //! Inspired by Capstone's printer to maintain compatible output formatting.
 
-use super::decoder::RiscVDecodedInstruction;
 use super::shared::operands::csr_name_lookup;
 use super::shared::{OperandFormatter, operands::DefaultOperandFactory};
 use super::types::*;
-use robustone_core::ir::{DecodedInstruction, Operand, RegisterId};
+use robustone_core::ir::{DecodedInstruction, Operand, RegisterId, TextRenderProfile};
 use robustone_core::Instruction;
 
 /// Text formatting profiles for the RISC-V formatter.
@@ -14,6 +13,7 @@ use robustone_core::Instruction;
 pub enum RiscVTextProfile {
     Capstone,
     Canonical,
+    VerboseDebug,
 }
 
 /// Pretty-printer for RISC-V instructions.
@@ -103,15 +103,10 @@ impl RiscVPrinter {
         }
     }
 
-    /// Render a structured RISC-V decode result into mnemonic and operand text.
-    pub fn render_decoded_parts(&self, decoded: &RiscVDecodedInstruction) -> (String, String) {
-        self.render_decoded_parts_with_ir(decoded, &decoded.to_ir("riscv32", 0, vec![]))
-    }
-
     /// Render the shared IR into mnemonic and operand text.
     pub fn render_ir_parts(&self, ir: &DecodedInstruction) -> (String, String) {
         let mnemonic = match self.profile {
-            RiscVTextProfile::Capstone => ir
+            RiscVTextProfile::Capstone | RiscVTextProfile::VerboseDebug => ir
                 .render_hints
                 .capstone_mnemonic
                 .clone()
@@ -119,7 +114,10 @@ impl RiscVPrinter {
             RiscVTextProfile::Canonical => ir.mnemonic.clone(),
         };
 
-        let hidden_operands = if matches!(self.profile, RiscVTextProfile::Capstone) {
+        let hidden_operands = if matches!(
+            self.profile,
+            RiscVTextProfile::Capstone | RiscVTextProfile::VerboseDebug
+        ) {
             ir.render_hints.capstone_hidden_operands.as_slice()
         } else {
             &[]
@@ -155,15 +153,6 @@ impl RiscVPrinter {
         };
 
         (mnemonic, operands)
-    }
-
-    /// Render a structured RISC-V decode result using the shared IR metadata.
-    pub fn render_decoded_parts_with_ir(
-        &self,
-        _decoded: &RiscVDecodedInstruction,
-        ir: &DecodedInstruction,
-    ) -> (String, String) {
-        self.render_ir_parts(ir)
     }
 
     fn format_ir_register(&self, register: &RegisterId) -> String {
@@ -517,9 +506,11 @@ mod tests {
     #[test]
     fn test_canonical_profile_renders_full_operands() {
         let decoder = RiscVDecoder::rv32gc();
-        let decoded = decoder.decode(&[0x93, 0x00, 0x10, 0x00], 0).unwrap();
+        let decoded = decoder
+            .decode(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
+            .unwrap();
         let printer = RiscVPrinter::new().with_profile(RiscVTextProfile::Canonical);
-        let (mnemonic, operands) = printer.render_decoded_parts(&decoded);
+        let (mnemonic, operands) = printer.render_ir_parts(&decoded);
 
         assert_eq!(mnemonic, "addi");
         assert_eq!(operands, "x1, x0, 1");
