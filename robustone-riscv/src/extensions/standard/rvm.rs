@@ -7,9 +7,7 @@ use super::Standard;
 use crate::decoder::{RiscVDecodedInstruction, Xlen};
 use crate::extensions::{Extensions, InstructionExtension};
 use crate::shared::{
-    OperandFactory,
-    operands::DefaultOperandFactory,
-    registers::{RegisterManager, RegisterNameProvider},
+    OperandFactory, operands::DefaultOperandFactory, registers::RegisterManager,
 };
 use crate::types::*;
 use robustone_core::types::error::DisasmError;
@@ -52,17 +50,12 @@ impl Rvm {
         rs1: u8,
         rs2: u8,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: mnemonic.to_string(),
-            operands: format!(
-                "{}, {}, {}",
-                self.register_manager.int_register_name(rd),
-                self.register_manager.int_register_name(rs1),
-                self.register_manager.int_register_name(rs2)
-            ),
-            format: RiscVInstructionFormat::R,
-            size: 4,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            mnemonic,
+            RiscVInstructionFormat::R,
+            4,
+            vec![
                 self.operand_factory
                     .make_register_operand(rd, Access::write()),
                 self.operand_factory
@@ -70,9 +63,7 @@ impl Rvm {
                 self.operand_factory
                     .make_register_operand(rs2, Access::read()),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_mul(

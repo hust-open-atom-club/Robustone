@@ -322,20 +322,16 @@ impl RiscVDecoder {
 /// Rendering hints used by the RISC-V text formatter.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct RiscVRenderHints {
+    pub capstone_mnemonic: Option<String>,
     pub hidden_operands: Vec<usize>,
 }
 
-/// Fully decoded instruction payload tailored for the CLI output.
+/// Structured RISC-V decode payload emitted by extension decoders before any
+/// user-visible text rendering happens.
 #[derive(Debug, Clone)]
 pub struct RiscVDecodedInstruction {
-    /// Preferred display mnemonic for Capstone-like output.
+    /// Canonical mnemonic / opcode identity for the instruction.
     pub mnemonic: String,
-    /// Legacy formatted operand string retained for compatibility while the
-    /// formatter migrates to the structured operands below.
-    pub operands: String,
-    /// Canonical mnemonic used by the shared IR. When absent, `mnemonic` is
-    /// already canonical.
-    pub canonical_mnemonic: Option<String>,
     /// Instruction format discriminator.
     pub format: RiscVInstructionFormat,
     /// Size of the instruction in bytes.
@@ -347,23 +343,38 @@ pub struct RiscVDecodedInstruction {
 }
 
 impl RiscVDecodedInstruction {
-    /// Mark this decoded instruction as an alias-friendly presentation of the
-    /// provided canonical mnemonic.
-    pub fn with_canonical_alias(
+    /// Create a structured decode result with canonical mnemonic and operands.
+    pub fn new(
+        mnemonic: impl Into<String>,
+        format: RiscVInstructionFormat,
+        size: usize,
+        operands_detail: Vec<RiscVOperand>,
+    ) -> Self {
+        Self {
+            mnemonic: mnemonic.into(),
+            format,
+            size,
+            operands_detail,
+            render_hints: Default::default(),
+        }
+    }
+
+    /// Mark this decoded instruction as using a Capstone-compatible alias for
+    /// outward text rendering.
+    pub fn with_capstone_alias(
         mut self,
-        canonical_mnemonic: impl Into<String>,
+        capstone_mnemonic: impl Into<String>,
         hidden_operands: Vec<usize>,
     ) -> Self {
-        self.canonical_mnemonic = Some(canonical_mnemonic.into());
+        self.render_hints.capstone_mnemonic = Some(capstone_mnemonic.into());
         self.render_hints.hidden_operands = hidden_operands;
         self
     }
 
-    /// Return the canonical mnemonic for this instruction.
-    pub fn canonical_mnemonic(&self) -> &str {
-        self.canonical_mnemonic
-            .as_deref()
-            .unwrap_or(self.mnemonic.as_str())
+    /// Hide the specified operands in the Capstone-compatible outward view.
+    pub fn with_hidden_operands(mut self, hidden_operands: Vec<usize>) -> Self {
+        self.render_hints.hidden_operands = hidden_operands;
+        self
     }
 
     /// Convert the RISC-V decode result into the shared IR.
@@ -401,23 +412,15 @@ impl RiscVDecodedInstruction {
             })
             .collect();
 
-        let canonical_mnemonic = self.canonical_mnemonic().to_string();
-        let capstone_mnemonic =
-            if self.canonical_mnemonic.is_some() || !self.render_hints.hidden_operands.is_empty() {
-                Some(self.mnemonic.clone())
-            } else {
-                None
-            };
-
         let (implicit_registers_read, implicit_registers_written) =
-            infer_implicit_registers(&canonical_mnemonic);
+            infer_implicit_registers(&self.mnemonic);
 
         DecodedInstruction {
             architecture: ArchitectureId::Riscv,
             address,
             mode: arch_name.to_string(),
-            mnemonic: canonical_mnemonic.clone(),
-            opcode_id: Some(canonical_mnemonic.clone()),
+            mnemonic: self.mnemonic.clone(),
+            opcode_id: Some(self.mnemonic.clone()),
             size: self.size,
             raw_bytes,
             operands,
@@ -425,10 +428,10 @@ impl RiscVDecodedInstruction {
             registers_written,
             implicit_registers_read,
             implicit_registers_written,
-            groups: infer_groups(&canonical_mnemonic),
+            groups: infer_groups(&self.mnemonic),
             status: DecodeStatus::Success,
             render_hints: RenderHints {
-                capstone_mnemonic,
+                capstone_mnemonic: self.render_hints.capstone_mnemonic.clone(),
                 capstone_hidden_operands: self.render_hints.hidden_operands.clone(),
             },
         }

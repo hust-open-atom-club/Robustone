@@ -7,9 +7,7 @@ use super::Standard;
 use crate::decoder::{RiscVDecodedInstruction, Xlen};
 use crate::extensions::{Extensions, InstructionExtension};
 use crate::shared::{
-    encoding::convenience as encoding_conv,
-    operands::convenience,
-    registers::{RegisterManager, RegisterNameProvider},
+    encoding::convenience as encoding_conv, operands::convenience, registers::RegisterManager,
 };
 use crate::types::*;
 use robustone_core::types::error::DisasmError;
@@ -29,105 +27,77 @@ impl Rvc {
 
     fn decode_c_addi4spn(&self, rdp: u8, imm: u16) -> Result<RiscVDecodedInstruction, DisasmError> {
         let imm_val = imm as i64;
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "c.addi4spn".to_string(),
-            operands: format!(
-                "{}, sp, {}",
-                self.register_manager.int_register_name(rdp + 8),
-                convenience::format_immediate(imm_val)
-            ),
-            format: RiscVInstructionFormat::CIW,
-            size: 2,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            "c.addi4spn",
+            RiscVInstructionFormat::CIW,
+            2,
+            vec![
                 convenience::register(rdp + 8, Access::write()),
                 convenience::register(2, Access::read()),
                 convenience::immediate(imm_val),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_c_addi16sp(&self, rd: u8, imm: u16) -> Result<RiscVDecodedInstruction, DisasmError> {
         let imm_val = encoding_conv::sign_extend_16(imm, 10);
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "c.addi16sp".to_string(),
-            operands: format!(
-                "{}, {}",
-                self.register_manager.int_register_name(rd),
-                convenience::format_immediate(imm_val)
-            ),
-            format: RiscVInstructionFormat::CI,
-            size: 2,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            "c.addi16sp",
+            RiscVInstructionFormat::CI,
+            2,
+            vec![
                 convenience::register(rd, Access::read_write()),
                 convenience::immediate(imm_val),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_c_add(&self, rd: u8, rs2: u8) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "c.add".to_string(),
-            operands: format!(
-                "{}, {}",
-                self.register_manager.int_register_name(rd),
-                self.register_manager.int_register_name(rs2)
-            ),
-            format: RiscVInstructionFormat::CR,
-            size: 2,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            "c.add",
+            RiscVInstructionFormat::CR,
+            2,
+            vec![
                 convenience::register(rd, Access::read_write()),
                 convenience::register(rs2, Access::read()),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_c_mv(&self, rd: u8, rs2: u8) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "c.mv".to_string(),
-            operands: format!(
-                "{}, {}",
-                self.register_manager.int_register_name(rd),
-                self.register_manager.int_register_name(rs2)
-            ),
-            format: RiscVInstructionFormat::CR,
-            size: 2,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            "c.mv",
+            RiscVInstructionFormat::CR,
+            2,
+            vec![
                 convenience::register(rd, Access::write()),
                 convenience::register(rs2, Access::read()),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_c_jr(&self, rd: u8) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "c.jr".to_string(),
-            operands: self.register_manager.int_register_name(rd).to_string(),
-            format: RiscVInstructionFormat::CR,
-            size: 2,
-            operands_detail: vec![convenience::register(rd, Access::read())],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            "c.jr",
+            RiscVInstructionFormat::CR,
+            2,
+            vec![convenience::register(rd, Access::read())],
+        ))
     }
 
     fn decode_c_jalr(&self, rd: u8) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "c.jalr".to_string(),
-            operands: self.register_manager.int_register_name(rd).to_string(),
-            format: RiscVInstructionFormat::CR,
-            size: 2,
-            operands_detail: vec![convenience::register(rd, Access::read())],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            "c.jalr",
+            RiscVInstructionFormat::CR,
+            2,
+            vec![convenience::register(rd, Access::read())],
+        ))
     }
 
     fn decode_c_lw(
@@ -137,23 +107,16 @@ impl Rvc {
         imm: u16,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         let imm_val = imm as i64;
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "c.lw".to_string(),
-            operands: format!(
-                "{}, {}({})",
-                self.register_manager.int_register_name(rd + 8),
-                convenience::format_immediate(imm_val),
-                self.register_manager.int_register_name(rs1 + 8)
-            ),
-            format: RiscVInstructionFormat::CL,
-            size: 2,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            "c.lw",
+            RiscVInstructionFormat::CL,
+            2,
+            vec![
                 convenience::register(rd + 8, Access::write()),
                 convenience::memory(rs1 + 8, imm_val),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_c_sw(
@@ -163,101 +126,70 @@ impl Rvc {
         imm: u16,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         let imm_val = imm as i64;
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "c.sw".to_string(),
-            operands: format!(
-                "{}, {}({})",
-                self.register_manager.int_register_name(rs2 + 8),
-                convenience::format_immediate(imm_val),
-                self.register_manager.int_register_name(rs1 + 8)
-            ),
-            format: RiscVInstructionFormat::CS,
-            size: 2,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            "c.sw",
+            RiscVInstructionFormat::CS,
+            2,
+            vec![
                 convenience::register(rs2 + 8, Access::read()),
                 convenience::memory(rs1 + 8, imm_val),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_c_lwsp(&self, rd: u8, imm: u16) -> Result<RiscVDecodedInstruction, DisasmError> {
         let imm_val = imm as i64;
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "c.lwsp".to_string(),
-            operands: format!(
-                "{}, {}(sp)",
-                self.register_manager.int_register_name(rd),
-                convenience::format_immediate(imm_val)
-            ),
-            format: RiscVInstructionFormat::CI,
-            size: 2,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            "c.lwsp",
+            RiscVInstructionFormat::CI,
+            2,
+            vec![
                 convenience::register(rd, Access::write()),
                 convenience::memory(2, imm_val),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_c_swsp(&self, rs2: u8, imm: u16) -> Result<RiscVDecodedInstruction, DisasmError> {
         let imm_val = imm as i64;
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "c.swsp".to_string(),
-            operands: format!(
-                "{}, {}(sp)",
-                self.register_manager.int_register_name(rs2),
-                convenience::format_immediate(imm_val)
-            ),
-            format: RiscVInstructionFormat::CSS,
-            size: 2,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            "c.swsp",
+            RiscVInstructionFormat::CSS,
+            2,
+            vec![
                 convenience::register(rs2, Access::read()),
                 convenience::memory(2, imm_val),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_c_addi(&self, rd: u8, imm: i64) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "c.addi".to_string(),
-            operands: format!(
-                "{}, {}",
-                self.register_manager.int_register_name(rd),
-                convenience::format_immediate(imm)
-            ),
-            format: RiscVInstructionFormat::CI,
-            size: 2,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            "c.addi",
+            RiscVInstructionFormat::CI,
+            2,
+            vec![
                 convenience::register(rd, Access::read_write()),
                 convenience::immediate(imm),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_c_li(&self, rd: u8, imm: i64) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "c.li".to_string(),
-            operands: format!(
-                "{}, {}",
-                self.register_manager.int_register_name(rd),
-                convenience::format_immediate(imm)
-            ),
-            format: RiscVInstructionFormat::CI,
-            size: 2,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            "c.li",
+            RiscVInstructionFormat::CI,
+            2,
+            vec![
                 convenience::register(rd, Access::write()),
                 convenience::immediate(imm),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_c_alu(
@@ -282,127 +214,91 @@ impl Rvc {
             }
         };
 
-        Ok(RiscVDecodedInstruction {
-            mnemonic: mnemonic.to_string(),
-            operands: format!(
-                "{}, {}",
-                self.register_manager.int_register_name(rd + 8),
-                self.register_manager.int_register_name(rs2 + 8)
-            ),
-            format: RiscVInstructionFormat::CA,
-            size: 2,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            mnemonic,
+            RiscVInstructionFormat::CA,
+            2,
+            vec![
                 convenience::register(rd + 8, Access::read_write()),
                 convenience::register(rs2 + 8, Access::read()),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_c_j(&self, imm: i64) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "c.j".to_string(),
-            operands: convenience::format_immediate(imm),
-            format: RiscVInstructionFormat::CJ,
-            size: 2,
-            operands_detail: vec![convenience::immediate(imm)],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        Ok(RiscVDecodedInstruction::new(
+            "c.j",
+            RiscVInstructionFormat::CJ,
+            2,
+            vec![convenience::immediate(imm)],
+        ))
     }
 
     fn decode_c_jal(&self, imm: i64) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "c.jal".to_string(),
-            operands: convenience::format_immediate(imm),
-            format: RiscVInstructionFormat::CJ,
-            size: 2,
-            operands_detail: vec![convenience::immediate(imm)],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        Ok(RiscVDecodedInstruction::new(
+            "c.jal",
+            RiscVInstructionFormat::CJ,
+            2,
+            vec![convenience::immediate(imm)],
+        ))
     }
 
     fn decode_c_beqz(&self, rs1: u8, imm: i64) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "c.beqz".to_string(),
-            operands: format!(
-                "{}, {}",
-                self.register_manager.int_register_name(rs1 + 8),
-                convenience::format_immediate(imm)
-            ),
-            format: RiscVInstructionFormat::CB,
-            size: 2,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            "c.beqz",
+            RiscVInstructionFormat::CB,
+            2,
+            vec![
                 convenience::register(rs1 + 8, Access::read()),
                 convenience::immediate(imm),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_c_bnez(&self, rs1: u8, imm: i64) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "c.bnez".to_string(),
-            operands: format!(
-                "{}, {}",
-                self.register_manager.int_register_name(rs1 + 8),
-                convenience::format_immediate(imm)
-            ),
-            format: RiscVInstructionFormat::CB,
-            size: 2,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            "c.bnez",
+            RiscVInstructionFormat::CB,
+            2,
+            vec![
                 convenience::register(rs1 + 8, Access::read()),
                 convenience::immediate(imm),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_c_slli(&self, rd: u8, imm: i64) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "c.slli".to_string(),
-            operands: format!(
-                "{}, {}",
-                self.register_manager.int_register_name(rd),
-                convenience::format_immediate(imm)
-            ),
-            format: RiscVInstructionFormat::CI,
-            size: 2,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            "c.slli",
+            RiscVInstructionFormat::CI,
+            2,
+            vec![
                 convenience::register(rd, Access::read_write()),
                 convenience::immediate(imm),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_c_unimp(&self) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "c.unimp".to_string(),
-            operands: String::new(),
-            format: RiscVInstructionFormat::CI,
-            size: 2,
-            operands_detail: vec![],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        Ok(RiscVDecodedInstruction::new(
+            "c.unimp",
+            RiscVInstructionFormat::CI,
+            2,
+            vec![],
+        ))
     }
 
     fn decode_c_unknown(&self, instruction: u16) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "c.unknown".to_string(),
-            operands: format!("0x{instruction:04x}"),
-            format: RiscVInstructionFormat::CI,
-            size: 2,
-            operands_detail: vec![],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        Ok(RiscVDecodedInstruction::new(
+            "c.unknown",
+            RiscVInstructionFormat::CI,
+            2,
+            vec![convenience::immediate(instruction as i64)],
+        ))
     }
 }
 

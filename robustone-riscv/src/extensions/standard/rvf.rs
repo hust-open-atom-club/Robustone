@@ -6,10 +6,7 @@
 use super::Standard;
 use crate::decoder::{RiscVDecodedInstruction, Xlen};
 use crate::extensions::{Extensions, InstructionExtension};
-use crate::shared::{
-    operands::convenience,
-    registers::{RegisterManager, RegisterNameProvider},
-};
+use crate::shared::{operands::convenience, registers::RegisterManager};
 use crate::types::*;
 use robustone_core::types::error::DisasmError;
 
@@ -53,23 +50,16 @@ impl Rvf {
         rs1: u8,
         imm: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "flw".to_string(),
-            operands: format!(
-                "{}, {}({})",
-                self.register_manager.fp_register_name(rd),
-                convenience::format_immediate(imm),
-                self.register_manager.int_register_name(rs1)
-            ),
-            format: RiscVInstructionFormat::I,
-            size: 4,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            "flw",
+            RiscVInstructionFormat::I,
+            4,
+            vec![
                 self.reg_operand(rd, Access::write(), true),
                 convenience::memory(rs1, imm),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_store_fp(
@@ -78,23 +68,16 @@ impl Rvf {
         rs1: u8,
         imm: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: "fsw".to_string(),
-            operands: format!(
-                "{}, {}({})",
-                self.register_manager.fp_register_name(rs2),
-                convenience::format_immediate(imm),
-                self.register_manager.int_register_name(rs1)
-            ),
-            format: RiscVInstructionFormat::S,
-            size: 4,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            "fsw",
+            RiscVInstructionFormat::S,
+            4,
+            vec![
                 self.reg_operand(rs2, Access::read(), true),
                 convenience::memory(rs1, imm),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_fp_r_type(
@@ -104,24 +87,17 @@ impl Rvf {
         rs1: u8,
         rs2: u8,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: mnemonic.to_string(),
-            operands: format!(
-                "{}, {}, {}",
-                self.register_manager.fp_register_name(rd),
-                self.register_manager.fp_register_name(rs1),
-                self.register_manager.fp_register_name(rs2)
-            ),
-            format: RiscVInstructionFormat::R,
-            size: 4,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            mnemonic,
+            RiscVInstructionFormat::R,
+            4,
+            vec![
                 self.reg_operand(rd, Access::write(), true),
                 self.reg_operand(rs1, Access::read(), true),
                 self.reg_operand(rs2, Access::read(), true),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_fp_r_type_with_rm(
@@ -132,26 +108,18 @@ impl Rvf {
         rs2: u8,
         rm: u8,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: mnemonic.to_string(),
-            operands: format!(
-                "{}, {}, {}, {}",
-                self.register_manager.fp_register_name(rd),
-                self.register_manager.fp_register_name(rs1),
-                self.register_manager.fp_register_name(rs2),
-                rounding_mode_name(rm),
-            ),
-            format: RiscVInstructionFormat::R,
-            size: 4,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            mnemonic,
+            RiscVInstructionFormat::R,
+            4,
+            vec![
                 self.reg_operand(rd, Access::write(), true),
                 self.reg_operand(rs1, Access::read(), true),
                 self.reg_operand(rs2, Access::read(), true),
                 convenience::rounding_mode(rm),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_fp_r4_type(
@@ -162,26 +130,18 @@ impl Rvf {
         rs2: u8,
         rs3: u8,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: mnemonic.to_string(),
-            operands: format!(
-                "{}, {}, {}, {}",
-                self.register_manager.fp_register_name(rd),
-                self.register_manager.fp_register_name(rs1),
-                self.register_manager.fp_register_name(rs2),
-                self.register_manager.fp_register_name(rs3)
-            ),
-            format: RiscVInstructionFormat::R4,
-            size: 4,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            mnemonic,
+            RiscVInstructionFormat::R4,
+            4,
+            vec![
                 self.reg_operand(rd, Access::write(), true),
                 self.reg_operand(rs1, Access::read(), true),
                 self.reg_operand(rs2, Access::read(), true),
                 self.reg_operand(rs3, Access::read(), true),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_fp_int_type(
@@ -193,29 +153,16 @@ impl Rvf {
         rd_is_fp: bool,
         rs1_is_fp: bool,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let rd_name = if rd_is_fp {
-            self.register_manager.fp_register_name(rd)
-        } else {
-            self.register_manager.int_register_name(rd)
-        };
-        let rs1_name = if rs1_is_fp {
-            self.register_manager.fp_register_name(rs1)
-        } else {
-            self.register_manager.int_register_name(rs1)
-        };
-
-        Ok(RiscVDecodedInstruction {
-            mnemonic: mnemonic.to_string(),
-            operands: format!("{rd_name}, {rs1_name}"),
-            format: RiscVInstructionFormat::R,
-            size: 4,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            mnemonic,
+            RiscVInstructionFormat::R,
+            4,
+            vec![
                 self.reg_operand(rd, Access::write(), rd_is_fp),
                 self.reg_operand(rs1, Access::read(), rs1_is_fp),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_fp_int_type_with_rm(
@@ -227,30 +174,17 @@ impl Rvf {
         rs1_is_fp: bool,
         rm: u8,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let rd_name = if rd_is_fp {
-            self.register_manager.fp_register_name(rd)
-        } else {
-            self.register_manager.int_register_name(rd)
-        };
-        let rs1_name = if rs1_is_fp {
-            self.register_manager.fp_register_name(rs1)
-        } else {
-            self.register_manager.int_register_name(rs1)
-        };
-
-        Ok(RiscVDecodedInstruction {
-            mnemonic: mnemonic.to_string(),
-            operands: format!("{rd_name}, {rs1_name}, {}", rounding_mode_name(rm)),
-            format: RiscVInstructionFormat::R,
-            size: 4,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            mnemonic,
+            RiscVInstructionFormat::R,
+            4,
+            vec![
                 self.reg_operand(rd, Access::write(), rd_is_fp),
                 self.reg_operand(rs1, Access::read(), rs1_is_fp),
                 convenience::rounding_mode(rm),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_fp_unary_type_with_rm(
@@ -260,24 +194,17 @@ impl Rvf {
         rs1: u8,
         rm: u8,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: mnemonic.to_string(),
-            operands: format!(
-                "{}, {}, {}",
-                self.register_manager.fp_register_name(rd),
-                self.register_manager.fp_register_name(rs1),
-                rounding_mode_name(rm),
-            ),
-            format: RiscVInstructionFormat::R,
-            size: 4,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            mnemonic,
+            RiscVInstructionFormat::R,
+            4,
+            vec![
                 self.reg_operand(rd, Access::write(), true),
                 self.reg_operand(rs1, Access::read(), true),
                 convenience::rounding_mode(rm),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_fp_compare_type(
@@ -287,24 +214,17 @@ impl Rvf {
         rs1: u8,
         rs2: u8,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: mnemonic.to_string(),
-            operands: format!(
-                "{}, {}, {}",
-                self.register_manager.int_register_name(rd),
-                self.register_manager.fp_register_name(rs1),
-                self.register_manager.fp_register_name(rs2)
-            ),
-            format: RiscVInstructionFormat::R,
-            size: 4,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            mnemonic,
+            RiscVInstructionFormat::R,
+            4,
+            vec![
                 self.reg_operand(rd, Access::write(), false),
                 self.reg_operand(rs1, Access::read(), true),
                 self.reg_operand(rs2, Access::read(), true),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 }
 
@@ -536,17 +456,5 @@ impl InstructionExtension for Rvf {
 impl Default for Rvf {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-fn rounding_mode_name(rm: u8) -> &'static str {
-    match rm {
-        0b000 => "rne",
-        0b001 => "rtz",
-        0b010 => "rdn",
-        0b011 => "rup",
-        0b100 => "rmm",
-        0b111 => "dyn",
-        _ => "invalid",
     }
 }

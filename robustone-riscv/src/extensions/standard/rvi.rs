@@ -8,10 +8,8 @@ use super::Standard;
 use crate::decoder::{RiscVDecodedInstruction, Xlen};
 use crate::extensions::{Extensions, InstructionExtension};
 use crate::shared::{
-    InstructionFormatter, OperandFactory, RegisterNameProvider,
-    encoding::ShamtExtractor,
-    formatting::DefaultInstructionFormatter,
-    operands::{DefaultOperandFactory, OperandBuilder, OperandFormatter},
+    InstructionFormatter, OperandFactory, encoding::ShamtExtractor,
+    formatting::DefaultInstructionFormatter, operands::DefaultOperandFactory,
     registers::RegisterManager,
 };
 use crate::types::*;
@@ -22,22 +20,15 @@ pub struct Rvi {
     operand_factory: DefaultOperandFactory,
     formatter: DefaultInstructionFormatter,
     register_manager: RegisterManager,
-    operand_builder: OperandBuilder,
 }
 
 impl Rvi {
     /// Create a new RV32I/RV64I extension instance.
     pub fn new() -> Self {
-        Self::new_with_xlen(Xlen::X32)
-    }
-
-    /// Create a new RV32I/RV64I extension instance with XLEN.
-    pub fn new_with_xlen(xlen: Xlen) -> Self {
         Self {
-            operand_factory: DefaultOperandFactory::with_xlen(xlen),
-            formatter: DefaultInstructionFormatter::with_xlen(xlen),
+            operand_factory: DefaultOperandFactory::new(),
+            formatter: DefaultInstructionFormatter::new(),
             register_manager: RegisterManager::new(),
-            operand_builder: OperandBuilder::with_xlen(xlen),
         }
     }
 
@@ -113,18 +104,15 @@ impl Rvi {
         rd: u8,
         imm: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let operands = self.operand_builder.format_u_type(mnemonic, rd, imm);
-        let operands_detail = vec![
-            self.operand_factory
-                .make_register_operand(rd, Access::write()),
-            self.operand_factory.make_immediate_operand(imm >> 12),
-        ];
         Ok(self.formatter.create_decoded_instruction(
             mnemonic,
-            operands,
             RiscVInstructionFormat::U,
             4,
-            operands_detail,
+            vec![
+                self.operand_factory
+                    .make_register_operand(rd, Access::write()),
+                self.operand_factory.make_immediate_operand(imm >> 12),
+            ],
         ))
     }
 
@@ -133,27 +121,17 @@ impl Rvi {
         mnemonic: &str,
         rd: u8,
         imm: i64,
-        xlen: Xlen,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let operands = self.format_jump_operands(mnemonic, rd, imm, xlen);
-        let operands_detail = vec![
-            self.operand_factory
-                .make_register_operand(rd, Access::read_write()),
-            self.operand_factory.make_immediate_operand(imm),
-        ];
-        let instruction = self.formatter.create_decoded_instruction(
+        Ok(self.formatter.create_decoded_instruction(
             mnemonic,
-            operands,
             RiscVInstructionFormat::J,
             4,
-            operands_detail,
-        );
-
-        if rd == 0 || (mnemonic == "jal" && rd == 1) {
-            Ok(instruction.with_canonical_alias("jal", vec![0]))
-        } else {
-            Ok(instruction)
-        }
+            vec![
+                self.operand_factory
+                    .make_register_operand(rd, Access::read_write()),
+                self.operand_factory.make_immediate_operand(imm),
+            ],
+        ))
     }
 
     fn decode_i_type(
@@ -163,24 +141,21 @@ impl Rvi {
         rs1: u8,
         imm: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let (mnemonic, operands) = self.format_i_operands(mnemonic, rd, rs1, imm);
-        let operands_detail = vec![
-            self.operand_factory
-                .make_register_operand(rd, Access::write()),
-            self.operand_factory
-                .make_register_operand(rs1, Access::read()),
-            self.operand_factory.make_immediate_operand(imm),
-        ];
         let instruction = self.formatter.create_decoded_instruction(
             mnemonic,
-            operands,
             RiscVInstructionFormat::I,
             4,
-            operands_detail,
+            vec![
+                self.operand_factory
+                    .make_register_operand(rd, Access::write()),
+                self.operand_factory
+                    .make_register_operand(rs1, Access::read()),
+                self.operand_factory.make_immediate_operand(imm),
+            ],
         );
 
-        if mnemonic == "li" {
-            Ok(instruction.with_canonical_alias("addi", vec![1]))
+        if mnemonic == "addi" && rs1 == 0 && rd != 0 {
+            Ok(instruction.with_capstone_alias("li", vec![1]))
         } else {
             Ok(instruction)
         }
@@ -193,21 +168,18 @@ impl Rvi {
         rs1: u8,
         rs2: u8,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let operands = self.operand_builder.format_r_type(mnemonic, rd, rs1, rs2);
-        let operands_detail = vec![
-            self.operand_factory
-                .make_register_operand(rd, Access::write()),
-            self.operand_factory
-                .make_register_operand(rs1, Access::read()),
-            self.operand_factory
-                .make_register_operand(rs2, Access::read()),
-        ];
         Ok(self.formatter.create_decoded_instruction(
             mnemonic,
-            operands,
             RiscVInstructionFormat::R,
             4,
-            operands_detail,
+            vec![
+                self.operand_factory
+                    .make_register_operand(rd, Access::write()),
+                self.operand_factory
+                    .make_register_operand(rs1, Access::read()),
+                self.operand_factory
+                    .make_register_operand(rs2, Access::read()),
+            ],
         ))
     }
 
@@ -218,18 +190,15 @@ impl Rvi {
         rs1: u8,
         imm: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let operands = self.operand_builder.format_s_type(mnemonic, rs2, rs1, imm);
-        let operands_detail = vec![
-            self.operand_factory
-                .make_register_operand(rs2, Access::read()),
-            self.operand_factory.make_memory_operand(rs1, imm),
-        ];
         Ok(self.formatter.create_decoded_instruction(
             mnemonic,
-            operands,
             RiscVInstructionFormat::S,
             4,
-            operands_detail,
+            vec![
+                self.operand_factory
+                    .make_register_operand(rs2, Access::read()),
+                self.operand_factory.make_memory_operand(rs1, imm),
+            ],
         ))
     }
 
@@ -239,111 +208,24 @@ impl Rvi {
         rs1: u8,
         rs2: u8,
         imm: i64,
-        xlen: Xlen,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let operands = self.format_branch_operands(mnemonic, rs1, rs2, imm, xlen);
-        let operands_detail = vec![
-            self.operand_factory
-                .make_register_operand(rs1, Access::read()),
-            self.operand_factory
-                .make_register_operand(rs2, Access::read()),
-            self.operand_factory.make_immediate_operand(imm),
-        ];
         let instruction = self.formatter.create_decoded_instruction(
             mnemonic,
-            operands,
             RiscVInstructionFormat::B,
             4,
-            operands_detail,
+            vec![
+                self.operand_factory
+                    .make_register_operand(rs1, Access::read()),
+                self.operand_factory
+                    .make_register_operand(rs2, Access::read()),
+                self.operand_factory.make_immediate_operand(imm),
+            ],
         );
 
         match mnemonic {
-            "beqz" => Ok(instruction.with_canonical_alias("beq", vec![1])),
-            "bnez" => Ok(instruction.with_canonical_alias("bne", vec![1])),
+            "beq" if rs2 == 0 => Ok(instruction.with_capstone_alias("beqz", vec![1])),
+            "bne" if rs2 == 0 => Ok(instruction.with_capstone_alias("bnez", vec![1])),
             _ => Ok(instruction),
-        }
-    }
-
-    fn format_i_operands<'a>(
-        &self,
-        mnemonic: &'a str,
-        rd: u8,
-        rs1: u8,
-        imm: i64,
-    ) -> (&'a str, String) {
-        if mnemonic == "addi" && rs1 == 0 && rd != 0 {
-            return (
-                "li",
-                format!(
-                    "{}, {}",
-                    self.register_manager.int_register_name(rd),
-                    self.operand_factory.format_immediate(imm)
-                ),
-            );
-        }
-
-        (
-            mnemonic,
-            self.operand_builder.format_i_type(mnemonic, rd, rs1, imm),
-        )
-    }
-
-    fn format_jump_operands(&self, mnemonic: &str, rd: u8, imm: i64, xlen: Xlen) -> String {
-        let imm_str = self.format_pc_relative_immediate(imm, xlen);
-        match (mnemonic, rd) {
-            ("j", _) => imm_str,
-            ("jal", 1) => imm_str,
-            _ => format!(
-                "{}, {}",
-                self.register_manager.int_register_name(rd),
-                imm_str
-            ),
-        }
-    }
-
-    fn format_jalr_operands(&self, rd: u8, rs1: u8, imm: i64) -> String {
-        let base = self.register_manager.int_register_name(rs1);
-        let target = if imm == 0 {
-            format!("({base})")
-        } else {
-            format!("{}({base})", self.operand_factory.format_immediate(imm))
-        };
-
-        if rd == 1 {
-            target
-        } else {
-            format!("{}, {target}", self.register_manager.int_register_name(rd))
-        }
-    }
-
-    fn format_branch_operands(
-        &self,
-        mnemonic: &str,
-        rs1: u8,
-        rs2: u8,
-        imm: i64,
-        xlen: Xlen,
-    ) -> String {
-        let offset = self.format_pc_relative_immediate(imm, xlen);
-        if (mnemonic == "beqz" || mnemonic == "bnez") && rs2 == 0 {
-            format!("{}, {offset}", self.register_manager.int_register_name(rs1))
-        } else {
-            format!(
-                "{}, {}, {offset}",
-                self.register_manager.int_register_name(rs1),
-                self.register_manager.int_register_name(rs2)
-            )
-        }
-    }
-
-    fn format_pc_relative_immediate(&self, imm: i64, xlen: Xlen) -> String {
-        if imm >= 0 {
-            return self.operand_factory.format_immediate(imm);
-        }
-
-        match xlen {
-            Xlen::X32 => format!("0x{:x}", imm as u32),
-            Xlen::X64 => format!("0x{:x}", imm as u64),
         }
     }
 
@@ -360,10 +242,14 @@ impl Rvi {
         &self,
         rd: u8,
         imm_j: i64,
-        xlen: Xlen,
+        _xlen: Xlen,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let mnemonic = if rd == 0 { "j" } else { "jal" };
-        self.decode_j_type(mnemonic, rd, imm_j, xlen)
+        let instruction = self.decode_j_type("jal", rd, imm_j)?;
+        match rd {
+            0 => Ok(instruction.with_capstone_alias("j", vec![0])),
+            1 => Ok(instruction.with_hidden_operands(vec![0])),
+            _ => Ok(instruction),
+        }
     }
 
     fn decode_jalr(
@@ -372,24 +258,21 @@ impl Rvi {
         rs1: u8,
         imm_i: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let operands = self.format_jalr_operands(rd, rs1, imm_i);
-        let operands_detail = vec![
-            self.operand_factory
-                .make_register_operand(rd, Access::write()),
-            self.operand_factory
-                .make_register_operand(rs1, Access::read()),
-            self.operand_factory.make_immediate_operand(imm_i),
-        ];
         let instruction = self.formatter.create_decoded_instruction(
             "jalr",
-            operands,
             RiscVInstructionFormat::I,
             4,
-            operands_detail,
+            vec![
+                self.operand_factory
+                    .make_register_operand(rd, Access::write()),
+                self.operand_factory
+                    .make_register_operand(rs1, Access::read()),
+                self.operand_factory.make_immediate_operand(imm_i),
+            ],
         );
 
         if rd == 1 {
-            Ok(instruction.with_canonical_alias("jalr", vec![0]))
+            Ok(instruction.with_hidden_operands(vec![0]))
         } else {
             Ok(instruction)
         }
@@ -401,21 +284,15 @@ impl Rvi {
         rs1: u8,
         rs2: u8,
         imm_b: i64,
-        xlen: Xlen,
+        _xlen: Xlen,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
         match funct3 {
-            Self::FUNCT3_BRANCH_BEQ => {
-                let mnemonic = if rs2 == 0 { "beqz" } else { "beq" };
-                self.decode_b_type(mnemonic, rs1, rs2, imm_b, xlen)
-            }
-            Self::FUNCT3_BRANCH_BNE => {
-                let mnemonic = if rs2 == 0 { "bnez" } else { "bne" };
-                self.decode_b_type(mnemonic, rs1, rs2, imm_b, xlen)
-            }
-            Self::FUNCT3_BRANCH_BLT => self.decode_b_type("blt", rs1, rs2, imm_b, xlen),
-            Self::FUNCT3_BRANCH_BGE => self.decode_b_type("bge", rs1, rs2, imm_b, xlen),
-            Self::FUNCT3_BRANCH_BLTU => self.decode_b_type("bltu", rs1, rs2, imm_b, xlen),
-            Self::FUNCT3_BRANCH_BGEU => self.decode_b_type("bgeu", rs1, rs2, imm_b, xlen),
+            Self::FUNCT3_BRANCH_BEQ => self.decode_b_type("beq", rs1, rs2, imm_b),
+            Self::FUNCT3_BRANCH_BNE => self.decode_b_type("bne", rs1, rs2, imm_b),
+            Self::FUNCT3_BRANCH_BLT => self.decode_b_type("blt", rs1, rs2, imm_b),
+            Self::FUNCT3_BRANCH_BGE => self.decode_b_type("bge", rs1, rs2, imm_b),
+            Self::FUNCT3_BRANCH_BLTU => self.decode_b_type("bltu", rs1, rs2, imm_b),
+            Self::FUNCT3_BRANCH_BGEU => self.decode_b_type("bgeu", rs1, rs2, imm_b),
             _ => Err(DisasmError::DecodingError(
                 "Invalid branch funct3".to_string(),
             )),
@@ -445,20 +322,15 @@ impl Rvi {
             }
         };
 
-        let operands = self
-            .operand_builder
-            .format_load_type(mnemonic, rd, rs1, imm_i, false);
-        let operands_detail = vec![
-            self.operand_factory
-                .make_register_operand(rd, Access::write()),
-            self.operand_factory.make_memory_operand(rs1, imm_i),
-        ];
         Ok(self.formatter.create_decoded_instruction(
             mnemonic,
-            operands,
             RiscVInstructionFormat::I,
             4,
-            operands_detail,
+            vec![
+                self.operand_factory
+                    .make_register_operand(rd, Access::write()),
+                self.operand_factory.make_memory_operand(rs1, imm_i),
+            ],
         ))
     }
 
@@ -692,60 +564,40 @@ impl Rvi {
         rs1: u8,
         csr: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let csr_str = self.operand_factory.format_csr(csr);
-
         // Handle pseudo-instructions: csrr, csrc, csrw
         // csrrs with rs1=0 → csrr
         // csrrc with rs1=0 → csrc
         // csrrw with rs1=0 → csrw
-        let (final_mnemonic, canonical_mnemonic, hidden_operands, operands, operands_detail) =
-            if rs1 == 0 {
-                let pseudo_mnemonic = match mnemonic {
-                    "csrrs" => "csrr",
-                    "csrrc" => "csrc",
-                    "csrrw" => "csrw",
-                    _ => mnemonic,
-                };
-                let ops = format!(
-                    "{}, {}",
-                    self.register_manager.int_register_name(rd),
-                    csr_str
-                );
-                let ops_detail = vec![
-                    self.operand_factory
-                        .make_register_operand(rd, Access::write()),
-                    self.operand_factory.make_immediate_operand(csr),
-                    self.operand_factory
-                        .make_register_operand(rs1, Access::read()),
-                ];
-                (pseudo_mnemonic, Some(mnemonic), vec![2], ops, ops_detail)
-            } else {
-                let ops = format!(
-                    "{}, {}, {}",
-                    self.register_manager.int_register_name(rd),
-                    csr_str,
-                    self.register_manager.int_register_name(rs1)
-                );
-                let ops_detail = vec![
-                    self.operand_factory
-                        .make_register_operand(rd, Access::write()),
-                    self.operand_factory.make_immediate_operand(csr),
-                    self.operand_factory
-                        .make_register_operand(rs1, Access::read()),
-                ];
-                (mnemonic, None, Vec::new(), ops, ops_detail)
-            };
+        let _ = &self.register_manager;
+        let (capstone_alias, hidden_operands) = if rs1 == 0 {
+            (
+                match mnemonic {
+                    "csrrs" => Some("csrr"),
+                    "csrrc" => Some("csrc"),
+                    "csrrw" => Some("csrw"),
+                    _ => None,
+                },
+                vec![2],
+            )
+        } else {
+            (None, Vec::new())
+        };
 
         let instruction = self.formatter.create_decoded_instruction(
-            final_mnemonic,
-            operands,
+            mnemonic,
             RiscVInstructionFormat::I,
             4,
-            operands_detail,
+            vec![
+                self.operand_factory
+                    .make_register_operand(rd, Access::write()),
+                self.operand_factory.make_immediate_operand(csr),
+                self.operand_factory
+                    .make_register_operand(rs1, Access::read()),
+            ],
         );
 
-        if let Some(canonical_mnemonic) = canonical_mnemonic {
-            Ok(instruction.with_canonical_alias(canonical_mnemonic, hidden_operands))
+        if let Some(capstone_alias) = capstone_alias {
+            Ok(instruction.with_capstone_alias(capstone_alias, hidden_operands))
         } else {
             Ok(instruction)
         }
@@ -758,25 +610,17 @@ impl Rvi {
         zimm: i64,
         csr: i64,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let csr_str = self.operand_factory.format_csr(csr);
-        let operands = format!(
-            "{}, {}, {}",
-            self.register_manager.int_register_name(rd),
-            csr_str,
-            zimm
-        );
-        let operands_detail = vec![
-            self.operand_factory
-                .make_register_operand(rd, Access::write()),
-            self.operand_factory.make_immediate_operand(csr),
-            self.operand_factory.make_immediate_operand(zimm),
-        ];
+        let _ = &self.register_manager;
         Ok(self.formatter.create_decoded_instruction(
             mnemonic,
-            operands,
             RiscVInstructionFormat::I,
             4,
-            operands_detail,
+            vec![
+                self.operand_factory
+                    .make_register_operand(rd, Access::write()),
+                self.operand_factory.make_immediate_operand(csr),
+                self.operand_factory.make_immediate_operand(zimm),
+            ],
         ))
     }
 }
@@ -869,7 +713,7 @@ impl Default for Rvi {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::extensions::thead::THead;
+    use crate::riscv::extensions::thead::THead;
     #[test]
     fn test_rvi_extension_creation() {
         let extension = Rvi::new();

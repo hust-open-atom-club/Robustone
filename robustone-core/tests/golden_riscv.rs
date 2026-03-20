@@ -86,3 +86,58 @@ fn test_addi_li_golden_fixture() {
 fn test_fadd_s_golden_fixture() {
     assert_case(load_case("fadd_s.json"));
 }
+
+#[test]
+fn test_ir_rendering_covers_control_flow_and_atomic_variants() {
+    let dispatcher = ArchitectureDispatcher::new();
+    let cases = [
+        (
+            "jalr_hidden_rd",
+            "riscv32",
+            vec![0xe7, 0x00, 0x01, 0x00],
+            ("jalr".to_string(), "0(sp)".to_string()),
+            ("jalr".to_string(), "x1, 0(x2)".to_string()),
+        ),
+        (
+            "lr_w",
+            "riscv32",
+            vec![0xaf, 0x20, 0x01, 0x10],
+            ("lr.w".to_string(), "ra, (sp)".to_string()),
+            ("lr.w".to_string(), "x1, (x2)".to_string()),
+        ),
+        (
+            "sc_w",
+            "riscv32",
+            vec![0xaf, 0x20, 0x31, 0x18],
+            ("sc.w".to_string(), "ra, gp, (sp)".to_string()),
+            ("sc.w".to_string(), "x1, x3, (x2)".to_string()),
+        ),
+        (
+            "amoadd_w",
+            "riscv32",
+            vec![0xaf, 0x20, 0x31, 0x00],
+            ("amoadd.w".to_string(), "ra, gp, (sp)".to_string()),
+            ("amoadd.w".to_string(), "x1, x3, (x2)".to_string()),
+        ),
+    ];
+
+    for (_name, arch, bytes, expected_capstone, expected_canonical) in cases {
+        let (decoded, _) = dispatcher
+            .decode_instruction(&bytes, arch, 0)
+            .expect("decode should succeed");
+        assert_eq!(decoded.render_capstone_text_parts(), expected_capstone);
+        assert_eq!(decoded.render_canonical_text_parts(), expected_canonical);
+
+        let (instruction, _) = dispatcher
+            .disassemble_bytes(&bytes, arch, 0)
+            .expect("compatibility disassembly should succeed");
+        assert_eq!(
+            instruction.rendered_text_parts(robustone_core::ir::TextRenderProfile::Capstone),
+            expected_capstone
+        );
+        assert_eq!(
+            instruction.rendered_text_parts(robustone_core::ir::TextRenderProfile::Canonical),
+            expected_canonical
+        );
+    }
+}
