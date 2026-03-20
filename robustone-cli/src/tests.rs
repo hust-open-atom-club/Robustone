@@ -88,6 +88,19 @@ fn test_real_detail_output_uses_instruction_addresses() {
 }
 
 #[test]
+fn test_config_accepts_odd_length_hex_addresses() {
+    let args = vec!["robustone", "riscv32", "93001000", "0x1"];
+    let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
+    let config = DisasmConfig::config_from_cli(&cli).expect("configuration should be valid");
+    assert_eq!(config.start_address, 0x1);
+
+    let args = vec!["robustone", "riscv32", "93001000", "0x100"];
+    let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
+    let config = DisasmConfig::config_from_cli(&cli).expect("configuration should be valid");
+    assert_eq!(config.start_address, 0x100);
+}
+
+#[test]
 fn test_architecture_helpers_still_work() {
     assert!(Architecture::parse("riscv32").is_ok());
     assert!(Architecture::parse("x86").is_ok());
