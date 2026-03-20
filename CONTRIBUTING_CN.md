@@ -16,7 +16,7 @@
 
 在开始贡献之前，请确保已安装以下工具：
 
-- [Rust](https://www.rust-lang.org/tools/install) 1.75 或更新版本（2021 edition）
+- [Rust](https://www.rust-lang.org/tools/install) 1.85 或更新版本（支持 2024 edition）
 - [Python](https://www.python.org/) 3.8 或更新版本
 - `git` 和基本构建工具
 - `make`（用于执行 Makefile 命令）
@@ -125,7 +125,7 @@ make test
 1. 克隆 Capstone（如果不存在）
 2. 构建 Capstone 比较工具
 3. 运行与 Capstone 的一致性测试
-4. 运行 Rust 单元测试
+4. 运行 Rust workspace 测试
 
 ### 快速测试
 

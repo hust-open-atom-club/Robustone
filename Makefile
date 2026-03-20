@@ -31,7 +31,7 @@ virt-env:
 	$(VENV_PIP) install -r requirements.txt
 
 format: virt-env
-	$(CARGO) fmt --manifest-path $(MANIFEST)
+	$(CARGO) fmt --all
 	$(VENV_BLACK) test
 
 build:
@@ -43,7 +43,7 @@ run:
 check: virt-env
 	$(CARGO) fmt --all -- --check
 	$(CARGO) clippy --workspace --all-features -- -D warnings
-	$(VENV_PYLINT) $$(find . -type f -name "*.py")
+	$(VENV_PYLINT) $$(find test/ -type f -name "*.py")
 	$(VENV_BLACK) --check test/
 
 check-clippy: virt-env
@@ -70,8 +70,8 @@ test:
 	@bash $(CAPSTONE_BUILD_SCRIPT) $(CAPSTONE_DIR)
 	@echo "Running parity tests with new framework..."
 	@cd test && $(PYTHON) run_tests.py --all
-	@echo "Running Rust unit tests..."
-	$(CARGO) test --manifest-path $(MANIFEST)
+	@echo "Running Rust workspace tests..."
+	$(CARGO) test --workspace --all-features
 
 test-parity:
 	@echo "Running parity tests only..."
@@ -94,14 +94,14 @@ clean-help:
 	@echo ""
 	@echo "Build & Check:"
 	@echo "  build        - Build the CLI crate in debug mode"
-	@echo "  check        - Run repository checks (fmt, clippy, black, pylint)"
+	@echo "  check        - Run repository checks on workspace code and test harness scripts"
 	@echo "  check-clippy - Run Rust clippy lints (with -D warnings)"
 	@echo "  check-fmt    - Check Rust and Python formatting"
 	@echo "  check-all    - Run the full repository check suite"
 	@echo "  format       - Format code with rustfmt"
 	@echo ""
 	@echo "Testing:"
-	@echo "  test         - Run full test suite (parity + unit tests)"
+	@echo "  test         - Run full test suite (parity + workspace tests)"
 	@echo "  test-parity  - Run parity tests only"
 	@echo "  test-validate - Validate test configurations"
 	@echo "  test-list    - List available test architectures"

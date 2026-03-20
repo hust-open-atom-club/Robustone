@@ -18,7 +18,7 @@ Current repository status:
 
 ## Requirements
 
-- [Rust](https://www.rust-lang.org/tools/install) 1.75 or newer (edition 2021).
+- [Rust](https://www.rust-lang.org/tools/install) 1.85 or newer (edition 2024 support).
 - [Python](https://www.python.org/) 3.8 or newer for parity tests.
 - `git` and basic build tools for fetching the Capstone reference implementation.
 
@@ -29,6 +29,8 @@ robustone/         # Metadata crate including both library and binary
 robustone-core/    # Architecture-specific decoding and formatting (Rust port of Capstone)
 robustone-cli/     # Command-line parsing, input validation, and presentation logic
 docs/              # Roadmap, support matrix, and project documentation
+tests/             # Golden/property/differential test assets
+fuzz/              # Fuzz targets for decoder and JSON formatting smoke runs
 Makefile           # Repository entrypoints for build, check, run, and test
 test/
 	architectures/ # Parity-test configs and curated instruction corpora
@@ -45,14 +47,14 @@ Clone the repository (including the submodules, if any) and install the toolchai
 | Target        | Description |
 | ------------- | ----------- |
 | `make build`  | Compile the crate in debug mode. |
-| `make check`  | Run repository checks (`rustfmt`, `clippy`, `black`, and `pylint`). |
-| `make format` | Format the Rust codebase with `rustfmt`. |
+| `make check`  | Run repository checks on workspace code and test-harness Python (`rustfmt`, `clippy`, `black`, and `pylint`). |
+| `make format` | Format the Rust workspace and the Python parity harness. |
 | `make run`    | Launch the CLI in debug mode (accepts the same arguments as `cargo run`). |
-| `make test`   | Build Capstone (if missing), run parity tests, and execute the Rust unit tests. |
+| `make test`   | Build Capstone (if missing), run parity tests, and execute Rust workspace tests. |
 | `make test-quick` | Run a smaller parity-test slice for faster iteration. |
 | `make help`   | Print the repository command summary. |
 
-The `test` target downloads Capstone into `third_party/capstone` on first use, builds the comparison tool with `test/scripts/build_cstool.sh`, runs `python3 test/run_tests.py --all`, and finally executes `cargo test --manifest-path robustone/Cargo.toml`.
+The `test` target downloads Capstone into `third_party/capstone` on first use, builds the comparison tool with `test/scripts/build_cstool.sh`, runs `python3 test/run_tests.py --all`, and finally executes `cargo test --workspace --all-features`.
 
 ## Running the CLI
 
@@ -93,7 +95,7 @@ This command:
 1. Ensures Capstone is available under `third_party/capstone` (clones the repository if necessary).
 2. Builds Capstone's `cstool` helper using `test/scripts/build_cstool.sh`.
 3. Executes the Python parity harness `python3 test/run_tests.py --all`.
-4. Runs `cargo test --manifest-path robustone/Cargo.toml` for the top-level crate tests.
+4. Runs `cargo test --workspace --all-features` for the Rust workspace tests.
 
 Additional useful verification commands:
 
@@ -104,11 +106,11 @@ cargo test --workspace --all-features
 cargo run --manifest-path robustone/Cargo.toml -- --json riscv32 93001000
 ```
 
-The commands above were verified locally on 2026-03-19.
+The commands above were verified locally on 2026-03-20.
 
 ## CI and Project Docs
 
-- CI workflow: `.github/workflows/ci.yml`
+- CI workflow: `.github/workflows/ci.yml` (`make check`, `cargo test --workspace --all-features`, `make test`, plus scheduled fuzz smoke)
 - Support matrix: [docs/support-matrix.md](docs/support-matrix.md)
 - Roadmap: [docs/roadmap.md](docs/roadmap.md)
 - New ISA checklist: [docs/isa-checklist.md](docs/isa-checklist.md)

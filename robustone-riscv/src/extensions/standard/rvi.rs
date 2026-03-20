@@ -698,42 +698,43 @@ impl Rvi {
         // csrrs with rs1=0 → csrr
         // csrrc with rs1=0 → csrc
         // csrrw with rs1=0 → csrw
-        let (final_mnemonic, canonical_mnemonic, hidden_operands, operands, operands_detail) = if rs1 == 0 {
-            let pseudo_mnemonic = match mnemonic {
-                "csrrs" => "csrr",
-                "csrrc" => "csrc",
-                "csrrw" => "csrw",
-                _ => mnemonic,
+        let (final_mnemonic, canonical_mnemonic, hidden_operands, operands, operands_detail) =
+            if rs1 == 0 {
+                let pseudo_mnemonic = match mnemonic {
+                    "csrrs" => "csrr",
+                    "csrrc" => "csrc",
+                    "csrrw" => "csrw",
+                    _ => mnemonic,
+                };
+                let ops = format!(
+                    "{}, {}",
+                    self.register_manager.int_register_name(rd),
+                    csr_str
+                );
+                let ops_detail = vec![
+                    self.operand_factory
+                        .make_register_operand(rd, Access::write()),
+                    self.operand_factory.make_immediate_operand(csr),
+                    self.operand_factory
+                        .make_register_operand(rs1, Access::read()),
+                ];
+                (pseudo_mnemonic, Some(mnemonic), vec![2], ops, ops_detail)
+            } else {
+                let ops = format!(
+                    "{}, {}, {}",
+                    self.register_manager.int_register_name(rd),
+                    csr_str,
+                    self.register_manager.int_register_name(rs1)
+                );
+                let ops_detail = vec![
+                    self.operand_factory
+                        .make_register_operand(rd, Access::write()),
+                    self.operand_factory.make_immediate_operand(csr),
+                    self.operand_factory
+                        .make_register_operand(rs1, Access::read()),
+                ];
+                (mnemonic, None, Vec::new(), ops, ops_detail)
             };
-            let ops = format!(
-                "{}, {}",
-                self.register_manager.int_register_name(rd),
-                csr_str
-            );
-            let ops_detail = vec![
-                self.operand_factory
-                    .make_register_operand(rd, Access::write()),
-                self.operand_factory.make_immediate_operand(csr),
-                self.operand_factory
-                    .make_register_operand(rs1, Access::read()),
-            ];
-            (pseudo_mnemonic, Some(mnemonic), vec![2], ops, ops_detail)
-        } else {
-            let ops = format!(
-                "{}, {}, {}",
-                self.register_manager.int_register_name(rd),
-                csr_str,
-                self.register_manager.int_register_name(rs1)
-            );
-            let ops_detail = vec![
-                self.operand_factory
-                    .make_register_operand(rd, Access::write()),
-                self.operand_factory.make_immediate_operand(csr),
-                self.operand_factory
-                    .make_register_operand(rs1, Access::read()),
-            ];
-            (mnemonic, None, Vec::new(), ops, ops_detail)
-        };
 
         let instruction = self.formatter.create_decoded_instruction(
             final_mnemonic,

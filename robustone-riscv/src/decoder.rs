@@ -373,44 +373,41 @@ impl RiscVDecodedInstruction {
         let operands = self
             .operands_detail
             .iter()
-            .map(|operand| {
-                match &operand.value {
-                    RiscVOperandValue::Register(reg) => {
-                        let register = RegisterId::riscv(*reg);
-                        if operand.access.read {
-                            registers_read.push(register);
-                        }
-                        if operand.access.write {
-                            registers_written.push(register);
-                        }
-                        Operand::Register { register }
+            .map(|operand| match &operand.value {
+                RiscVOperandValue::Register(reg) => {
+                    let register = RegisterId::riscv(*reg);
+                    if operand.access.read {
+                        registers_read.push(register);
                     }
-                    RiscVOperandValue::Immediate(value) => Operand::Immediate { value: *value },
-                    RiscVOperandValue::RoundingMode(rm) => Operand::Text {
-                        value: rounding_mode_name(*rm).to_string(),
-                    },
-                    RiscVOperandValue::Memory(memory) => {
-                        let base = Some(RegisterId::riscv(memory.base));
-                        if let Some(base_register) = base {
-                            registers_read.push(base_register);
-                        }
-                        Operand::Memory {
-                            base,
-                            displacement: memory.disp,
-                        }
+                    if operand.access.write {
+                        registers_written.push(register);
+                    }
+                    Operand::Register { register }
+                }
+                RiscVOperandValue::Immediate(value) => Operand::Immediate { value: *value },
+                RiscVOperandValue::RoundingMode(rm) => Operand::Text {
+                    value: rounding_mode_name(*rm).to_string(),
+                },
+                RiscVOperandValue::Memory(memory) => {
+                    let base = Some(RegisterId::riscv(memory.base));
+                    if let Some(base_register) = base {
+                        registers_read.push(base_register);
+                    }
+                    Operand::Memory {
+                        base,
+                        displacement: memory.disp,
                     }
                 }
             })
             .collect();
 
         let canonical_mnemonic = self.canonical_mnemonic().to_string();
-        let capstone_mnemonic = if self.canonical_mnemonic.is_some()
-            || !self.render_hints.hidden_operands.is_empty()
-        {
-            Some(self.mnemonic.clone())
-        } else {
-            None
-        };
+        let capstone_mnemonic =
+            if self.canonical_mnemonic.is_some() || !self.render_hints.hidden_operands.is_empty() {
+                Some(self.mnemonic.clone())
+            } else {
+                None
+            };
 
         let (implicit_registers_read, implicit_registers_written) =
             infer_implicit_registers(&canonical_mnemonic);
@@ -448,23 +445,12 @@ fn infer_groups(mnemonic: &str) -> Vec<String> {
     if mnemonic.starts_with('b') || matches!(mnemonic, "c.beqz" | "c.bnez") {
         groups.push("branch".to_string());
     }
-    if mnemonic.contains("jal") || matches!(mnemonic, "j" | "c.j" | "c.jal" | "c.jr" | "c.jalr")
-    {
+    if mnemonic.contains("jal") || matches!(mnemonic, "j" | "c.j" | "c.jal" | "c.jr" | "c.jalr") {
         groups.push("control_flow".to_string());
     }
     if matches!(
         mnemonic,
-        "lb"
-            | "lh"
-            | "lw"
-            | "ld"
-            | "lbu"
-            | "lhu"
-            | "lwu"
-            | "flw"
-            | "fld"
-            | "c.lw"
-            | "c.lwsp"
+        "lb" | "lh" | "lw" | "ld" | "lbu" | "lhu" | "lwu" | "flw" | "fld" | "c.lw" | "c.lwsp"
     ) {
         groups.push("load".to_string());
     }
