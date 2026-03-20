@@ -186,7 +186,6 @@ class TestRunner:
         if result.result not in (
             ComparisonResult.MISMATCH,
             ComparisonResult.COMMAND_FAILURE,
-            ComparisonResult.DOCUMENTATION_DRIFT,
         ):
             return result
 
