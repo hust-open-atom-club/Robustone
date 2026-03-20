@@ -1,6 +1,6 @@
 # Robustone Support Matrix
 
-This matrix documents what the repository supports today and what it intentionally does not claim yet. It was verified against the current workspace on 2026-03-19.
+This matrix documents what the repository supports today and what it intentionally does not claim yet. It was verified against the current workspace on 2026-03-20.
 
 ## Capstone Compatibility Layers
 
@@ -39,14 +39,16 @@ This matrix documents what the repository supports today and what it intentional
 | Command | Status | Notes |
 |---------|--------|-------|
 | `make build` | Verified | Builds the top-level crate in debug mode. |
+| `make check` | Verified | Runs `rustfmt`, `clippy`, `black`, and `pylint` against workspace code and repository-owned Python test scripts. |
 | `make run RUN_ARGS="riscv32 93001000 -d"` | Verified | Produces a RISC-V disassembly with detail output. |
 | `cargo run --manifest-path robustone/Cargo.toml -- --json riscv32 93001000` | Verified | Produces structured JSON backed by the shared decode IR. |
-| `make test` | Verified | Builds Capstone if needed, runs parity tests, then runs top-level crate tests. |
+| `make test` | Verified | Builds Capstone if needed, runs parity tests, then runs `cargo test --workspace --all-features`. |
 | `python3 test/run_tests.py --list` | Verified | Lists the currently configured parity suites. |
+| `make test-quick` | Verified | Runs a reduced parity slice for fast local feedback. |
 | `cargo test --workspace --all-features` | Verified | Runs workspace Rust tests and doctests. |
-| `cargo bench -p robustone-core --bench riscv_decode` | Verified | Produces the current local decode baseline recorded in `docs/benchmark-baselines.md`. |
-| `cargo +nightly fuzz run decode_riscv -- -max_total_time=5` | Verified | Completed successfully as a local fuzz smoke run. |
-| `cargo +nightly fuzz run format_riscv_json -- -max_total_time=5` | Verified | Completed successfully as a local fuzz smoke run. |
+| `cargo bench -p robustone-core --bench riscv_decode` | Documented | Produces the decode baseline recorded in `docs/benchmark-baselines.md`; it is not part of the default repository validation set. |
+| `cd fuzz && cargo fuzz run decode_riscv -- -max_total_time=5` | Documented | Used for scheduled fuzz smoke validation; not required for the default local workflow. |
+| `cd fuzz && cargo fuzz run format_riscv_json -- -max_total_time=5` | Documented | Used for scheduled fuzz smoke validation; not required for the default local workflow. |
 
 ## Known Gaps and Non-Goals
 

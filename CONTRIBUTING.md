@@ -16,7 +16,7 @@ Thank you for your interest in contributing to Robustone. This document provides
 
 Before contributing, ensure you have the following installed:
 
-- [Rust](https://www.rust-lang.org/tools/install) 1.75 or newer (edition 2021)
+- [Rust](https://www.rust-lang.org/tools/install) 1.85 or newer (edition 2024 support)
 - [Python](https://www.python.org/) 3.8 or newer
 - `git` and basic build tools
 - `make` (for running Makefile commands)
@@ -125,7 +125,7 @@ This command:
 1. Clones Capstone if not present
 2. Builds the Capstone comparison tool
 3. Runs parity tests against Capstone
-4. Runs Rust unit tests
+4. Runs Rust workspace tests
 
 ### Quick Testing
 

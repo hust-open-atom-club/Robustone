@@ -18,7 +18,7 @@ Robustone 将与 Capstone 的兼容目标拆分为三层：
 
 ## 系统要求
 
-- [Rust](https://www.rust-lang.org/tools/install) 1.75 或更新版本（2021 版本）。
+- [Rust](https://www.rust-lang.org/tools/install) 1.85 或更新版本（支持 2024 edition）。
 - [Python](https://www.python.org/) 3.8 或更新版本（用于一致性测试）。
 - `git` 和基本构建工具（用于获取 Capstone 参考实现）。
 
@@ -29,6 +29,8 @@ robustone/         # 顶层 crate（同时提供库和二进制入口）
 robustone-core/    # 架构相关的解码与格式化核心
 robustone-cli/     # CLI 参数解析、输入校验与展示逻辑
 docs/              # 路线图、支持矩阵和项目文档
+tests/             # golden/property/differential 测试资源
+fuzz/              # 解码器与 JSON 格式化的 fuzz 目标
 Makefile           # build/check/run/test 入口
 test/
 	architectures/ # 各架构的一致性测试配置和测试集
@@ -45,14 +47,14 @@ Cargo.toml        # Workspace 清单
 | 目标          | 描述 |
 | ------------- | ---- |
 | `make build`  | 以调试模式编译 crate。 |
-| `make check`  | 运行仓库检查（`rustfmt`、`clippy`、`black`、`pylint`）。 |
-| `make format` | 使用 `rustfmt` 格式化 Rust 代码库。 |
+| `make check`  | 对 workspace 代码和测试框架 Python 脚本运行仓库检查（`rustfmt`、`clippy`、`black`、`pylint`）。 |
+| `make format` | 格式化 Rust workspace 和 Python 一致性测试脚本。 |
 | `make run`    | 以调试模式启动 CLI（接受与 `cargo run` 相同的参数）。 |
-| `make test`   | 构建 Capstone（如果缺失），运行一致性测试，并执行 Rust 单元测试。 |
+| `make test`   | 构建 Capstone（如果缺失），运行一致性测试，并执行 Rust workspace 测试。 |
 | `make test-quick` | 运行较小规模的一致性测试，便于快速迭代。 |
 | `make help`   | 输出仓库命令摘要。 |
 
-`test` 目标在首次使用时会将 Capstone 下载到 `third_party/capstone`，通过 `test/scripts/build_cstool.sh` 构建比较工具，运行 `python3 test/run_tests.py --all`，最后执行 `cargo test --manifest-path robustone/Cargo.toml`。
+`test` 目标在首次使用时会将 Capstone 下载到 `third_party/capstone`，通过 `test/scripts/build_cstool.sh` 构建比较工具，运行 `python3 test/run_tests.py --all`，最后执行 `cargo test --workspace --all-features`。
 
 ## 运行 CLI
 
@@ -93,7 +95,7 @@ make test
 1. 确保 Capstone 在 `third_party/capstone` 下可用（如有必要会克隆仓库）。
 2. 使用 `test/scripts/build_cstool.sh` 构建 Capstone 的 `cstool` 辅助工具。
 3. 执行 Python 一致性测试入口 `python3 test/run_tests.py --all`。
-4. 运行 `cargo test --manifest-path robustone/Cargo.toml` 检查顶层 crate 的测试。
+4. 运行 `cargo test --workspace --all-features` 检查 Rust workspace 测试。
 
 其他常用验证命令：
 
@@ -104,11 +106,11 @@ cargo test --workspace --all-features
 cargo run --manifest-path robustone/Cargo.toml -- --json riscv32 93001000
 ```
 
-以上命令已于 2026-03-19 在本地验证通过。
+以上命令已于 2026-03-20 在本地验证通过。
 
 ## CI 与项目文档
 
-- CI 工作流：`.github/workflows/ci.yml`
+- CI 工作流：`.github/workflows/ci.yml`（执行 `make check`、`cargo test --workspace --all-features`、`make test`，并提供定时 fuzz smoke）
 - 支持矩阵：[`docs/support-matrix.md`](docs/support-matrix.md)
 - 路线图：[`docs/roadmap.md`](docs/roadmap.md)
 - 新 ISA 清单：[`docs/isa-checklist.md`](docs/isa-checklist.md)

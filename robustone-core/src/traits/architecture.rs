@@ -3,8 +3,8 @@
 //! This module defines the core trait that all architecture-specific
 //! disassemblers must implement.
 
-use crate::types::error::DisasmError;
 use crate::ir::DecodedInstruction;
+use crate::types::error::DisasmError;
 use crate::types::instruction::Instruction;
 
 /// Trait that all architecture-specific disassemblers must implement.

@@ -44,9 +44,15 @@ impl RegisterId {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Operand {
-    Register { register: RegisterId },
-    Immediate { value: i64 },
-    Text { value: String },
+    Register {
+        register: RegisterId,
+    },
+    Immediate {
+        value: i64,
+    },
+    Text {
+        value: String,
+    },
     Memory {
         base: Option<RegisterId>,
         displacement: i64,

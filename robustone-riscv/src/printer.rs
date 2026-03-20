@@ -77,8 +77,7 @@ impl RiscVPrinter {
 
     /// Formats a memory operand using `offset(base)` syntax.
     fn format_memory_operand(&self, base: u32, disp: i64) -> String {
-        DefaultOperandFactory::new()
-            .format_memory_operand(disp, &self.format_register(base))
+        DefaultOperandFactory::new().format_memory_operand(disp, &self.format_register(base))
     }
 
     /// Formats a single operand into its textual form.
@@ -200,8 +199,20 @@ impl RiscVPrinter {
     fn is_control_flow_mnemonic(&self, mnemonic: &str) -> bool {
         matches!(
             mnemonic,
-            "j" | "jal" | "jalr" | "beq" | "bne" | "blt" | "bge" | "bltu" | "bgeu"
-                | "beqz" | "bnez" | "c.j" | "c.jal" | "c.beqz" | "c.bnez"
+            "j" | "jal"
+                | "jalr"
+                | "beq"
+                | "bne"
+                | "blt"
+                | "bge"
+                | "bltu"
+                | "bgeu"
+                | "beqz"
+                | "bnez"
+                | "c.j"
+                | "c.jal"
+                | "c.beqz"
+                | "c.bnez"
         )
     }
 
@@ -247,7 +258,8 @@ impl RiscVPrinter {
                     ..
                 }),
                 None,
-            ) => DefaultOperandFactory::new().format_memory_operand(*imm, &self.format_register(*rs1)),
+            ) => DefaultOperandFactory::new()
+                .format_memory_operand(*imm, &self.format_register(*rs1)),
             _ => operands
                 .iter()
                 .map(|(_, operand)| self.format_operand(operand))
@@ -280,7 +292,11 @@ impl RiscVPrinter {
                         ..
                     },
                 ),
-            ] => format!("{}, ({})", self.format_register(*rd), self.format_register(*base)),
+            ] => format!(
+                "{}, ({})",
+                self.format_register(*rd),
+                self.format_register(*base)
+            ),
             _ => operands
                 .iter()
                 .map(|(_, operand)| self.format_operand(operand))
