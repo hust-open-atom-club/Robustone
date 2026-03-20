@@ -5,10 +5,11 @@
 //! whether another register is zero or non-zero.
 
 use super::THead;
-use crate::decoder::{RiscVDecodedInstruction, Xlen};
+use crate::decoder::{Xlen, build_riscv_decoded_instruction};
 use crate::extensions::{Extensions, InstructionExtension};
 use crate::shared::{operands::convenience, registers::RegisterManager};
 use crate::types::*;
+use robustone_core::ir::DecodedInstruction;
 use robustone_core::types::error::DisasmError;
 
 /// XTheadCondMov Conditional Move Extension
@@ -40,9 +41,9 @@ impl CMov {
         rd: u8,
         rs1: u8,
         rs2: u8,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         let _ = &self.register_manager;
-        Ok(RiscVDecodedInstruction::new(
+        Ok(build_riscv_decoded_instruction(
             mnemonic,
             RiscVInstructionFormat::R,
             4,
@@ -80,7 +81,7 @@ impl InstructionExtension for CMov {
         _imm_u: i64,
         _imm_j: i64,
         _xlen: Xlen,
-    ) -> Option<Result<RiscVDecodedInstruction, DisasmError>> {
+    ) -> Option<Result<DecodedInstruction, DisasmError>> {
         // Check if opcode matches XTheadCondMov custom-0 space
         if opcode != Self::OPCODE {
             return None;
@@ -131,7 +132,7 @@ impl InstructionExtension for CMov {
         _uimm_css: u16,
         _uimm_clsp: u16,
         _uimm_fldsp: u16,
-    ) -> Option<Result<RiscVDecodedInstruction, DisasmError>> {
+    ) -> Option<Result<DecodedInstruction, DisasmError>> {
         // XTheadCondMov extension does not provide compressed instruction variants
         None
     }
@@ -159,7 +160,8 @@ mod tests {
         let instr = result.unwrap().unwrap();
         assert_eq!(instr.mnemonic, "th.mveqz");
         let rendered = instr
-            .to_ir("riscv32", 0, vec![0; 4])
+            .clone()
+            .with_context("riscv32", 0, vec![0; 4])
             .render_capstone_text_parts();
         assert_eq!(rendered.1, "ra, sp, gp");
         assert_eq!(instr.size, 4);
@@ -177,7 +179,8 @@ mod tests {
         let instr = result.unwrap().unwrap();
         assert_eq!(instr.mnemonic, "th.mvnez");
         let rendered = instr
-            .to_ir("riscv32", 0, vec![0; 4])
+            .clone()
+            .with_context("riscv32", 0, vec![0; 4])
             .render_capstone_text_parts();
         assert_eq!(rendered.1, "ra, sp, gp");
         assert_eq!(instr.size, 4);

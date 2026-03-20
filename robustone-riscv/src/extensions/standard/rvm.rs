@@ -4,12 +4,13 @@
 //! which includes integer multiplication, division, and remainder operations.
 
 use super::Standard;
-use crate::decoder::{RiscVDecodedInstruction, Xlen};
+use crate::decoder::{Xlen, build_riscv_decoded_instruction};
 use crate::extensions::{Extensions, InstructionExtension};
 use crate::shared::{
     OperandFactory, operands::DefaultOperandFactory, registers::RegisterManager,
 };
 use crate::types::*;
+use robustone_core::ir::DecodedInstruction;
 use robustone_core::types::error::DisasmError;
 
 /// RVM Multiply and Divide Extension
@@ -49,9 +50,9 @@ impl Rvm {
         rd: u8,
         rs1: u8,
         rs2: u8,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         let _ = &self.register_manager;
-        Ok(RiscVDecodedInstruction::new(
+        Ok(build_riscv_decoded_instruction(
             mnemonic,
             RiscVInstructionFormat::R,
             4,
@@ -72,7 +73,7 @@ impl Rvm {
         rd: u8,
         rs1: u8,
         rs2: u8,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         match funct3 {
             Self::FUNCT3_OP_ADD_SUB => self.decode_r_type("mul", rd, rs1, rs2),
             Self::FUNCT3_OP_SLL => self.decode_r_type("mulh", rd, rs1, rs2),
@@ -114,7 +115,7 @@ impl InstructionExtension for Rvm {
         _imm_u: i64,
         _imm_j: i64,
         _xlen: Xlen,
-    ) -> Option<Result<RiscVDecodedInstruction, DisasmError>> {
+    ) -> Option<Result<DecodedInstruction, DisasmError>> {
         // Only handle OP opcode with M-extension funct7
         if opcode == Self::OPCODE_OP && funct7 == Self::FUNCT7_OP_MUL {
             Some(self.decode_mul(funct3, rd, rs1, rs2))
@@ -144,7 +145,7 @@ impl InstructionExtension for Rvm {
         _uimm_css: u16,
         _uimm_clsp: u16,
         _uimm_fldsp: u16,
-    ) -> Option<Result<RiscVDecodedInstruction, DisasmError>> {
+    ) -> Option<Result<DecodedInstruction, DisasmError>> {
         // RVM extension doesn't handle compressed instructions
         None
     }

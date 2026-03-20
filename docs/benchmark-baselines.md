@@ -1,6 +1,6 @@
 # Benchmark Baselines
 
-These measurements were recorded locally on 2026-03-19 with:
+These measurements were recorded locally on 2026-03-20 with:
 
 - `cargo bench -p robustone-core --bench riscv_decode`
 
@@ -8,10 +8,11 @@ These measurements were recorded locally on 2026-03-19 with:
 
 | Benchmark | Result |
 |-----------|--------|
-| `riscv32_decode_ir` | `505.04 ns` to `507.73 ns` |
-| `riscv32_decode_text` | `915.95 ns` to `971.34 ns` |
+| `riscv32_decode_ir` | `829.03 ns` to `837.87 ns` |
+| `riscv32_detail_overhead` | `1.0591 us` to `1.0633 us` |
+| `riscv32_cli_end_to_end` | `1.7032 us` to `1.8287 us` |
 
-These numbers are intended as a first in-repo baseline, not a performance claim across machines.
+These numbers are intended as in-repo baselines, not performance claims across machines.
 
 ## Fuzz Smoke Notes
 

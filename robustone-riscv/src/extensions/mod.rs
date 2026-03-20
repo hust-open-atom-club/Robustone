@@ -3,7 +3,8 @@
 //! This module contains the implementation of various RISC-V instruction set
 //! extensions, organized into separate modules for better maintainability.
 
-use super::decoder::{RiscVDecodedInstruction, Xlen};
+use super::decoder::Xlen;
+use robustone_core::ir::DecodedInstruction;
 use robustone_core::types::error::DisasmError;
 
 // Submodules grouping standard and custom-specific extensions.
@@ -106,7 +107,7 @@ pub trait InstructionExtension: Sync {
         imm_u: i64,
         imm_j: i64,
         xlen: Xlen,
-    ) -> Option<Result<RiscVDecodedInstruction, DisasmError>>;
+    ) -> Option<Result<DecodedInstruction, DisasmError>>;
 
     /// Try to decode a compressed 16-bit instruction.
     ///
@@ -136,7 +137,7 @@ pub trait InstructionExtension: Sync {
         uimm_css: u16,
         uimm_clsp: u16,
         uimm_fldsp: u16,
-    ) -> Option<Result<RiscVDecodedInstruction, DisasmError>>;
+    ) -> Option<Result<DecodedInstruction, DisasmError>>;
 
     /// Get the name of this extension.
     fn name(&self) -> &'static str;
@@ -146,9 +147,9 @@ pub trait InstructionExtension: Sync {
 }
 
 /// Create all available standard RISC-V extensions.
-pub fn create_extensions(xlen: Xlen) -> Vec<Box<dyn InstructionExtension>> {
+pub fn create_extensions() -> Vec<Box<dyn InstructionExtension>> {
     vec![
-        Box::new(standard::Rvi::new_with_xlen(xlen)),
+        Box::new(standard::Rvi::new()),
         Box::new(standard::Rva::new()),
         Box::new(standard::Rvm::new()),
         Box::new(standard::Rvf::new()),

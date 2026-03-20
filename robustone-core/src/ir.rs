@@ -29,6 +29,7 @@ pub enum DecodeStatus {
 pub enum TextRenderProfile {
     Capstone,
     Canonical,
+    VerboseDebug,
 }
 
 /// Shared register identifier.
@@ -102,6 +103,36 @@ pub struct DecodedInstruction {
 }
 
 impl DecodedInstruction {
+    /// Fill in decode context that is only known at the final call site.
+    pub fn with_context(
+        mut self,
+        mode: impl Into<String>,
+        address: u64,
+        raw_bytes: Vec<u8>,
+    ) -> Self {
+        self.mode = mode.into();
+        self.address = address;
+        self.raw_bytes = raw_bytes;
+        self
+    }
+
+    /// Set a Capstone-facing alias mnemonic and optional hidden operands.
+    pub fn with_capstone_alias(
+        mut self,
+        capstone_mnemonic: impl Into<String>,
+        hidden_operands: Vec<usize>,
+    ) -> Self {
+        self.render_hints.capstone_mnemonic = Some(capstone_mnemonic.into());
+        self.render_hints.capstone_hidden_operands = hidden_operands;
+        self
+    }
+
+    /// Hide the specified operands in the Capstone-facing outward view.
+    pub fn with_hidden_operands(mut self, hidden_operands: Vec<usize>) -> Self {
+        self.render_hints.capstone_hidden_operands = hidden_operands;
+        self
+    }
+
     /// Render the instruction into mnemonic / operands text using the shared IR.
     pub fn render_text_parts(&self, profile: TextRenderProfile) -> (String, String) {
         match self.architecture {
@@ -109,6 +140,7 @@ impl DecodedInstruction {
                 let printer = RiscVPrinter::new().with_profile(match profile {
                     TextRenderProfile::Capstone => RiscVTextProfile::Capstone,
                     TextRenderProfile::Canonical => RiscVTextProfile::Canonical,
+                    TextRenderProfile::VerboseDebug => RiscVTextProfile::VerboseDebug,
                 });
                 printer.render_ir_parts(self)
             }

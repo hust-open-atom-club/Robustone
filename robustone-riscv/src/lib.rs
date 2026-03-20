@@ -107,7 +107,7 @@ impl ArchitectureHandler for RiscVHandler {
         addr: u64,
     ) -> Result<(DecodedInstruction, usize), DisasmError> {
         let decoder = self.decoder_for_arch(arch_name)?;
-        let decoded = decoder.decode_ir(bytes, arch_name, addr)?;
+        let decoded = decoder.decode(bytes, arch_name, addr)?;
         let size = decoded.size;
         Ok((decoded, size))
     }
@@ -119,7 +119,7 @@ impl ArchitectureHandler for RiscVHandler {
         addr: u64,
     ) -> Result<(Instruction, usize), DisasmError> {
         let decoder = self.decoder_for_arch(arch_name)?;
-        let ir = decoder.decode_ir(bytes, arch_name, addr)?;
+        let ir = decoder.decode(bytes, arch_name, addr)?;
         let (mnemonic, operands) = ir.render_capstone_text_parts();
 
         let mut riscv_detail = RiscVInstructionDetail::new();

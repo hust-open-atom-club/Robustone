@@ -4,10 +4,11 @@
 //! which provides atomic memory operations for synchronization and concurrency.
 
 use super::Standard;
-use crate::decoder::{RiscVDecodedInstruction, Xlen};
+use crate::decoder::{Xlen, build_riscv_decoded_instruction};
 use crate::extensions::{Extensions, InstructionExtension};
 use crate::shared::{operands::convenience, registers::RegisterManager};
 use crate::types::*;
+use robustone_core::ir::DecodedInstruction;
 use robustone_core::types::error::DisasmError;
 
 /// RVA Atomic Instructions Extension
@@ -53,9 +54,9 @@ impl Rva {
         rd: u8,
         rs1: u8,
         rs2: u8,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         let _ = &self.register_manager;
-        Ok(RiscVDecodedInstruction::new(
+        Ok(build_riscv_decoded_instruction(
             mnemonic,
             RiscVInstructionFormat::R,
             4,
@@ -73,9 +74,9 @@ impl Rva {
         rd: u8,
         rs1: u8,
         rs2: u8,
-    ) -> Result<RiscVDecodedInstruction, DisasmError> {
+    ) -> Result<DecodedInstruction, DisasmError> {
         let _ = &self.register_manager;
-        Ok(RiscVDecodedInstruction::new(
+        Ok(build_riscv_decoded_instruction(
             mnemonic,
             RiscVInstructionFormat::R,
             4,
@@ -113,7 +114,7 @@ impl InstructionExtension for Rva {
         _imm_u: i64,
         _imm_j: i64,
         xlen: Xlen,
-    ) -> Option<Result<RiscVDecodedInstruction, DisasmError>> {
+    ) -> Option<Result<DecodedInstruction, DisasmError>> {
         if opcode != Self::OPCODE_A {
             return None;
         }
@@ -221,7 +222,7 @@ impl InstructionExtension for Rva {
         _uimm_css: u16,
         _uimm_clsp: u16,
         _uimm_fldsp: u16,
-    ) -> Option<Result<RiscVDecodedInstruction, DisasmError>> {
+    ) -> Option<Result<DecodedInstruction, DisasmError>> {
         // RVA extension doesn't handle compressed instructions
         None
     }
