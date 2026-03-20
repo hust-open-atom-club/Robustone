@@ -68,6 +68,8 @@ test:
 		echo "Capstone already present at $(CAPSTONE_DIR)."; \
 	fi
 	@bash $(CAPSTONE_BUILD_SCRIPT) $(CAPSTONE_DIR)
+	@echo "Running Python unit tests..."
+	@$(PYTHON) -m unittest discover -s test -p "test_*.py"
 	@echo "Running parity tests with new framework..."
 	@cd test && $(PYTHON) run_tests.py --all
 	@echo "Running Rust workspace tests..."
