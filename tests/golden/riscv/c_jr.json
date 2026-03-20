@@ -1,0 +1,15 @@
+{
+  "arch": "riscv32",
+  "hex": "8284",
+  "expected_capstone": {
+    "mnemonic": "jr",
+    "operands": "s1"
+  },
+  "expected_ir": {
+    "mnemonic": "c.jr",
+    "render_hint_mnemonic": "jr",
+    "hidden_operands": [],
+    "groups": ["compressed", "control_flow"],
+    "operand_kinds": ["register"]
+  }
+}

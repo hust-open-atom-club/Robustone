@@ -1,0 +1,15 @@
+{
+  "arch": "riscv32",
+  "hex": "0568",
+  "expected_capstone": {
+    "mnemonic": "lui",
+    "operands": "a6, 1"
+  },
+  "expected_ir": {
+    "mnemonic": "lui",
+    "render_hint_mnemonic": null,
+    "hidden_operands": [],
+    "groups": ["arithmetic"],
+    "operand_kinds": ["register", "immediate"]
+  }
+}

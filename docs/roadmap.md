@@ -25,7 +25,7 @@ The project does not yet have:
 - A Capstone-style handle/options/detail API
 - Published golden/property/fuzz coverage beyond the current parity harness
 - Shared architecture scaffolding for a second ISA
-- Benchmark and release-engineering baselines
+- Stable benchmark and release-engineering policy enforcement beyond the current documented baselines
 
 ## Milestones
 
@@ -65,3 +65,10 @@ The next concrete slices are:
 ## Deferred Scope
 
 The roadmap explicitly defers new high-complexity backends such as x86 until the RISC-V path has become the reference implementation for decoder structure, testing, and public API boundaries.
+
+## Cross References
+
+- Support matrix: [docs/support-matrix.md](support-matrix.md)
+- Known differences: [tests/differential/known-differences.toml](../tests/differential/known-differences.toml)
+- Benchmark baselines: [docs/benchmark-baselines.md](benchmark-baselines.md)
+- Release checklist: [docs/release-checklist.md](release-checklist.md)

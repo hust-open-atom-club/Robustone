@@ -17,10 +17,10 @@ pub mod shared;
 pub mod types;
 
 use arch::RiscVInstructionDetail;
-use decoder::RiscVDecodedInstruction;
 use decoder::{RiscVDecoder, Xlen};
 use extensions::Extensions;
 use robustone_core::{
+    common::ArchitectureProfile,
     ir::DecodedInstruction,
     traits::ArchitectureHandler,
     types::error::DisasmError,
@@ -75,17 +75,21 @@ impl RiscVHandler {
         }
     }
 
-    fn decode_with_context(
-        &self,
-        bytes: &[u8],
-        arch_name: &str,
-        addr: u64,
-    ) -> Result<(RiscVDecodedInstruction, DecodedInstruction), DisasmError> {
-        let decoder = self.decoder_for_arch(arch_name)?;
-        let decoded = decoder.decode(bytes, addr)?;
-        let raw_bytes = bytes[..decoded.size].to_vec();
-        let ir = decoded.to_ir(arch_name, addr, raw_bytes);
-        Ok((decoded, ir))
+    pub fn from_profile(profile: &ArchitectureProfile) -> Result<Self, DisasmError> {
+        let decoder = RiscVDecoder::from_profile(profile)?;
+        match &profile.architecture {
+            crate::architecture::Architecture::RiscV32 => Ok(Self {
+                rv32_decoder: decoder,
+                rv64_decoder: RiscVDecoder::rv64gc(),
+            }),
+            crate::architecture::Architecture::RiscV64 => Ok(Self {
+                rv32_decoder: RiscVDecoder::rv32gc(),
+                rv64_decoder: decoder,
+            }),
+            other => Err(DisasmError::UnsupportedArchitecture(
+                other.as_str().to_string(),
+            )),
+        }
     }
 }
 
@@ -102,7 +106,8 @@ impl ArchitectureHandler for RiscVHandler {
         arch_name: &str,
         addr: u64,
     ) -> Result<(DecodedInstruction, usize), DisasmError> {
-        let (_, decoded) = self.decode_with_context(bytes, arch_name, addr)?;
+        let decoder = self.decoder_for_arch(arch_name)?;
+        let decoded = decoder.decode_ir(bytes, arch_name, addr)?;
         let size = decoded.size;
         Ok((decoded, size))
     }
@@ -113,7 +118,8 @@ impl ArchitectureHandler for RiscVHandler {
         arch_name: &str,
         addr: u64,
     ) -> Result<(Instruction, usize), DisasmError> {
-        let (_, ir) = self.decode_with_context(bytes, arch_name, addr)?;
+        let decoder = self.decoder_for_arch(arch_name)?;
+        let ir = decoder.decode_ir(bytes, arch_name, addr)?;
         let (mnemonic, operands) = ir.render_capstone_text_parts();
 
         let mut riscv_detail = RiscVInstructionDetail::new();

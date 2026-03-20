@@ -35,6 +35,22 @@ impl ArchitectureProfile {
             enabled_extensions: vec!["I", "M", "A", "F", "D", "C"],
         }
     }
+
+    /// Create a profile with explicit RISC-V configuration.
+    pub fn riscv(
+        architecture: Architecture,
+        mode_name: &'static str,
+        bit_width: u8,
+        enabled_extensions: Vec<&'static str>,
+    ) -> Self {
+        Self {
+            architecture,
+            mode_name,
+            bit_width,
+            endianness: Endianness::Little,
+            enabled_extensions,
+        }
+    }
 }
 
 #[cfg(test)]
