@@ -5,7 +5,7 @@
 
 use crate::command::Cli;
 use crate::config::{DisasmConfig, OutputConfig};
-use crate::disasm::{DisassemblyEngine, DisassemblyFormatter};
+use crate::disasm::{DisassemblyEngine, DisassemblyFormatter, DisassemblyIssue, DisassemblyResult};
 use crate::error::{CliError, Result};
 use crate::version_info::print_version_info;
 
@@ -62,9 +62,22 @@ impl CliExecutor {
         let engine = DisassemblyEngine::new(arch);
 
         // Perform the disassembly
-        let result = engine
-            .disassemble(config)
-            .map_err(|error| CliError::disassembly(&error))?;
+        let result = match self.engine.disassemble(config) {
+            Ok(result) => result,
+            Err(error) if config.display_options.json => {
+                println!("{}", self.render_fatal_json(config, &error));
+                return Err(CliError::reported(1));
+            }
+            Err(error) => return Err(CliError::disassembly(&error)),
+        };
+        let result = match engine.disassemble(config) {
+            Ok(result) => result,
+            Err(error) if config.display_options.json => {
+                println!("{}", self.render_fatal_json(config, &error));
+                return Err(CliError::reported(1));
+            }
+            Err(error) => return Err(CliError::disassembly(&error)),
+        };
 
         // Format and output the results
         let output_config = OutputConfig::from_display_options(&config.display_options);
@@ -91,10 +104,14 @@ impl CliExecutor {
     ) -> Result<()> {
         config.validate_for_disassembly()?;
 
-        let result = self
-            .engine
-            .disassemble(config)
-            .map_err(|error| CliError::disassembly(&error))?;
+        let result = match self.engine.disassemble(config) {
+            Ok(result) => result,
+            Err(error) if config.display_options.json => {
+                println!("{}", self.render_fatal_json(config, &error));
+                return Err(CliError::reported(1));
+            }
+            Err(error) => return Err(CliError::disassembly(&error)),
+        };
 
         formatter.print(&result);
         Ok(())
@@ -120,10 +137,13 @@ impl CliExecutor {
     pub fn execute_to_string(&self, config: &DisasmConfig) -> Result<String> {
         config.validate_for_disassembly()?;
 
-        let result = self
-            .engine
-            .disassemble(config)
-            .map_err(|error| CliError::disassembly(&error))?;
+        let result = match self.engine.disassemble(config) {
+            Ok(result) => result,
+            Err(error) if config.display_options.json => {
+                return Ok(self.render_fatal_json(config, &error));
+            }
+            Err(error) => return Err(CliError::disassembly(&error)),
+        };
 
         let output_config = OutputConfig::from_display_options(&config.display_options);
         let formatter = DisassemblyFormatter::new(output_config);
@@ -152,11 +172,35 @@ impl CliExecutor {
         cli.validate()?;
         Ok(())
     }
+
+    fn render_fatal_json(
+        &self,
+        config: &DisasmConfig,
+        error: &robustone_core::DisasmError,
+    ) -> String {
+        let mut result =
+            DisassemblyResult::new(config.start_address, config.arch_name().to_string());
+        result.add_error(DisassemblyIssue::from_core_error(
+            error,
+            "decode_instruction",
+            config.arch_name(),
+            config.start_address,
+            0,
+            &config.hex_bytes,
+        ));
+        let output_config = OutputConfig::from_display_options(&config.display_options);
+        let formatter = DisassemblyFormatter::new(output_config);
+        formatter.format(&result)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::arch::ArchitectureSpec;
+    use crate::command::DisplayOptions;
+    use crate::config::DisasmConfig;
+    use serde_json::Value;
 
     #[test]
     fn test_executor_creation() {
@@ -168,5 +212,31 @@ mod tests {
     fn test_executor_default() {
         let _executor = CliExecutor::default();
         // Basic test that default executor works
+    }
+
+    #[test]
+    fn test_execute_to_string_returns_json_for_fatal_decode_errors() {
+        let executor = CliExecutor::new();
+        let config = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
+            hex_bytes: vec![0xff, 0xff, 0xff, 0xff],
+            start_address: 0,
+            display_options: DisplayOptions {
+                detailed: false,
+                alias_regs: false,
+                real_detail: false,
+                unsigned_immediate: false,
+                json: true,
+            },
+            skip_data: false,
+        };
+
+        let output = executor
+            .execute_to_string(&config)
+            .expect("json mode should render fatal errors as JSON");
+        let parsed: Value = serde_json::from_str(&output).unwrap();
+
+        assert_eq!(parsed["errors"][0]["kind"], "invalid_encoding");
+        assert_eq!(parsed["bytes_processed"], 0);
     }
 }
