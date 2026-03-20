@@ -24,6 +24,9 @@ This matrix documents what the repository supports today and what it intentional
 |------|--------|-------|
 | Base integer decoding (`riscv32` / `riscv64`) | Implemented and parity-tested | Verified locally with `make test` and `python3 test/run_tests.py --all --limit 20 --verbose`. |
 | Standard extension modules (`I`, `M`, `A`, `F`, `D`, `C`) | Present in code | Decoder modules exist; broader published instruction-coverage percentages are not available yet. |
+| CSR instructions | Implemented for the covered cases | Core CSR decode and pseudo forms (`csrr`, `csrc`, `csrw`) are present on the current RISC-V path. |
+| Privileged instructions | Partial | `ecall` / `ebreak` are implemented, but the repository does not yet publish a fuller privileged-instruction coverage claim. |
+| Fence instructions | Implemented for the covered cases | `fence` and `fence.i` decode on the current RISC-V path. |
 | Detailed text output (`-d`) | Implemented | Verified locally with `make run RUN_ARGS="riscv32 93001000 -d"`. |
 | Real detail output (`-r`) | Implemented in current CLI formatter | Existing tests cover detail display, but the project does not yet publish a stable structured detail schema. |
 | Canonical shared IR | Implemented for the RISC-V decode path | `ArchitectureDispatcher::decode_instruction` returns canonical mnemonics plus rendering hints for Capstone-style aliases. |
