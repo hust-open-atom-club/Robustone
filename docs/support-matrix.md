@@ -34,7 +34,7 @@ This matrix documents what the repository supports today and what it intentional
 | Groups / implicit register sets as structured public data | Partial | The shared IR now carries group and implicit-register fields; the RISC-V path populates them for the implemented instruction families, but the model is still evolving. |
 | Canonical-vs-alias formatter profiles | Partial | The RISC-V printer now has Capstone-style and canonical profiles, but only the Capstone-style path is exposed through the CLI by default. |
 | Structured JSON output | Implemented | `robustone --json ...` renders structured JSON built from the shared decode IR. |
-| Structured decode-error taxonomy | Partial | The low-level decode API now emits `need_more_bytes`, `invalid_encoding`, `unsupported_extension`, and `unimplemented_instruction` on real paths, but the taxonomy is not yet complete across every extension family. |
+| Structured decode-error taxonomy | Implemented for the current RISC-V path | The low-level decode API now emits `need_more_bytes`, `invalid_encoding`, `unsupported_extension`, `unsupported_mode`, and `unimplemented_instruction`, including RV64-only standard / atomic / compressed encodings recognized under `riscv32`. |
 | Golden/property/fuzz scaffolding | Implemented as repository structure | `tests/golden/`, `tests/property/`, `tests/differential/`, `robustone-core/tests/*.rs`, and `fuzz/` are now present, though coverage is still early. |
 
 ## Repository Entry Points
@@ -53,6 +53,9 @@ This matrix documents what the repository supports today and what it intentional
 | `cargo bench -p robustone-cli --bench cli_end_to_end` | Verified | Records the real CLI end-to-end baseline through `robustone-cli` argument parsing, config building, executor wiring, and formatter rendering. |
 | `cd fuzz && cargo fuzz run decode_riscv -- -max_total_time=5` | Documented | Used for scheduled fuzz smoke validation; not required for the default local workflow. |
 | `cd fuzz && cargo fuzz run format_riscv_json -- -max_total_time=5` | Documented | Used for scheduled fuzz smoke validation; not required for the default local workflow. |
+| `cd fuzz && cargo fuzz run hex_parser -- -max_total_time=5` | Documented | Used for scheduled fuzz smoke validation of the shared hex parser surface. |
+| `cd fuzz && cargo fuzz run format_riscv_text -- -max_total_time=5` | Documented | Used for scheduled fuzz smoke validation of the shared text-rendering surface. |
+| `cd fuzz && cargo fuzz run cli_argument_combinations -- -max_total_time=5` | Documented | Used for scheduled fuzz smoke validation of CLI parser/config/executor combinations. |
 
 ## Known Gaps and Non-Goals
 

@@ -546,4 +546,74 @@ mod tests {
             other => panic!("expected unsupported mode, got {other:?}"),
         }
     }
+
+    #[test]
+    fn test_rv64_only_mulw_decodes_on_rv64_and_reports_unsupported_mode_on_rv32() {
+        let dispatcher = ArchitectureDispatcher::new();
+        let (decoded, size) = dispatcher
+            .decode_instruction(&[0xbb, 0x00, 0x31, 0x02], "riscv64", 0)
+            .expect("RV64 should decode mulw");
+
+        assert_eq!(size, 4);
+        assert_eq!(decoded.mnemonic, "mulw");
+
+        let error = dispatcher
+            .decode_instruction(&[0xbb, 0x00, 0x31, 0x02], "riscv32", 0)
+            .expect_err("RV32 should reject mulw with unsupported_mode");
+
+        match error {
+            DisasmError::DecodeFailure {
+                kind, architecture, ..
+            } => {
+                assert_eq!(kind, DecodeErrorKind::UnsupportedMode);
+                assert_eq!(architecture.as_deref(), Some("riscv32"));
+            }
+            other => panic!("expected unsupported mode, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_rv64c_addiw_decodes_on_rv64_while_rv32_keeps_c_jal() {
+        let dispatcher = ArchitectureDispatcher::new();
+        let (rv64, size) = dispatcher
+            .decode_instruction(&[0x85, 0x20], "riscv64", 0)
+            .expect("RV64 should decode c.addiw");
+        assert_eq!(size, 2);
+        assert_eq!(rv64.mnemonic, "c.addiw");
+
+        let (rv32, size) = dispatcher
+            .decode_instruction(&[0x85, 0x20], "riscv32", 0)
+            .expect("RV32 should still decode c.jal");
+        assert_eq!(size, 2);
+        assert_eq!(rv32.mnemonic, "c.jal");
+    }
+
+    #[test]
+    fn test_rv64c_word_alu_encodings_decode_on_rv64_and_report_unsupported_mode_on_rv32() {
+        let dispatcher = ArchitectureDispatcher::new();
+        let cases = [(&[0x05, 0x9c][..], "c.subw"), (&[0x25, 0x9c][..], "c.addw")];
+
+        for (bytes, expected_mnemonic) in cases {
+            let (decoded, size) = dispatcher
+                .decode_instruction(bytes, "riscv64", 0)
+                .expect("RV64 should decode the mode-sensitive compressed form");
+
+            assert_eq!(size, 2);
+            assert_eq!(decoded.mnemonic, expected_mnemonic);
+
+            let error = dispatcher
+                .decode_instruction(bytes, "riscv32", 0)
+                .expect_err("RV32 should reject the RV64C word-ALU form with unsupported_mode");
+
+            match error {
+                DisasmError::DecodeFailure {
+                    kind, architecture, ..
+                } => {
+                    assert_eq!(kind, DecodeErrorKind::UnsupportedMode);
+                    assert_eq!(architecture.as_deref(), Some("riscv32"));
+                }
+                other => panic!("expected unsupported mode, got {other:?}"),
+            }
+        }
+    }
 }
