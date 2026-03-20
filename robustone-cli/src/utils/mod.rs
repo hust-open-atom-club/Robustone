@@ -127,9 +127,9 @@ pub fn parse_address(input: &str) -> Result<u64> {
         return Err(CliError::validation("address", "Empty address provided"));
     }
 
-    let normalized = normalize_hex_token(input)?;
+    let normalized = normalize_hex_number(input, "address")?;
 
-    u64::from_str_radix(&normalized[2..], 16)
+    u64::from_str_radix(normalized, 16)
         .map_err(|_| CliError::validation("address", "Invalid hexadecimal address format"))
 }
 
@@ -197,6 +197,33 @@ fn normalize_hex_token(token: &str) -> Result<String> {
     Ok(format!("0x{hex_part}"))
 }
 
+fn normalize_hex_number<'a>(token: &'a str, field: &'static str) -> Result<&'a str> {
+    let trimmed = token.trim();
+
+    if trimmed.is_empty() {
+        return Err(CliError::validation(field, "Empty hexadecimal value"));
+    }
+
+    let hex_part = if trimmed.to_lowercase().starts_with("0x") {
+        &trimmed[2..]
+    } else {
+        trimmed
+    };
+
+    if hex_part.is_empty() {
+        return Err(CliError::validation(field, "Empty hexadecimal value"));
+    }
+
+    if !hex_part.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err(CliError::validation(
+            field,
+            "Invalid hexadecimal address format",
+        ));
+    }
+
+    Ok(hex_part)
+}
+
 /// Format bytes as a hex string with optional spaces.
 pub fn format_bytes_as_hex(bytes: &[u8], with_spaces: bool) -> String {
     if with_spaces {
@@ -259,6 +286,9 @@ mod tests {
     fn test_parse_address() {
         assert_eq!(parse_address("0x1000").unwrap(), 0x1000);
         assert_eq!(parse_address("1000").unwrap(), 0x1000);
+        assert_eq!(parse_address("0x1").unwrap(), 0x1);
+        assert_eq!(parse_address("100").unwrap(), 0x100);
+        assert!(parse_address("xyz").is_err());
     }
 
     #[test]
