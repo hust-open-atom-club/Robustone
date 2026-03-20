@@ -245,7 +245,16 @@ impl ArchitectureDispatcher {
         profile: &crate::common::ArchitectureProfile,
         address: u64,
     ) -> Result<(DecodedInstruction, usize), DisasmError> {
-        self.decode_instruction(bytes, profile.mode_name, address)
+        match profile.architecture {
+            crate::architecture::Architecture::RiscV32
+            | crate::architecture::Architecture::RiscV64 => {
+                let handler = riscv::RiscVHandler::from_profile(profile)?;
+                handler.decode_instruction(bytes, profile.mode_name, address)
+            }
+            _ => Err(DisasmError::UnsupportedArchitecture(
+                profile.architecture.as_str().to_string(),
+            )),
+        }
     }
 
     /// Returns a list of all registered architecture names.
@@ -388,6 +397,50 @@ mod tests {
                 assert_eq!(kind, DecodeErrorKind::InvalidEncoding);
             }
             other => panic!("expected structured decode failure, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_decode_with_profile_enforces_enabled_extensions() {
+        let dispatcher = ArchitectureDispatcher::new();
+        let profile = crate::common::ArchitectureProfile::riscv(
+            crate::architecture::Architecture::RiscV32,
+            "riscv32",
+            32,
+            vec!["I"],
+        );
+
+        let error = dispatcher
+            .decode_with_profile(&[0x05, 0x68], &profile, 0)
+            .expect_err("compressed instruction should require C extension");
+
+        match error {
+            DisasmError::DecodeFailure { kind, .. } => {
+                assert_eq!(kind, DecodeErrorKind::UnsupportedExtension);
+            }
+            other => panic!("expected unsupported extension, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_decode_with_profile_rejects_mode_mismatch() {
+        let dispatcher = ArchitectureDispatcher::new();
+        let profile = crate::common::ArchitectureProfile::riscv(
+            crate::architecture::Architecture::RiscV32,
+            "riscv64",
+            32,
+            vec!["I", "C"],
+        );
+
+        let error = dispatcher
+            .decode_with_profile(&[0x05, 0x68], &profile, 0)
+            .expect_err("mismatched profile should fail");
+
+        match error {
+            DisasmError::DecodeFailure { kind, .. } => {
+                assert_eq!(kind, DecodeErrorKind::UnsupportedMode);
+            }
+            other => panic!("expected unsupported mode, got {other:?}"),
         }
     }
 }

@@ -43,6 +43,44 @@ impl Extensions {
         self.thead |= THead::all();
         self
     }
+
+    /// Build an extension set from a profile-style list of enabled names.
+    pub fn from_enabled_extensions(
+        enabled_extensions: &[&str],
+    ) -> Result<Self, crate::types::error::DisasmError> {
+        let mut standard = Standard::empty();
+        let mut thead = THead::empty();
+
+        for extension in enabled_extensions {
+            match extension.to_ascii_uppercase().as_str() {
+                "I" => standard |= Standard::I,
+                "M" => standard |= Standard::M,
+                "A" => standard |= Standard::A,
+                "F" => standard |= Standard::F,
+                "D" => standard |= Standard::D,
+                "C" => standard |= Standard::C,
+                "G" => standard |= Standard::G,
+                "XTHEADCONDMOV" | "CMOV" => thead |= THead::CMOV,
+                other => {
+                    return Err(crate::types::error::DisasmError::decode_failure(
+                        crate::types::error::DecodeErrorKind::UnsupportedExtension,
+                        None::<String>,
+                        format!("unsupported profile extension `{other}`"),
+                    ));
+                }
+            }
+        }
+
+        if !standard.contains(Standard::I) {
+            return Err(crate::types::error::DisasmError::decode_failure(
+                crate::types::error::DecodeErrorKind::UnsupportedExtension,
+                None::<String>,
+                "RISC-V profiles must enable the base I extension",
+            ));
+        }
+
+        Ok(Self { standard, thead })
+    }
 }
 
 /// Trait that all instruction set extensions must implement.

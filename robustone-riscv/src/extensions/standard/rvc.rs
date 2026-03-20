@@ -54,6 +54,19 @@ impl Rvc {
         ))
     }
 
+    fn decode_c_lui(&self, rd: u8, imm: i64) -> Result<RiscVDecodedInstruction, DisasmError> {
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            "lui",
+            RiscVInstructionFormat::CI,
+            2,
+            vec![
+                convenience::register(rd, Access::write()),
+                convenience::immediate(imm),
+            ],
+        ))
+    }
+
     fn decode_c_add(&self, rd: u8, rs2: u8) -> Result<RiscVDecodedInstruction, DisasmError> {
         let _ = &self.register_manager;
         Ok(RiscVDecodedInstruction::new(
@@ -87,7 +100,8 @@ impl Rvc {
             RiscVInstructionFormat::CR,
             2,
             vec![convenience::register(rd, Access::read())],
-        ))
+        )
+        .with_capstone_alias("jr", Vec::new()))
     }
 
     fn decode_c_jalr(&self, rd: u8) -> Result<RiscVDecodedInstruction, DisasmError> {
@@ -97,7 +111,8 @@ impl Rvc {
             RiscVInstructionFormat::CR,
             2,
             vec![convenience::register(rd, Access::read())],
-        ))
+        )
+        .with_capstone_alias("jalr", Vec::new()))
     }
 
     fn decode_c_lw(
@@ -292,12 +307,20 @@ impl Rvc {
         ))
     }
 
-    fn decode_c_unknown(&self, instruction: u16) -> Result<RiscVDecodedInstruction, DisasmError> {
+    fn decode_c_ebreak(&self) -> Result<RiscVDecodedInstruction, DisasmError> {
         Ok(RiscVDecodedInstruction::new(
-            "c.unknown",
-            RiscVInstructionFormat::CI,
+            "ebreak",
+            RiscVInstructionFormat::CR,
             2,
-            vec![convenience::immediate(instruction as i64)],
+            vec![],
+        ))
+    }
+
+    fn decode_c_unknown(&self, instruction: u16) -> Result<RiscVDecodedInstruction, DisasmError> {
+        Err(DisasmError::decode_failure(
+            crate::types::error::DecodeErrorKind::InvalidEncoding,
+            Some("riscv".to_string()),
+            format!("unrecognized compressed instruction 0x{instruction:04x}"),
         ))
     }
 }
@@ -372,12 +395,18 @@ impl InstructionExtension for Rvc {
             (0b01, 0b001) => Some(self.decode_c_jal(imm_cj)),
             (0b01, 0b010) => Some(self.decode_c_li(rd_full, imm_ci)),
             (0b01, 0b011) => {
-                let imm_val = (((instruction >> 12) & 0x1) << 9)
-                    | (((instruction >> 3) & 0x3) << 7)
-                    | (((instruction >> 5) & 0x1) << 6)
-                    | (((instruction >> 2) & 0x3) << 4)
-                    | (((instruction >> 6) & 0x1) << 5);
-                Some(self.decode_c_addi16sp(rd_full, imm_val))
+                if rd_full == 2 {
+                    let imm_val = (((instruction >> 12) & 0x1) << 9)
+                        | (((instruction >> 3) & 0x3) << 7)
+                        | (((instruction >> 5) & 0x1) << 6)
+                        | (((instruction >> 2) & 0x3) << 4)
+                        | (((instruction >> 6) & 0x1) << 5);
+                    Some(self.decode_c_addi16sp(rd_full, imm_val))
+                } else if rd_full != 0 && imm_ci != 0 {
+                    Some(self.decode_c_lui(rd_full, imm_ci))
+                } else {
+                    Some(self.decode_c_unknown(instruction))
+                }
             }
             (0b01, 0b100) => {
                 let funct6 = ((instruction >> 10) & 0x3F) as u8;
@@ -391,14 +420,15 @@ impl InstructionExtension for Rvc {
             // C2 opcode (quarters 2)
             (0b10, 0b000) => Some(self.decode_c_slli(rd_full, imm_ci)),
             (0b10, 0b010) => Some(self.decode_c_lwsp(rd_full, uimm_clsp)),
-            (0b10, 0b100) => Some(self.decode_c_mv(rd_full, rs2_full)),
-            (0b10, 0b101) => {
-                if rs2_full == 0 {
-                    Some(self.decode_c_jr(rd_full))
-                } else if rd_full == 0 {
-                    Some(self.decode_c_jalr(rd_full))
-                } else {
-                    Some(self.decode_c_add(rd_full, rs2_full))
+            (0b10, 0b100) => {
+                let bit12 = ((instruction >> 12) & 0x1) as u8;
+                match (bit12, rd_full, rs2_full) {
+                    (0, rd, 0) if rd != 0 => Some(self.decode_c_jr(rd)),
+                    (0, rd, rs2) if rd != 0 && rs2 != 0 => Some(self.decode_c_mv(rd, rs2)),
+                    (1, 0, 0) => Some(self.decode_c_ebreak()),
+                    (1, rd, 0) if rd != 0 => Some(self.decode_c_jalr(rd)),
+                    (1, rd, rs2) if rd != 0 && rs2 != 0 => Some(self.decode_c_add(rd, rs2)),
+                    _ => Some(self.decode_c_unknown(instruction)),
                 }
             }
             (0b10, 0b110) => Some(self.decode_c_swsp(rs2_full, uimm_css)),
