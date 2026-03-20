@@ -50,7 +50,7 @@ fn assert_case(case: GoldenCase) {
         .decode_instruction(&bytes, &case.arch, 0)
         .expect("low-level decode should succeed");
 
-    assert_eq!(size, 4);
+    assert_eq!(size, bytes.len());
     assert_eq!(decoded.mnemonic, case.expected_ir.mnemonic);
     assert_eq!(
         decoded.render_hints.capstone_mnemonic.as_deref(),
@@ -85,6 +85,16 @@ fn test_addi_li_golden_fixture() {
 #[test]
 fn test_fadd_s_golden_fixture() {
     assert_case(load_case("fadd_s.json"));
+}
+
+#[test]
+fn test_c_lui_golden_fixture() {
+    assert_case(load_case("c_lui.json"));
+}
+
+#[test]
+fn test_c_jr_golden_fixture() {
+    assert_case(load_case("c_jr.json"));
 }
 
 #[test]
@@ -139,5 +149,23 @@ fn test_ir_rendering_covers_control_flow_and_atomic_variants() {
             instruction.rendered_text_parts(robustone_core::ir::TextRenderProfile::Canonical),
             expected_canonical
         );
+    }
+}
+
+#[test]
+fn test_invalid_compressed_encoding_reports_failure() {
+    let dispatcher = ArchitectureDispatcher::new();
+    let error = dispatcher
+        .decode_instruction(&[0x00, 0x20], "riscv32", 0)
+        .expect_err("invalid compressed encoding should fail");
+
+    match error {
+        robustone_core::DisasmError::DecodeFailure { kind, .. } => {
+            assert_eq!(
+                kind,
+                robustone_core::types::error::DecodeErrorKind::InvalidEncoding
+            );
+        }
+        other => panic!("expected decode failure, got {other:?}"),
     }
 }

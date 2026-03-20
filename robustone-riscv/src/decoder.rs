@@ -7,10 +7,12 @@
 use super::extensions::standard::Standard;
 use super::extensions::{Extensions, InstructionExtension, create_extensions};
 use super::types::*;
+use robustone_core::common::ArchitectureProfile;
 use robustone_core::ir::{
     ArchitectureId, DecodeStatus, DecodedInstruction, Operand, RegisterId, RenderHints,
 };
 use robustone_core::types::error::DisasmError;
+use robustone_core::utils::Endianness;
 
 /// RISC-V XLEN (register width) indicator.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -48,6 +50,41 @@ impl RiscVDecoder {
         Self::new(Xlen::X64, Extensions::rv64gc())
     }
 
+    /// Build a decoder from an explicit architecture profile.
+    pub fn from_profile(profile: &ArchitectureProfile) -> Result<Self, DisasmError> {
+        if profile.endianness != Endianness::Little {
+            return Err(DisasmError::decode_failure(
+                crate::types::error::DecodeErrorKind::UnsupportedMode,
+                Some(profile.mode_name.to_string()),
+                "big-endian RISC-V profiles are not implemented",
+            ));
+        }
+
+        let (expected_arch, expected_width, xlen) = match &profile.architecture {
+            crate::architecture::Architecture::RiscV32 => ("riscv32", 32, Xlen::X32),
+            crate::architecture::Architecture::RiscV64 => ("riscv64", 64, Xlen::X64),
+            other => {
+                return Err(DisasmError::UnsupportedArchitecture(
+                    other.as_str().to_string(),
+                ));
+            }
+        };
+
+        if profile.mode_name != expected_arch || profile.bit_width != expected_width {
+            return Err(DisasmError::decode_failure(
+                crate::types::error::DecodeErrorKind::UnsupportedMode,
+                Some(profile.mode_name.to_string()),
+                format!(
+                    "profile mismatch: architecture={} bit_width={} mode_name={}",
+                    expected_arch, profile.bit_width, profile.mode_name
+                ),
+            ));
+        }
+
+        let extensions = Extensions::from_enabled_extensions(&profile.enabled_extensions)?;
+        Ok(Self::new(xlen, extensions))
+    }
+
     /// Decode a single instruction located at `address`.
     pub fn decode(
         &self,
@@ -68,6 +105,13 @@ impl RiscVDecoder {
         // 2. Otherwise attempt a standard 32-bit instruction.
         if bytes.len() >= 2 && (bytes[0] & 0x3) != 0x3 {
             // Compressed encoding (two low bits are not `0b11`).
+            if !self.extensions.standard.contains(Standard::C) {
+                return Err(DisasmError::decode_failure(
+                    crate::types::error::DecodeErrorKind::UnsupportedExtension,
+                    Some(self.mode_name().to_string()),
+                    "compressed instruction requires C extension",
+                ));
+            }
             self.decode_compressed_instruction(bytes, address)
         } else if bytes.len() >= 4 {
             // Standard instruction (low bits equal `0b11`) or fallback when compression fails.
@@ -123,6 +167,14 @@ impl RiscVDecoder {
             21,
         );
 
+        if let Some(required_extension) = self.required_standard_extension(opcode, funct3, funct7) {
+            return Err(DisasmError::decode_failure(
+                crate::types::error::DecodeErrorKind::UnsupportedExtension,
+                Some(self.mode_name().to_string()),
+                format!("instruction requires {required_extension} extension"),
+            ));
+        }
+
         // Try each enabled extension in order
         for extension in &self.extension_handlers {
             if !extension.is_enabled(&self.extensions) {
@@ -139,6 +191,18 @@ impl RiscVDecoder {
 
         // No extension could decode this instruction
         self.decode_unknown_instruction(instruction)
+    }
+
+    /// Decode directly into the shared IR with the provided mode / address context.
+    pub fn decode_ir(
+        &self,
+        bytes: &[u8],
+        arch_name: &str,
+        address: u64,
+    ) -> Result<DecodedInstruction, DisasmError> {
+        let decoded = self.decode(bytes, address)?;
+        let raw_bytes = bytes[..decoded.size].to_vec();
+        Ok(decoded.to_ir(arch_name, address, raw_bytes))
     }
 
     /// Decode a 16-bit compressed instruction using extension modules.
@@ -267,6 +331,57 @@ impl RiscVDecoder {
             Xlen::X32 => "riscv32",
             Xlen::X64 => "riscv64",
         }
+    }
+
+    fn required_standard_extension(
+        &self,
+        opcode: u32,
+        funct3: u8,
+        funct7: u8,
+    ) -> Option<&'static str> {
+        if opcode == 0b010_1111 && !self.extensions.standard.contains(Standard::A) {
+            return Some("A");
+        }
+
+        if matches!(
+            opcode,
+            0b000_0111 | 0b010_0111 | 0b100_0011 | 0b100_0111 | 0b100_1011 | 0b100_1111
+        ) {
+            let extension = match funct3 {
+                0b010 => "F",
+                0b011 => "D",
+                _ => "F",
+            };
+            let required = if extension == "D" {
+                self.extensions.standard.contains(Standard::D)
+            } else {
+                self.extensions.standard.contains(Standard::F)
+            };
+            if !required {
+                return Some(extension);
+            }
+        }
+
+        if opcode == 0b101_0011 {
+            let fmt = funct7 & 0b11;
+            let required = match fmt {
+                0b00 => (!self.extensions.standard.contains(Standard::F)).then_some("F"),
+                0b01 => (!self.extensions.standard.contains(Standard::D)).then_some("D"),
+                _ => None,
+            };
+            if required.is_some() {
+                return required;
+            }
+        }
+
+        if matches!(opcode, 0b011_0011 | 0b011_1011)
+            && funct7 == 0b000_0001
+            && !self.extensions.standard.contains(Standard::M)
+        {
+            return Some("M");
+        }
+
+        None
     }
 
     fn normalize_extension_error(&self, error: DisasmError) -> DisasmError {
