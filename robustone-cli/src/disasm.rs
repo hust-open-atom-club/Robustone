@@ -132,6 +132,11 @@ impl DisassemblyResult {
         self.instructions.push(instr);
     }
 
+    /// Account for bytes consumed without yielding an instruction.
+    pub fn advance_bytes(&mut self, count: usize) {
+        self.bytes_processed += count;
+    }
+
     /// Add an error to the result.
     pub fn add_error(&mut self, error: DisassemblyIssue) {
         self.errors.push(error);
@@ -238,6 +243,7 @@ impl DisassemblyEngine {
                             offset,
                             slice,
                         ));
+                        result.advance_bytes(1);
                         offset += 1;
                         current_address = current_address.saturating_add(1);
                     } else {
@@ -620,6 +626,37 @@ mod tests {
 
         assert_eq!(parsed["errors"][0]["kind"], "unimplemented_instruction");
         assert_eq!(parsed["errors"][0]["architecture"], "riscv64");
+    }
+
+    #[test]
+    fn test_json_formatter_counts_skipped_bytes_in_bytes_processed() {
+        let engine = DisassemblyEngine::new();
+        let config = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
+            hex_bytes: vec![0xff, 0xff],
+            start_address: 0,
+            display_options: DisplayOptions {
+                detailed: false,
+                alias_regs: false,
+                real_detail: false,
+                unsigned_immediate: false,
+                json: true,
+            },
+            skip_data: true,
+        };
+        let result = engine.disassemble(&config).unwrap();
+        let formatter = DisassemblyFormatter::new(OutputConfig {
+            text_profile: robustone_core::ir::TextRenderProfile::Capstone,
+            alias_regs: false,
+            unsigned_immediate: false,
+            show_hex: false,
+            show_detail_sections: false,
+            json: true,
+        });
+        let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
+
+        assert_eq!(parsed["bytes_processed"], 2);
+        assert_eq!(parsed["errors"].as_array().unwrap().len(), 2);
     }
 
     #[test]

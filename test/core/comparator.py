@@ -148,11 +148,56 @@ _RISCV_REGISTER_IDS.update(
 )
 
 _RISCV_CSR_IDS = {
+    "ustatus": 0x000,
+    "fflags": 0x001,
+    "frm": 0x002,
+    "fcsr": 0x003,
     "sstatus": 0x100,
+    "sedeleg": 0x102,
+    "sideleg": 0x103,
+    "sie": 0x104,
+    "stvec": 0x105,
+    "scounteren": 0x106,
+    "sscratch": 0x140,
+    "sepc": 0x141,
+    "scause": 0x142,
+    "stval": 0x143,
+    "sip": 0x144,
     "satp": 0x180,
+    "mstatus": 0x300,
+    "misa": 0x301,
+    "medeleg": 0x302,
+    "mideleg": 0x303,
+    "mie": 0x304,
     "mtvec": 0x305,
+    "mcounteren": 0x306,
+    "mcountinhibit": 0x320,
+    "mhpmevent3": 0x323,
+    "mscratch": 0x340,
+    "mepc": 0x341,
     "mcause": 0x342,
+    "mtval": 0x343,
+    "mip": 0x344,
+    "mtinst": 0x34A,
+    "mtval2": 0x34B,
+    "tselect": 0x7A0,
+    "tdata1": 0x7A1,
+    "tdata2": 0x7A2,
+    "tdata3": 0x7A3,
+    "dcsr": 0x7B0,
+    "dpc": 0x7B1,
+    "dscratch0": 0x7B2,
+    "dscratch1": 0x7B3,
+    "mcycle": 0xB00,
+    "minstret": 0xB02,
+    "mcycleh": 0xB80,
+    "minstreth": 0xB82,
     "cycle": 0xC00,
+    "time": 0xC01,
+    "instret": 0xC02,
+    "cycleh": 0xC80,
+    "timeh": 0xC81,
+    "instreth": 0xC82,
 }
 
 
@@ -616,6 +661,12 @@ class OutputComparator:
         name = csr_name.strip().lower()
         if name.startswith("0x"):
             return int(name, 16)
+        if match := re.fullmatch(r"mhpmevent([3-9]|[12][0-9]|3[01])", name):
+            return 0x320 + int(match.group(1))
+        if match := re.fullmatch(r"mhpmcounter([3-9]|[12][0-9]|3[01])", name):
+            return 0xB00 + int(match.group(1))
+        if match := re.fullmatch(r"mhpmcounter([3-9]|[12][0-9]|3[01])h", name):
+            return 0xB80 + int(match.group(1))
         if name not in _RISCV_CSR_IDS:
             raise ValueError(f"unknown RISC-V CSR `{csr_name}`")
         return _RISCV_CSR_IDS[name]
