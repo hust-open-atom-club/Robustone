@@ -57,14 +57,20 @@ pub mod prelude {
     pub use crate::architecture::{Architecture, is_address_aligned};
     pub use crate::common::ArchitectureProfile;
     pub use crate::ir::{ArchitectureId, DecodeStatus, DecodedInstruction, Operand, RegisterId};
-    pub use crate::render::{RenderedDisassembly, RenderedInstruction, RenderedIssue};
+    pub use crate::render::{
+        RenderOptions, RenderedDisassembly, RenderedInstruction, RenderedIssue, render_disassembly,
+        render_instruction_text,
+    };
     pub use crate::traits::{ArchitectureHandler, BasicInstructionDetail, Detail};
     pub use crate::types::{DisasmError, Instruction};
     pub use crate::utils::{Endianness, HexParser};
 }
 
 pub use ir::DecodedInstruction;
-pub use render::{RenderedDisassembly, RenderedInstruction, RenderedIssue};
+pub use render::{
+    RenderOptions, RenderedDisassembly, RenderedInstruction, RenderedIssue, render_disassembly,
+    render_instruction_text,
+};
 pub use traits::ArchitectureHandler;
 pub use traits::instruction::Detail;
 pub use types::error::DisasmError;
