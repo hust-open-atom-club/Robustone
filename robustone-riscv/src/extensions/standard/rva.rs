@@ -4,12 +4,12 @@
 //! which provides atomic memory operations for synchronization and concurrency.
 
 use super::Standard;
-use crate::decoder::{Xlen, build_riscv_decoded_instruction};
-use crate::extensions::{Extensions, InstructionExtension};
-use crate::shared::{operands::convenience, registers::RegisterManager};
-use crate::types::*;
-use robustone_core::ir::DecodedInstruction;
-use robustone_core::types::error::DisasmError;
+use crate::ir::DecodedInstruction;
+use crate::riscv::decoder::{Xlen, build_riscv_decoded_instruction};
+use crate::riscv::extensions::{Extensions, InstructionExtension, invalid_encoding};
+use crate::riscv::shared::{operands::convenience, registers::RegisterManager};
+use crate::riscv::types::*;
+use crate::types::error::DisasmError;
 
 /// RVA Atomic Instructions Extension
 pub struct Rva {
@@ -62,8 +62,8 @@ impl Rva {
             4,
             vec![
                 convenience::register(rd, Access::write()),
+                convenience::memory(rs1, 0),
                 convenience::register(rs2, Access::read()),
-                convenience::register(rs1, Access::read()),
             ],
         ))
     }
@@ -76,15 +76,23 @@ impl Rva {
         rs2: u8,
     ) -> Result<DecodedInstruction, DisasmError> {
         let _ = &self.register_manager;
+        let operands = if mnemonic.starts_with("lr.") {
+            vec![
+                convenience::register(rd, Access::write()),
+                convenience::memory(rs1, 0),
+            ]
+        } else {
+            vec![
+                convenience::register(rd, Access::write()),
+                convenience::memory(rs1, 0),
+                convenience::register(rs2, Access::read()),
+            ]
+        };
         Ok(build_riscv_decoded_instruction(
             mnemonic,
             RiscVInstructionFormat::R,
             4,
-            vec![
-                convenience::register(rd, Access::write()),
-                convenience::register(rs2, Access::read()),
-                convenience::register(rs1, Access::read()),
-            ],
+            operands,
         ))
     }
 }
@@ -195,9 +203,7 @@ impl InstructionExtension for Rva {
                 Some(self.decode_amo("amomaxu.d", rd, rs1, rs2))
             }
 
-            _ => Some(Err(DisasmError::DecodingError(
-                "Invalid A-extension encoding".to_string(),
-            ))),
+            _ => Some(Err(invalid_encoding("invalid A-extension encoding"))),
         }
     }
 

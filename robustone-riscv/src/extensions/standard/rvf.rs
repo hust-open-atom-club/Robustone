@@ -4,12 +4,14 @@
 //! which provides IEEE 754 single-precision floating-point operations.
 
 use super::Standard;
-use crate::decoder::{Xlen, build_riscv_decoded_instruction};
-use crate::extensions::{Extensions, InstructionExtension};
-use crate::shared::{operands::convenience, registers::RegisterManager};
-use crate::types::*;
-use robustone_core::ir::DecodedInstruction;
-use robustone_core::types::error::DisasmError;
+use crate::ir::DecodedInstruction;
+use crate::riscv::decoder::{Xlen, build_riscv_decoded_instruction};
+use crate::riscv::extensions::{
+    Extensions, InstructionExtension, invalid_encoding, unsupported_mode,
+};
+use crate::riscv::shared::{operands::convenience, registers::RegisterManager};
+use crate::riscv::types::*;
+use crate::types::error::DisasmError;
 
 /// RVF Single-Precision Floating-Point Extension
 pub struct Rvf {
@@ -333,9 +335,7 @@ impl InstructionExtension for Rvf {
                                     "fcvt.l.s", rd, rs1, false, true, rm,
                                 ))
                             } else {
-                                Some(Err(DisasmError::DecodingError(
-                                    "fcvt.l.s requires RV64".to_string(),
-                                )))
+                                Some(Err(unsupported_mode("fcvt.l.s requires RV64")))
                             }
                         }
                         3 => {
@@ -349,13 +349,11 @@ impl InstructionExtension for Rvf {
                                     rm,
                                 ))
                             } else {
-                                Some(Err(DisasmError::DecodingError(
-                                    "fcvt.lu.s requires RV64".to_string(),
-                                )))
+                                Some(Err(unsupported_mode("fcvt.lu.s requires RV64")))
                             }
                         }
-                        _ => Some(Err(DisasmError::DecodingError(
-                            "Invalid F-extension integer conversion".to_string(),
+                        _ => Some(Err(invalid_encoding(
+                            "invalid F-extension integer conversion",
                         ))),
                     },
                     (0b11100, 0b000) => {
@@ -385,9 +383,7 @@ impl InstructionExtension for Rvf {
                                     "fcvt.s.l", rd, rs1, true, false, rm,
                                 ))
                             } else {
-                                Some(Err(DisasmError::DecodingError(
-                                    "fcvt.s.l requires RV64".to_string(),
-                                )))
+                                Some(Err(unsupported_mode("fcvt.s.l requires RV64")))
                             }
                         }
                         3 => {
@@ -401,21 +397,17 @@ impl InstructionExtension for Rvf {
                                     rm,
                                 ))
                             } else {
-                                Some(Err(DisasmError::DecodingError(
-                                    "fcvt.s.lu requires RV64".to_string(),
-                                )))
+                                Some(Err(unsupported_mode("fcvt.s.lu requires RV64")))
                             }
                         }
-                        _ => Some(Err(DisasmError::DecodingError(
-                            "Invalid F-extension floating conversion".to_string(),
+                        _ => Some(Err(invalid_encoding(
+                            "invalid F-extension floating conversion",
                         ))),
                     },
                     (0b11110, 0b000) => {
                         Some(self.decode_fp_int_type("fmv.w.x", rd, rs1, rs2, true, false))
                     } // rs2 ignored
-                    _ => Some(Err(DisasmError::DecodingError(
-                        "Invalid F-extension encoding".to_string(),
-                    ))),
+                    _ => Some(Err(invalid_encoding("invalid F-extension encoding"))),
                 }
             }
             _ => None,

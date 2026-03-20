@@ -265,13 +265,29 @@ impl RiscVPrinter {
         match operands {
             [
                 (_, Operand::Register { register: rd }),
-                (_, Operand::Register { .. }),
-                (_, Operand::Register { register: base }),
-            ] => format!(
-                "{}, ({})",
-                self.format_ir_register(rd),
-                self.format_ir_register(base)
-            ),
+                (
+                    _,
+                    Operand::Memory {
+                        base: Some(base),
+                        displacement,
+                    },
+                ),
+            ] => {
+                if *displacement == 0 {
+                    format!(
+                        "{}, ({})",
+                        self.format_ir_register(rd),
+                        self.format_ir_register(base)
+                    )
+                } else {
+                    format!(
+                        "{}, {}({})",
+                        self.format_ir_register(rd),
+                        self.format_immediate(*displacement),
+                        self.format_ir_register(base)
+                    )
+                }
+            }
             _ => operands
                 .iter()
                 .map(|(_, operand)| self.format_ir_basic_operand(operand, mode))
@@ -284,14 +300,32 @@ impl RiscVPrinter {
         match operands {
             [
                 (_, Operand::Register { register: first }),
+                (
+                    _,
+                    Operand::Memory {
+                        base: Some(base),
+                        displacement,
+                    },
+                ),
                 (_, Operand::Register { register: second }),
-                (_, Operand::Register { register: base }),
-            ] => format!(
-                "{}, {}, ({})",
-                self.format_ir_register(first),
-                self.format_ir_register(second),
-                self.format_ir_register(base)
-            ),
+            ] => {
+                if *displacement == 0 {
+                    format!(
+                        "{}, {}, ({})",
+                        self.format_ir_register(first),
+                        self.format_ir_register(second),
+                        self.format_ir_register(base)
+                    )
+                } else {
+                    format!(
+                        "{}, {}, {}({})",
+                        self.format_ir_register(first),
+                        self.format_ir_register(second),
+                        self.format_immediate(*displacement),
+                        self.format_ir_register(base)
+                    )
+                }
+            }
             _ => operands
                 .iter()
                 .map(|(_, operand)| self.format_ir_basic_operand(operand, mode))

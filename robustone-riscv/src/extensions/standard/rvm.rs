@@ -4,14 +4,14 @@
 //! which includes integer multiplication, division, and remainder operations.
 
 use super::Standard;
-use crate::decoder::{Xlen, build_riscv_decoded_instruction};
-use crate::extensions::{Extensions, InstructionExtension};
-use crate::shared::{
+use crate::ir::DecodedInstruction;
+use crate::riscv::decoder::{Xlen, build_riscv_decoded_instruction};
+use crate::riscv::extensions::{Extensions, InstructionExtension, invalid_encoding};
+use crate::riscv::shared::{
     OperandFactory, operands::DefaultOperandFactory, registers::RegisterManager,
 };
-use crate::types::*;
-use robustone_core::ir::DecodedInstruction;
-use robustone_core::types::error::DisasmError;
+use crate::riscv::types::*;
+use crate::types::error::DisasmError;
 
 /// RVM Multiply and Divide Extension
 pub struct Rvm {
@@ -83,9 +83,7 @@ impl Rvm {
             Self::FUNCT3_OP_SRL_SRA => self.decode_r_type("divu", rd, rs1, rs2),
             Self::FUNCT3_OP_OR => self.decode_r_type("rem", rd, rs1, rs2),
             Self::FUNCT3_OP_AND => self.decode_r_type("remu", rd, rs1, rs2),
-            _ => Err(DisasmError::DecodingError(
-                "Invalid M-extension funct3".to_string(),
-            )),
+            _ => Err(invalid_encoding("invalid M-extension funct3")),
         }
     }
 }

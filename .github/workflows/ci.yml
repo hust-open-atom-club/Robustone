@@ -83,3 +83,12 @@ jobs:
 
       - name: Run JSON fuzz smoke
         run: cd fuzz && cargo fuzz run format_riscv_json -- -max_total_time=15
+
+      - name: Run hex parser fuzz smoke
+        run: cd fuzz && cargo fuzz run hex_parser -- -max_total_time=15
+
+      - name: Run text formatter fuzz smoke
+        run: cd fuzz && cargo fuzz run format_riscv_text -- -max_total_time=15
+
+      - name: Run CLI argument fuzz smoke
+        run: cd fuzz && cargo fuzz run cli_argument_combinations -- -max_total_time=15
