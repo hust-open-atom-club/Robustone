@@ -49,6 +49,7 @@ f3560010  # 0 f3 56 00 10 csrrwi a3, sstatus, 0
 33057b03  # 0 33 05 7b 03 mul a0, s6, s7
 b3459c03  # 0 b3 45 9c 03 div a1, s8, s9
 3366bd03  # 0 33 66 bd 03 rem a2, s10, s11
+bb003102  # 0 bb 00 31 02 mulw ra, sp, gp
 2fa40210  # 0 2f a4 02 10 lr.w s0, (t0)
 af236518  # 0 af 23 65 18 sc.w t2, t1, (a0)
 2f272f01  # 0 2f 27 2f 01 amoadd.w a4, s2, (t5)
@@ -69,5 +70,8 @@ d3027302  # 0 d3 02 73 02 fadd.d ft5, ft6, ft7, rne
 5384045a  # 0 53 84 04 5a fsqrt.d fs0, fs1, rne
 5385c52a  # 0 53 85 c5 2a fmin.d fa0, fa1, fa2
 532edea3  # 0 53 2e de a3 feq.d t3, ft8, ft9
+8520      # 0 85 20 addiw ra, ra, 1
+059c      # 0 05 9c subw s0, s0, s1
+259c      # 0 25 9c addw s0, s0, s1
 0568      # 0 05 68 lui a6, 1
 8284      # 0 82 84 jr s1
