@@ -12,13 +12,13 @@ Robustone tracks Capstone compatibility in three layers:
 
 ## Current Baseline
 
-As of 2026-03-19, the repository has:
+As of 2026-03-20, the repository has:
 
 - RISC-V decode backends for `riscv`, `riscv32`, and `riscv64`
-- A top-level `Makefile` with build, check, run, and parity-test entrypoints
+- A top-level `Makefile` with build, check, run, parity-test, and workspace-test entrypoints
 - A Python parity harness under `test/` with `riscv32` and `riscv64` suites
 - Shared-IR, golden-test, property-test, and fuzz-workspace scaffolding for the RISC-V path
-- GitHub Actions workflows that run formatting, linting, workspace tests, parity integration tests, and multi-platform builds
+- A GitHub Actions workflow that runs repository checks, workspace tests, parity integration tests, and scheduled fuzz smoke jobs
 
 The project does not yet have:
 

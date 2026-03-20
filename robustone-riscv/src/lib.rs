@@ -127,7 +127,8 @@ impl ArchitectureHandler for RiscVHandler {
         }
 
         let size = decoded.size;
-        let instruction = Instruction::from_decoded(ir, mnemonic, operands, Some(Box::new(riscv_detail)));
+        let instruction =
+            Instruction::from_decoded(ir, mnemonic, operands, Some(Box::new(riscv_detail)));
         Ok((instruction, size))
     }
 
