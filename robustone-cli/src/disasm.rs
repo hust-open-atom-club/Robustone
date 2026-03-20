@@ -623,6 +623,62 @@ mod tests {
     }
 
     #[test]
+    fn test_text_formatter_emits_unsupported_mode_errors() {
+        let engine = DisassemblyEngine::new();
+        let config = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
+            hex_bytes: vec![0x83, 0x30, 0x00, 0x00],
+            start_address: 0,
+            display_options: DisplayOptions {
+                detailed: false,
+                alias_regs: false,
+                real_detail: false,
+                unsigned_immediate: false,
+                json: false,
+            },
+            skip_data: true,
+        };
+        let result = engine.disassemble(&config).unwrap();
+        let formatter = DisassemblyFormatter::new(OutputConfig::minimal());
+        let output = formatter.format(&result);
+
+        assert!(output.contains("[unsupported_mode] ld requires RV64"));
+        assert!(output.contains("arch=riscv32"));
+    }
+
+    #[test]
+    fn test_json_formatter_emits_unsupported_mode_errors() {
+        let engine = DisassemblyEngine::new();
+        let config = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
+            hex_bytes: vec![0x83, 0x30, 0x00, 0x00],
+            start_address: 0,
+            display_options: DisplayOptions {
+                detailed: false,
+                alias_regs: false,
+                real_detail: false,
+                unsigned_immediate: false,
+                json: true,
+            },
+            skip_data: true,
+        };
+        let result = engine.disassemble(&config).unwrap();
+        let formatter = DisassemblyFormatter::new(OutputConfig {
+            text_profile: robustone_core::ir::TextRenderProfile::Capstone,
+            alias_regs: false,
+            unsigned_immediate: false,
+            show_hex: false,
+            show_detail_sections: false,
+            json: true,
+        });
+        let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
+
+        assert_eq!(parsed["errors"][0]["kind"], "unsupported_mode");
+        assert_eq!(parsed["errors"][0]["architecture"], "riscv32");
+        assert_eq!(parsed["errors"][0]["message"], "ld requires RV64");
+    }
+
+    #[test]
     fn test_canonical_json_profile_uses_canonical_text() {
         let engine = DisassemblyEngine::new();
         let config = DisasmConfig {

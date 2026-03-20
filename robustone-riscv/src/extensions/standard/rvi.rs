@@ -7,7 +7,9 @@
 use super::Standard;
 use crate::ir::DecodedInstruction;
 use crate::riscv::decoder::Xlen;
-use crate::riscv::extensions::{Extensions, InstructionExtension, invalid_encoding};
+use crate::riscv::extensions::{
+    Extensions, InstructionExtension, invalid_encoding, unsupported_mode,
+};
 use crate::riscv::shared::{
     InstructionFormatter, OperandFactory, encoding::ShamtExtractor,
     formatting::DefaultInstructionFormatter, operands::DefaultOperandFactory,
@@ -306,9 +308,11 @@ impl Rvi {
             Self::FUNCT3_LOAD_LH => "lh",
             Self::FUNCT3_LOAD_LW => "lw",
             Self::FUNCT3_LOAD_LD if xlen == Xlen::X64 => "ld",
+            Self::FUNCT3_LOAD_LD => return Err(unsupported_mode("ld requires RV64")),
             Self::FUNCT3_LOAD_LBU => "lbu",
             Self::FUNCT3_LOAD_LHU => "lhu",
             Self::FUNCT3_LOAD_LWU if xlen == Xlen::X64 => "lwu",
+            Self::FUNCT3_LOAD_LWU => return Err(unsupported_mode("lwu requires RV64")),
             _ => return Err(invalid_encoding("invalid load funct3")),
         };
 
@@ -337,6 +341,7 @@ impl Rvi {
             Self::FUNCT3_STORE_SH => "sh",
             Self::FUNCT3_STORE_SW => "sw",
             Self::FUNCT3_STORE_SD if xlen == Xlen::X64 => "sd",
+            Self::FUNCT3_STORE_SD => return Err(unsupported_mode("sd requires RV64")),
             _ => return Err(invalid_encoding("invalid store funct3")),
         };
         self.decode_s_type(mnemonic, rs2, rs1, imm_s)
@@ -638,6 +643,10 @@ impl InstructionExtension for Rvi {
             Self::OPCODE_OP => Some(self.decode_op(funct3, funct7, rd, rs1, rs2)),
             Self::OPCODE_OP_IMM_32 if xlen == Xlen::X64 => {
                 Some(self.decode_op_imm_32(funct3, funct7, rd, rs1, imm_i))
+            }
+            Self::OPCODE_OP_IMM_32 => Some(Err(unsupported_mode("OP-IMM-32 requires RV64"))),
+            Self::OPCODE_OP_32 if xlen != Xlen::X64 => {
+                Some(Err(unsupported_mode("OP-32 requires RV64")))
             }
             Self::OPCODE_OP_32 if xlen == Xlen::X64 && funct7 == Self::FUNCT7_OP_MUL => None,
             Self::OPCODE_OP_32 if xlen == Xlen::X64 => {

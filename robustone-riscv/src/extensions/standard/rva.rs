@@ -6,7 +6,9 @@
 use super::Standard;
 use crate::ir::DecodedInstruction;
 use crate::riscv::decoder::{Xlen, build_riscv_decoded_instruction};
-use crate::riscv::extensions::{Extensions, InstructionExtension, invalid_encoding};
+use crate::riscv::extensions::{
+    Extensions, InstructionExtension, invalid_encoding, unsupported_mode,
+};
 use crate::riscv::shared::{operands::convenience, registers::RegisterManager};
 use crate::riscv::types::*;
 use crate::types::error::DisasmError;
@@ -141,8 +143,14 @@ impl InstructionExtension for Rva {
             (Self::FUNCT3_LR_D, Self::FUNCT5_LR, 0b01) if xlen == Xlen::X64 => {
                 Some(self.decode_lr_sc("lr.d", rd, rs1, rs2))
             }
+            (Self::FUNCT3_LR_D, Self::FUNCT5_LR, 0b01) => {
+                Some(Err(unsupported_mode("lr.d requires RV64")))
+            }
             (Self::FUNCT3_SC_D, Self::FUNCT5_SC, 0b01) if xlen == Xlen::X64 => {
                 Some(self.decode_lr_sc("sc.d", rd, rs1, rs2))
+            }
+            (Self::FUNCT3_SC_D, Self::FUNCT5_SC, 0b01) => {
+                Some(Err(unsupported_mode("sc.d requires RV64")))
             }
 
             // Atomic Memory Operation instructions
@@ -178,29 +186,56 @@ impl InstructionExtension for Rva {
             (Self::FUNCT3_AMO_D, Self::FUNCT5_AMOSWAP, 0b01) if xlen == Xlen::X64 => {
                 Some(self.decode_amo("amoswap.d", rd, rs1, rs2))
             }
+            (Self::FUNCT3_AMO_D, Self::FUNCT5_AMOSWAP, 0b01) => {
+                Some(Err(unsupported_mode("amoswap.d requires RV64")))
+            }
             (Self::FUNCT3_AMO_D, Self::FUNCT5_AMOADD, 0b01) if xlen == Xlen::X64 => {
                 Some(self.decode_amo("amoadd.d", rd, rs1, rs2))
+            }
+            (Self::FUNCT3_AMO_D, Self::FUNCT5_AMOADD, 0b01) => {
+                Some(Err(unsupported_mode("amoadd.d requires RV64")))
             }
             (Self::FUNCT3_AMO_D, Self::FUNCT5_AMOXOR, 0b01) if xlen == Xlen::X64 => {
                 Some(self.decode_amo("amoxor.d", rd, rs1, rs2))
             }
+            (Self::FUNCT3_AMO_D, Self::FUNCT5_AMOXOR, 0b01) => {
+                Some(Err(unsupported_mode("amoxor.d requires RV64")))
+            }
             (Self::FUNCT3_AMO_D, Self::FUNCT5_AMOAND, 0b01) if xlen == Xlen::X64 => {
                 Some(self.decode_amo("amoand.d", rd, rs1, rs2))
+            }
+            (Self::FUNCT3_AMO_D, Self::FUNCT5_AMOAND, 0b01) => {
+                Some(Err(unsupported_mode("amoand.d requires RV64")))
             }
             (Self::FUNCT3_AMO_D, Self::FUNCT5_AMOOR, 0b01) if xlen == Xlen::X64 => {
                 Some(self.decode_amo("amoor.d", rd, rs1, rs2))
             }
+            (Self::FUNCT3_AMO_D, Self::FUNCT5_AMOOR, 0b01) => {
+                Some(Err(unsupported_mode("amoor.d requires RV64")))
+            }
             (Self::FUNCT3_AMO_D, Self::FUNCT5_AMOMIN, 0b01) if xlen == Xlen::X64 => {
                 Some(self.decode_amo("amomin.d", rd, rs1, rs2))
+            }
+            (Self::FUNCT3_AMO_D, Self::FUNCT5_AMOMIN, 0b01) => {
+                Some(Err(unsupported_mode("amomin.d requires RV64")))
             }
             (Self::FUNCT3_AMO_D, Self::FUNCT5_AMOMAX, 0b01) if xlen == Xlen::X64 => {
                 Some(self.decode_amo("amomax.d", rd, rs1, rs2))
             }
+            (Self::FUNCT3_AMO_D, Self::FUNCT5_AMOMAX, 0b01) => {
+                Some(Err(unsupported_mode("amomax.d requires RV64")))
+            }
             (Self::FUNCT3_AMO_D, Self::FUNCT5_AMOMINU, 0b01) if xlen == Xlen::X64 => {
                 Some(self.decode_amo("amominu.d", rd, rs1, rs2))
             }
+            (Self::FUNCT3_AMO_D, Self::FUNCT5_AMOMINU, 0b01) => {
+                Some(Err(unsupported_mode("amominu.d requires RV64")))
+            }
             (Self::FUNCT3_AMO_D, Self::FUNCT5_AMOMAXU, 0b01) if xlen == Xlen::X64 => {
                 Some(self.decode_amo("amomaxu.d", rd, rs1, rs2))
+            }
+            (Self::FUNCT3_AMO_D, Self::FUNCT5_AMOMAXU, 0b01) => {
+                Some(Err(unsupported_mode("amomaxu.d requires RV64")))
             }
 
             _ => Some(Err(invalid_encoding("invalid A-extension encoding"))),

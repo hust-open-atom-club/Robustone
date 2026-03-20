@@ -467,4 +467,83 @@ mod tests {
             other => panic!("expected unimplemented instruction, got {other:?}"),
         }
     }
+
+    #[test]
+    fn test_rv64_only_ld_reports_unsupported_mode_on_rv32() {
+        let dispatcher = ArchitectureDispatcher::new();
+        let (decoded, size) = dispatcher
+            .decode_instruction(&[0x83, 0x30, 0x00, 0x00], "riscv64", 0)
+            .expect("RV64 should decode ld");
+
+        assert_eq!(size, 4);
+        assert_eq!(decoded.mnemonic, "ld");
+
+        let error = dispatcher
+            .decode_instruction(&[0x83, 0x30, 0x00, 0x00], "riscv32", 0)
+            .expect_err("RV32 should reject ld with unsupported_mode");
+
+        match error {
+            DisasmError::DecodeFailure {
+                kind, architecture, ..
+            } => {
+                assert_eq!(kind, DecodeErrorKind::UnsupportedMode);
+                assert_eq!(architecture.as_deref(), Some("riscv32"));
+            }
+            other => panic!("expected unsupported mode, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_rv64_only_lr_d_reports_unsupported_mode_on_rv32() {
+        let dispatcher = ArchitectureDispatcher::new();
+        let (decoded, size) = dispatcher
+            .decode_instruction(&[0x2f, 0xb4, 0x02, 0x12], "riscv64", 0)
+            .expect("RV64 should decode lr.d");
+
+        assert_eq!(size, 4);
+        assert_eq!(decoded.mnemonic, "lr.d");
+
+        let error = dispatcher
+            .decode_instruction(&[0x2f, 0xb4, 0x02, 0x12], "riscv32", 0)
+            .expect_err("RV32 should reject lr.d with unsupported_mode");
+
+        match error {
+            DisasmError::DecodeFailure {
+                kind, architecture, ..
+            } => {
+                assert_eq!(kind, DecodeErrorKind::UnsupportedMode);
+                assert_eq!(architecture.as_deref(), Some("riscv32"));
+            }
+            other => panic!("expected unsupported mode, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_rv64_only_compressed_families_report_unsupported_mode_on_rv32() {
+        let dispatcher = ArchitectureDispatcher::new();
+
+        let rv64_error = dispatcher
+            .decode_instruction(&[0x00, 0x60], "riscv64", 0)
+            .expect_err("RV64 compressed ld remains unimplemented");
+        match rv64_error {
+            DisasmError::DecodeFailure { kind, .. } => {
+                assert_eq!(kind, DecodeErrorKind::UnimplementedInstruction);
+            }
+            other => panic!("expected unimplemented instruction, got {other:?}"),
+        }
+
+        let rv32_error = dispatcher
+            .decode_instruction(&[0x00, 0x60], "riscv32", 0)
+            .expect_err("RV32 should reject c.ld with unsupported_mode");
+
+        match rv32_error {
+            DisasmError::DecodeFailure {
+                kind, architecture, ..
+            } => {
+                assert_eq!(kind, DecodeErrorKind::UnsupportedMode);
+                assert_eq!(architecture.as_deref(), Some("riscv32"));
+            }
+            other => panic!("expected unsupported mode, got {other:?}"),
+        }
+    }
 }
