@@ -3,6 +3,7 @@
 //! This module provides the structured representation that decode backends
 //! should populate before any display-oriented formatting happens.
 
+use crate::riscv::printer::{RiscVPrinter, RiscVTextProfile};
 use serde::Serialize;
 
 /// Architectures that can currently populate the shared IR.
@@ -21,6 +22,13 @@ pub enum DecodeStatus {
     InvalidEncoding,
     UnsupportedExtension,
     Unimplemented,
+}
+
+/// Text output profiles derived from the shared IR.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TextRenderProfile {
+    Capstone,
+    Canonical,
 }
 
 /// Shared register identifier.
@@ -94,6 +102,29 @@ pub struct DecodedInstruction {
 }
 
 impl DecodedInstruction {
+    /// Render the instruction into mnemonic / operands text using the shared IR.
+    pub fn render_text_parts(&self, profile: TextRenderProfile) -> (String, String) {
+        match self.architecture {
+            ArchitectureId::Riscv => {
+                let printer = RiscVPrinter::new().with_profile(match profile {
+                    TextRenderProfile::Capstone => RiscVTextProfile::Capstone,
+                    TextRenderProfile::Canonical => RiscVTextProfile::Canonical,
+                });
+                printer.render_ir_parts(self)
+            }
+        }
+    }
+
+    /// Render the instruction using the Capstone-compatible text profile.
+    pub fn render_capstone_text_parts(&self) -> (String, String) {
+        self.render_text_parts(TextRenderProfile::Capstone)
+    }
+
+    /// Render the instruction using the canonical text profile.
+    pub fn render_canonical_text_parts(&self) -> (String, String) {
+        self.render_text_parts(TextRenderProfile::Canonical)
+    }
+
     /// Serialize the decoded instruction as pretty JSON.
     pub fn to_json_pretty(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string_pretty(self)

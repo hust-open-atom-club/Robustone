@@ -27,7 +27,6 @@ use robustone_core::{
     types::instruction::Instruction,
 };
 use types::*;
-use printer::{RiscVPrinter, RiscVTextProfile};
 
 /// Architecture handler implementation for RISC-V targets.
 pub struct RiscVHandler {
@@ -114,9 +113,8 @@ impl ArchitectureHandler for RiscVHandler {
         arch_name: &str,
         addr: u64,
     ) -> Result<(Instruction, usize), DisasmError> {
-        let (decoded, ir) = self.decode_with_context(bytes, arch_name, addr)?;
-        let printer = RiscVPrinter::new().with_profile(RiscVTextProfile::Capstone);
-        let (mnemonic, operands) = printer.render_decoded_parts_with_ir(&decoded, &ir);
+        let (_, ir) = self.decode_with_context(bytes, arch_name, addr)?;
+        let (mnemonic, operands) = ir.render_capstone_text_parts();
 
         let mut riscv_detail = RiscVInstructionDetail::new();
         for register in &ir.registers_read {
@@ -126,7 +124,7 @@ impl ArchitectureHandler for RiscVHandler {
             riscv_detail = riscv_detail.writes_register(register.id);
         }
 
-        let size = decoded.size;
+        let size = ir.size;
         let instruction =
             Instruction::from_decoded(ir, mnemonic, operands, Some(Box::new(riscv_detail)));
         Ok((instruction, size))

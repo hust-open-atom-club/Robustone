@@ -85,4 +85,43 @@ impl DisasmError {
             detail: failure.detail,
         }
     }
+
+    /// Return a stable, machine-readable error kind identifier.
+    pub fn stable_kind(&self) -> &'static str {
+        match self {
+            DisasmError::UnsupportedArchitecture(_) => "unsupported_architecture",
+            DisasmError::DecodeFailure { kind, .. } => match kind {
+                DecodeErrorKind::NeedMoreBytes => "need_more_bytes",
+                DecodeErrorKind::InvalidEncoding => "invalid_encoding",
+                DecodeErrorKind::UnsupportedExtension => "unsupported_extension",
+                DecodeErrorKind::UnimplementedInstruction => "unimplemented_instruction",
+                DecodeErrorKind::UnsupportedMode => "unsupported_mode",
+            },
+            DisasmError::DecodingError(_) => "decoding_error",
+            DisasmError::InvalidHexCode(_) => "invalid_hex_code",
+            DisasmError::InvalidAddress(_) => "invalid_address",
+        }
+    }
+
+    /// Return the architecture involved in this error when available.
+    pub fn architecture_name(&self) -> Option<&str> {
+        match self {
+            DisasmError::UnsupportedArchitecture(arch) => Some(arch.as_str()),
+            DisasmError::DecodeFailure { architecture, .. } => architecture.as_deref(),
+            _ => None,
+        }
+    }
+
+    /// Return the human-readable detail payload without the prefixed display wrapper.
+    pub fn detail_message(&self) -> String {
+        match self {
+            DisasmError::UnsupportedArchitecture(arch) => {
+                format!("unsupported architecture: {arch}")
+            }
+            DisasmError::DecodeFailure { detail, .. } => detail.clone(),
+            DisasmError::DecodingError(detail) => detail.clone(),
+            DisasmError::InvalidHexCode(detail) => detail.clone(),
+            DisasmError::InvalidAddress(detail) => detail.clone(),
+        }
+    }
 }

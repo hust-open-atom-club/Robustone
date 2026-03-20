@@ -64,7 +64,7 @@ impl CliExecutor {
         // Perform the disassembly
         let result = engine
             .disassemble(config)
-            .map_err(|e| CliError::Disassembly(e.to_string()))?;
+            .map_err(|error| CliError::disassembly(&error))?;
 
         // Format and output the results
         let output_config = OutputConfig::from_display_options(&config.display_options);
@@ -94,7 +94,7 @@ impl CliExecutor {
         let result = self
             .engine
             .disassemble(config)
-            .map_err(|e| CliError::Disassembly(e.to_string()))?;
+            .map_err(|error| CliError::disassembly(&error))?;
 
         formatter.print(&result);
         Ok(())
@@ -123,7 +123,7 @@ impl CliExecutor {
         let result = self
             .engine
             .disassemble(config)
-            .map_err(|e| CliError::Disassembly(e.to_string()))?;
+            .map_err(|error| CliError::disassembly(&error))?;
 
         let output_config = OutputConfig::from_display_options(&config.display_options);
         let formatter = DisassemblyFormatter::new(output_config);
@@ -138,7 +138,7 @@ impl CliExecutor {
         let result = self
             .engine
             .disassemble(config)
-            .map_err(|e| CliError::Disassembly(e.to_string()))?;
+            .map_err(|error| CliError::disassembly(&error))?;
 
         let output_config = OutputConfig::minimal();
         let formatter = DisassemblyFormatter::new(output_config);
