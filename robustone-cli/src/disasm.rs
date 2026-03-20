@@ -1,4 +1,6 @@
 use crate::config::{DisasmConfig, OutputConfig};
+use robustone_core::ir::{ArchitectureId, TextRenderProfile};
+use robustone_core::riscv::printer::{RiscVPrinter, RiscVTextProfile};
 use robustone_core::{ArchitectureDispatcher, DisasmError, Instruction};
 use robustone_riscv::RiscVHandler;
 use serde::Serialize;
@@ -296,8 +298,7 @@ impl DisassemblyFormatter {
             .instructions
             .iter()
             .map(|instruction| {
-                let (mnemonic, operands) =
-                    instruction.rendered_text_parts(self.output_config.text_profile);
+                let (mnemonic, operands) = self.render_instruction_text(instruction);
                 json!({
                     "address": instruction.address,
                     "mnemonic": mnemonic,
@@ -322,7 +323,7 @@ impl DisassemblyFormatter {
     /// Format a single instruction.
     fn format_instruction(&self, instr: &Instruction, hex_width: usize) -> String {
         let address_str = format!("{:x}", instr.address);
-        let (mnemonic, operands) = instr.rendered_text_parts(self.output_config.text_profile);
+        let (mnemonic, operands) = self.render_instruction_text(instr);
 
         let bytes_str = if self.output_config.show_hex {
             format!(
@@ -368,6 +369,19 @@ impl DisassemblyFormatter {
         };
 
         let mut detail_lines = Vec::new();
+        if matches!(
+            self.output_config.text_profile,
+            TextRenderProfile::VerboseDebug
+        ) && let Some(decoded) = &instr.decoded
+        {
+            if let Some(opcode_id) = &decoded.opcode_id {
+                detail_lines.push(format!("\tOpcode ID: {opcode_id}"));
+            }
+            if !decoded.groups.is_empty() {
+                detail_lines.push(format!("\tGroups: {}", decoded.groups.join(", ")));
+            }
+            detail_lines.push(format!("\tStatus: {:?}", decoded.status));
+        }
         let registers_read = detail.registers_read();
         if !registers_read.is_empty() {
             let registers = registers_read
@@ -394,6 +408,30 @@ impl DisassemblyFormatter {
     /// Print the disassembly result directly to stdout.
     pub fn print(&self, result: &DisassemblyResult) {
         print!("{}", self.format(result));
+    }
+
+    fn render_instruction_text(&self, instr: &Instruction) -> (String, String) {
+        if let Some(decoded) = &instr.decoded
+            && decoded.architecture == ArchitectureId::Riscv
+        {
+            let profile = match self.output_config.text_profile {
+                TextRenderProfile::Capstone => RiscVTextProfile::Capstone,
+                TextRenderProfile::Canonical => RiscVTextProfile::Canonical,
+                TextRenderProfile::VerboseDebug => RiscVTextProfile::VerboseDebug,
+            };
+            let alias_regs = self.output_config.alias_regs
+                || !matches!(
+                    self.output_config.text_profile,
+                    TextRenderProfile::Canonical
+                );
+            let printer = RiscVPrinter::new()
+                .with_profile(profile)
+                .with_alias_regs(alias_regs)
+                .with_unsigned_immediate(self.output_config.unsigned_immediate);
+            return printer.render_ir_parts(decoded);
+        }
+
+        instr.rendered_text_parts(self.output_config.text_profile)
     }
 }
 
@@ -472,6 +510,8 @@ mod tests {
         let result = engine.disassemble(&config).unwrap();
         let formatter = DisassemblyFormatter::new(OutputConfig {
             text_profile: robustone_core::ir::TextRenderProfile::Capstone,
+            alias_regs: false,
+            unsigned_immediate: false,
             show_hex: false,
             show_detail_sections: false,
             json: true,
@@ -549,6 +589,8 @@ mod tests {
         let result = engine.disassemble(&config).unwrap();
         let formatter = DisassemblyFormatter::new(OutputConfig {
             text_profile: robustone_core::ir::TextRenderProfile::Capstone,
+            alias_regs: false,
+            unsigned_immediate: false,
             show_hex: false,
             show_detail_sections: false,
             json: true,
@@ -581,6 +623,8 @@ mod tests {
         let result = engine.disassemble(&config).unwrap();
         let formatter = DisassemblyFormatter::new(OutputConfig {
             text_profile: robustone_core::ir::TextRenderProfile::Capstone,
+            alias_regs: false,
+            unsigned_immediate: false,
             show_hex: false,
             show_detail_sections: false,
             json: true,
@@ -588,7 +632,7 @@ mod tests {
         let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
 
         assert_eq!(parsed["errors"][0]["kind"], "unimplemented_instruction");
-        assert_eq!(parsed["errors"][0]["architecture"], "riscv");
+        assert_eq!(parsed["errors"][0]["architecture"], "riscv64");
     }
 
     #[test]

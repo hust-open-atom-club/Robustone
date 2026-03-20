@@ -8,9 +8,9 @@ These measurements were recorded locally on 2026-03-20 with:
 
 | Benchmark | Result |
 |-----------|--------|
-| `riscv32_decode_ir` | `829.03 ns` to `837.87 ns` |
-| `riscv32_detail_overhead` | `1.0591 us` to `1.0633 us` |
-| `riscv32_cli_end_to_end` | `1.7032 us` to `1.8287 us` |
+| `riscv32_decode_ir` | `815.06 ns` to `819.98 ns` |
+| `riscv32_detail_overhead` | `1.0724 us` to `1.0748 us` |
+| `riscv32_cli_end_to_end` | `1.6670 us` to `1.6872 us` |
 
 These numbers are intended as in-repo baselines, not performance claims across machines.
 

@@ -42,16 +42,23 @@ fn test_config_rejects_odd_length_hex_instead_of_truncating() {
 }
 
 #[test]
-fn test_config_rejects_unsupported_output_flags() {
+fn test_config_accepts_output_flags() {
     let alias_args = vec!["robustone", "-a", "riscv32", "93001000"];
     let alias_cli = Cli::try_parse_from(alias_args).expect("CLI arguments should parse");
     let alias_result = DisasmConfig::config_from_cli(&alias_cli);
-    assert!(alias_result.is_err());
+    assert!(alias_result.is_ok());
 
-    let unsigned_args = vec!["robustone", "-u", "riscv32", "93001000"];
+    let unsigned_args = vec!["robustone", "-u", "riscv32", "130101ff"];
     let unsigned_cli = Cli::try_parse_from(unsigned_args).expect("CLI arguments should parse");
-    let unsigned_result = DisasmConfig::config_from_cli(&unsigned_cli);
-    assert!(unsigned_result.is_err());
+    let unsigned_config =
+        DisasmConfig::config_from_cli(&unsigned_cli).expect("configuration should be valid");
+    let result = process_input(&unsigned_config).expect("disassembly should succeed");
+    let formatter = DisassemblyFormatter::new(OutputConfig::from_display_options(
+        &unsigned_config.display_options,
+    ));
+    let output = formatter.format(&result);
+
+    assert!(output.contains("0xfffffff0"));
 }
 
 #[test]

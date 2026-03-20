@@ -310,7 +310,7 @@ impl Rvc {
     fn decode_c_unknown(&self, instruction: u16) -> Result<DecodedInstruction, DisasmError> {
         Err(DisasmError::decode_failure(
             crate::types::error::DecodeErrorKind::InvalidEncoding,
-            Some("riscv".to_string()),
+            None::<String>,
             format!("unrecognized compressed instruction 0x{instruction:04x}"),
         ))
     }
@@ -322,7 +322,7 @@ impl Rvc {
     ) -> Result<DecodedInstruction, DisasmError> {
         Err(DisasmError::decode_failure(
             crate::types::error::DecodeErrorKind::UnimplementedInstruction,
-            Some("riscv".to_string()),
+            None::<String>,
             format!(
                 "{mnemonic} is a legal compressed instruction but is not implemented: {detail}"
             ),

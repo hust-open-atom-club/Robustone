@@ -57,7 +57,17 @@ impl RiscVPrinter {
 
     /// Formats an immediate according to the active configuration.
     fn format_immediate(&self, imm: i64) -> String {
+        if self.unsigned_immediate && imm < 0 {
+            return format!("0x{:x}", imm as u64);
+        }
         DefaultOperandFactory::new().format_immediate(imm)
+    }
+
+    fn format_mode_unsigned_immediate(&self, imm: i64, mode: &str) -> String {
+        match mode {
+            "riscv32" => format!("0x{:x}", imm as u32),
+            _ => format!("0x{:x}", imm as u64),
+        }
     }
 
     /// Formats a register operand.
@@ -131,11 +141,11 @@ impl RiscVPrinter {
         let last_visible_index = visible_operands.last().map(|(index, _)| *index);
 
         let operands = if mnemonic == "jalr" {
-            self.format_ir_jalr_operands(&visible_operands)
+            self.format_ir_jalr_operands(&visible_operands, ir.mode.as_str())
         } else if mnemonic.starts_with("lr.") {
-            self.format_ir_load_reserved_operands(&visible_operands)
+            self.format_ir_load_reserved_operands(&visible_operands, ir.mode.as_str())
         } else if mnemonic.starts_with("sc.") || mnemonic.starts_with("amo") {
-            self.format_ir_atomic_operands(&visible_operands)
+            self.format_ir_atomic_operands(&visible_operands, ir.mode.as_str())
         } else {
             visible_operands
                 .iter()
@@ -159,16 +169,26 @@ impl RiscVPrinter {
         self.format_register(register.id)
     }
 
-    fn format_ir_basic_operand(&self, operand: &Operand) -> String {
+    fn format_ir_basic_operand(&self, operand: &Operand, mode: &str) -> String {
         match operand {
             Operand::Register { register } => self.format_ir_register(register),
-            Operand::Immediate { value } => self.format_immediate(*value),
+            Operand::Immediate { value } => {
+                if self.unsigned_immediate && *value < 0 {
+                    self.format_mode_unsigned_immediate(*value, mode)
+                } else {
+                    self.format_immediate(*value)
+                }
+            }
             Operand::Text { value } => value.clone(),
             Operand::Memory { base, displacement } => base
                 .as_ref()
                 .map(|base| {
-                    DefaultOperandFactory::new()
-                        .format_memory_operand(*displacement, &self.format_ir_register(base))
+                    let disp = if self.unsigned_immediate && *displacement < 0 {
+                        self.format_mode_unsigned_immediate(*displacement, mode)
+                    } else {
+                        self.format_immediate(*displacement)
+                    };
+                    format!("{disp}({})", self.format_ir_register(base))
                 })
                 .unwrap_or_else(|| self.format_immediate(*displacement)),
         }
@@ -186,18 +206,22 @@ impl RiscVPrinter {
             Operand::Immediate { value } if self.is_csr_operand(mnemonic, index) => {
                 csr_name_lookup(*value as u16)
                     .map(str::to_string)
-                    .unwrap_or_else(|| self.format_immediate(*value))
+                    .unwrap_or_else(|| self.format_ir_basic_operand(operand, mode))
             }
             Operand::Immediate { value }
                 if last_visible_index == Some(index) && self.is_control_flow_mnemonic(mnemonic) =>
             {
-                self.format_control_flow_immediate(*value, mode)
+                if self.unsigned_immediate {
+                    self.format_mode_unsigned_immediate(*value, mode)
+                } else {
+                    self.format_control_flow_immediate(*value, mode)
+                }
             }
-            _ => self.format_ir_basic_operand(operand),
+            _ => self.format_ir_basic_operand(operand, mode),
         }
     }
 
-    fn format_ir_jalr_operands(&self, operands: &[(usize, &Operand)]) -> String {
+    fn format_ir_jalr_operands(&self, operands: &[(usize, &Operand)], mode: &str) -> String {
         let mut visible = operands.iter().map(|(_, operand)| *operand);
         match (visible.next(), visible.next(), visible.next()) {
             (
@@ -205,25 +229,39 @@ impl RiscVPrinter {
                 Some(Operand::Register { register: rs1 }),
                 Some(Operand::Immediate { value: imm }),
             ) => {
-                let target = DefaultOperandFactory::new()
-                    .format_memory_operand(*imm, &self.format_ir_register(rs1));
+                let disp = if self.unsigned_immediate && *imm < 0 {
+                    self.format_mode_unsigned_immediate(*imm, mode)
+                } else {
+                    self.format_immediate(*imm)
+                };
+                let target = format!("{disp}({})", self.format_ir_register(rs1));
                 format!("{}, {target}", self.format_ir_register(rd))
             }
             (
                 Some(Operand::Register { register: rs1 }),
                 Some(Operand::Immediate { value: imm }),
                 None,
-            ) => DefaultOperandFactory::new()
-                .format_memory_operand(*imm, &self.format_ir_register(rs1)),
+            ) => {
+                let disp = if self.unsigned_immediate && *imm < 0 {
+                    self.format_mode_unsigned_immediate(*imm, mode)
+                } else {
+                    self.format_immediate(*imm)
+                };
+                format!("{disp}({})", self.format_ir_register(rs1))
+            }
             _ => operands
                 .iter()
-                .map(|(_, operand)| self.format_ir_basic_operand(operand))
+                .map(|(_, operand)| self.format_ir_basic_operand(operand, mode))
                 .collect::<Vec<_>>()
                 .join(", "),
         }
     }
 
-    fn format_ir_load_reserved_operands(&self, operands: &[(usize, &Operand)]) -> String {
+    fn format_ir_load_reserved_operands(
+        &self,
+        operands: &[(usize, &Operand)],
+        mode: &str,
+    ) -> String {
         match operands {
             [
                 (_, Operand::Register { register: rd }),
@@ -236,13 +274,13 @@ impl RiscVPrinter {
             ),
             _ => operands
                 .iter()
-                .map(|(_, operand)| self.format_ir_basic_operand(operand))
+                .map(|(_, operand)| self.format_ir_basic_operand(operand, mode))
                 .collect::<Vec<_>>()
                 .join(", "),
         }
     }
 
-    fn format_ir_atomic_operands(&self, operands: &[(usize, &Operand)]) -> String {
+    fn format_ir_atomic_operands(&self, operands: &[(usize, &Operand)], mode: &str) -> String {
         match operands {
             [
                 (_, Operand::Register { register: first }),
@@ -256,7 +294,7 @@ impl RiscVPrinter {
             ),
             _ => operands
                 .iter()
-                .map(|(_, operand)| self.format_ir_basic_operand(operand))
+                .map(|(_, operand)| self.format_ir_basic_operand(operand, mode))
                 .collect::<Vec<_>>()
                 .join(", "),
         }
