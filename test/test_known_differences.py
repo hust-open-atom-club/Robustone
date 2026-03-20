@@ -10,7 +10,7 @@ sys.path.insert(0, str(TEST_ROOT / "core"))
 
 # pylint: disable=wrong-import-position
 from comparator import ComparisonResult, TestCaseResult
-from test_runner import TestRunner
+from test_runner import TestRunner, _parse_known_differences_fallback
 
 
 class KnownDifferenceTests(unittest.TestCase):
@@ -113,6 +113,24 @@ class KnownDifferenceTests(unittest.TestCase):
 
             updated = runner.apply_known_difference("riscv32", result)
             self.assertEqual(updated.result, ComparisonResult.COMMAND_FAILURE)
+
+    def test_fallback_known_difference_parser_accepts_surface_entries(self):
+        data = _parse_known_differences_fallback(
+            textwrap.dedent(
+                """
+                [[difference]]
+                arch = "riscv32"
+                hex = "deadbeef"
+                surface = "semantic_detail"
+                reason = "accepted semantic gap"
+                active = true
+                """
+            )
+        )
+
+        self.assertEqual(len(data["difference"]), 1)
+        self.assertEqual(data["difference"][0]["surface"], "semantic_detail")
+        self.assertTrue(data["difference"][0]["active"])
 
 
 if __name__ == "__main__":
