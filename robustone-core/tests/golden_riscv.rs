@@ -60,6 +60,9 @@ fn assert_case(case: GoldenCase) {
         decoded.render_hints.capstone_hidden_operands,
         case.expected_ir.hidden_operands
     );
+    let (rendered_mnemonic, rendered_operands) = decoded.render_capstone_text_parts();
+    assert_eq!(rendered_mnemonic, case.expected_capstone.mnemonic);
+    assert_eq!(rendered_operands, case.expected_capstone.operands);
     assert_eq!(decoded.groups, case.expected_ir.groups);
     let operand_kinds = decoded
         .operands

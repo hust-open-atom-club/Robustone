@@ -113,6 +113,7 @@ The commands above were verified locally on 2026-03-20.
 - CI workflow: `.github/workflows/ci.yml` (`make check`, `cargo test --workspace --all-features`, `make test`, plus scheduled fuzz smoke)
 - Support matrix: [docs/support-matrix.md](docs/support-matrix.md)
 - Roadmap: [docs/roadmap.md](docs/roadmap.md)
+- Known differences: [tests/differential/known-differences.toml](tests/differential/known-differences.toml)
 - New ISA checklist: [docs/isa-checklist.md](docs/isa-checklist.md)
 - Benchmark baselines: [docs/benchmark-baselines.md](docs/benchmark-baselines.md)
 - Release checklist: [docs/release-checklist.md](docs/release-checklist.md)

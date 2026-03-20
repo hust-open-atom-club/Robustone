@@ -6,7 +6,7 @@ use super::decoder::RiscVDecodedInstruction;
 use super::shared::operands::csr_name_lookup;
 use super::shared::{OperandFormatter, operands::DefaultOperandFactory};
 use super::types::*;
-use robustone_core::ir::DecodedInstruction;
+use robustone_core::ir::{DecodedInstruction, Operand, RegisterId};
 use robustone_core::Instruction;
 
 /// Text formatting profiles for the RISC-V formatter.
@@ -108,19 +108,15 @@ impl RiscVPrinter {
         self.render_decoded_parts_with_ir(decoded, &decoded.to_ir("riscv32", 0, vec![]))
     }
 
-    /// Render a structured RISC-V decode result using the shared IR metadata.
-    pub fn render_decoded_parts_with_ir(
-        &self,
-        decoded: &RiscVDecodedInstruction,
-        ir: &DecodedInstruction,
-    ) -> (String, String) {
+    /// Render the shared IR into mnemonic and operand text.
+    pub fn render_ir_parts(&self, ir: &DecodedInstruction) -> (String, String) {
         let mnemonic = match self.profile {
             RiscVTextProfile::Capstone => ir
                 .render_hints
                 .capstone_mnemonic
                 .clone()
-                .unwrap_or_else(|| decoded.canonical_mnemonic().to_string()),
-            RiscVTextProfile::Canonical => decoded.canonical_mnemonic().to_string(),
+                .unwrap_or_else(|| ir.mnemonic.clone()),
+            RiscVTextProfile::Canonical => ir.mnemonic.clone(),
         };
 
         let hidden_operands = if matches!(self.profile, RiscVTextProfile::Capstone) {
@@ -128,26 +124,25 @@ impl RiscVPrinter {
         } else {
             &[]
         };
-
-        let visible_operands = decoded
-            .operands_detail
+        let visible_operands = ir
+            .operands
             .iter()
             .enumerate()
             .filter(|(index, _)| !hidden_operands.contains(index))
             .collect::<Vec<_>>();
+        let last_visible_index = visible_operands.last().map(|(index, _)| *index);
 
         let operands = if mnemonic == "jalr" {
-            self.format_jalr_operands(&visible_operands)
+            self.format_ir_jalr_operands(&visible_operands)
         } else if mnemonic.starts_with("lr.") {
-            self.format_load_reserved_operands(&visible_operands)
+            self.format_ir_load_reserved_operands(&visible_operands)
         } else if mnemonic.starts_with("sc.") || mnemonic.starts_with("amo") {
-            self.format_atomic_operands(&visible_operands)
+            self.format_ir_atomic_operands(&visible_operands)
         } else {
-            let last_visible_index = visible_operands.last().map(|(index, _)| *index);
             visible_operands
                 .iter()
                 .map(|(index, operand)| {
-                    self.format_decoded_operand(
+                    self.format_ir_operand(
                         &mnemonic,
                         *index,
                         operand,
@@ -162,30 +157,119 @@ impl RiscVPrinter {
         (mnemonic, operands)
     }
 
-    fn format_decoded_operand(
+    /// Render a structured RISC-V decode result using the shared IR metadata.
+    pub fn render_decoded_parts_with_ir(
+        &self,
+        _decoded: &RiscVDecodedInstruction,
+        ir: &DecodedInstruction,
+    ) -> (String, String) {
+        self.render_ir_parts(ir)
+    }
+
+    fn format_ir_register(&self, register: &RegisterId) -> String {
+        self.format_register(register.id)
+    }
+
+    fn format_ir_basic_operand(&self, operand: &Operand) -> String {
+        match operand {
+            Operand::Register { register } => self.format_ir_register(register),
+            Operand::Immediate { value } => self.format_immediate(*value),
+            Operand::Text { value } => value.clone(),
+            Operand::Memory { base, displacement } => base
+                .as_ref()
+                .map(|base| {
+                    DefaultOperandFactory::new()
+                        .format_memory_operand(*displacement, &self.format_ir_register(base))
+                })
+                .unwrap_or_else(|| self.format_immediate(*displacement)),
+        }
+    }
+
+    fn format_ir_operand(
         &self,
         mnemonic: &str,
         index: usize,
-        operand: &RiscVOperand,
+        operand: &Operand,
         mode: &str,
         last_visible_index: Option<usize>,
     ) -> String {
-        match &operand.value {
-            RiscVOperandValue::Immediate(value) if self.is_csr_operand(mnemonic, index) => {
+        match operand {
+            Operand::Immediate { value } if self.is_csr_operand(mnemonic, index) => {
                 csr_name_lookup(*value as u16)
                     .map(str::to_string)
                     .unwrap_or_else(|| self.format_immediate(*value))
             }
-            RiscVOperandValue::Immediate(value)
+            Operand::Immediate { value }
                 if last_visible_index == Some(index) && self.is_control_flow_mnemonic(mnemonic) =>
             {
                 self.format_control_flow_immediate(*value, mode)
             }
-            RiscVOperandValue::Memory(memory) => {
-                let base = self.format_register(memory.base);
-                DefaultOperandFactory::new().format_memory_operand(memory.disp, &base)
+            _ => self.format_ir_basic_operand(operand),
+        }
+    }
+
+    fn format_ir_jalr_operands(&self, operands: &[(usize, &Operand)]) -> String {
+        let mut visible = operands.iter().map(|(_, operand)| *operand);
+        match (visible.next(), visible.next(), visible.next()) {
+            (
+                Some(Operand::Register { register: rd }),
+                Some(Operand::Register { register: rs1 }),
+                Some(Operand::Immediate { value: imm }),
+            ) => {
+                let target = DefaultOperandFactory::new()
+                    .format_memory_operand(*imm, &self.format_ir_register(rs1));
+                format!("{}, {target}", self.format_ir_register(rd))
             }
-            _ => self.format_operand(operand),
+            (
+                Some(Operand::Register { register: rs1 }),
+                Some(Operand::Immediate { value: imm }),
+                None,
+            ) => DefaultOperandFactory::new()
+                .format_memory_operand(*imm, &self.format_ir_register(rs1)),
+            _ => operands
+                .iter()
+                .map(|(_, operand)| self.format_ir_basic_operand(operand))
+                .collect::<Vec<_>>()
+                .join(", "),
+        }
+    }
+
+    fn format_ir_load_reserved_operands(&self, operands: &[(usize, &Operand)]) -> String {
+        match operands {
+            [
+                (_, Operand::Register { register: rd }),
+                (_, Operand::Register { .. }),
+                (_, Operand::Register { register: base }),
+            ] => format!(
+                "{}, ({})",
+                self.format_ir_register(rd),
+                self.format_ir_register(base)
+            ),
+            _ => operands
+                .iter()
+                .map(|(_, operand)| self.format_ir_basic_operand(operand))
+                .collect::<Vec<_>>()
+                .join(", "),
+        }
+    }
+
+    fn format_ir_atomic_operands(&self, operands: &[(usize, &Operand)]) -> String {
+        match operands {
+            [
+                (_, Operand::Register { register: first }),
+                (_, Operand::Register { register: second }),
+                (_, Operand::Register { register: base }),
+            ] => format!(
+                "{}, {}, ({})",
+                self.format_ir_register(first),
+                self.format_ir_register(second),
+                self.format_ir_register(base)
+            ),
+            _ => operands
+                .iter()
+                .map(|(_, operand)| self.format_ir_basic_operand(operand))
+                .collect::<Vec<_>>()
+                .join(", "),
         }
     }
 
@@ -227,125 +311,14 @@ impl RiscVPrinter {
         }
     }
 
-    fn format_jalr_operands(&self, operands: &[(usize, &RiscVOperand)]) -> String {
-        let mut visible = operands.iter().map(|(_, operand)| *operand);
-        match (visible.next(), visible.next(), visible.next()) {
-            (
-                Some(RiscVOperand {
-                    value: RiscVOperandValue::Register(rd),
-                    ..
-                }),
-                Some(RiscVOperand {
-                    value: RiscVOperandValue::Register(rs1),
-                    ..
-                }),
-                Some(RiscVOperand {
-                    value: RiscVOperandValue::Immediate(imm),
-                    ..
-                }),
-            ) => {
-                let target = DefaultOperandFactory::new()
-                    .format_memory_operand(*imm, &self.format_register(*rs1));
-                format!("{}, {target}", self.format_register(*rd))
-            }
-            (
-                Some(RiscVOperand {
-                    value: RiscVOperandValue::Register(rs1),
-                    ..
-                }),
-                Some(RiscVOperand {
-                    value: RiscVOperandValue::Immediate(imm),
-                    ..
-                }),
-                None,
-            ) => DefaultOperandFactory::new()
-                .format_memory_operand(*imm, &self.format_register(*rs1)),
-            _ => operands
-                .iter()
-                .map(|(_, operand)| self.format_operand(operand))
-                .collect::<Vec<_>>()
-                .join(", "),
-        }
-    }
-
-    fn format_load_reserved_operands(&self, operands: &[(usize, &RiscVOperand)]) -> String {
-        match operands {
-            [
-                (
-                    _,
-                    RiscVOperand {
-                        value: RiscVOperandValue::Register(rd),
-                        ..
-                    },
-                ),
-                (
-                    _,
-                    RiscVOperand {
-                        value: RiscVOperandValue::Register(_zero),
-                        ..
-                    },
-                ),
-                (
-                    _,
-                    RiscVOperand {
-                        value: RiscVOperandValue::Register(base),
-                        ..
-                    },
-                ),
-            ] => format!(
-                "{}, ({})",
-                self.format_register(*rd),
-                self.format_register(*base)
-            ),
-            _ => operands
-                .iter()
-                .map(|(_, operand)| self.format_operand(operand))
-                .collect::<Vec<_>>()
-                .join(", "),
-        }
-    }
-
-    fn format_atomic_operands(&self, operands: &[(usize, &RiscVOperand)]) -> String {
-        match operands {
-            [
-                (
-                    _,
-                    RiscVOperand {
-                        value: RiscVOperandValue::Register(first),
-                        ..
-                    },
-                ),
-                (
-                    _,
-                    RiscVOperand {
-                        value: RiscVOperandValue::Register(second),
-                        ..
-                    },
-                ),
-                (
-                    _,
-                    RiscVOperand {
-                        value: RiscVOperandValue::Register(base),
-                        ..
-                    },
-                ),
-            ] => format!(
-                "{}, {}, ({})",
-                self.format_register(*first),
-                self.format_register(*second),
-                self.format_register(*base)
-            ),
-            _ => operands
-                .iter()
-                .map(|(_, operand)| self.format_operand(operand))
-                .collect::<Vec<_>>()
-                .join(", "),
-        }
-    }
-
     /// Renders the instruction mnemonic and operand list.
     pub fn print_basic(&self, instruction: &Instruction) -> String {
-        format!("{} {}", instruction.mnemonic, instruction.operands)
+        let (mnemonic, operands) = instruction.rendered_text_parts(TextRenderProfile::Capstone);
+        if operands.is_empty() {
+            mnemonic
+        } else {
+            format!("{mnemonic} {operands}")
+        }
     }
 
     /// Renders the detailed instruction representation including metadata.
@@ -450,6 +423,7 @@ pub mod format {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ir::{ArchitectureId, DecodeStatus, Operand, RegisterId, RenderHints};
     use crate::riscv::decoder::RiscVDecoder;
 
     #[test]
@@ -549,5 +523,42 @@ mod tests {
 
         assert_eq!(mnemonic, "addi");
         assert_eq!(operands, "x1, x0, 1");
+    }
+
+    #[test]
+    fn test_render_ir_parts_uses_shared_ir() {
+        let printer = RiscVPrinter::new().with_profile(RiscVTextProfile::Capstone);
+        let decoded = DecodedInstruction {
+            architecture: ArchitectureId::Riscv,
+            address: 0,
+            mode: "riscv32".to_string(),
+            mnemonic: "addi".to_string(),
+            opcode_id: Some("addi".to_string()),
+            size: 4,
+            raw_bytes: vec![0x93, 0x00, 0x10, 0x00],
+            operands: vec![
+                Operand::Register {
+                    register: RegisterId::riscv(1),
+                },
+                Operand::Register {
+                    register: RegisterId::riscv(0),
+                },
+                Operand::Immediate { value: 1 },
+            ],
+            registers_read: vec![RegisterId::riscv(0)],
+            registers_written: vec![RegisterId::riscv(1)],
+            implicit_registers_read: Vec::new(),
+            implicit_registers_written: Vec::new(),
+            groups: vec!["arithmetic".to_string()],
+            status: DecodeStatus::Success,
+            render_hints: RenderHints {
+                capstone_mnemonic: Some("li".to_string()),
+                capstone_hidden_operands: vec![1],
+            },
+        };
+
+        let (mnemonic, operands) = printer.render_ir_parts(&decoded);
+        assert_eq!(mnemonic, "li");
+        assert_eq!(operands, "ra, 1");
     }
 }
