@@ -6,10 +6,7 @@
 use super::Standard;
 use crate::decoder::{RiscVDecodedInstruction, Xlen};
 use crate::extensions::{Extensions, InstructionExtension};
-use crate::shared::{
-    operands::convenience,
-    registers::{RegisterManager, RegisterNameProvider},
-};
+use crate::shared::{operands::convenience, registers::RegisterManager};
 use crate::types::*;
 use robustone_core::types::error::DisasmError;
 
@@ -57,24 +54,17 @@ impl Rva {
         rs1: u8,
         rs2: u8,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        Ok(RiscVDecodedInstruction {
-            mnemonic: mnemonic.to_string(),
-            operands: format!(
-                "{}, {}, ({})",
-                self.register_manager.int_register_name(rd),
-                self.register_manager.int_register_name(rs2),
-                self.register_manager.int_register_name(rs1)
-            ),
-            format: RiscVInstructionFormat::R,
-            size: 4,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            mnemonic,
+            RiscVInstructionFormat::R,
+            4,
+            vec![
                 convenience::register(rd, Access::write()),
                 convenience::register(rs2, Access::read()),
                 convenience::register(rs1, Access::read()),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 
     fn decode_lr_sc(
@@ -84,34 +74,17 @@ impl Rva {
         rs1: u8,
         rs2: u8,
     ) -> Result<RiscVDecodedInstruction, DisasmError> {
-        let operands = if mnemonic == "lr.w" || mnemonic == "lr.d" {
-            format!(
-                "{}, ({})",
-                self.register_manager.int_register_name(rd),
-                self.register_manager.int_register_name(rs1)
-            )
-        } else {
-            format!(
-                "{}, {}, ({})",
-                self.register_manager.int_register_name(rd),
-                self.register_manager.int_register_name(rs2),
-                self.register_manager.int_register_name(rs1)
-            )
-        };
-
-        Ok(RiscVDecodedInstruction {
-            mnemonic: mnemonic.to_string(),
-            operands,
-            format: RiscVInstructionFormat::R,
-            size: 4,
-            operands_detail: vec![
+        let _ = &self.register_manager;
+        Ok(RiscVDecodedInstruction::new(
+            mnemonic,
+            RiscVInstructionFormat::R,
+            4,
+            vec![
                 convenience::register(rd, Access::write()),
                 convenience::register(rs2, Access::read()),
                 convenience::register(rs1, Access::read()),
             ],
-            canonical_mnemonic: None,
-            render_hints: Default::default(),
-        })
+        ))
     }
 }
 
