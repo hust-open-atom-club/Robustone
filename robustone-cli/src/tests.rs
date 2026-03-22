@@ -27,12 +27,31 @@ fn test_architecture_spec_rejects_incompatible_modifier() {
 fn test_architecture_spec_accepts_endianness_modifiers() {
     let arm_be = ArchitectureSpec::parse("arm+be").expect("arm+be should parse");
     assert_eq!(arm_be.arch, Architecture::ArmBE);
+    assert_eq!(arm_be.mode, 0x100);
+
+    let arm_le = ArchitectureSpec::parse("armbe+le").expect("armbe+le should parse");
+    assert_eq!(arm_le.arch, Architecture::ArmLE);
+    assert_eq!(arm_le.mode, 0x0);
 
     let mips_le = ArchitectureSpec::parse("mips+little").expect("mips+little should parse");
     assert_eq!(mips_le.arch, Architecture::MipsEL);
+    assert_eq!(mips_le.mode, 0x0);
 
     let ppc_be = ArchitectureSpec::parse("ppc+be").expect("ppc+be should parse");
     assert_eq!(ppc_be.arch, Architecture::PowerPC32BE);
+    assert_eq!(ppc_be.mode, 0x100);
+
+    let arm_flip = ArchitectureSpec::parse("armle+be").expect("armle+be should parse");
+    assert_eq!(arm_flip.arch, Architecture::ArmBE);
+    assert_eq!(arm_flip.mode, 0x100);
+
+    let sparc64_le = ArchitectureSpec::parse("sparc64+le").expect("sparc64+le should parse");
+    assert_eq!(sparc64_le.arch, Architecture::Sparc64);
+    assert_eq!(sparc64_le.mode, 0x0);
+
+    let sparc64_be = ArchitectureSpec::parse("sparc64+be").expect("sparc64+be should parse");
+    assert_eq!(sparc64_be.arch, Architecture::Sparc64);
+    assert_eq!(sparc64_be.mode, 0x100);
 }
 
 #[test]
