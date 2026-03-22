@@ -243,13 +243,13 @@ impl RiscVDecoder {
         // CJ format for c.j/c.jal: imm[11|4|9:8|10|6|7|3:1|5]
         let imm_cj = self.sign_extend_c(
             ((instruction >> 12) & 0x1) << 11
-                | ((instruction >> 8) & 0x3) << 9   // bits 9:8 from instruction[9:8]
-                | ((instruction >> 10) & 0x1) << 8  // bit 8 from instruction[10]
+                | ((instruction >> 8) & 0x1) << 10  // bit 10 from instruction[8]
+                | ((instruction >> 9) & 0x3) << 8   // bits 9:8 from instruction[10:9]
                 | ((instruction >> 6) & 0x1) << 7   // bit 7 from instruction[6]
                 | ((instruction >> 7) & 0x1) << 6   // bit 6 from instruction[7]
-                | ((instruction >> 11) & 0x1) << 5  // bit 5 from instruction[11]
-                | ((instruction >> 3) & 0x7) << 1   // bits 3:1 from instruction[3:1]
-                | ((instruction >> 2) & 0x1) << 4, // bit 4 from instruction[2]
+                | ((instruction >> 2) & 0x1) << 5   // bit 5 from instruction[2]
+                | ((instruction >> 11) & 0x1) << 4  // bit 4 from instruction[11]
+                | ((instruction >> 3) & 0x7) << 1, // bits 3:1 from instruction[5:3]
             12,
         );
 
@@ -266,10 +266,10 @@ impl RiscVDecoder {
         // CSS format for c.swsp: uimm[5:2|6:7]
         let uimm_css = ((instruction >> 7) & 0x3) << 2 | ((instruction >> 9) & 0x3) << 6;
 
-        // CL format for c.lwsp: uimm[5:3|2|6]
-        let uimm_clsp = ((instruction >> 7) & 0x7) << 3
-            | ((instruction >> 6) & 0x1) << 2
-            | ((instruction >> 12) & 0x1) << 6;
+        // CI format for c.lwsp: uimm[5|4:2|7:6]
+        let uimm_clsp = ((instruction >> 12) & 0x1) << 5
+            | ((instruction >> 4) & 0x7) << 2
+            | ((instruction >> 2) & 0x3) << 6;
 
         // CI format for c.fldsp: uimm[5:3|2|4|6|8:7] (RISC-V spec)
         let uimm_fldsp = ((instruction >> 7) & 0x7) << 3  // imm[5:3] from rd[2:0]
