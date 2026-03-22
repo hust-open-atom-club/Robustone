@@ -76,9 +76,11 @@ impl RiscVPrinter {
         if self.alias_regs {
             reg.name().to_string()
         } else {
-            // Use the x0-x31 naming scheme when aliases are disabled.
+            // Use stable architectural register names when aliases are disabled.
             if reg_id <= 31 {
                 format!("x{reg_id}")
+            } else if (32..=63).contains(&reg_id) {
+                format!("f{}", reg_id - 32)
             } else {
                 reg.name().to_string()
             }
@@ -524,12 +526,14 @@ mod tests {
         assert_eq!(printer.format_register(0), "x0");
         assert_eq!(printer.format_register(1), "x1");
         assert_eq!(printer.format_register(10), "x10");
+        assert_eq!(printer.format_register(37), "f5");
 
         // Alias-based formatting
         let printer_with_alias = printer.with_alias_regs(true);
         assert_eq!(printer_with_alias.format_register(0), "zero");
         assert_eq!(printer_with_alias.format_register(1), "ra");
         assert_eq!(printer_with_alias.format_register(10), "a0");
+        assert_eq!(printer_with_alias.format_register(37), "ft5");
     }
 
     #[test]
@@ -586,6 +590,19 @@ mod tests {
 
         assert_eq!(mnemonic, "addi");
         assert_eq!(operands, "x1, x0, 1");
+    }
+
+    #[test]
+    fn test_canonical_profile_renders_fp_registers_without_aliases() {
+        let decoder = RiscVDecoder::rv64gc();
+        let decoded = decoder
+            .decode(&[0xd3, 0x02, 0x73, 0x00], "riscv64", 0)
+            .unwrap();
+        let printer = RiscVPrinter::new().with_profile(RiscVTextProfile::Canonical);
+        let (mnemonic, operands) = printer.render_ir_parts(&decoded);
+
+        assert_eq!(mnemonic, "fadd.s");
+        assert_eq!(operands, "f5, f6, f7, rne");
     }
 
     #[test]

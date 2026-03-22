@@ -2,6 +2,8 @@ use std::str::FromStr;
 
 use crate::error::ParseError;
 
+const MODE_BIG_ENDIAN: u32 = 0x100;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Architecture {
     // RISC-V variants
@@ -87,7 +89,7 @@ impl ArchitectureSpec {
 
             if matches!(canonical_modifier.as_str(), "be" | "le") {
                 arch = arch.apply_endianness_modifier(&canonical_modifier)?;
-                mode = arch.default_mode();
+                mode = arch.default_mode() | endianness_mode_bits(&canonical_modifier);
                 continue;
             }
 
@@ -117,9 +119,13 @@ impl std::fmt::Debug for ArchitectureSpec {
 impl Architecture {
     fn supports_modifier(&self, modifier: &str) -> bool {
         match self {
-            Architecture::Arm | Architecture::ArmLE | Architecture::ArmBE | Architecture::Thumb => {
-                matches!(modifier, "thumb" | "m" | "v8" | "noregname" | "regalias" | "be" | "le")
+            Architecture::Arm | Architecture::ArmLE | Architecture::ArmBE => {
+                matches!(
+                    modifier,
+                    "thumb" | "m" | "v8" | "noregname" | "regalias" | "be" | "le"
+                )
             }
+            Architecture::Thumb => matches!(modifier, "m" | "v8" | "noregname" | "regalias"),
             Architecture::Aarch64 | Architecture::Aarch64BE => {
                 matches!(modifier, "apple" | "noregname" | "regalias" | "be" | "le")
             }
@@ -130,7 +136,10 @@ impl Architecture {
             | Architecture::MipsEL
             | Architecture::Mips64
             | Architecture::MipsEL64 => {
-                matches!(modifier, "nofloat" | "ptr64" | "noregname" | "nodollar" | "be" | "le")
+                matches!(
+                    modifier,
+                    "nofloat" | "ptr64" | "noregname" | "nodollar" | "be" | "le"
+                )
             }
             Architecture::PowerPC32
             | Architecture::PowerPC32BE
@@ -160,8 +169,12 @@ impl Architecture {
 
     fn apply_endianness_modifier(&self, modifier: &str) -> std::result::Result<Self, ParseError> {
         match (self, modifier) {
-            (Architecture::Arm | Architecture::ArmBE, "be") => Ok(Architecture::ArmBE),
-            (Architecture::Arm | Architecture::ArmLE, "le") => Ok(Architecture::ArmLE),
+            (Architecture::Arm | Architecture::ArmBE | Architecture::ArmLE, "be") => {
+                Ok(Architecture::ArmBE)
+            }
+            (Architecture::Arm | Architecture::ArmBE | Architecture::ArmLE, "le") => {
+                Ok(Architecture::ArmLE)
+            }
             (Architecture::Aarch64 | Architecture::Aarch64BE, "be") => Ok(Architecture::Aarch64BE),
             (Architecture::Aarch64 | Architecture::Aarch64BE, "le") => Ok(Architecture::Aarch64),
             (Architecture::Mips, "be") | (Architecture::Mips64, "be") => Ok(self.clone()),
@@ -184,6 +197,7 @@ impl Architecture {
             }
             (Architecture::Sparc | Architecture::SparcLE, "be") => Ok(Architecture::Sparc),
             (Architecture::Sparc | Architecture::SparcLE, "le") => Ok(Architecture::SparcLE),
+            (Architecture::Sparc64, "be" | "le") => Ok(Architecture::Sparc64),
             _ => Err(ParseError::UnknownOption(modifier.to_string())),
         }
     }
@@ -261,6 +275,13 @@ impl Architecture {
                 "Invalid <arch+mode>: {input}. Supported: riscv32, riscv64, riscv32e, arm, armle, armbe, thumb, aarch64, aarch64be, x16, x32, x64, mips, mipsel, mips64, mips64el, ppc, ppc32, ppc64, sparc, sparc64, systemz, and others"
             )),
         }
+    }
+}
+
+fn endianness_mode_bits(modifier: &str) -> u32 {
+    match modifier {
+        "be" => MODE_BIG_ENDIAN,
+        _ => 0,
     }
 }
 
