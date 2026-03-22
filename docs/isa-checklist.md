@@ -19,4 +19,4 @@ Use this checklist before adding a second architecture backend:
    - IR decode throughput
    - detail overhead
    - CLI end-to-end cost
-7. Update `docs/support-matrix.md`, `docs/roadmap.md`, and `tests/differential/known-differences.toml` as needed for the new ISA surface.
+7. Update `README.md`, `README_CN.md`, `docs/support-matrix.md`, and `tests/differential/known-differences.toml` as needed for the new ISA surface.

@@ -14,7 +14,6 @@ Robustone 将与 Capstone 的兼容目标拆分为三层：
 
 - 已实现的解码后端：`riscv`、`riscv32`、`riscv64`
 - 当前支持矩阵：[`docs/support-matrix.md`](docs/support-matrix.md)
-- 版本路线图：[`docs/roadmap.md`](docs/roadmap.md)
 
 ## 系统要求
 
@@ -28,7 +27,7 @@ Robustone 将与 Capstone 的兼容目标拆分为三层：
 robustone/         # 顶层 crate（同时提供库和二进制入口）
 robustone-core/    # 架构相关的解码与格式化核心
 robustone-cli/     # CLI 参数解析、输入校验与展示逻辑
-docs/              # 路线图、支持矩阵和项目文档
+docs/              # 支持矩阵和项目文档
 tests/             # golden/property/differential 测试资源
 fuzz/              # 解码器与 JSON 格式化的 fuzz 目标
 Makefile           # build/check/run/test 入口
@@ -112,7 +111,6 @@ cargo run --manifest-path robustone/Cargo.toml -- --json riscv32 93001000
 
 - CI 工作流：`.github/workflows/ci.yml`（执行 `make check`、`cargo test --workspace --all-features`、`make test`，并提供定时 fuzz smoke）
 - 支持矩阵：[`docs/support-matrix.md`](docs/support-matrix.md)
-- 路线图：[`docs/roadmap.md`](docs/roadmap.md)
 - 已知差异：[`tests/differential/known-differences.toml`](tests/differential/known-differences.toml)
 - 新 ISA 清单：[`docs/isa-checklist.md`](docs/isa-checklist.md)
 - 基准基线：[`docs/benchmark-baselines.md`](docs/benchmark-baselines.md)
