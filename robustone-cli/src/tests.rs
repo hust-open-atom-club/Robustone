@@ -63,12 +63,32 @@ fn test_architecture_spec_accepts_cstool_style_modifier_sets() {
 }
 
 #[test]
+fn test_architecture_spec_accepts_riscv_capstone_modifiers() {
+    assert!(ArchitectureSpec::parse("riscv64+a+fd").is_ok());
+    assert!(ArchitectureSpec::parse("riscv32+noalias").is_ok());
+    assert!(ArchitectureSpec::parse("riscv32+noaliascompressed").is_ok());
+    assert!(ArchitectureSpec::parse("riscv32+intel").is_err());
+}
+
+#[test]
 fn test_config_preserves_input_byte_order() {
     let args = vec!["robustone", "riscv32", "93001000"];
     let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
     let config = DisasmConfig::config_from_cli(&cli).expect("configuration should be valid");
 
     assert_eq!(config.hex_bytes, vec![0x93, 0x00, 0x10, 0x00]);
+}
+
+#[test]
+fn test_config_accepts_prefixed_multi_token_hex_input() {
+    let args = vec!["robustone", "riscv32", "0x93 0x00 0x10 0x00"];
+    let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
+    let config = DisasmConfig::config_from_cli(&cli).expect("configuration should be valid");
+    let result = process_input(&config).expect("disassembly should succeed");
+
+    assert_eq!(config.hex_bytes, vec![0x93, 0x00, 0x10, 0x00]);
+    assert_eq!(result.instructions[0].mnemonic, "li");
+    assert_eq!(result.instructions[0].operands, "ra, 1");
 }
 
 #[test]
