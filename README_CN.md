@@ -60,13 +60,15 @@ Cargo.toml        # Workspace 清单
 当前已实现的 RISC-V 后端尽量镜像经典 `cstool` 的使用方式。例如，要解码一条 RISC-V 指令并显示详细信息：
 
 ```bash
-make run -- riscv32 130101ff -d
+make run -- riscv32 93001000 -d
 ```
+
+十六进制输入遵循 `cstool` 约定，按内存中的原始字节顺序解释。
 
 或者，您可以使用 `RUN_ARGS` 变量。这样可以防止 `make` 错误解析 `-d` 等标志：
 
 ```bash
-make run RUN_ARGS="riscv32 130101ff -d"
+make run RUN_ARGS="riscv32 93001000 -d"
 ```
 
 如果需要查看当前 CLI 暴露的完整参数面，请运行：
