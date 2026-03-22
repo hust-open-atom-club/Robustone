@@ -1,6 +1,6 @@
 # Capstone v6.0.0 指令集支持列表
 
-我们归纳本支持列表，为了更好地规定 Robustone 项目的路线图。
+我们归纳本支持列表，用于记录 Robustone 当前参考范围。
 
 本文件中，指令集名称参考 RISC-V RVA23 标准（[链接](https://github.com/riscv/riscv-profiles/releases/tag/rva23-rvb23-ratified)）。
 
