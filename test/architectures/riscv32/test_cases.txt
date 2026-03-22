@@ -64,5 +64,10 @@ f3320318  # 0 f3 32 03 18 csrrc t0, satp, t1
 73d85030  # 0 73 d8 50 30 csrrwi a6, mtvec, 1
 f3682134  # 0 f3 68 21 34 csrrsi a7, mcause, 2
 73f901c0  # 0 73 f9 01 c0 csrrci s2, cycle, 3
+e940      # 0 e9 40 li ra, 0x1a
+a917      # 0 a9 17 addi a5, a5, -0x16
+7e86      # 0 7e 86 mv a2, t6
+1a4c      # 0 1a 4c lw s8, 0x84(sp)
+412d      # 0 41 2d jal 0x690
 0568      # 0 05 68 lui a6, 1
 8284      # 0 82 84 jr s1

@@ -212,7 +212,7 @@ mod tests {
             .expect("c.jal should decode");
 
         assert_eq!(size, 2);
-        assert_eq!(instruction.mnemonic, "c.jal");
+        assert_eq!(instruction.mnemonic, "jal");
 
         let detail = instruction.detail.expect("detail should be populated");
         assert_eq!(detail.registers_written(), &[1]);
