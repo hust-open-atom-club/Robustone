@@ -27,8 +27,6 @@
 //! use robustone_core::ArchitectureDispatcher;
 //!
 //! let dispatcher = ArchitectureDispatcher::default();
-//! match dispatcher.disassemble_bytes(&[0x93, 0x01, 0x00, 0x00], "riscv32", 0x1000) {
-//! let dispatcher = ArchitectureDispatcher::default();
 //! match dispatcher.disassemble_bytes(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0x1000) {
 //!     Ok((instruction, size)) => {
 //!         println!("Instruction: {} {}", instruction.mnemonic, instruction.operands);
@@ -256,16 +254,15 @@ impl ArchitectureDispatcher {
         profile: &crate::common::ArchitectureProfile,
         address: u64,
     ) -> Result<(DecodedInstruction, usize), DisasmError> {
-        match profile.architecture {
-            crate::architecture::Architecture::RiscV32
-            | crate::architecture::Architecture::RiscV64 => {
-                let handler = riscv::RiscVHandler::from_profile(profile)?;
-                handler.decode_instruction(bytes, profile.mode_name, address)
+        for handler in &self.handlers {
+            if handler.supports(profile.mode_name) {
+                return handler.decode_instruction(bytes, profile.mode_name, address);
             }
-            _ => Err(DisasmError::UnsupportedArchitecture(
-                profile.architecture.as_str().to_string(),
-            )),
         }
+
+        Err(DisasmError::UnsupportedArchitecture(
+            profile.architecture.as_str().to_string(),
+        ))
     }
 
     /// Disassemble bytes using an explicit architecture profile.
@@ -275,16 +272,15 @@ impl ArchitectureDispatcher {
         profile: &crate::common::ArchitectureProfile,
         address: u64,
     ) -> Result<(Instruction, usize), DisasmError> {
-        match profile.architecture {
-            crate::architecture::Architecture::RiscV32
-            | crate::architecture::Architecture::RiscV64 => {
-                let handler = riscv::RiscVHandler::from_profile(profile)?;
-                handler.disassemble(bytes, profile.mode_name, address)
+        for handler in &self.handlers {
+            if handler.supports(profile.mode_name) {
+                return handler.disassemble(bytes, profile.mode_name, address);
             }
-            _ => Err(DisasmError::UnsupportedArchitecture(
-                profile.architecture.as_str().to_string(),
-            )),
         }
+
+        Err(DisasmError::UnsupportedArchitecture(
+            profile.architecture.as_str().to_string(),
+        ))
     }
 
     /// Returns a list of all registered architecture names.
@@ -373,7 +369,22 @@ impl Default for ArchitectureDispatcher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::error::DecodeErrorKind;
+    use robustone::{self, common::ArchitectureProfile, riscv::RiscVHandler};
+
+    fn dispatcher_with_riscv() -> robustone::ArchitectureDispatcher {
+        let mut dispatcher = robustone::ArchitectureDispatcher::new();
+        dispatcher.register(Box::new(RiscVHandler::new()));
+        dispatcher
+    }
+
+    fn dispatcher_with_profile(
+        profile: &ArchitectureProfile,
+    ) -> robustone::ArchitectureDispatcher {
+        let mut dispatcher = robustone::ArchitectureDispatcher::new();
+        let handler = RiscVHandler::from_profile(profile).expect("profile should build a handler");
+        dispatcher.register(Box::new(handler));
+        dispatcher
+    }
 
     #[test]
     fn test_architecture_dispatcher_creation() {
@@ -401,7 +412,7 @@ mod tests {
 
     #[test]
     fn test_low_level_decode_api_returns_ir() {
-        let dispatcher = ArchitectureDispatcher::new();
+        let dispatcher = dispatcher_with_riscv();
         let (decoded, size) = dispatcher
             .decode_instruction(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
             .expect("decode should succeed");
@@ -417,81 +428,58 @@ mod tests {
 
     #[test]
     fn test_invalid_encoding_returns_structured_error() {
-        let dispatcher = ArchitectureDispatcher::new();
+        let dispatcher = dispatcher_with_riscv();
         let error = dispatcher
             .decode_instruction(&[0xff, 0xff, 0xff, 0xff], "riscv32", 0)
             .expect_err("invalid encoding should fail");
-
-        match error {
-            DisasmError::DecodeFailure { kind, .. } => {
-                assert_eq!(kind, DecodeErrorKind::InvalidEncoding);
-            }
-            other => panic!("expected structured decode failure, got {other:?}"),
-        }
+        assert_eq!(error.stable_kind(), "invalid_encoding");
     }
 
     #[test]
     fn test_decode_with_profile_enforces_enabled_extensions() {
-        let dispatcher = ArchitectureDispatcher::new();
-        let profile = crate::common::ArchitectureProfile::riscv(
-            crate::architecture::Architecture::RiscV32,
+        let profile = ArchitectureProfile::riscv(
+            robustone::architecture::Architecture::RiscV32,
             "riscv32",
             32,
             vec!["I"],
         );
+        let dispatcher = dispatcher_with_profile(&profile);
 
         let error = dispatcher
             .decode_with_profile(&[0x05, 0x68], &profile, 0)
             .expect_err("compressed instruction should require C extension");
 
-        match error {
-            DisasmError::DecodeFailure { kind, .. } => {
-                assert_eq!(kind, DecodeErrorKind::UnsupportedExtension);
-            }
-            other => panic!("expected unsupported extension, got {other:?}"),
-        }
+        assert_eq!(error.stable_kind(), "unsupported_extension");
     }
 
     #[test]
     fn test_decode_with_profile_rejects_mode_mismatch() {
-        let dispatcher = ArchitectureDispatcher::new();
-        let profile = crate::common::ArchitectureProfile::riscv(
-            crate::architecture::Architecture::RiscV32,
+        let profile = ArchitectureProfile::riscv(
+            robustone::architecture::Architecture::RiscV32,
             "riscv64",
             32,
             vec!["I", "C"],
         );
+        let error = match RiscVHandler::from_profile(&profile) {
+            Ok(_) => panic!("mismatched profile should fail"),
+            Err(error) => error,
+        };
 
-        let error = dispatcher
-            .decode_with_profile(&[0x05, 0x68], &profile, 0)
-            .expect_err("mismatched profile should fail");
-
-        match error {
-            DisasmError::DecodeFailure { kind, .. } => {
-                assert_eq!(kind, DecodeErrorKind::UnsupportedMode);
-            }
-            other => panic!("expected unsupported mode, got {other:?}"),
-        }
+        assert_eq!(error.stable_kind(), "unsupported_mode");
     }
 
     #[test]
     fn test_unimplemented_compressed_rv64_returns_structured_error() {
-        let dispatcher = ArchitectureDispatcher::new();
+        let dispatcher = dispatcher_with_riscv();
         let error = dispatcher
             .decode_instruction(&[0x00, 0x60], "riscv64", 0)
             .expect_err("legal but unimplemented compressed RV64 instruction should fail");
-
-        match error {
-            DisasmError::DecodeFailure { kind, .. } => {
-                assert_eq!(kind, DecodeErrorKind::UnimplementedInstruction);
-            }
-            other => panic!("expected unimplemented instruction, got {other:?}"),
-        }
+        assert_eq!(error.stable_kind(), "unimplemented_instruction");
     }
 
     #[test]
     fn test_rv64_only_ld_reports_unsupported_mode_on_rv32() {
-        let dispatcher = ArchitectureDispatcher::new();
+        let dispatcher = dispatcher_with_riscv();
         let (decoded, size) = dispatcher
             .decode_instruction(&[0x83, 0x30, 0x00, 0x00], "riscv64", 0)
             .expect("RV64 should decode ld");
@@ -503,64 +491,46 @@ mod tests {
             .decode_instruction(&[0x83, 0x30, 0x00, 0x00], "riscv32", 0)
             .expect_err("RV32 should reject ld with unsupported_mode");
 
-        match error {
-            DisasmError::DecodeFailure {
-                kind, architecture, ..
-            } => {
-                assert_eq!(kind, DecodeErrorKind::UnsupportedMode);
-                assert_eq!(architecture.as_deref(), Some("riscv32"));
-            }
-            other => panic!("expected unsupported mode, got {other:?}"),
-        }
+        assert_eq!(error.stable_kind(), "unsupported_mode");
+        assert_eq!(error.architecture_name(), Some("riscv32"));
     }
 
     #[test]
     fn test_decode_with_profile_rejects_d_without_f() {
-        let dispatcher = ArchitectureDispatcher::new();
-        let profile = crate::common::ArchitectureProfile::riscv(
-            crate::architecture::Architecture::RiscV32,
+        let profile = ArchitectureProfile::riscv(
+            robustone::architecture::Architecture::RiscV32,
             "riscv32",
             32,
             vec!["I", "D"],
         );
+        let error = match RiscVHandler::from_profile(&profile) {
+            Ok(_) => panic!("D without F should be rejected when building the profile"),
+            Err(error) => error,
+        };
 
-        let error = dispatcher
-            .decode_with_profile(&[0xd3, 0x02, 0x73, 0x00], &profile, 0)
-            .expect_err("D without F should be rejected when building the profile");
-
-        match error {
-            DisasmError::DecodeFailure { kind, .. } => {
-                assert_eq!(kind, DecodeErrorKind::UnsupportedExtension);
-            }
-            other => panic!("expected unsupported extension, got {other:?}"),
-        }
+        assert_eq!(error.stable_kind(), "unsupported_extension");
     }
 
     #[test]
     fn test_disassemble_with_profile_enforces_enabled_extensions() {
-        let dispatcher = ArchitectureDispatcher::new();
-        let profile = crate::common::ArchitectureProfile::riscv(
-            crate::architecture::Architecture::RiscV64,
+        let profile = ArchitectureProfile::riscv(
+            robustone::architecture::Architecture::RiscV64,
             "riscv64",
             64,
             vec!["I", "A"],
         );
+        let dispatcher = dispatcher_with_profile(&profile);
 
         let error = dispatcher
             .disassemble_with_profile(&[0xd3, 0x02, 0x73, 0x00], &profile, 0)
             .expect_err("missing F/D should be reported");
 
-        match error {
-            DisasmError::DecodeFailure { kind, .. } => {
-                assert_eq!(kind, DecodeErrorKind::UnsupportedExtension);
-            }
-            other => panic!("expected unsupported extension, got {other:?}"),
-        }
+        assert_eq!(error.stable_kind(), "unsupported_extension");
     }
 
     #[test]
     fn test_rv64_only_lr_d_reports_unsupported_mode_on_rv32() {
-        let dispatcher = ArchitectureDispatcher::new();
+        let dispatcher = dispatcher_with_riscv();
         let (decoded, size) = dispatcher
             .decode_instruction(&[0x2f, 0xb4, 0x02, 0x12], "riscv64", 0)
             .expect("RV64 should decode lr.d");
@@ -572,49 +542,30 @@ mod tests {
             .decode_instruction(&[0x2f, 0xb4, 0x02, 0x12], "riscv32", 0)
             .expect_err("RV32 should reject lr.d with unsupported_mode");
 
-        match error {
-            DisasmError::DecodeFailure {
-                kind, architecture, ..
-            } => {
-                assert_eq!(kind, DecodeErrorKind::UnsupportedMode);
-                assert_eq!(architecture.as_deref(), Some("riscv32"));
-            }
-            other => panic!("expected unsupported mode, got {other:?}"),
-        }
+        assert_eq!(error.stable_kind(), "unsupported_mode");
+        assert_eq!(error.architecture_name(), Some("riscv32"));
     }
 
     #[test]
     fn test_rv64_only_compressed_families_report_unsupported_mode_on_rv32() {
-        let dispatcher = ArchitectureDispatcher::new();
+        let dispatcher = dispatcher_with_riscv();
 
         let rv64_error = dispatcher
             .decode_instruction(&[0x00, 0x60], "riscv64", 0)
             .expect_err("RV64 compressed ld remains unimplemented");
-        match rv64_error {
-            DisasmError::DecodeFailure { kind, .. } => {
-                assert_eq!(kind, DecodeErrorKind::UnimplementedInstruction);
-            }
-            other => panic!("expected unimplemented instruction, got {other:?}"),
-        }
+        assert_eq!(rv64_error.stable_kind(), "unimplemented_instruction");
 
         let rv32_error = dispatcher
             .decode_instruction(&[0x00, 0x60], "riscv32", 0)
             .expect_err("RV32 should reject c.ld with unsupported_mode");
 
-        match rv32_error {
-            DisasmError::DecodeFailure {
-                kind, architecture, ..
-            } => {
-                assert_eq!(kind, DecodeErrorKind::UnsupportedMode);
-                assert_eq!(architecture.as_deref(), Some("riscv32"));
-            }
-            other => panic!("expected unsupported mode, got {other:?}"),
-        }
+        assert_eq!(rv32_error.stable_kind(), "unsupported_mode");
+        assert_eq!(rv32_error.architecture_name(), Some("riscv32"));
     }
 
     #[test]
     fn test_rv64_only_mulw_decodes_on_rv64_and_reports_unsupported_mode_on_rv32() {
-        let dispatcher = ArchitectureDispatcher::new();
+        let dispatcher = dispatcher_with_riscv();
         let (decoded, size) = dispatcher
             .decode_instruction(&[0xbb, 0x00, 0x31, 0x02], "riscv64", 0)
             .expect("RV64 should decode mulw");
@@ -626,20 +577,13 @@ mod tests {
             .decode_instruction(&[0xbb, 0x00, 0x31, 0x02], "riscv32", 0)
             .expect_err("RV32 should reject mulw with unsupported_mode");
 
-        match error {
-            DisasmError::DecodeFailure {
-                kind, architecture, ..
-            } => {
-                assert_eq!(kind, DecodeErrorKind::UnsupportedMode);
-                assert_eq!(architecture.as_deref(), Some("riscv32"));
-            }
-            other => panic!("expected unsupported mode, got {other:?}"),
-        }
+        assert_eq!(error.stable_kind(), "unsupported_mode");
+        assert_eq!(error.architecture_name(), Some("riscv32"));
     }
 
     #[test]
     fn test_rv64c_addiw_decodes_on_rv64_while_rv32_keeps_c_jal() {
-        let dispatcher = ArchitectureDispatcher::new();
+        let dispatcher = dispatcher_with_riscv();
         let (rv64, size) = dispatcher
             .decode_instruction(&[0x85, 0x20], "riscv64", 0)
             .expect("RV64 should decode c.addiw");
@@ -655,7 +599,7 @@ mod tests {
 
     #[test]
     fn test_rv64c_word_alu_encodings_decode_on_rv64_and_report_unsupported_mode_on_rv32() {
-        let dispatcher = ArchitectureDispatcher::new();
+        let dispatcher = dispatcher_with_riscv();
         let cases = [(&[0x05, 0x9c][..], "c.subw"), (&[0x25, 0x9c][..], "c.addw")];
 
         for (bytes, expected_mnemonic) in cases {
@@ -670,15 +614,8 @@ mod tests {
                 .decode_instruction(bytes, "riscv32", 0)
                 .expect_err("RV32 should reject the RV64C word-ALU form with unsupported_mode");
 
-            match error {
-                DisasmError::DecodeFailure {
-                    kind, architecture, ..
-                } => {
-                    assert_eq!(kind, DecodeErrorKind::UnsupportedMode);
-                    assert_eq!(architecture.as_deref(), Some("riscv32"));
-                }
-                other => panic!("expected unsupported mode, got {other:?}"),
-            }
+            assert_eq!(error.stable_kind(), "unsupported_mode");
+            assert_eq!(error.architecture_name(), Some("riscv32"));
         }
     }
 }

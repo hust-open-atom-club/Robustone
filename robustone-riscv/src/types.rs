@@ -2,6 +2,10 @@
 //!
 //! These structures mirror Capstone's RISC-V bindings to ease interoperability.
 
+pub mod error {
+    pub use robustone_core::types::error::*;
+}
+
 /// Kinds of operands that can appear in a RISC-V instruction.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RiscVOperandType {

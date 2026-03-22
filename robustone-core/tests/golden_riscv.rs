@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use robustone_core::ArchitectureDispatcher;
+use robustone::dispatcher;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -39,7 +39,7 @@ fn load_case(path: &str) -> GoldenCase {
 }
 
 fn assert_case(case: GoldenCase) {
-    let dispatcher = ArchitectureDispatcher::new();
+    let dispatcher = dispatcher();
 
     let compatibility = dispatcher.disassemble(&case.hex, case.arch.clone());
     assert_eq!(compatibility.mnemonic, case.expected_capstone.mnemonic);
@@ -68,10 +68,10 @@ fn assert_case(case: GoldenCase) {
         .operands
         .iter()
         .map(|operand| match operand {
-            robustone_core::ir::Operand::Register { .. } => "register",
-            robustone_core::ir::Operand::Immediate { .. } => "immediate",
-            robustone_core::ir::Operand::Text { .. } => "text",
-            robustone_core::ir::Operand::Memory { .. } => "memory",
+            robustone::ir::Operand::Register { .. } => "register",
+            robustone::ir::Operand::Immediate { .. } => "immediate",
+            robustone::ir::Operand::Text { .. } => "text",
+            robustone::ir::Operand::Memory { .. } => "memory",
         })
         .collect::<Vec<_>>();
     assert_eq!(operand_kinds, case.expected_ir.operand_kinds);
@@ -119,7 +119,7 @@ fn test_c_jr_golden_fixture() {
 
 #[test]
 fn test_ir_rendering_covers_control_flow_and_atomic_variants() {
-    let dispatcher = ArchitectureDispatcher::new();
+    let dispatcher = dispatcher();
     let cases = [
         (
             "jalr_hidden_rd",
@@ -162,11 +162,11 @@ fn test_ir_rendering_covers_control_flow_and_atomic_variants() {
             .disassemble_bytes(&bytes, arch, 0)
             .expect("compatibility disassembly should succeed");
         assert_eq!(
-            instruction.rendered_text_parts(robustone_core::ir::TextRenderProfile::Capstone),
+            instruction.rendered_text_parts(robustone::ir::TextRenderProfile::Capstone),
             expected_capstone
         );
         assert_eq!(
-            instruction.rendered_text_parts(robustone_core::ir::TextRenderProfile::Canonical),
+            instruction.rendered_text_parts(robustone::ir::TextRenderProfile::Canonical),
             expected_canonical
         );
     }
@@ -174,17 +174,14 @@ fn test_ir_rendering_covers_control_flow_and_atomic_variants() {
 
 #[test]
 fn test_invalid_compressed_encoding_reports_failure() {
-    let dispatcher = ArchitectureDispatcher::new();
+    let dispatcher = dispatcher();
     let error = dispatcher
         .decode_instruction(&[0x00, 0x20], "riscv32", 0)
         .expect_err("invalid compressed encoding should fail");
 
     match error {
-        robustone_core::DisasmError::DecodeFailure { kind, .. } => {
-            assert_eq!(
-                kind,
-                robustone_core::types::error::DecodeErrorKind::InvalidEncoding
-            );
+        robustone::DisasmError::DecodeFailure { kind, .. } => {
+            assert_eq!(kind, robustone::types::error::DecodeErrorKind::InvalidEncoding);
         }
         other => panic!("expected decode failure, got {other:?}"),
     }

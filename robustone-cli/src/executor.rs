@@ -119,14 +119,6 @@ impl CliExecutor {
         let engine = DisassemblyEngine::new(arch);
 
         // Perform the disassembly
-        let result = match self.engine.disassemble(config) {
-            Ok(result) => result,
-            Err(error) if config.display_options.json => {
-                println!("{}", self.render_fatal_json(config, &error));
-                return Err(CliError::reported(1));
-            }
-            Err(error) => return Err(CliError::disassembly(&error)),
-        };
         let result = match engine.disassemble(config) {
             Ok(result) => result,
             Err(error) if config.display_options.json => {

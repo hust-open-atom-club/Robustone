@@ -1,13 +1,22 @@
 use proptest::prelude::*;
-use robustone_core::common::ArchitectureProfile;
+use robustone as rt;
 use robustone_core::ir::{
     ArchitectureId, DecodeStatus, DecodedInstruction, Operand, RegisterId, RenderHints,
     TextRenderProfile,
 };
-use robustone_core::{
-    ArchitectureDispatcher, DisasmError, Instruction, RenderOptions, render_instruction_text,
-};
+use robustone_core::{Instruction, RenderOptions, render_instruction_text};
 use std::panic::AssertUnwindSafe;
+
+fn dispatcher_with_riscv() -> rt::ArchitectureDispatcher {
+    rt::dispatcher()
+}
+
+fn dispatcher_with_profile(profile: &rt::common::ArchitectureProfile) -> rt::ArchitectureDispatcher {
+    let mut dispatcher = rt::ArchitectureDispatcher::new();
+    let handler = rt::riscv::RiscVHandler::from_profile(profile).expect("profile should build a handler");
+    dispatcher.register(Box::new(handler));
+    dispatcher
+}
 
 fn sign_extend(value: u32, bits: u8) -> i64 {
     let sign_bit = 1u32 << (bits - 1);
@@ -173,7 +182,7 @@ proptest! {
     ) {
         prop_assume!(bytes.len() % 2 == 0);
 
-        let dispatcher = ArchitectureDispatcher::new();
+        let dispatcher = dispatcher_with_riscv();
         let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
             dispatcher.decode_instruction(&bytes, "riscv32", 0)
         }));
@@ -185,13 +194,13 @@ proptest! {
     fn test_short_inputs_report_structured_failures(
         bytes in prop::collection::vec(any::<u8>(), 1..4)
     ) {
-        let dispatcher = ArchitectureDispatcher::new();
+        let dispatcher = dispatcher_with_riscv();
         let result = dispatcher.decode_instruction(&bytes, "riscv32", 0);
 
         if bytes.len() < 2 {
             prop_assert!(result.is_err());
             if let Err(error) = result {
-                let is_structured = matches!(error, DisasmError::DecodeFailure { .. });
+                let is_structured = matches!(error, rt::DisasmError::DecodeFailure { .. });
                 prop_assert!(is_structured);
             }
         }
@@ -201,7 +210,7 @@ proptest! {
     fn test_successful_compressed_decodes_have_size_two(bytes in any::<[u8; 2]>()) {
         prop_assume!((bytes[0] & 0x3) != 0x3);
 
-        let dispatcher = ArchitectureDispatcher::new();
+        let dispatcher = dispatcher_with_riscv();
         if let Ok((decoded, size)) = dispatcher.decode_instruction(&bytes, "riscv32", 0) {
             prop_assert_eq!(size, 2);
             prop_assert_eq!(decoded.size, 2);
@@ -212,7 +221,7 @@ proptest! {
     fn test_successful_standard_decodes_have_size_four(bytes in any::<[u8; 4]>()) {
         prop_assume!((bytes[0] & 0x3) == 0x3);
 
-        let dispatcher = ArchitectureDispatcher::new();
+        let dispatcher = dispatcher_with_riscv();
         if let Ok((decoded, size)) = dispatcher.decode_instruction(&bytes, "riscv32", 0) {
             prop_assert_eq!(size, 4);
             prop_assert_eq!(decoded.size, 4);
@@ -225,7 +234,7 @@ proptest! {
         rs1 in 0u8..32,
         imm12 in 0u16..4096,
     ) {
-        let dispatcher = ArchitectureDispatcher::new();
+        let dispatcher = dispatcher_with_riscv();
         let bytes = encode_addi(rd, rs1, imm12);
         let (decoded, size) = dispatcher
             .decode_instruction(&bytes, "riscv32", 0)
@@ -235,7 +244,7 @@ proptest! {
             .operands
             .iter()
             .find_map(|operand| match operand {
-                Operand::Immediate { value } => Some(*value),
+                rt::ir::Operand::Immediate { value } => Some(*value),
                 _ => None,
             })
             .expect("addi should contain an immediate operand");
@@ -251,7 +260,7 @@ proptest! {
     ) {
         prop_assume!(imm6 != 0);
 
-        let dispatcher = ArchitectureDispatcher::new();
+        let dispatcher = dispatcher_with_riscv();
         let bytes = encode_c_addi(rd, imm6);
         let (decoded, size) = dispatcher
             .decode_instruction(&bytes, "riscv32", 0)
@@ -261,7 +270,7 @@ proptest! {
             .operands
             .iter()
             .find_map(|operand| match operand {
-                Operand::Immediate { value } => Some(*value),
+                rt::ir::Operand::Immediate { value } => Some(*value),
                 _ => None,
             })
             .expect("c.addi should contain an immediate operand");
@@ -278,7 +287,7 @@ proptest! {
     ) {
         prop_assume!(bytes.len() % 2 == 0);
 
-        let dispatcher = ArchitectureDispatcher::new();
+        let dispatcher = dispatcher_with_riscv();
         if let Ok((decoded, _)) = dispatcher.decode_instruction(&bytes, arch, 0) {
             for register_id in collect_register_ids(&decoded) {
                 prop_assert!(register_id < 64);
@@ -303,23 +312,17 @@ proptest! {
 
 #[test]
 fn test_profile_without_c_extension_rejects_compressed_decode() {
-    let dispatcher = ArchitectureDispatcher::new();
-    let profile = ArchitectureProfile::riscv(
-        robustone_core::architecture::Architecture::RiscV32,
+    let profile = rt::common::ArchitectureProfile::riscv(
+        rt::architecture::Architecture::RiscV32,
         "riscv32",
         32,
         vec!["I"],
     );
+    let dispatcher = dispatcher_with_profile(&profile);
 
     let error = dispatcher
         .decode_with_profile(&[0x05, 0x68], &profile, 0)
         .expect_err("compressed instruction should require the C extension");
 
-    assert!(matches!(
-        error,
-        DisasmError::DecodeFailure {
-            kind: robustone_core::types::error::DecodeErrorKind::UnsupportedExtension,
-            ..
-        }
-    ));
+    assert_eq!(error.stable_kind(), "unsupported_extension");
 }
