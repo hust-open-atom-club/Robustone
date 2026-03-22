@@ -625,6 +625,10 @@ class OutputComparator:
                 if base is not None:
                     registers_read.append(base)
 
+        ordered_operands.extend(
+            self._normalize_cstool_text_operands(lines[0], len(ordered_operands))
+        )
+
         return {
             "opcode_id": self._normalize_opcode_name(id_match.group(1)),
             "operands": ordered_operands,
@@ -658,7 +662,7 @@ class OutputComparator:
                 "displacement": int(operand["displacement"]),
             }
         if kind == "text":
-            return None
+            return {"kind": "text", "value": str(operand["value"]).strip().lower()}
 
         raise ValueError(f"unsupported robustone operand kind `{kind}`")
 
@@ -674,8 +678,32 @@ class OutputComparator:
                 "base": operand["base"],
                 "displacement": operand["displacement"],
             }
+        if kind == "text":
+            return {"kind": "text", "value": operand["value"]}
 
         raise ValueError(f"unsupported normalized cstool operand `{kind}`")
+
+    def _normalize_cstool_text_operands(
+        self, instruction_line: str, decoded_operand_count: int
+    ) -> List[Dict[str, Any]]:
+        match = re.match(
+            r"^[0-9a-f]+\s+(?:[0-9a-f]{2}\s+)+\S+(?:\s+(?P<operands>.+))?$",
+            instruction_line,
+        )
+        if not match:
+            return []
+
+        operands = match.group("operands") or ""
+        operand_tokens = [
+            token.strip() for token in operands.split(",") if token.strip()
+        ]
+        if len(operand_tokens) <= decoded_operand_count:
+            return []
+
+        return [
+            {"kind": "text", "value": token.lower()}
+            for token in operand_tokens[decoded_operand_count:]
+        ]
 
     def _normalize_opcode_name(self, opcode_id: Any) -> str:
         if opcode_id is None:
