@@ -1,3 +1,4 @@
+import json
 import tempfile
 import textwrap
 import unittest
@@ -110,8 +111,74 @@ ROBUSTONE_MCYCLE_JSON = """
 }
 """.strip()
 
+ROBUSTONE_JAL_JSON = """
+{
+  "instructions": [
+    {
+      "decoded": {
+        "mnemonic": "jal",
+        "opcode_id": "jal",
+        "operands": [
+          { "kind": "register", "register": { "architecture": "riscv", "id": 1 } },
+          { "kind": "immediate", "value": 512 }
+        ],
+        "registers_read": [],
+        "registers_written": [
+          { "architecture": "riscv", "id": 1 }
+        ]
+      }
+    }
+  ]
+}
+""".strip()
+
+CSTOOL_JAL_DETAIL = """
+ 0  ef 00 00 20  jal\t0x200
+\tID: 694 (jal)
+\tIs alias: 0 (invalid) with REAL operand set
+\top_count: 2
+\t\toperands[0].type: REG = ra
+\t\toperands[0].access: WRITE
+\t\toperands[1].type: IMM = 0x200
+\t\toperands[1].access: READ
+
+\tGroups: call branch_relative
+""".strip()
+
 
 class DifferentialSurfaceTests(unittest.TestCase):
+    def test_semantic_surface_accepts_multi_instruction_payloads(self):
+        payload = json.loads(ROBUSTONE_ADDI_JSON)
+        payload["instructions"].append(dict(payload["instructions"][0]))
+        result = OutputComparator().create_test_result(
+            hex_input="9300100093001000",
+            expected="",
+            robustone_out="",
+            cstool_out="",
+            note="",
+            robustone_semantic_out=json.dumps(payload),
+            cstool_semantic_out=f"{CSTOOL_ADDI_DETAIL}\n\n{CSTOOL_ADDI_DETAIL}",
+        )
+
+        self.assertEqual(result.result, ComparisonResult.MATCH)
+        self.assertEqual(len(result.surface_results), 2)
+        self.assertTrue(all(surface.matched for surface in result.surface_results))
+
+    def test_semantic_surface_keeps_cstool_group_separator_with_instruction(self):
+        result = OutputComparator().create_test_result(
+            hex_input="ef000020",
+            expected="",
+            robustone_out="",
+            cstool_out="",
+            note="",
+            robustone_semantic_out=ROBUSTONE_JAL_JSON,
+            cstool_semantic_out=CSTOOL_JAL_DETAIL,
+        )
+
+        self.assertEqual(result.result, ComparisonResult.MATCH)
+        self.assertEqual(len(result.surface_results), 2)
+        self.assertTrue(all(surface.matched for surface in result.surface_results))
+
     def test_semantic_detail_surface_can_fail_independently(self):
         comparator = OutputComparator()
         result = comparator.create_test_result(

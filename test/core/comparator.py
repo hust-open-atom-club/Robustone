@@ -459,19 +459,26 @@ class OutputComparator:
 
         return "\n".join(lines)
 
-    def _normalize_robustone_semantic_output(self, output: str) -> Dict[str, Any]:
+    def _normalize_robustone_semantic_output(self, output: str) -> List[Dict[str, Any]]:
         try:
             payload = json.loads(output)
         except json.JSONDecodeError as exc:
             raise ValueError(f"invalid robustone JSON: {exc}") from exc
 
         instructions = payload.get("instructions")
-        if not isinstance(instructions, list) or len(instructions) != 1:
+        if not isinstance(instructions, list) or not instructions:
             raise ValueError(
-                "robustone semantic surface must contain exactly one instruction"
+                "robustone semantic surface must contain at least one instruction"
             )
 
-        instruction = instructions[0]
+        return [
+            self._normalize_robustone_semantic_instruction(instruction)
+            for instruction in instructions
+        ]
+
+    def _normalize_robustone_semantic_instruction(
+        self, instruction: Dict[str, Any]
+    ) -> Dict[str, Any]:
         decoded = instruction.get("decoded")
         if not isinstance(decoded, dict):
             raise ValueError("robustone semantic surface is missing decoded IR")
@@ -500,6 +507,30 @@ class OutputComparator:
         }
 
     def _normalize_cstool_semantic_output(  # pylint: disable=too-many-branches
+        self, output: str
+    ) -> List[Dict[str, Any]]:
+        blocks = []
+        current_block: List[str] = []
+        for line in output.splitlines():
+            if re.match(r"^\s*[0-9a-fA-F]+\s+[0-9a-fA-F]{2}\s", line):
+                if current_block:
+                    blocks.append("\n".join(current_block))
+                current_block = [line]
+                continue
+            if current_block:
+                current_block.append(line)
+
+        if current_block:
+            blocks.append("\n".join(current_block))
+
+        if not blocks:
+            raise ValueError(
+                "cstool semantic surface must contain at least one instruction"
+            )
+
+        return [self._normalize_cstool_semantic_instruction(block) for block in blocks]
+
+    def _normalize_cstool_semantic_instruction(  # pylint: disable=too-many-branches
         self, output: str
     ) -> Dict[str, Any]:
         lines = [line.strip() for line in output.splitlines() if line.strip()]
