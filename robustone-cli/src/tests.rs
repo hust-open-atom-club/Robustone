@@ -76,9 +76,9 @@ fn test_process_input_honors_riscv_extension_modifiers() {
     let args = vec!["robustone", "riscv64+a", "d3027300"];
     let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
     let config = DisasmConfig::config_from_cli(&cli).expect("configuration should be valid");
-    let error = process_input(&config).expect_err("missing F/D should fail");
+    let result = process_input(&config).expect("baseline GC capabilities should remain enabled");
 
-    assert_eq!(error.stable_kind(), "unsupported_extension");
+    assert_eq!(result.instructions[0].mnemonic, "fadd.s");
 
     let args = vec!["robustone", "riscv64+a+fd", "d3027300"];
     let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
@@ -86,6 +86,13 @@ fn test_process_input_honors_riscv_extension_modifiers() {
     let result = process_input(&config).expect("explicit F/D should decode");
 
     assert_eq!(result.instructions[0].mnemonic, "fadd.s");
+
+    let args = vec!["robustone", "riscv64+a+fd", "bb003102"];
+    let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
+    let config = DisasmConfig::config_from_cli(&cli).expect("configuration should be valid");
+    let result = process_input(&config).expect("baseline M/C capabilities should remain enabled");
+
+    assert_eq!(result.instructions[0].mnemonic, "mulw");
 }
 
 #[test]
@@ -99,6 +106,21 @@ fn test_noalias_modifier_disables_riscv_alias_rendering() {
 
     assert!(output.contains("addi\tx1, x0, 1"));
     assert!(!output.contains("li\tra"));
+}
+
+#[test]
+fn test_noalias_modifier_disables_aliases_in_real_detail_sections() {
+    let args = vec!["robustone", "-r", "riscv32+noalias", "93001000"];
+    let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
+    let config = DisasmConfig::config_from_cli(&cli).expect("configuration should be valid");
+    let result = process_input(&config).expect("disassembly should succeed");
+    let formatter = DisassemblyFormatter::new(config.output_config());
+    let output = formatter.format(&result);
+
+    assert!(output.contains("Registers read: x0"));
+    assert!(output.contains("Registers written: x1"));
+    assert!(!output.contains("Registers read: zero"));
+    assert!(!output.contains("Registers written: ra"));
 }
 
 #[test]

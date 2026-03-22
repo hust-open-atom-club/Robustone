@@ -457,7 +457,13 @@ impl DisassemblyFormatter {
         if !registers_read.is_empty() {
             let registers = registers_read
                 .iter()
-                .map(|reg_id| format_register_name(detail.architecture_name(), *reg_id))
+                .map(|reg_id| {
+                    format_register_name(
+                        detail.architecture_name(),
+                        *reg_id,
+                        self.output_config.alias_regs,
+                    )
+                })
                 .collect::<Vec<_>>()
                 .join(", ");
             detail_lines.push(format!("\tRegisters read: {registers}"));
@@ -467,7 +473,13 @@ impl DisassemblyFormatter {
         if !registers_written.is_empty() {
             let registers = registers_written
                 .iter()
-                .map(|reg_id| format_register_name(detail.architecture_name(), *reg_id))
+                .map(|reg_id| {
+                    format_register_name(
+                        detail.architecture_name(),
+                        *reg_id,
+                        self.output_config.alias_regs,
+                    )
+                })
                 .collect::<Vec<_>>()
                 .join(", ");
             detail_lines.push(format!("\tRegisters written: {registers}"));
@@ -496,9 +508,20 @@ impl DisassemblyFormatter {
     }
 }
 
-fn format_register_name(architecture_name: &str, reg_id: u32) -> String {
+fn format_register_name(architecture_name: &str, reg_id: u32, alias_regs: bool) -> String {
     match architecture_name {
-        "riscv" => RiscVRegister::from_id(reg_id).name().to_string(),
+        "riscv" => {
+            let reg = RiscVRegister::from_id(reg_id);
+            if alias_regs {
+                reg.name().to_string()
+            } else if reg_id <= 31 {
+                format!("x{reg_id}")
+            } else if (32..=63).contains(&reg_id) {
+                format!("f{}", reg_id - 32)
+            } else {
+                reg.name().to_string()
+            }
+        }
         _ => reg_id.to_string(),
     }
 }
