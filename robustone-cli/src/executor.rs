@@ -30,7 +30,14 @@ impl CliExecutor {
         let args = std::env::args_os().collect::<Vec<_>>();
         match Cli::try_parse_from(args.clone()) {
             Ok(cli) => self.execute_cli(cli),
-            Err(error) if args.iter().any(|arg| arg == "--json") => {
+            Err(error)
+                if args.iter().any(|arg| arg == "--json")
+                    && !matches!(
+                        error.kind(),
+                        clap::error::ErrorKind::DisplayHelp
+                            | clap::error::ErrorKind::DisplayVersion
+                    ) =>
+            {
                 println!("{}", self.render_clap_error_json(&args, &error));
                 Err(CliError::reported(2))
             }
@@ -136,7 +143,7 @@ impl CliExecutor {
         formatter.print(&result);
 
         // Print summary if there were errors in skip-data mode
-        if !result.is_successful() {
+        if !result.is_successful() && !config.display_options.json {
             eprintln!(
                 "Warning: {} errors encountered during disassembly",
                 result.error_count()
