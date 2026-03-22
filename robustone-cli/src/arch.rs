@@ -119,6 +119,9 @@ impl std::fmt::Debug for ArchitectureSpec {
 impl Architecture {
     fn supports_modifier(&self, modifier: &str) -> bool {
         match self {
+            Architecture::Riscv32 | Architecture::Riscv64 | Architecture::Riscv32E => {
+                is_supported_riscv_modifier(modifier)
+            }
             Architecture::Arm | Architecture::ArmLE | Architecture::ArmBE => {
                 matches!(
                     modifier,
@@ -283,6 +286,30 @@ fn endianness_mode_bits(modifier: &str) -> u32 {
         "be" => MODE_BIG_ENDIAN,
         _ => 0,
     }
+}
+
+fn is_supported_riscv_modifier(modifier: &str) -> bool {
+    matches!(
+        modifier,
+        "a" | "bitmanip"
+            | "c"
+            | "corev"
+            | "e"
+            | "fd"
+            | "inx"
+            | "noalias"
+            | "noaliascompressed"
+            | "sifive"
+            | "thead"
+            | "v"
+            | "zba"
+            | "zbb"
+            | "zbc"
+            | "zbk"
+            | "zbs"
+            | "zcmp-t-e"
+            | "zicfiss"
+    )
 }
 
 fn normalize_modifier(modifier: &str) -> String {

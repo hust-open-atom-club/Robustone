@@ -1,7 +1,7 @@
 use crate::arch::ArchitectureSpec;
 use crate::command::{DisplayOptions, ValidatedConfig};
 use crate::error::{CliError, Result};
-use robustone_core::utils::HexParser;
+use crate::utils::parse_hex_to_bytes;
 
 use robustone_core::ir::TextRenderProfile;
 
@@ -32,9 +32,7 @@ impl DisasmConfig {
         let hex_input = config.hex_code.take().ok_or_else(|| {
             CliError::validation("hex_code", "Hexadecimal code is required for disassembly")
         })?;
-        let hex_bytes = HexParser::new()
-            .parse_for_architecture(&hex_input, &arch_mode)
-            .map_err(|error| CliError::validation("hex_code", error.to_string()))?;
+        let hex_bytes = parse_hex_to_bytes(&hex_input)?;
 
         Ok(DisasmConfig {
             arch_spec,

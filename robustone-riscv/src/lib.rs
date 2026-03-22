@@ -123,11 +123,23 @@ impl ArchitectureHandler for RiscVHandler {
         let (mnemonic, operands) = ir.render_capstone_text_parts();
 
         let mut riscv_detail = RiscVInstructionDetail::new();
-        for register in &ir.registers_read {
-            riscv_detail = riscv_detail.reads_register(register.id);
+        for register in ir
+            .registers_read
+            .iter()
+            .chain(ir.implicit_registers_read.iter())
+        {
+            if !riscv_detail.regs_read.contains(&register.id) {
+                riscv_detail = riscv_detail.reads_register(register.id);
+            }
         }
-        for register in &ir.registers_written {
-            riscv_detail = riscv_detail.writes_register(register.id);
+        for register in ir
+            .registers_written
+            .iter()
+            .chain(ir.implicit_registers_written.iter())
+        {
+            if !riscv_detail.regs_write.contains(&register.id) {
+                riscv_detail = riscv_detail.writes_register(register.id);
+            }
         }
 
         let size = ir.size;
@@ -190,5 +202,19 @@ mod tests {
 
         let none_access = Access::none();
         assert!(!none_access.read && !none_access.write);
+    }
+
+    #[test]
+    fn test_disassemble_merges_implicit_register_writes_into_detail() {
+        let handler = RiscVHandler::rv32();
+        let (instruction, size) = handler
+            .disassemble(&[0x85, 0x20], "riscv32", 0)
+            .expect("c.jal should decode");
+
+        assert_eq!(size, 2);
+        assert_eq!(instruction.mnemonic, "c.jal");
+
+        let detail = instruction.detail.expect("detail should be populated");
+        assert_eq!(detail.registers_written(), &[1]);
     }
 }
