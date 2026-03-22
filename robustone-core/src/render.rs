@@ -8,6 +8,8 @@ use serde::Serialize;
 pub struct RenderOptions {
     pub text_profile: TextRenderProfile,
     pub alias_regs: bool,
+    pub capstone_aliases: bool,
+    pub compressed_aliases: bool,
     pub unsigned_immediate: bool,
 }
 
@@ -75,10 +77,13 @@ pub fn render_instruction_text(
             TextRenderProfile::Canonical => RiscVTextProfile::Canonical,
             TextRenderProfile::VerboseDebug => RiscVTextProfile::VerboseDebug,
         };
-        let alias_regs =
-            options.alias_regs || !matches!(options.text_profile, TextRenderProfile::Canonical);
+        let alias_regs = options.capstone_aliases
+            && (options.alias_regs
+                || !matches!(options.text_profile, TextRenderProfile::Canonical));
         let printer = RiscVPrinter::new()
             .with_profile(profile)
+            .with_capstone_aliases(options.capstone_aliases)
+            .with_compressed_aliases(options.compressed_aliases)
             .with_alias_regs(alias_regs)
             .with_unsigned_immediate(options.unsigned_immediate);
         return printer.render_ir_parts(decoded);
