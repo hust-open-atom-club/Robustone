@@ -78,10 +78,12 @@ impl Rvc {
             RiscVInstructionFormat::CR,
             2,
             vec![
-                convenience::register(rd, Access::read_write()),
+                convenience::register(rd, Access::write()),
+                convenience::register(rd, Access::read()),
                 convenience::register(rs2, Access::read()),
             ],
-        ))
+        )
+        .with_capstone_alias("add", Vec::new()))
     }
 
     fn decode_c_mv(&self, rd: u8, rs2: u8) -> Result<DecodedInstruction, DisasmError> {
@@ -94,7 +96,8 @@ impl Rvc {
                 convenience::register(rd, Access::write()),
                 convenience::register(rs2, Access::read()),
             ],
-        ))
+        )
+        .with_capstone_alias("mv", Vec::new()))
     }
 
     fn decode_c_jr(&self, rd: u8) -> Result<DecodedInstruction, DisasmError> {
@@ -130,7 +133,8 @@ impl Rvc {
                 convenience::register(rd + 8, Access::write()),
                 convenience::memory(rs1 + 8, imm_val),
             ],
-        ))
+        )
+        .with_capstone_alias("lw", Vec::new()))
     }
 
     fn decode_c_sw(&self, rs2: u8, rs1: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
@@ -144,7 +148,8 @@ impl Rvc {
                 convenience::register(rs2 + 8, Access::read()),
                 convenience::memory(rs1 + 8, imm_val),
             ],
-        ))
+        )
+        .with_capstone_alias("sw", Vec::new()))
     }
 
     fn decode_c_lwsp(&self, rd: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
@@ -158,7 +163,8 @@ impl Rvc {
                 convenience::register(rd, Access::write()),
                 convenience::memory(2, imm_val),
             ],
-        ))
+        )
+        .with_capstone_alias("lw", Vec::new()))
     }
 
     fn decode_c_swsp(&self, rs2: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
@@ -172,7 +178,8 @@ impl Rvc {
                 convenience::register(rs2, Access::read()),
                 convenience::memory(2, imm_val),
             ],
-        ))
+        )
+        .with_capstone_alias("sw", Vec::new()))
     }
 
     fn decode_c_addi(&self, rd: u8, imm: i64) -> Result<DecodedInstruction, DisasmError> {
@@ -182,10 +189,12 @@ impl Rvc {
             RiscVInstructionFormat::CI,
             2,
             vec![
-                convenience::register(rd, Access::read_write()),
+                convenience::register(rd, Access::write()),
+                convenience::register(rd, Access::read()),
                 convenience::immediate(imm),
             ],
-        ))
+        )
+        .with_capstone_alias("addi", Vec::new()))
     }
 
     fn decode_c_li(&self, rd: u8, imm: i64) -> Result<DecodedInstruction, DisasmError> {
@@ -198,7 +207,8 @@ impl Rvc {
                 convenience::register(rd, Access::write()),
                 convenience::immediate(imm),
             ],
-        ))
+        )
+        .with_capstone_alias("li", Vec::new()))
     }
 
     fn decode_c_addiw(&self, rd: u8, imm: i64) -> Result<DecodedInstruction, DisasmError> {
@@ -287,7 +297,8 @@ impl Rvc {
             RiscVInstructionFormat::CJ,
             2,
             vec![convenience::immediate(imm)],
-        ))
+        )
+        .with_capstone_alias("jal", Vec::new()))
     }
 
     fn decode_c_beqz(&self, rs1: u8, imm: i64) -> Result<DecodedInstruction, DisasmError> {
