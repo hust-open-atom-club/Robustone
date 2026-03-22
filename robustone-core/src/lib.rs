@@ -28,6 +28,8 @@
 //!
 //! let dispatcher = ArchitectureDispatcher::default();
 //! match dispatcher.disassemble_bytes(&[0x93, 0x01, 0x00, 0x00], "riscv32", 0x1000) {
+//! let dispatcher = ArchitectureDispatcher::default();
+//! match dispatcher.disassemble_bytes(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0x1000) {
 //!     Ok((instruction, size)) => {
 //!         println!("Instruction: {} {}", instruction.mnemonic, instruction.operands);
 //!     }
@@ -136,7 +138,7 @@ impl ArchitectureDispatcher {
     /// ```rust
     /// use robustone_core::ArchitectureDispatcher;
     /// let dispatcher = ArchitectureDispatcher::default();
-    /// let instruction = dispatcher.disassemble("130101ff", "riscv32".to_string());
+    /// let instruction = dispatcher.disassemble("93001000", "riscv32".to_string());
     /// println!("Instruction: {} {}", instruction.mnemonic, instruction.operands);
     /// ```
     pub fn disassemble(&self, hex: &str, arch: String) -> Instruction {
@@ -205,7 +207,7 @@ impl ArchitectureDispatcher {
     /// ```rust
     /// use robustone_core::ArchitectureDispatcher;
     /// let dispatcher = ArchitectureDispatcher::default();
-    /// let bytes = [0x13, 0x05, 0x00, 0x00]; // addi a0, zero, 0
+    /// let bytes = [0x93, 0x00, 0x10, 0x00]; // addi ra, zero, 1
     /// match dispatcher.disassemble_bytes(&bytes, "riscv32", 0x1000) {
     ///     Ok((instruction, size)) => {
     ///         println!("Instruction: {} {}", instruction.mnemonic, instruction.operands);
