@@ -32,6 +32,7 @@ use types::*;
 pub struct RiscVHandler {
     rv32_decoder: RiscVDecoder,
     rv64_decoder: RiscVDecoder,
+    configured_xlen: Option<Xlen>,
 }
 
 impl RiscVHandler {
@@ -40,17 +41,26 @@ impl RiscVHandler {
         Self {
             rv32_decoder: RiscVDecoder::rv32gc(),
             rv64_decoder: RiscVDecoder::rv64gc(),
+            configured_xlen: None,
         }
     }
 
     /// Creates a handler targeting RV32GC.
     pub fn rv32() -> Self {
-        Self::new()
+        Self {
+            rv32_decoder: RiscVDecoder::rv32gc(),
+            rv64_decoder: RiscVDecoder::rv64gc(),
+            configured_xlen: Some(Xlen::X32),
+        }
     }
 
     /// Creates a handler targeting RV64GC.
     pub fn rv64() -> Self {
-        Self::new()
+        Self {
+            rv32_decoder: RiscVDecoder::rv32gc(),
+            rv64_decoder: RiscVDecoder::rv64gc(),
+            configured_xlen: Some(Xlen::X64),
+        }
     }
 
     /// Creates a handler with custom XLEN and extension flags.
@@ -59,18 +69,23 @@ impl RiscVHandler {
             Xlen::X32 => Self {
                 rv32_decoder: RiscVDecoder::new(Xlen::X32, extensions),
                 rv64_decoder: RiscVDecoder::rv64gc(),
+                configured_xlen: Some(Xlen::X32),
             },
             Xlen::X64 => Self {
                 rv32_decoder: RiscVDecoder::rv32gc(),
                 rv64_decoder: RiscVDecoder::new(Xlen::X64, extensions),
+                configured_xlen: Some(Xlen::X64),
             },
         }
     }
 
     fn decoder_for_arch(&self, arch_name: &str) -> Result<&RiscVDecoder, DisasmError> {
-        match arch_name {
-            "riscv32" => Ok(&self.rv32_decoder),
-            "riscv64" | "riscv" => Ok(&self.rv64_decoder),
+        match (self.configured_xlen, arch_name) {
+            (Some(Xlen::X32), "riscv32") => Ok(&self.rv32_decoder),
+            (Some(Xlen::X64), "riscv64" | "riscv") => Ok(&self.rv64_decoder),
+            (Some(_), _) => Err(DisasmError::UnsupportedArchitecture(arch_name.to_string())),
+            (None, "riscv32") => Ok(&self.rv32_decoder),
+            (None, "riscv64" | "riscv") => Ok(&self.rv64_decoder),
             _ => Err(DisasmError::UnsupportedArchitecture(arch_name.to_string())),
         }
     }
@@ -81,10 +96,12 @@ impl RiscVHandler {
             crate::architecture::Architecture::RiscV32 => Ok(Self {
                 rv32_decoder: decoder,
                 rv64_decoder: RiscVDecoder::rv64gc(),
+                configured_xlen: Some(Xlen::X32),
             }),
             crate::architecture::Architecture::RiscV64 => Ok(Self {
                 rv32_decoder: RiscVDecoder::rv32gc(),
                 rv64_decoder: decoder,
+                configured_xlen: Some(Xlen::X64),
             }),
             other => Err(DisasmError::UnsupportedArchitecture(
                 other.as_str().to_string(),
@@ -153,7 +170,11 @@ impl ArchitectureHandler for RiscVHandler {
     }
 
     fn supports(&self, arch_name: &str) -> bool {
-        matches!(arch_name, "riscv32" | "riscv64" | "riscv")
+        match self.configured_xlen {
+            Some(Xlen::X32) => arch_name == "riscv32",
+            Some(Xlen::X64) => matches!(arch_name, "riscv64" | "riscv"),
+            None => matches!(arch_name, "riscv32" | "riscv64" | "riscv"),
+        }
     }
 }
 
@@ -170,6 +191,19 @@ mod tests {
         assert!(handler.supports("riscv64"));
         assert!(handler.supports("riscv"));
         assert!(!handler.supports("arm"));
+    }
+
+    #[test]
+    fn test_with_extensions_limits_supported_architectures() {
+        let handler = RiscVHandler::with_extensions(Xlen::X32, Extensions::rv32gc());
+        assert!(handler.supports("riscv32"));
+        assert!(!handler.supports("riscv64"));
+        assert!(!handler.supports("riscv"));
+
+        let error = handler
+            .disassemble(&[0x83, 0x30, 0x00, 0x00], "riscv64", 0)
+            .expect_err("RV32-only handler should reject riscv64 requests");
+        assert!(matches!(error, DisasmError::UnsupportedArchitecture(_)));
     }
 
     #[test]
