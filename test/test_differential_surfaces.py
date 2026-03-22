@@ -145,6 +145,46 @@ CSTOOL_JAL_DETAIL = """
 \tGroups: call branch_relative
 """.strip()
 
+CSTOOL_FADD_DETAIL = """
+ 0  d3 02 73 00  fadd.s\tft5, ft6, ft7, rne
+\tID: 560 (fadd_s)
+\top_count: 3
+\t\toperands[0].type: REG = ft5
+\t\toperands[0].access: WRITE
+\t\toperands[1].type: REG = ft6
+\t\toperands[1].access: READ
+\t\toperands[2].type: REG = ft7
+\t\toperands[2].access: READ
+
+\tGroups: HasStdExtF
+""".strip()
+
+ROBUSTONE_FADD_BAD_JSON = """
+{
+  "instructions": [
+    {
+      "decoded": {
+        "mnemonic": "fadd.s",
+        "opcode_id": "fadd.s",
+        "operands": [
+          { "kind": "register", "register": { "architecture": "riscv", "id": 37 } },
+          { "kind": "register", "register": { "architecture": "riscv", "id": 38 } },
+          { "kind": "register", "register": { "architecture": "riscv", "id": 39 } },
+          { "kind": "text", "value": "rtz" }
+        ],
+        "registers_read": [
+          { "architecture": "riscv", "id": 38 },
+          { "architecture": "riscv", "id": 39 }
+        ],
+        "registers_written": [
+          { "architecture": "riscv", "id": 37 }
+        ]
+      }
+    }
+  ]
+}
+""".strip()
+
 
 class DifferentialSurfaceTests(unittest.TestCase):
     def test_semantic_surface_accepts_multi_instruction_payloads(self):
@@ -194,6 +234,24 @@ class DifferentialSurfaceTests(unittest.TestCase):
         self.assertEqual(result.result, ComparisonResult.MISMATCH)
         self.assertEqual(len(result.surface_results), 2)
         self.assertTrue(result.surface_results[0].matched)
+        self.assertFalse(result.surface_results[1].matched)
+        self.assertEqual(
+            result.surface_results[1].surface, ComparisonSurface.SEMANTIC_DETAIL
+        )
+
+    def test_semantic_surface_detects_text_operand_mismatches(self):
+        comparator = OutputComparator()
+        result = comparator.create_test_result(
+            hex_input="d3027300",
+            expected="",
+            robustone_out="0  d3 02 73 00  fadd.s\tft5, ft6, ft7, rne",
+            cstool_out="0  d3 02 73 00  fadd.s\tft5, ft6, ft7, rne",
+            note="",
+            robustone_semantic_out=ROBUSTONE_FADD_BAD_JSON,
+            cstool_semantic_out=CSTOOL_FADD_DETAIL,
+        )
+
+        self.assertEqual(result.result, ComparisonResult.MISMATCH)
         self.assertFalse(result.surface_results[1].matched)
         self.assertEqual(
             result.surface_results[1].surface, ComparisonSurface.SEMANTIC_DETAIL

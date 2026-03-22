@@ -172,12 +172,10 @@ impl RiscVDecoder {
             21,
         );
 
-        if let Some(required_extension) = self.required_standard_extension(opcode, funct3, funct7) {
-            return Err(DisasmError::decode_failure(
-                crate::types::error::DecodeErrorKind::UnsupportedExtension,
-                Some(self.mode_name().to_string()),
-                format!("instruction requires {required_extension} extension"),
-            ));
+        if let Some(error) = self.standard_extension_probe_error(
+            opcode, funct3, funct7, rd, rs1, rs2, funct12, imm_i, imm_s, imm_b, imm_u, imm_j,
+        ) {
+            return Err(error);
         }
 
         // Try each enabled extension in order
@@ -322,7 +320,65 @@ impl RiscVDecoder {
         }
     }
 
-    fn required_standard_extension(
+    #[allow(clippy::too_many_arguments)]
+    fn standard_extension_probe_error(
+        &self,
+        opcode: u32,
+        funct3: u8,
+        funct7: u8,
+        rd: u8,
+        rs1: u8,
+        rs2: u8,
+        funct12: u32,
+        imm_i: i64,
+        imm_s: i64,
+        imm_b: i64,
+        imm_u: i64,
+        imm_j: i64,
+    ) -> Option<DisasmError> {
+        let required_extension =
+            self.missing_standard_extension_candidate(opcode, funct3, funct7)?;
+        let probe = self.probe_standard_instruction_with_extension(
+            required_extension,
+            opcode,
+            funct3,
+            funct7,
+            rd,
+            rs1,
+            rs2,
+            funct12,
+            imm_i,
+            imm_s,
+            imm_b,
+            imm_u,
+            imm_j,
+        )?;
+
+        match probe {
+            Ok(_) => Some(DisasmError::decode_failure(
+                crate::types::error::DecodeErrorKind::UnsupportedExtension,
+                Some(self.mode_name().to_string()),
+                format!("instruction requires {required_extension} extension"),
+            )),
+            Err(DisasmError::DecodeFailure {
+                kind: crate::types::error::DecodeErrorKind::InvalidEncoding,
+                ..
+            }) => None,
+            Err(
+                error @ DisasmError::DecodeFailure {
+                    kind: crate::types::error::DecodeErrorKind::UnsupportedMode,
+                    ..
+                },
+            ) => Some(self.normalize_extension_error(error)),
+            Err(_) => Some(DisasmError::decode_failure(
+                crate::types::error::DecodeErrorKind::UnsupportedExtension,
+                Some(self.mode_name().to_string()),
+                format!("instruction requires {required_extension} extension"),
+            )),
+        }
+    }
+
+    fn missing_standard_extension_candidate(
         &self,
         opcode: u32,
         funct3: u8,
@@ -371,6 +427,71 @@ impl RiscVDecoder {
         }
 
         None
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn probe_standard_instruction_with_extension(
+        &self,
+        required_extension: &str,
+        opcode: u32,
+        funct3: u8,
+        funct7: u8,
+        rd: u8,
+        rs1: u8,
+        rs2: u8,
+        funct12: u32,
+        imm_i: i64,
+        imm_s: i64,
+        imm_b: i64,
+        imm_u: i64,
+        imm_j: i64,
+    ) -> Option<Result<DecodedInstruction, DisasmError>> {
+        let probe_decoder = RiscVDecoder::new(
+            self.xlen,
+            self.extensions_with_standard_extension(required_extension),
+        );
+
+        for extension in &probe_decoder.extension_handlers {
+            if !extension.is_enabled(&probe_decoder.extensions) {
+                continue;
+            }
+
+            if let Some(result) = extension.try_decode_standard(
+                opcode,
+                funct3,
+                funct7,
+                rd,
+                rs1,
+                rs2,
+                funct12,
+                imm_i,
+                imm_s,
+                imm_b,
+                imm_u,
+                imm_j,
+                probe_decoder.xlen,
+            ) {
+                return Some(result);
+            }
+        }
+
+        None
+    }
+
+    fn extensions_with_standard_extension(&self, required_extension: &str) -> Extensions {
+        let mut standard = Standard::from_bits_retain(self.extensions.standard.bits());
+        match required_extension {
+            "A" => standard |= Standard::A,
+            "D" => standard |= Standard::F | Standard::D,
+            "F" => standard |= Standard::F,
+            "M" => standard |= Standard::M,
+            _ => {}
+        }
+
+        Extensions {
+            standard,
+            thead: super::extensions::thead::THead::from_bits_retain(self.extensions.thead.bits()),
+        }
     }
 
     fn normalize_extension_error(&self, error: DisasmError) -> DisasmError {
@@ -598,5 +719,44 @@ mod tests {
         let instr = result.unwrap();
         assert_eq!(instr.mnemonic, "c.addi");
         assert_eq!(instr.size, 2);
+    }
+
+    #[test]
+    fn test_reserved_fp_opcode_stays_invalid_without_f_extension() {
+        let decoder = RiscVDecoder::new(
+            Xlen::X32,
+            Extensions::from_enabled_extensions(&["I"]).unwrap(),
+        );
+        let error = decoder
+            .decode(&[0x07, 0x00, 0x00, 0x00], "riscv32", 0)
+            .expect_err("reserved load-fp encoding should remain invalid");
+
+        match error {
+            DisasmError::DecodeFailure { kind, .. } => {
+                assert_eq!(kind, crate::types::error::DecodeErrorKind::InvalidEncoding);
+            }
+            other => panic!("expected invalid encoding, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_valid_fp_opcode_reports_missing_extension() {
+        let decoder = RiscVDecoder::new(
+            Xlen::X64,
+            Extensions::from_enabled_extensions(&["I"]).unwrap(),
+        );
+        let error = decoder
+            .decode(&[0xd3, 0x02, 0x73, 0x00], "riscv64", 0)
+            .expect_err("fadd.s should require F when the profile disables it");
+
+        match error {
+            DisasmError::DecodeFailure { kind, .. } => {
+                assert_eq!(
+                    kind,
+                    crate::types::error::DecodeErrorKind::UnsupportedExtension
+                );
+            }
+            other => panic!("expected unsupported extension, got {other:?}"),
+        }
     }
 }
