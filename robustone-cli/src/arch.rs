@@ -1,7 +1,6 @@
 use std::str::FromStr;
 
 use crate::error::ParseError;
-use robustone_core::architecture::Architecture as CoreArchitecture;
 use robustone_core::common::ArchitectureProfile;
 
 const MODE_BIG_ENDIAN: u32 = 0x100;
@@ -106,31 +105,31 @@ impl ArchitectureSpec {
     }
 
     pub fn riscv_profile(&self) -> Option<ArchitectureProfile> {
-        let (architecture, mode_name, bit_width) = match self.arch {
-            Architecture::Riscv32 => (CoreArchitecture::RiscV32, "riscv32", 32),
-            Architecture::Riscv64 => (CoreArchitecture::RiscV64, "riscv64", 64),
+        let mut profile = match self.arch {
+            Architecture::Riscv32 => ArchitectureProfile::riscv32gc(),
+            Architecture::Riscv64 => ArchitectureProfile::riscv64gc(),
             _ => return None,
         };
 
-        let mut enabled_extensions = vec!["I"];
         let mut uses_explicit_profile = false;
 
         if self.has_option("a") {
-            enabled_extensions.push("A");
             uses_explicit_profile = true;
         }
         if self.has_option("c") {
-            enabled_extensions.push("C");
             uses_explicit_profile = true;
         }
         if self.has_option("fd") {
-            enabled_extensions.extend(["F", "D"]);
             uses_explicit_profile = true;
         }
 
-        uses_explicit_profile.then(|| {
-            ArchitectureProfile::riscv(architecture, mode_name, bit_width, enabled_extensions)
-        })
+        if uses_explicit_profile {
+            profile.enabled_extensions.sort_unstable();
+            profile.enabled_extensions.dedup();
+            Some(profile)
+        } else {
+            None
+        }
     }
 
     pub fn has_option(&self, option: &str) -> bool {
