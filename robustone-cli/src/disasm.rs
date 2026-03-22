@@ -7,15 +7,9 @@ use robustone_core::{RenderOptions, RenderedIssue};
 use robustone_riscv::{RiscVHandler, types::RiscVRegister};
 use serde::Serialize;
 
-fn create_dispatcher(arch: &str) -> ArchitectureDispatcher {
+fn create_dispatcher(_arch: &str) -> ArchitectureDispatcher {
     let mut dispatcher = ArchitectureDispatcher::new();
-    // Create handler based on architecture
-    let handler = match arch {
-        "riscv32" => RiscVHandler::rv32(),
-        "riscv64" | "riscv" => RiscVHandler::rv64(),
-        _ => RiscVHandler::new(),
-    };
-    dispatcher.register(Box::new(handler));
+    dispatcher.register(Box::new(RiscVHandler::new()));
     dispatcher
 }
 
@@ -575,7 +569,7 @@ mod tests {
 
     #[test]
     fn test_json_formatter_includes_decoded_ir() {
-        let engine = DisassemblyEngine::new();
+        let engine = DisassemblyEngine::new("riscv64");
         let config = DisasmConfig {
             arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
             hex_bytes: vec![0x93, 0x00, 0x10, 0x00],
@@ -656,7 +650,7 @@ mod tests {
 
     #[test]
     fn test_json_formatter_emits_structured_errors() {
-        let engine = DisassemblyEngine::new();
+        let engine = DisassemblyEngine::new("riscv64");
         let config = DisasmConfig {
             arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
             hex_bytes: vec![0xff, 0xff],
@@ -692,7 +686,7 @@ mod tests {
 
     #[test]
     fn test_json_formatter_emits_unimplemented_instruction_errors() {
-        let engine = DisassemblyEngine::new();
+        let engine = DisassemblyEngine::new("riscv64");
         let config = DisasmConfig {
             arch_spec: ArchitectureSpec::parse("riscv64").unwrap(),
             hex_bytes: vec![0x00, 0x60],
@@ -725,7 +719,7 @@ mod tests {
 
     #[test]
     fn test_json_formatter_counts_skipped_bytes_in_bytes_processed() {
-        let engine = DisassemblyEngine::new();
+        let engine = DisassemblyEngine::new("riscv64");
         let config = DisasmConfig {
             arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
             hex_bytes: vec![0xff, 0xff],
@@ -758,7 +752,7 @@ mod tests {
 
     #[test]
     fn test_text_formatter_emits_unsupported_mode_errors() {
-        let engine = DisassemblyEngine::new();
+        let engine = DisassemblyEngine::new("riscv64");
         let config = DisasmConfig {
             arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
             hex_bytes: vec![0x83, 0x30, 0x00, 0x00],
@@ -782,7 +776,7 @@ mod tests {
 
     #[test]
     fn test_json_formatter_emits_unsupported_mode_errors() {
-        let engine = DisassemblyEngine::new();
+        let engine = DisassemblyEngine::new("riscv64");
         let config = DisasmConfig {
             arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
             hex_bytes: vec![0x83, 0x30, 0x00, 0x00],
@@ -816,7 +810,7 @@ mod tests {
 
     #[test]
     fn test_text_formatter_renders_rv64c_mode_sensitive_aliases() {
-        let engine = DisassemblyEngine::new();
+        let engine = DisassemblyEngine::new("riscv64");
         let config = DisasmConfig {
             arch_spec: ArchitectureSpec::parse("riscv64").unwrap(),
             hex_bytes: vec![0x05, 0x9c],
@@ -839,7 +833,7 @@ mod tests {
 
     #[test]
     fn test_json_formatter_preserves_rv64c_mode_sensitive_ir() {
-        let engine = DisassemblyEngine::new();
+        let engine = DisassemblyEngine::new("riscv64");
         let config = DisasmConfig {
             arch_spec: ArchitectureSpec::parse("riscv64").unwrap(),
             hex_bytes: vec![0x85, 0x20],
@@ -864,7 +858,7 @@ mod tests {
 
     #[test]
     fn test_canonical_json_profile_uses_canonical_text() {
-        let engine = DisassemblyEngine::new();
+        let engine = DisassemblyEngine::new("riscv64");
         let config = DisasmConfig {
             arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
             hex_bytes: vec![0x93, 0x00, 0x10, 0x00],
@@ -888,7 +882,7 @@ mod tests {
 
     #[test]
     fn test_json_formatter_respects_unsigned_immediate_option() {
-        let engine = DisassemblyEngine::new();
+        let engine = DisassemblyEngine::new("riscv64");
         let config = DisasmConfig {
             arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
             hex_bytes: vec![0x13, 0x01, 0x01, 0xff],
@@ -969,7 +963,7 @@ mod tests {
 
     #[test]
     fn test_canonical_text_and_json_share_register_rendering() {
-        let engine = DisassemblyEngine::new();
+        let engine = DisassemblyEngine::new("riscv64");
         let config = DisasmConfig {
             arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
             hex_bytes: vec![0x93, 0x00, 0x10, 0x00],

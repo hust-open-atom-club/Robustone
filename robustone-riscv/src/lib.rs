@@ -16,6 +16,33 @@ pub mod printer;
 pub mod shared;
 pub mod types;
 
+pub mod architecture {
+    pub use robustone_core::architecture::*;
+}
+
+pub mod common {
+    pub use robustone_core::common::*;
+}
+
+pub mod ir {
+    pub use robustone_core::ir::*;
+}
+
+pub mod utils {
+    pub use robustone_core::utils::*;
+}
+
+pub mod riscv {
+    pub use crate::arch;
+    pub use crate::decoder;
+    pub use crate::extensions;
+    pub use crate::printer;
+    pub use crate::shared;
+    pub use crate::types;
+}
+
+pub use robustone_core::Instruction;
+
 use arch::RiscVInstructionDetail;
 use decoder::{RiscVDecoder, Xlen};
 use extensions::Extensions;
@@ -24,9 +51,7 @@ use robustone_core::{
     ir::DecodedInstruction,
     traits::ArchitectureHandler,
     types::error::DisasmError,
-    types::instruction::Instruction,
 };
-use types::*;
 
 /// Architecture handler implementation for RISC-V targets.
 pub struct RiscVHandler {

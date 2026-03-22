@@ -1,5 +1,4 @@
-use crate::ir::{ArchitectureId, DecodedInstruction, TextRenderProfile};
-use crate::riscv::printer::{RiscVPrinter, RiscVTextProfile};
+use crate::ir::{DecodedInstruction, TextRenderProfile};
 use crate::types::instruction::Instruction;
 use serde::Serialize;
 
@@ -69,24 +68,17 @@ pub fn render_instruction_text(
     instruction: &Instruction,
     options: RenderOptions,
 ) -> (String, String) {
-    if let Some(decoded) = &instruction.decoded
-        && decoded.architecture == ArchitectureId::Riscv
-    {
-        let profile = match options.text_profile {
-            TextRenderProfile::Capstone => RiscVTextProfile::Capstone,
-            TextRenderProfile::Canonical => RiscVTextProfile::Canonical,
-            TextRenderProfile::VerboseDebug => RiscVTextProfile::VerboseDebug,
-        };
+    if let Some(decoded) = &instruction.decoded {
         let alias_regs = options.capstone_aliases
             && (options.alias_regs
                 || !matches!(options.text_profile, TextRenderProfile::Canonical));
-        let printer = RiscVPrinter::new()
-            .with_profile(profile)
-            .with_capstone_aliases(options.capstone_aliases)
-            .with_compressed_aliases(options.compressed_aliases)
-            .with_alias_regs(alias_regs)
-            .with_unsigned_immediate(options.unsigned_immediate);
-        return printer.render_ir_parts(decoded);
+        return decoded.render_text_parts_with_options(
+            options.text_profile,
+            alias_regs,
+            options.capstone_aliases,
+            options.compressed_aliases,
+            options.unsigned_immediate,
+        );
     }
 
     instruction.rendered_text_parts(options.text_profile)
