@@ -10,6 +10,7 @@ use crate::error::{CliError, Result};
 use crate::version_info::print_version_info;
 
 use clap::Parser;
+use std::ffi::OsString;
 
 /// High-level application executor that orchestrates the entire CLI workflow.
 pub struct CliExecutor {
@@ -26,8 +27,15 @@ impl CliExecutor {
 
     /// Execute the CLI workflow.
     pub fn run(&self) -> Result<()> {
-        let cli = Cli::parse();
-        self.execute_cli(cli)
+        let args = std::env::args_os().collect::<Vec<_>>();
+        match Cli::try_parse_from(args.clone()) {
+            Ok(cli) => self.execute_cli(cli),
+            Err(error) if args.iter().any(|arg| arg == "--json") => {
+                println!("{}", self.render_clap_error_json(&args, &error));
+                Err(CliError::reported(2))
+            }
+            Err(error) => Err(CliError::InvalidCommand(error.to_string())),
+        }
     }
 
     /// Execute the workflow with the provided CLI arguments.
@@ -289,6 +297,23 @@ impl CliExecutor {
         )
     }
 
+    fn render_clap_error_json(&self, args: &[OsString], error: &clap::Error) -> String {
+        let architecture =
+            guess_architecture_argument(args).unwrap_or_else(|| "unknown".to_string());
+        let architecture_option = (architecture != "unknown").then_some(architecture.clone());
+        self.render_issue_json(
+            0,
+            architecture,
+            OutputConfig::canonical_json(),
+            DisassemblyIssue::from_cli_error(
+                &CliError::InvalidCommand(error.to_string()),
+                "parse_cli",
+                architecture_option,
+                None,
+            ),
+        )
+    }
+
     fn render_issue_json(
         &self,
         start_address: u64,
@@ -374,4 +399,30 @@ mod tests {
         assert_eq!(parsed["errors"][0]["kind"], "validation_error");
         assert_eq!(parsed["bytes_processed"], 0);
     }
+
+    #[test]
+    fn test_render_clap_error_json_for_invalid_arguments() {
+        let executor = CliExecutor::new();
+        let error = Cli::try_parse_from(["robustone", "--json", "-z"]).unwrap_err();
+        let output = executor.render_clap_error_json(
+            &[
+                OsString::from("robustone"),
+                OsString::from("--json"),
+                OsString::from("-z"),
+            ],
+            &error,
+        );
+        let parsed: Value = serde_json::from_str(&output).unwrap();
+
+        assert_eq!(parsed["errors"][0]["kind"], "invalid_command");
+        assert_eq!(parsed["bytes_processed"], 0);
+    }
+}
+
+fn guess_architecture_argument(args: &[OsString]) -> Option<String> {
+    args.iter()
+        .skip(1)
+        .filter_map(|arg| arg.to_str())
+        .find(|arg| !arg.starts_with('-'))
+        .map(str::to_string)
 }
