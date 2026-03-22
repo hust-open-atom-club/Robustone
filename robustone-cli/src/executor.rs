@@ -34,7 +34,9 @@ impl CliExecutor {
                 println!("{}", self.render_clap_error_json(&args, &error));
                 Err(CliError::reported(2))
             }
-            Err(error) => Err(CliError::InvalidCommand(error.to_string())),
+            Err(error) => {
+                error.exit();
+            }
         }
     }
 
