@@ -117,6 +117,8 @@ impl DisasmConfig {
 pub struct OutputConfig {
     pub text_profile: TextRenderProfile,
     pub alias_regs: bool,
+    pub capstone_aliases: bool,
+    pub compressed_aliases: bool,
     pub unsigned_immediate: bool,
     pub show_hex: bool,
     pub show_detail_sections: bool,
@@ -133,6 +135,8 @@ impl OutputConfig {
                 TextRenderProfile::Capstone
             },
             alias_regs: display.alias_regs,
+            capstone_aliases: true,
+            compressed_aliases: true,
             unsigned_immediate: display.unsigned_immediate,
             show_hex: display.detailed || display.real_detail,
             show_detail_sections: display.real_detail,
@@ -145,6 +149,8 @@ impl OutputConfig {
         Self {
             text_profile: TextRenderProfile::Capstone,
             alias_regs: false,
+            capstone_aliases: true,
+            compressed_aliases: true,
             unsigned_immediate: false,
             show_hex: false,
             show_detail_sections: false,
@@ -157,6 +163,8 @@ impl OutputConfig {
         Self {
             text_profile: TextRenderProfile::Canonical,
             alias_regs: false,
+            capstone_aliases: false,
+            compressed_aliases: false,
             unsigned_immediate: false,
             show_hex: false,
             show_detail_sections: false,
@@ -170,9 +178,26 @@ fn validate_display_options(display: &DisplayOptions) -> Result<()> {
     Ok(())
 }
 
+impl DisasmConfig {
+    pub fn output_config(&self) -> OutputConfig {
+        let mut output = OutputConfig::from_display_options(&self.display_options);
+
+        if self.arch_spec.has_option("noalias") {
+            output.alias_regs = false;
+            output.capstone_aliases = false;
+            output.compressed_aliases = false;
+        } else if self.arch_spec.has_option("noaliascompressed") {
+            output.compressed_aliases = false;
+        }
+
+        output
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::arch::ArchitectureSpec;
     use crate::command::{DisplayOptions, ValidatedConfig};
 
     #[test]
@@ -209,9 +234,42 @@ mod tests {
         let output = OutputConfig::from_display_options(&display);
         assert_eq!(output.text_profile, TextRenderProfile::Capstone);
         assert!(!output.alias_regs);
+        assert!(output.capstone_aliases);
+        assert!(output.compressed_aliases);
         assert!(!output.unsigned_immediate);
         assert!(output.show_hex);
         assert!(!output.show_detail_sections);
         assert!(!output.json);
+    }
+
+    #[test]
+    fn test_riscv_noalias_modifiers_adjust_output_config() {
+        let config = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("riscv32+noaliascompressed").unwrap(),
+            hex_bytes: vec![0x93, 0x00, 0x10, 0x00],
+            start_address: 0,
+            display_options: DisplayOptions {
+                detailed: false,
+                alias_regs: false,
+                real_detail: false,
+                unsigned_immediate: false,
+                json: false,
+            },
+            skip_data: false,
+        };
+        let output = config.output_config();
+
+        assert!(output.capstone_aliases);
+        assert!(!output.compressed_aliases);
+
+        let noalias = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("riscv32+noalias").unwrap(),
+            ..config
+        };
+        let output = noalias.output_config();
+
+        assert!(!output.alias_regs);
+        assert!(!output.capstone_aliases);
+        assert!(!output.compressed_aliases);
     }
 }

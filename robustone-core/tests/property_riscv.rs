@@ -69,6 +69,8 @@ fn render_options(profile: TextRenderProfile) -> RenderOptions {
     RenderOptions {
         text_profile: profile,
         alias_regs: false,
+        capstone_aliases: !matches!(profile, TextRenderProfile::Canonical),
+        compressed_aliases: !matches!(profile, TextRenderProfile::Canonical),
         unsigned_immediate: false,
     }
 }
