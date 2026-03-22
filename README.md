@@ -60,13 +60,15 @@ The `test` target downloads Capstone into `third_party/capstone` on first use, b
 The CLI mirrors the classic `cstool` UX for the RISC-V backends that are implemented today. For example, to decode a RISC-V instruction with detailed output:
 
 ```bash
-make run -- riscv32 130101ff -d
+make run -- riscv32 93001000 -d
 ```
+
+Hex input follows `cstool` conventions and is interpreted as raw instruction bytes in memory order.
 
 Alternatively, use the `RUN_ARGS` variable. This prevents `make` from misinterpreting flags like `-d`:
 
 ```bash
-make run RUN_ARGS="riscv32 130101ff -d"
+make run RUN_ARGS="riscv32 93001000 -d"
 ```
 
 To inspect the currently advertised CLI surface:
