@@ -67,7 +67,38 @@ fn test_architecture_spec_accepts_riscv_capstone_modifiers() {
     assert!(ArchitectureSpec::parse("riscv64+a+fd").is_ok());
     assert!(ArchitectureSpec::parse("riscv32+noalias").is_ok());
     assert!(ArchitectureSpec::parse("riscv32+noaliascompressed").is_ok());
+    assert!(ArchitectureSpec::parse("riscv32+bitmanip").is_err());
     assert!(ArchitectureSpec::parse("riscv32+intel").is_err());
+}
+
+#[test]
+fn test_process_input_honors_riscv_extension_modifiers() {
+    let args = vec!["robustone", "riscv64+a", "d3027300"];
+    let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
+    let config = DisasmConfig::config_from_cli(&cli).expect("configuration should be valid");
+    let error = process_input(&config).expect_err("missing F/D should fail");
+
+    assert_eq!(error.stable_kind(), "unsupported_extension");
+
+    let args = vec!["robustone", "riscv64+a+fd", "d3027300"];
+    let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
+    let config = DisasmConfig::config_from_cli(&cli).expect("configuration should be valid");
+    let result = process_input(&config).expect("explicit F/D should decode");
+
+    assert_eq!(result.instructions[0].mnemonic, "fadd.s");
+}
+
+#[test]
+fn test_noalias_modifier_disables_riscv_alias_rendering() {
+    let args = vec!["robustone", "riscv32+noalias", "93001000"];
+    let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
+    let config = DisasmConfig::config_from_cli(&cli).expect("configuration should be valid");
+    let result = process_input(&config).expect("disassembly should succeed");
+    let formatter = DisassemblyFormatter::new(config.output_config());
+    let output = formatter.format(&result);
+
+    assert!(output.contains("addi\tx1, x0, 1"));
+    assert!(!output.contains("li\tra"));
 }
 
 #[test]

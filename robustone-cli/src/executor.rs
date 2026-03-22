@@ -3,7 +3,7 @@
 //! This module wires together argument parsing, configuration building,
 //! and the actual disassembly pipeline exposed through the CLI.
 
-use crate::command::Cli;
+use crate::command::{Cli, DisplayOptions};
 use crate::config::{DisasmConfig, OutputConfig};
 use crate::disasm::{DisassemblyEngine, DisassemblyFormatter, DisassemblyIssue, DisassemblyResult};
 use crate::error::{CliError, Result};
@@ -39,14 +39,44 @@ impl CliExecutor {
         }
 
         // Validate and process the command-line arguments
-        let validated_config = cli.validate()?;
+        let validated_config = match cli.validate() {
+            Ok(config) => config,
+            Err(error) if cli.json => {
+                println!(
+                    "{}",
+                    self.render_cli_error_json(&cli, &error, "validate_cli")
+                );
+                return Err(CliError::reported(1));
+            }
+            Err(error) => return Err(error),
+        };
 
         // Create disassembly configuration
-        let disasm_config = DisasmConfig::from_validated_config(validated_config)?;
+        let disasm_config = match DisasmConfig::from_validated_config(validated_config) {
+            Ok(config) => config,
+            Err(error) if cli.json => {
+                println!(
+                    "{}",
+                    self.render_cli_error_json(&cli, &error, "build_config")
+                );
+                return Err(CliError::reported(1));
+            }
+            Err(error) => return Err(error),
+        };
 
         // Execute the appropriate action
         if cli.has_disassembly_input() {
             self.execute_disassembly(&disasm_config)
+        } else if cli.json {
+            println!(
+                "{}",
+                self.render_cli_error_json(
+                    &cli,
+                    &CliError::MissingArgument("hex_code".to_string()),
+                    "validate_cli",
+                )
+            );
+            Err(CliError::reported(1))
         } else {
             Err(CliError::MissingArgument("hex_code".to_string()))
         }
@@ -55,7 +85,17 @@ impl CliExecutor {
     /// Execute the disassembly pipeline.
     fn execute_disassembly(&self, config: &DisasmConfig) -> Result<()> {
         // Validate the configuration for disassembly
-        config.validate_for_disassembly()?;
+        match config.validate_for_disassembly() {
+            Ok(()) => {}
+            Err(error) if config.display_options.json => {
+                println!(
+                    "{}",
+                    self.render_config_error_json(config, &error, "validate_disassembly_config")
+                );
+                return Err(CliError::reported(1));
+            }
+            Err(error) => return Err(error),
+        }
 
         // Create engine with correct architecture
         let arch = config.arch_name();
@@ -80,7 +120,7 @@ impl CliExecutor {
         };
 
         // Format and output the results
-        let output_config = OutputConfig::from_display_options(&config.display_options);
+        let output_config = config.output_config();
         let formatter = DisassemblyFormatter::new(output_config);
 
         formatter.print(&result);
@@ -102,7 +142,17 @@ impl CliExecutor {
         config: &DisasmConfig,
         formatter: DisassemblyFormatter,
     ) -> Result<()> {
-        config.validate_for_disassembly()?;
+        match config.validate_for_disassembly() {
+            Ok(()) => {}
+            Err(error) if config.display_options.json => {
+                println!(
+                    "{}",
+                    self.render_config_error_json(config, &error, "validate_disassembly_config")
+                );
+                return Err(CliError::reported(1));
+            }
+            Err(error) => return Err(error),
+        }
 
         let result = match self.engine.disassemble(config) {
             Ok(result) => result,
@@ -135,7 +185,17 @@ pub fn run() -> Result<()> {
 impl CliExecutor {
     /// Execute disassembly and return the result as a string instead of printing.
     pub fn execute_to_string(&self, config: &DisasmConfig) -> Result<String> {
-        config.validate_for_disassembly()?;
+        match config.validate_for_disassembly() {
+            Ok(()) => {}
+            Err(error) if config.display_options.json => {
+                return Ok(self.render_config_error_json(
+                    config,
+                    &error,
+                    "validate_disassembly_config",
+                ));
+            }
+            Err(error) => return Err(error),
+        }
 
         let result = match self.engine.disassemble(config) {
             Ok(result) => result,
@@ -145,7 +205,7 @@ impl CliExecutor {
             Err(error) => return Err(CliError::disassembly(&error)),
         };
 
-        let output_config = OutputConfig::from_display_options(&config.display_options);
+        let output_config = config.output_config();
         let formatter = DisassemblyFormatter::new(output_config);
 
         Ok(formatter.format(&result))
@@ -178,17 +238,66 @@ impl CliExecutor {
         config: &DisasmConfig,
         error: &robustone_core::DisasmError,
     ) -> String {
-        let mut result =
-            DisassemblyResult::new(config.start_address, config.arch_name().to_string());
-        result.add_error(DisassemblyIssue::from_core_error(
-            error,
-            "decode_instruction",
-            config.arch_name(),
+        self.render_issue_json(
             config.start_address,
+            config.arch_name().to_string(),
+            config.output_config(),
+            DisassemblyIssue::from_core_error(
+                error,
+                "decode_instruction",
+                config.arch_name(),
+                config.start_address,
+                0,
+                &config.hex_bytes,
+            ),
+        )
+    }
+
+    fn render_config_error_json(
+        &self,
+        config: &DisasmConfig,
+        error: &CliError,
+        operation: &str,
+    ) -> String {
+        self.render_issue_json(
+            config.start_address,
+            config.arch_name().to_string(),
+            config.output_config(),
+            DisassemblyIssue::from_cli_error(
+                error,
+                operation,
+                Some(config.arch_name().to_string()),
+                Some(config.start_address),
+            ),
+        )
+    }
+
+    fn render_cli_error_json(&self, cli: &Cli, error: &CliError, operation: &str) -> String {
+        self.render_issue_json(
             0,
-            &config.hex_bytes,
-        ));
-        let output_config = OutputConfig::from_display_options(&config.display_options);
+            cli.arch_mode
+                .clone()
+                .unwrap_or_else(|| "unknown".to_string()),
+            OutputConfig::from_display_options(&DisplayOptions {
+                detailed: cli.detailed,
+                alias_regs: cli.alias_regs,
+                real_detail: cli.real_detail,
+                unsigned_immediate: cli.unsigned_immediate,
+                json: cli.json,
+            }),
+            DisassemblyIssue::from_cli_error(error, operation, cli.arch_mode.clone(), None),
+        )
+    }
+
+    fn render_issue_json(
+        &self,
+        start_address: u64,
+        architecture: String,
+        output_config: OutputConfig,
+        issue: DisassemblyIssue,
+    ) -> String {
+        let mut result = DisassemblyResult::new(start_address, architecture);
+        result.add_error(issue);
         let formatter = DisassemblyFormatter::new(output_config);
         formatter.format(&result)
     }
@@ -237,6 +346,32 @@ mod tests {
         let parsed: Value = serde_json::from_str(&output).unwrap();
 
         assert_eq!(parsed["errors"][0]["kind"], "invalid_encoding");
+        assert_eq!(parsed["bytes_processed"], 0);
+    }
+
+    #[test]
+    fn test_execute_to_string_returns_json_for_validation_errors() {
+        let executor = CliExecutor::new();
+        let config = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
+            hex_bytes: vec![0x93],
+            start_address: 0,
+            display_options: DisplayOptions {
+                detailed: false,
+                alias_regs: false,
+                real_detail: false,
+                unsigned_immediate: false,
+                json: true,
+            },
+            skip_data: false,
+        };
+
+        let output = executor
+            .execute_to_string(&config)
+            .expect("json mode should render validation errors as JSON");
+        let parsed: Value = serde_json::from_str(&output).unwrap();
+
+        assert_eq!(parsed["errors"][0]["kind"], "validation_error");
         assert_eq!(parsed["bytes_processed"], 0);
     }
 }

@@ -20,6 +20,10 @@ pub enum RiscVTextProfile {
 pub struct RiscVPrinter {
     /// Whether register aliases should be printed instead of canonical names.
     alias_regs: bool,
+    /// Whether Capstone-facing aliases should be emitted instead of canonical mnemonics.
+    capstone_aliases: bool,
+    /// Whether compressed instruction aliases should be emitted.
+    compressed_aliases: bool,
     /// Whether immediates should be rendered as unsigned values when possible.
     unsigned_immediate: bool,
     /// Selected rendering profile.
@@ -31,6 +35,8 @@ impl RiscVPrinter {
     pub fn new() -> Self {
         Self {
             alias_regs: false,
+            capstone_aliases: true,
+            compressed_aliases: true,
             unsigned_immediate: false,
             profile: RiscVTextProfile::Capstone,
         }
@@ -39,6 +45,16 @@ impl RiscVPrinter {
     /// Enables or disables register alias printing.
     pub fn with_alias_regs(mut self, alias_regs: bool) -> Self {
         self.alias_regs = alias_regs;
+        self
+    }
+
+    pub fn with_capstone_aliases(mut self, capstone_aliases: bool) -> Self {
+        self.capstone_aliases = capstone_aliases;
+        self
+    }
+
+    pub fn with_compressed_aliases(mut self, compressed_aliases: bool) -> Self {
+        self.compressed_aliases = compressed_aliases;
         self
     }
 
@@ -52,6 +68,8 @@ impl RiscVPrinter {
     pub fn with_profile(mut self, profile: RiscVTextProfile) -> Self {
         self.profile = profile;
         self.alias_regs = matches!(profile, RiscVTextProfile::Capstone);
+        self.capstone_aliases = !matches!(profile, RiscVTextProfile::Canonical);
+        self.compressed_aliases = self.capstone_aliases;
         self
     }
 
@@ -117,19 +135,23 @@ impl RiscVPrinter {
 
     /// Render the shared IR into mnemonic and operand text.
     pub fn render_ir_parts(&self, ir: &DecodedInstruction) -> (String, String) {
+        let use_capstone_aliases =
+            self.capstone_aliases && (self.compressed_aliases || !ir.mnemonic.starts_with("c."));
         let mnemonic = match self.profile {
-            RiscVTextProfile::Capstone | RiscVTextProfile::VerboseDebug => ir
-                .render_hints
-                .capstone_mnemonic
-                .clone()
-                .unwrap_or_else(|| ir.mnemonic.clone()),
-            RiscVTextProfile::Canonical => ir.mnemonic.clone(),
+            RiscVTextProfile::Capstone | RiscVTextProfile::VerboseDebug if use_capstone_aliases => {
+                ir.render_hints
+                    .capstone_mnemonic
+                    .clone()
+                    .unwrap_or_else(|| ir.mnemonic.clone())
+            }
+            _ => ir.mnemonic.clone(),
         };
 
         let hidden_operands = if matches!(
             self.profile,
             RiscVTextProfile::Capstone | RiscVTextProfile::VerboseDebug
-        ) {
+        ) && use_capstone_aliases
+        {
             ir.render_hints.capstone_hidden_operands.as_slice()
         } else {
             &[]

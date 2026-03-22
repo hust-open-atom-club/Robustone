@@ -1,6 +1,8 @@
 use std::str::FromStr;
 
 use crate::error::ParseError;
+use robustone_core::architecture::Architecture as CoreArchitecture;
+use robustone_core::common::ArchitectureProfile;
 
 const MODE_BIG_ENDIAN: u32 = 0x100;
 
@@ -101,6 +103,38 @@ impl ArchitectureSpec {
             mode,
             options,
         })
+    }
+
+    pub fn riscv_profile(&self) -> Option<ArchitectureProfile> {
+        let (architecture, mode_name, bit_width) = match self.arch {
+            Architecture::Riscv32 => (CoreArchitecture::RiscV32, "riscv32", 32),
+            Architecture::Riscv64 => (CoreArchitecture::RiscV64, "riscv64", 64),
+            _ => return None,
+        };
+
+        let mut enabled_extensions = vec!["I"];
+        let mut uses_explicit_profile = false;
+
+        if self.has_option("a") {
+            enabled_extensions.push("A");
+            uses_explicit_profile = true;
+        }
+        if self.has_option("c") {
+            enabled_extensions.push("C");
+            uses_explicit_profile = true;
+        }
+        if self.has_option("fd") {
+            enabled_extensions.extend(["F", "D"]);
+            uses_explicit_profile = true;
+        }
+
+        uses_explicit_profile.then(|| {
+            ArchitectureProfile::riscv(architecture, mode_name, bit_width, enabled_extensions)
+        })
+    }
+
+    pub fn has_option(&self, option: &str) -> bool {
+        self.options.iter().any(|candidate| candidate == option)
     }
 }
 
@@ -289,27 +323,7 @@ fn endianness_mode_bits(modifier: &str) -> u32 {
 }
 
 fn is_supported_riscv_modifier(modifier: &str) -> bool {
-    matches!(
-        modifier,
-        "a" | "bitmanip"
-            | "c"
-            | "corev"
-            | "e"
-            | "fd"
-            | "inx"
-            | "noalias"
-            | "noaliascompressed"
-            | "sifive"
-            | "thead"
-            | "v"
-            | "zba"
-            | "zbb"
-            | "zbc"
-            | "zbk"
-            | "zbs"
-            | "zcmp-t-e"
-            | "zicfiss"
-    )
+    matches!(modifier, "a" | "c" | "fd" | "noalias" | "noaliascompressed")
 }
 
 fn normalize_modifier(modifier: &str) -> String {

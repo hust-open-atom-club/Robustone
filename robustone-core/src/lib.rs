@@ -266,6 +266,25 @@ impl ArchitectureDispatcher {
         }
     }
 
+    /// Disassemble bytes using an explicit architecture profile.
+    pub fn disassemble_with_profile(
+        &self,
+        bytes: &[u8],
+        profile: &crate::common::ArchitectureProfile,
+        address: u64,
+    ) -> Result<(Instruction, usize), DisasmError> {
+        match profile.architecture {
+            crate::architecture::Architecture::RiscV32
+            | crate::architecture::Architecture::RiscV64 => {
+                let handler = riscv::RiscVHandler::from_profile(profile)?;
+                handler.disassemble(bytes, profile.mode_name, address)
+            }
+            _ => Err(DisasmError::UnsupportedArchitecture(
+                profile.architecture.as_str().to_string(),
+            )),
+        }
+    }
+
     /// Returns a list of all registered architecture names.
     ///
     /// This method returns the canonical names of all architectures that
@@ -506,6 +525,28 @@ mod tests {
         let error = dispatcher
             .decode_with_profile(&[0xd3, 0x02, 0x73, 0x00], &profile, 0)
             .expect_err("D without F should be rejected when building the profile");
+
+        match error {
+            DisasmError::DecodeFailure { kind, .. } => {
+                assert_eq!(kind, DecodeErrorKind::UnsupportedExtension);
+            }
+            other => panic!("expected unsupported extension, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_disassemble_with_profile_enforces_enabled_extensions() {
+        let dispatcher = ArchitectureDispatcher::new();
+        let profile = crate::common::ArchitectureProfile::riscv(
+            crate::architecture::Architecture::RiscV64,
+            "riscv64",
+            64,
+            vec!["I", "A"],
+        );
+
+        let error = dispatcher
+            .disassemble_with_profile(&[0xd3, 0x02, 0x73, 0x00], &profile, 0)
+            .expect_err("missing F/D should be reported");
 
         match error {
             DisasmError::DecodeFailure { kind, .. } => {

@@ -74,6 +74,64 @@ impl DisassemblyIssue {
         }
     }
 
+    pub fn from_cli_error(
+        error: &crate::error::CliError,
+        operation: impl Into<String>,
+        architecture: Option<String>,
+        address: Option<u64>,
+    ) -> Self {
+        let (kind, message, architecture) = match error {
+            crate::error::CliError::Disassembly {
+                kind,
+                message,
+                architecture: disasm_arch,
+            } => (
+                kind.clone(),
+                message.clone(),
+                disasm_arch.clone().or(architecture),
+            ),
+            crate::error::CliError::Validation { .. } => (
+                "validation_error".to_string(),
+                error.to_string(),
+                architecture,
+            ),
+            crate::error::CliError::Parse { .. } | crate::error::CliError::Architecture(_) => {
+                ("parse_error".to_string(), error.to_string(), architecture)
+            }
+            crate::error::CliError::Configuration(_) => (
+                "configuration_error".to_string(),
+                error.to_string(),
+                architecture,
+            ),
+            crate::error::CliError::MissingArgument(_) => (
+                "missing_argument".to_string(),
+                error.to_string(),
+                architecture,
+            ),
+            crate::error::CliError::InvalidCommand(_) => (
+                "invalid_command".to_string(),
+                error.to_string(),
+                architecture,
+            ),
+            crate::error::CliError::Io(_) => {
+                ("io_error".to_string(), error.to_string(), architecture)
+            }
+            crate::error::CliError::Generic(_) | crate::error::CliError::Reported(_) => {
+                ("error".to_string(), error.to_string(), architecture)
+            }
+        };
+
+        Self {
+            kind,
+            operation: operation.into(),
+            message,
+            architecture,
+            address,
+            input_offset: Some(0),
+            raw_bytes: Vec::new(),
+        }
+    }
+
     /// Render the issue into the human-readable CLI form.
     pub fn display_message(&self) -> String {
         let mut parts = vec![format!("[{}] {}", self.kind, self.message)];
@@ -213,14 +271,20 @@ impl DisassemblyEngine {
         let mut offset = 0;
         let mut current_address = config.start_address;
         let arch_name = config.arch_name();
+        let riscv_profile = config.arch_spec.riscv_profile();
 
         while offset < config.hex_bytes.len() {
             let slice = &config.hex_bytes[offset..];
 
-            match self
-                .dispatcher
-                .disassemble_bytes(slice, arch_name, current_address)
-            {
+            let disassembly = if let Some(profile) = riscv_profile.as_ref() {
+                self.dispatcher
+                    .disassemble_with_profile(slice, profile, current_address)
+            } else {
+                self.dispatcher
+                    .disassemble_bytes(slice, arch_name, current_address)
+            };
+
+            match disassembly {
                 Ok((instruction, size)) => {
                     if size == 0 {
                         return Err(DisasmError::DecodingError(
@@ -425,6 +489,8 @@ impl DisassemblyFormatter {
         RenderOptions {
             text_profile: self.output_config.text_profile,
             alias_regs: self.output_config.alias_regs,
+            capstone_aliases: self.output_config.capstone_aliases,
+            compressed_aliases: self.output_config.compressed_aliases,
             unsigned_immediate: self.output_config.unsigned_immediate,
         }
     }
@@ -453,7 +519,7 @@ pub fn disassemble(config: &DisasmConfig) -> Result<DisassemblyResult, DisasmErr
 
 /// Prints the disassembly result in the cstool-compatible layout.
 pub fn print_instructions(result: &DisassemblyResult, config: &DisasmConfig) {
-    let output_config = OutputConfig::from_display_options(&config.display_options);
+    let output_config = config.output_config();
     let formatter = DisassemblyFormatter::new(output_config);
     formatter.print(result);
 }
@@ -504,6 +570,8 @@ mod tests {
         let formatter = DisassemblyFormatter::new(OutputConfig {
             text_profile: robustone_core::ir::TextRenderProfile::Capstone,
             alias_regs: false,
+            capstone_aliases: true,
+            compressed_aliases: true,
             unsigned_immediate: false,
             show_hex: false,
             show_detail_sections: false,
@@ -583,6 +651,8 @@ mod tests {
         let formatter = DisassemblyFormatter::new(OutputConfig {
             text_profile: robustone_core::ir::TextRenderProfile::Capstone,
             alias_regs: false,
+            capstone_aliases: true,
+            compressed_aliases: true,
             unsigned_immediate: false,
             show_hex: false,
             show_detail_sections: false,
@@ -617,6 +687,8 @@ mod tests {
         let formatter = DisassemblyFormatter::new(OutputConfig {
             text_profile: robustone_core::ir::TextRenderProfile::Capstone,
             alias_regs: false,
+            capstone_aliases: true,
+            compressed_aliases: true,
             unsigned_immediate: false,
             show_hex: false,
             show_detail_sections: false,
@@ -648,6 +720,8 @@ mod tests {
         let formatter = DisassemblyFormatter::new(OutputConfig {
             text_profile: robustone_core::ir::TextRenderProfile::Capstone,
             alias_regs: false,
+            capstone_aliases: true,
+            compressed_aliases: true,
             unsigned_immediate: false,
             show_hex: false,
             show_detail_sections: false,
@@ -703,6 +777,8 @@ mod tests {
         let formatter = DisassemblyFormatter::new(OutputConfig {
             text_profile: robustone_core::ir::TextRenderProfile::Capstone,
             alias_regs: false,
+            capstone_aliases: true,
+            compressed_aliases: true,
             unsigned_immediate: false,
             show_hex: false,
             show_detail_sections: false,
@@ -889,6 +965,8 @@ mod tests {
         let text_formatter = DisassemblyFormatter::new(OutputConfig {
             text_profile: robustone_core::ir::TextRenderProfile::Canonical,
             alias_regs: false,
+            capstone_aliases: false,
+            compressed_aliases: false,
             unsigned_immediate: false,
             show_hex: false,
             show_detail_sections: false,
