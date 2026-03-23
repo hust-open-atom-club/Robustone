@@ -610,6 +610,8 @@ pub(crate) fn build_riscv_decoded_instruction(
 
 fn infer_groups(mnemonic: &str) -> Vec<String> {
     let mut groups = Vec::new();
+    let is_atomic =
+        mnemonic.starts_with("amo") || mnemonic.starts_with("lr.") || mnemonic.starts_with("sc.");
 
     if mnemonic.starts_with("c.") {
         groups.push("compressed".to_string());
@@ -633,13 +635,14 @@ fn infer_groups(mnemonic: &str) -> Vec<String> {
     ) {
         groups.push("store".to_string());
     }
-    if mnemonic.starts_with("amo") || mnemonic.starts_with("lr.") || mnemonic.starts_with("sc.") {
+    if is_atomic {
         groups.push("atomic".to_string());
     }
-    let has_fp_suffix = mnemonic.ends_with(".s")
-        || mnemonic.ends_with(".d")
-        || mnemonic.contains(".s.")
-        || mnemonic.contains(".d.");
+    let has_fp_suffix = !is_atomic
+        && (mnemonic.ends_with(".s")
+            || mnemonic.ends_with(".d")
+            || mnemonic.contains(".s.")
+            || mnemonic.contains(".d."));
 
     if (mnemonic.starts_with('f') && !matches!(mnemonic, "fence" | "fence.i")) || has_fp_suffix {
         groups.push("floating_point".to_string());

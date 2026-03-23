@@ -3,6 +3,7 @@
 //! This module defines the core trait that all architecture-specific
 //! disassemblers must implement.
 
+use crate::common::ArchitectureProfile;
 use crate::ir::DecodedInstruction;
 use crate::types::error::DisasmError;
 use crate::types::instruction::Instruction;
@@ -72,6 +73,18 @@ pub trait ArchitectureHandler: Sync {
         addr: u64,
     ) -> Result<(DecodedInstruction, usize), DisasmError>;
 
+    /// Decodes a single instruction using an explicit architecture profile.
+    ///
+    /// Handlers that care about profile extension sets should override this.
+    fn decode_instruction_with_profile(
+        &self,
+        bytes: &[u8],
+        profile: &ArchitectureProfile,
+        addr: u64,
+    ) -> Result<(DecodedInstruction, usize), DisasmError> {
+        self.decode_instruction(bytes, profile.mode_name, addr)
+    }
+
     /// Disassembles a single instruction from the provided bytes.
     ///
     /// This is the core method that performs the actual disassembly work.
@@ -102,6 +115,18 @@ pub trait ArchitectureHandler: Sync {
         arch_name: &str,
         addr: u64,
     ) -> Result<(Instruction, usize), DisasmError>;
+
+    /// Disassembles a single instruction using an explicit architecture profile.
+    ///
+    /// Handlers that care about profile extension sets should override this.
+    fn disassemble_with_profile(
+        &self,
+        bytes: &[u8],
+        profile: &ArchitectureProfile,
+        addr: u64,
+    ) -> Result<(Instruction, usize), DisasmError> {
+        self.disassemble(bytes, profile.mode_name, addr)
+    }
 
     /// Returns the canonical name of this architecture.
     ///
