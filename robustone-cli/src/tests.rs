@@ -124,6 +124,21 @@ fn test_noalias_modifier_disables_aliases_in_real_detail_sections() {
 }
 
 #[test]
+fn test_real_detail_defaults_to_capstone_register_aliases() {
+    let args = vec!["robustone", "-r", "riscv32", "93001000"];
+    let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
+    let config = DisasmConfig::config_from_cli(&cli).expect("configuration should be valid");
+    let result = process_input(&config).expect("disassembly should succeed");
+    let formatter = DisassemblyFormatter::new(config.output_config());
+    let output = formatter.format(&result);
+
+    assert!(output.contains("Registers read: zero"));
+    assert!(output.contains("Registers written: ra"));
+    assert!(!output.contains("Registers read: x0"));
+    assert!(!output.contains("Registers written: x1"));
+}
+
+#[test]
 fn test_config_preserves_input_byte_order() {
     let args = vec!["robustone", "riscv32", "93001000"];
     let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
