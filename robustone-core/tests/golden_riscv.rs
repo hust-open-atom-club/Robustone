@@ -181,7 +181,10 @@ fn test_invalid_compressed_encoding_reports_failure() {
 
     match error {
         robustone::DisasmError::DecodeFailure { kind, .. } => {
-            assert_eq!(kind, robustone::types::error::DecodeErrorKind::InvalidEncoding);
+            assert_eq!(
+                kind,
+                robustone::types::error::DecodeErrorKind::InvalidEncoding
+            );
         }
         other => panic!("expected decode failure, got {other:?}"),
     }
