@@ -11,9 +11,12 @@ fn dispatcher_with_riscv() -> rt::ArchitectureDispatcher {
     rt::dispatcher()
 }
 
-fn dispatcher_with_profile(profile: &rt::common::ArchitectureProfile) -> rt::ArchitectureDispatcher {
+fn dispatcher_with_profile(
+    profile: &rt::common::ArchitectureProfile,
+) -> rt::ArchitectureDispatcher {
     let mut dispatcher = rt::ArchitectureDispatcher::new();
-    let handler = rt::riscv::RiscVHandler::from_profile(profile).expect("profile should build a handler");
+    let handler =
+        rt::riscv::RiscVHandler::from_profile(profile).expect("profile should build a handler");
     dispatcher.register(Box::new(handler));
     dispatcher
 }
