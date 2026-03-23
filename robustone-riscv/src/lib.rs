@@ -154,6 +154,16 @@ impl ArchitectureHandler for RiscVHandler {
         Ok((decoded, size))
     }
 
+    fn decode_instruction_with_profile(
+        &self,
+        bytes: &[u8],
+        profile: &ArchitectureProfile,
+        addr: u64,
+    ) -> Result<(DecodedInstruction, usize), DisasmError> {
+        let handler = Self::from_profile(profile)?;
+        handler.decode_instruction(bytes, profile.mode_name, addr)
+    }
+
     fn disassemble(
         &self,
         bytes: &[u8],
@@ -188,6 +198,16 @@ impl ArchitectureHandler for RiscVHandler {
         let instruction =
             Instruction::from_decoded(ir, mnemonic, operands, Some(Box::new(riscv_detail)));
         Ok((instruction, size))
+    }
+
+    fn disassemble_with_profile(
+        &self,
+        bytes: &[u8],
+        profile: &ArchitectureProfile,
+        addr: u64,
+    ) -> Result<(Instruction, usize), DisasmError> {
+        let handler = Self::from_profile(profile)?;
+        handler.disassemble(bytes, profile.mode_name, addr)
     }
 
     fn name(&self) -> &'static str {
@@ -261,6 +281,17 @@ mod tests {
 
         let none_access = Access::none();
         assert!(!none_access.read && !none_access.write);
+    }
+
+    #[test]
+    fn test_atomic_doubleword_is_not_tagged_as_floating_point() {
+        let handler = RiscVHandler::rv64();
+        let (decoded, _) = handler
+            .decode_instruction(&[0x2f, 0xb4, 0x02, 0x12], "riscv64", 0)
+            .expect("lr.d should decode");
+
+        assert!(decoded.groups.iter().any(|group| group == "atomic"));
+        assert!(!decoded.groups.iter().any(|group| group == "floating_point"));
     }
 
     #[test]

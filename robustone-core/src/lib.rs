@@ -256,7 +256,7 @@ impl ArchitectureDispatcher {
     ) -> Result<(DecodedInstruction, usize), DisasmError> {
         for handler in &self.handlers {
             if handler.supports(profile.mode_name) {
-                return handler.decode_instruction(bytes, profile.mode_name, address);
+                return handler.decode_instruction_with_profile(bytes, profile, address);
             }
         }
 
@@ -274,7 +274,7 @@ impl ArchitectureDispatcher {
     ) -> Result<(Instruction, usize), DisasmError> {
         for handler in &self.handlers {
             if handler.supports(profile.mode_name) {
-                return handler.disassemble(bytes, profile.mode_name, address);
+                return handler.disassemble_with_profile(bytes, profile, address);
             }
         }
 
@@ -377,15 +377,6 @@ mod tests {
         dispatcher
     }
 
-    fn dispatcher_with_profile(
-        profile: &ArchitectureProfile,
-    ) -> robustone::ArchitectureDispatcher {
-        let mut dispatcher = robustone::ArchitectureDispatcher::new();
-        let handler = RiscVHandler::from_profile(profile).expect("profile should build a handler");
-        dispatcher.register(Box::new(handler));
-        dispatcher
-    }
-
     #[test]
     fn test_architecture_dispatcher_creation() {
         let dispatcher = ArchitectureDispatcher::default();
@@ -443,7 +434,7 @@ mod tests {
             32,
             vec!["I"],
         );
-        let dispatcher = dispatcher_with_profile(&profile);
+        let dispatcher = dispatcher_with_riscv();
 
         let error = dispatcher
             .decode_with_profile(&[0x05, 0x68], &profile, 0)
@@ -519,7 +510,7 @@ mod tests {
             64,
             vec!["I", "A"],
         );
-        let dispatcher = dispatcher_with_profile(&profile);
+        let dispatcher = dispatcher_with_riscv();
 
         let error = dispatcher
             .disassemble_with_profile(&[0xd3, 0x02, 0x73, 0x00], &profile, 0)

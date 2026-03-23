@@ -434,6 +434,12 @@ impl DisassemblyFormatter {
         };
 
         let mut detail_lines = Vec::new();
+        let detail_alias_regs = self.output_config.capstone_aliases
+            && (self.output_config.alias_regs
+                || !matches!(
+                    self.output_config.text_profile,
+                    TextRenderProfile::Canonical
+                ));
         if matches!(
             self.output_config.text_profile,
             TextRenderProfile::VerboseDebug
@@ -455,7 +461,7 @@ impl DisassemblyFormatter {
                     format_register_name(
                         detail.architecture_name(),
                         *reg_id,
-                        self.output_config.alias_regs,
+                        detail_alias_regs,
                     )
                 })
                 .collect::<Vec<_>>()
@@ -471,7 +477,7 @@ impl DisassemblyFormatter {
                     format_register_name(
                         detail.architecture_name(),
                         *reg_id,
-                        self.output_config.alias_regs,
+                        detail_alias_regs,
                     )
                 })
                 .collect::<Vec<_>>()
