@@ -200,11 +200,12 @@ fn render_riscv_text_parts(
             .unwrap_or_else(|| instruction.mnemonic.clone())
     };
 
-    let hidden_operands = if matches!(profile, TextRenderProfile::Canonical) || !use_capstone_aliases {
-        &[][..]
-    } else {
-        instruction.render_hints.capstone_hidden_operands.as_slice()
-    };
+    let hidden_operands =
+        if matches!(profile, TextRenderProfile::Canonical) || !use_capstone_aliases {
+            &[][..]
+        } else {
+            instruction.render_hints.capstone_hidden_operands.as_slice()
+        };
 
     let visible_operands = instruction
         .operands
@@ -272,13 +273,13 @@ fn format_riscv_jalr_operands(
         ) => format!(
             "{}, {}({})",
             format_riscv_register(rd.id, alias_regs),
-            format_riscv_control_immediate(*value, mode, unsigned_immediate),
+            format_riscv_immediate(*value, mode, unsigned_immediate),
             format_riscv_register(rs1.id, alias_regs)
         ),
         (Some(Operand::Register { register: rs1 }), Some(Operand::Immediate { value }), None) => {
             format!(
                 "{}({})",
-                format_riscv_control_immediate(*value, mode, unsigned_immediate),
+                format_riscv_immediate(*value, mode, unsigned_immediate),
                 format_riscv_register(rs1.id, alias_regs)
             )
         }
@@ -348,16 +349,17 @@ fn format_riscv_operand(
         Operand::Immediate { value } if is_riscv_csr_operand(mnemonic, index) => {
             csr_name_lookup(*value as u16)
                 .map(str::to_string)
-                .unwrap_or_else(|| format_riscv_immediate(*value, &String::new(), unsigned_immediate))
+                .unwrap_or_else(|| format_riscv_immediate(*value, "", unsigned_immediate))
         }
         Operand::Immediate { value }
             if last_visible_index == Some(index) && is_riscv_control_flow_mnemonic(mnemonic) =>
         {
             format_riscv_control_immediate(*value, mode, unsigned_immediate)
         }
-        Operand::Memory { base: Some(base), displacement }
-            if *displacement == 0 && is_riscv_atomic_memory_mnemonic(mnemonic) =>
-        {
+        Operand::Memory {
+            base: Some(base),
+            displacement,
+        } if *displacement == 0 && is_riscv_atomic_memory_mnemonic(mnemonic) => {
             format!("({})", format_riscv_register(base.id, alias_regs))
         }
         _ => format_riscv_basic_operand(operand, mode, alias_regs, true, unsigned_immediate),
@@ -485,7 +487,7 @@ fn format_riscv_immediate(value: i64, mode: &str, unsigned_immediate: bool) -> S
     }
 
     let abs = value.abs();
-    let use_hex = abs > 0xff;
+    let use_hex = abs > 9;
     if use_hex {
         if value < 0 {
             format!("-0x{abs:x}")
@@ -518,8 +520,7 @@ fn format_riscv_unsigned_immediate(value: i64, mode: &str) -> String {
 fn is_riscv_control_flow_mnemonic(mnemonic: &str) -> bool {
     matches!(
         mnemonic,
-        "j"
-            | "jal"
+        "j" | "jal"
             | "jalr"
             | "beq"
             | "bne"
@@ -539,15 +540,7 @@ fn is_riscv_control_flow_mnemonic(mnemonic: &str) -> bool {
 fn is_riscv_csr_operand(mnemonic: &str, index: usize) -> bool {
     matches!(
         mnemonic,
-        "csrrw"
-            | "csrrs"
-            | "csrrc"
-            | "csrrwi"
-            | "csrrsi"
-            | "csrrci"
-            | "csrr"
-            | "csrc"
-            | "csrw"
+        "csrrw" | "csrrs" | "csrrc" | "csrrwi" | "csrrsi" | "csrrci" | "csrr" | "csrc" | "csrw"
     ) && index == 1
 }
 

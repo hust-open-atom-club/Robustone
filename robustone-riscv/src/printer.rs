@@ -5,8 +5,8 @@
 use super::shared::operands::csr_name_lookup;
 use super::shared::{OperandFormatter, operands::DefaultOperandFactory};
 use super::types::*;
-use robustone_core::ir::{DecodedInstruction, Operand, RegisterId, TextRenderProfile};
 use robustone_core::Instruction;
+use robustone_core::ir::{DecodedInstruction, Operand, RegisterId, TextRenderProfile};
 
 /// Text formatting profiles for the RISC-V formatter.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

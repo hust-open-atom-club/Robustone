@@ -458,11 +458,7 @@ impl DisassemblyFormatter {
             let registers = registers_read
                 .iter()
                 .map(|reg_id| {
-                    format_register_name(
-                        detail.architecture_name(),
-                        *reg_id,
-                        detail_alias_regs,
-                    )
+                    format_register_name(detail.architecture_name(), *reg_id, detail_alias_regs)
                 })
                 .collect::<Vec<_>>()
                 .join(", ");
@@ -474,11 +470,7 @@ impl DisassemblyFormatter {
             let registers = registers_written
                 .iter()
                 .map(|reg_id| {
-                    format_register_name(
-                        detail.architecture_name(),
-                        *reg_id,
-                        detail_alias_regs,
-                    )
+                    format_register_name(detail.architecture_name(), *reg_id, detail_alias_regs)
                 })
                 .collect::<Vec<_>>()
                 .join(", ");

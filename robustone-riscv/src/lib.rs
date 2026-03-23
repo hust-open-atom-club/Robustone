@@ -47,9 +47,7 @@ use arch::RiscVInstructionDetail;
 use decoder::{RiscVDecoder, Xlen};
 use extensions::Extensions;
 use robustone_core::{
-    common::ArchitectureProfile,
-    ir::DecodedInstruction,
-    traits::ArchitectureHandler,
+    common::ArchitectureProfile, ir::DecodedInstruction, traits::ArchitectureHandler,
     types::error::DisasmError,
 };
 
