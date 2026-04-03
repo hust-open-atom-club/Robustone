@@ -1,7 +1,8 @@
 use crate::error::{CliError, Result};
 use crate::utils::validate_architecture_legacy as validate_architecture;
 use crate::utils::{parse_address_legacy, parse_hex_code_legacy};
-use clap::Parser;
+use clap::{CommandFactory, Parser};
+use robustone_core::all_architecture_capabilities;
 
 /// Robustone - Capstone-compatible disassembly engine CLI tool (cstool style)
 #[derive(Parser, Debug)]
@@ -15,9 +16,9 @@ use clap::Parser;
 pub struct Cli {
     /// Target architecture plus optional mode modifiers (e.g., `riscv32`, `arm+thumb`, `x86+intel`).
     #[arg(
-        help = "Target architecture with optional modes (e.g., riscv32, arm+thumb, x86+intel)",
+        help = "Target architecture with optional mode modifiers",
         long_help = "Specify the target architecture and optional mode modifiers.\n\
-Examples: riscv32, riscv64, arm+thumb, arm+v8, x86+intel, x86+att"
+See the registry-derived architecture support section in `robustone --help` for the current canonical tokens and parser-only placeholders."
     )]
     #[arg(value_parser = validate_architecture)]
     pub arch_mode: Option<String>,
@@ -212,4 +213,38 @@ pub struct DisplayOptions {
     pub real_detail: bool,
     pub unsigned_immediate: bool,
     pub json: bool,
+}
+
+pub fn render_help_text() -> String {
+    let mut command = Cli::command();
+    let mut output = Vec::new();
+    command
+        .write_long_help(&mut output)
+        .expect("help rendering should succeed");
+
+    let mut help = String::from_utf8(output).expect("help should be valid UTF-8");
+    help.push_str("\n\nArchitecture Support (shared capability registry):\n");
+
+    let mut current_category = "";
+    for capability in all_architecture_capabilities() {
+        if capability.category != current_category {
+            current_category = capability.category;
+            help.push_str(&format!("\n  {}:\n", current_category));
+        }
+
+        let support_label = if capability.decode_supported {
+            "decode-ready"
+        } else {
+            "parser-only"
+        };
+        help.push_str(&format!(
+            "    - {} [{}]\n",
+            capability.canonical_name, support_label
+        ));
+    }
+
+    help.push_str(
+        "\n  Note: tokens marked parser-only are accepted by the CLI parser, but they currently fail with a configuration error before decode because no backend is implemented yet.\n",
+    );
+    help
 }
