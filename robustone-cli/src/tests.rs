@@ -3,6 +3,7 @@ use crate::command::Cli;
 use crate::config::{DisasmConfig, OutputConfig};
 use crate::disasm::{DisassemblyFormatter, process_input};
 use clap::Parser;
+use robustone_core::all_architecture_capabilities;
 
 #[test]
 fn test_cli_basic_parsing() {
@@ -26,31 +27,31 @@ fn test_architecture_spec_rejects_incompatible_modifier() {
 #[test]
 fn test_architecture_spec_accepts_endianness_modifiers() {
     let arm_be = ArchitectureSpec::parse("arm+be").expect("arm+be should parse");
-    assert_eq!(arm_be.arch, Architecture::ArmBE);
+    assert_eq!(arm_be.arch.name(), "armbe");
     assert_eq!(arm_be.mode, 0x100);
 
     let arm_le = ArchitectureSpec::parse("armbe+le").expect("armbe+le should parse");
-    assert_eq!(arm_le.arch, Architecture::ArmLE);
+    assert_eq!(arm_le.arch.name(), "armle");
     assert_eq!(arm_le.mode, 0x0);
 
     let mips_le = ArchitectureSpec::parse("mips+little").expect("mips+little should parse");
-    assert_eq!(mips_le.arch, Architecture::MipsEL);
+    assert_eq!(mips_le.arch.name(), "mipsel");
     assert_eq!(mips_le.mode, 0x0);
 
     let ppc_be = ArchitectureSpec::parse("ppc+be").expect("ppc+be should parse");
-    assert_eq!(ppc_be.arch, Architecture::PowerPC32BE);
+    assert_eq!(ppc_be.arch.name(), "powerpc32be");
     assert_eq!(ppc_be.mode, 0x100);
 
     let arm_flip = ArchitectureSpec::parse("armle+be").expect("armle+be should parse");
-    assert_eq!(arm_flip.arch, Architecture::ArmBE);
+    assert_eq!(arm_flip.arch.name(), "armbe");
     assert_eq!(arm_flip.mode, 0x100);
 
     let sparc64_le = ArchitectureSpec::parse("sparc64+le").expect("sparc64+le should parse");
-    assert_eq!(sparc64_le.arch, Architecture::Sparc64);
+    assert_eq!(sparc64_le.arch.name(), "sparc64");
     assert_eq!(sparc64_le.mode, 0x0);
 
     let sparc64_be = ArchitectureSpec::parse("sparc64+be").expect("sparc64+be should parse");
-    assert_eq!(sparc64_be.arch, Architecture::Sparc64);
+    assert_eq!(sparc64_be.arch.name(), "sparc64");
     assert_eq!(sparc64_be.mode, 0x100);
 }
 
@@ -231,5 +232,24 @@ fn test_config_accepts_odd_length_hex_addresses() {
 fn test_architecture_helpers_still_work() {
     assert!(Architecture::parse("riscv32").is_ok());
     assert!(Architecture::parse("x86").is_ok());
-    assert_eq!(Architecture::Riscv32.name(), "riscv32");
+    assert_eq!(Architecture::parse("riscv32").unwrap().name(), "riscv32");
+}
+
+#[test]
+fn test_architecture_helpers_reject_unknown_tokens() {
+    assert!(Architecture::parse("foobar64").is_err());
+}
+
+#[test]
+fn test_cli_architecture_inventory_tracks_shared_registry_exactly() {
+    let cli_names: Vec<&str> = Architecture::all_architectures()
+        .iter()
+        .map(|arch| arch.name())
+        .collect();
+    let registry_names: Vec<&str> = all_architecture_capabilities()
+        .iter()
+        .map(|capability| capability.canonical_name)
+        .collect();
+
+    assert_eq!(cli_names, registry_names);
 }
