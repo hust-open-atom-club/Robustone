@@ -271,6 +271,8 @@ class DifferentialSurfaceTests(unittest.TestCase):
                     surface = "text"
                     reason = "accepted text alias drift"
                     active = true
+                    owner = "decoder-team"
+                    expires_on = "2099-12-31"
                     """
                 ).strip()
                 + "\n",
@@ -310,6 +312,8 @@ class DifferentialSurfaceTests(unittest.TestCase):
                     surface = "semantic_detail"
                     reason = "accepted semantic gap"
                     active = true
+                    owner = "decoder-team"
+                    expires_on = "2099-12-31"
                     """
                 ).strip()
                 + "\n",

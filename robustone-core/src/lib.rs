@@ -54,7 +54,10 @@ pub mod utils;
 /// This module provides access to the most common functionality needed for
 /// using the disassembly engine.
 pub mod prelude {
-    pub use crate::architecture::{Architecture, is_address_aligned};
+    pub use crate::architecture::{
+        Architecture, ArchitectureCapability, all_architecture_capabilities,
+        canonical_architecture_name, is_address_aligned, lookup_architecture_capability,
+    };
     pub use crate::common::ArchitectureProfile;
     pub use crate::ir::{ArchitectureId, DecodeStatus, DecodedInstruction, Operand, RegisterId};
     pub use crate::render::{
@@ -66,6 +69,10 @@ pub mod prelude {
     pub use crate::utils::{Endianness, HexParser};
 }
 
+pub use architecture::{
+    ArchitectureCapability, all_architecture_capabilities, canonical_architecture_name,
+    lookup_architecture_capability,
+};
 pub use ir::DecodedInstruction;
 pub use render::{
     RenderOptions, RenderedDisassembly, RenderedInstruction, RenderedIssue, render_disassembly,

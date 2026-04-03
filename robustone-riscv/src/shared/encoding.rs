@@ -505,6 +505,50 @@ mod tests {
     }
 
     #[test]
+    fn test_standard_immediate_extractors_cover_multiple_shapes() {
+        let decoder = DefaultSignExtender::new();
+
+        // sw x3, -16(x2)
+        #[allow(clippy::unusual_byte_groupings)]
+        let store = 0b1111111_00011_00010_010_10000_0100011;
+        let s_fields = decoder.extract_s_type(store);
+        assert_eq!(s_fields.rs1, 2);
+        assert_eq!(s_fields.rs2, 3);
+        assert_eq!(s_fields.imm, -16);
+
+        // beq x1, x2, -4
+        #[allow(clippy::unusual_byte_groupings)]
+        let branch = 0b1111111_00010_00001_000_11101_1100011;
+        let b_fields = decoder.extract_b_type(branch);
+        assert_eq!(b_fields.rs1, 1);
+        assert_eq!(b_fields.rs2, 2);
+        assert_eq!(b_fields.imm, -4);
+
+        // jal x1, 2048
+        #[allow(clippy::unusual_byte_groupings)]
+        let jump = 0b00000000000100000000_00001_1101111;
+        let j_fields = decoder.extract_j_type(jump);
+        assert_eq!(j_fields.rd, 1);
+        assert_eq!(j_fields.imm, 2048);
+    }
+
+    #[test]
+    fn test_compressed_immediate_extractors_cover_signed_shapes() {
+        let decoder = DefaultSignExtender::new();
+
+        // Construct CI immediate bits as 1_00001 => -31 after sign extension.
+        let ci_instruction = (1u16 << 12) | (1u16 << 2);
+        let ci_fields = decoder.extract_compressed_fields(ci_instruction);
+        assert_eq!(ci_fields.imm_ci, -31);
+
+        // Construct CB immediate bits for 0b1_10_01_1_01 => -86 after sign extension.
+        let cb_instruction =
+            (1u16 << 12) | (0b01u16 << 10) | (0b10u16 << 5) | (0b01u16 << 3) | (1u16 << 2);
+        let cb_fields = decoder.extract_compressed_fields(cb_instruction);
+        assert_eq!(cb_fields.imm_cb, -86);
+    }
+
+    #[test]
     fn test_shamt_extractor() {
         // Test RV32
         assert_eq!(ShamtExtractor::extract_shamt(0x1F, Xlen::X32), 31);

@@ -200,11 +200,12 @@ fn render_riscv_text_parts(
             .unwrap_or_else(|| instruction.mnemonic.clone())
     };
 
-    let hidden_operands = if matches!(profile, TextRenderProfile::Canonical) || !use_capstone_aliases {
-        &[][..]
-    } else {
-        instruction.render_hints.capstone_hidden_operands.as_slice()
-    };
+    let hidden_operands =
+        if matches!(profile, TextRenderProfile::Canonical) || !use_capstone_aliases {
+            &[][..]
+        } else {
+            instruction.render_hints.capstone_hidden_operands.as_slice()
+        };
 
     let visible_operands = instruction
         .operands
@@ -272,13 +273,13 @@ fn format_riscv_jalr_operands(
         ) => format!(
             "{}, {}({})",
             format_riscv_register(rd.id, alias_regs),
-            format_riscv_control_immediate(*value, mode, unsigned_immediate),
+            format_riscv_immediate(*value, mode, unsigned_immediate),
             format_riscv_register(rs1.id, alias_regs)
         ),
         (Some(Operand::Register { register: rs1 }), Some(Operand::Immediate { value }), None) => {
             format!(
                 "{}({})",
-                format_riscv_control_immediate(*value, mode, unsigned_immediate),
+                format_riscv_immediate(*value, mode, unsigned_immediate),
                 format_riscv_register(rs1.id, alias_regs)
             )
         }
@@ -348,16 +349,17 @@ fn format_riscv_operand(
         Operand::Immediate { value } if is_riscv_csr_operand(mnemonic, index) => {
             csr_name_lookup(*value as u16)
                 .map(str::to_string)
-                .unwrap_or_else(|| format_riscv_immediate(*value, &String::new(), unsigned_immediate))
+                .unwrap_or_else(|| format_riscv_immediate(*value, "", unsigned_immediate))
         }
         Operand::Immediate { value }
             if last_visible_index == Some(index) && is_riscv_control_flow_mnemonic(mnemonic) =>
         {
             format_riscv_control_immediate(*value, mode, unsigned_immediate)
         }
-        Operand::Memory { base: Some(base), displacement }
-            if *displacement == 0 && is_riscv_atomic_memory_mnemonic(mnemonic) =>
-        {
+        Operand::Memory {
+            base: Some(base),
+            displacement,
+        } if *displacement == 0 && is_riscv_atomic_memory_mnemonic(mnemonic) => {
             format!("({})", format_riscv_register(base.id, alias_regs))
         }
         _ => format_riscv_basic_operand(operand, mode, alias_regs, true, unsigned_immediate),
@@ -485,15 +487,14 @@ fn format_riscv_immediate(value: i64, mode: &str, unsigned_immediate: bool) -> S
     }
 
     let abs = value.abs();
-    let use_hex = abs > 0xff;
-    if use_hex {
-        if value < 0 {
-            format!("-0x{abs:x}")
-        } else {
-            format!("0x{abs:x}")
-        }
+    if abs < 10 {
+        return value.to_string();
+    }
+
+    if value < 0 {
+        format!("-0x{abs:x}")
     } else {
-        value.to_string()
+        format!("0x{abs:x}")
     }
 }
 
@@ -501,11 +502,11 @@ fn format_riscv_control_immediate(value: i64, mode: &str, unsigned_immediate: bo
     if unsigned_immediate && value < 0 {
         return format_riscv_unsigned_immediate(value, mode);
     }
-    if value >= 0 {
-        return format_riscv_immediate(value, mode, unsigned_immediate);
+    if value < 0 {
+        return format_riscv_unsigned_immediate(value, mode);
     }
 
-    format_riscv_unsigned_immediate(value, mode)
+    format_riscv_immediate(value, mode, unsigned_immediate)
 }
 
 fn format_riscv_unsigned_immediate(value: i64, mode: &str) -> String {
@@ -518,9 +519,7 @@ fn format_riscv_unsigned_immediate(value: i64, mode: &str) -> String {
 fn is_riscv_control_flow_mnemonic(mnemonic: &str) -> bool {
     matches!(
         mnemonic,
-        "j"
-            | "jal"
-            | "jalr"
+        "j" | "jal"
             | "beq"
             | "bne"
             | "blt"
@@ -539,15 +538,7 @@ fn is_riscv_control_flow_mnemonic(mnemonic: &str) -> bool {
 fn is_riscv_csr_operand(mnemonic: &str, index: usize) -> bool {
     matches!(
         mnemonic,
-        "csrrw"
-            | "csrrs"
-            | "csrrc"
-            | "csrrwi"
-            | "csrrsi"
-            | "csrrci"
-            | "csrr"
-            | "csrc"
-            | "csrw"
+        "csrrw" | "csrrs" | "csrrc" | "csrrwi" | "csrrsi" | "csrrci" | "csrr" | "csrc" | "csrw"
     ) && index == 1
 }
 
@@ -567,5 +558,126 @@ fn csr_name_lookup(csr: u16) -> Option<&'static str> {
         0xb00 => Some("mcycle"),
         0xc00 => Some("cycle"),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_instruction(mnemonic: &str, operands: Vec<Operand>) -> DecodedInstruction {
+        DecodedInstruction {
+            architecture: ArchitectureId::Riscv,
+            address: 0,
+            mode: "riscv32".to_string(),
+            mnemonic: mnemonic.to_string(),
+            opcode_id: Some(mnemonic.to_string()),
+            size: 4,
+            raw_bytes: vec![0; 4],
+            operands,
+            registers_read: Vec::new(),
+            registers_written: Vec::new(),
+            implicit_registers_read: Vec::new(),
+            implicit_registers_written: Vec::new(),
+            groups: Vec::new(),
+            status: DecodeStatus::Success,
+            render_hints: RenderHints::default(),
+        }
+    }
+
+    #[test]
+    fn capstone_profile_formats_positive_immediates_in_hex() {
+        let instruction = sample_instruction(
+            "addi",
+            vec![
+                Operand::Register {
+                    register: RegisterId::riscv(2),
+                },
+                Operand::Register {
+                    register: RegisterId::riscv(2),
+                },
+                Operand::Immediate { value: 16 },
+            ],
+        );
+
+        let (_, operands) = instruction.render_text_parts(TextRenderProfile::Capstone);
+        assert_eq!(operands, "sp, sp, 0x10");
+    }
+
+    #[test]
+    fn capstone_profile_keeps_small_immediates_decimal() {
+        let instruction = sample_instruction(
+            "slti",
+            vec![
+                Operand::Register {
+                    register: RegisterId::riscv(11),
+                },
+                Operand::Register {
+                    register: RegisterId::riscv(10),
+                },
+                Operand::Immediate { value: 5 },
+            ],
+        );
+
+        let (_, operands) = instruction.render_text_parts(TextRenderProfile::Capstone);
+        assert_eq!(operands, "a1, a0, 5");
+    }
+
+    #[test]
+    fn capstone_profile_formats_memory_offsets_in_hex() {
+        let instruction = sample_instruction(
+            "lbu",
+            vec![
+                Operand::Register {
+                    register: RegisterId::riscv(22),
+                },
+                Operand::Memory {
+                    base: Some(RegisterId::riscv(23)),
+                    displacement: 18,
+                },
+            ],
+        );
+
+        let (_, operands) = instruction.render_text_parts(TextRenderProfile::Capstone);
+        assert_eq!(operands, "s6, 0x12(s7)");
+    }
+
+    #[test]
+    fn capstone_profile_keeps_negative_control_offsets_signed() {
+        let mut instruction = sample_instruction(
+            "jalr",
+            vec![
+                Operand::Register {
+                    register: RegisterId::riscv(0),
+                },
+                Operand::Register {
+                    register: RegisterId::riscv(0),
+                },
+                Operand::Immediate { value: -4 },
+            ],
+        );
+        instruction.render_hints.capstone_hidden_operands = vec![0];
+
+        let (_, operands) = instruction.render_text_parts(TextRenderProfile::Capstone);
+        assert_eq!(operands, "-4(zero)");
+    }
+
+    #[test]
+    fn capstone_profile_formats_negative_branch_offsets_as_unsigned_hex() {
+        let instruction = sample_instruction(
+            "bne",
+            vec![
+                Operand::Register {
+                    register: RegisterId::riscv(21),
+                },
+                Operand::Register {
+                    register: RegisterId::riscv(22),
+                },
+                Operand::Immediate { value: -8 },
+            ],
+        );
+
+        let (_, operands) = instruction.render_text_parts(TextRenderProfile::Capstone);
+        assert_eq!(operands, "s5, s6, 0xfffffff8");
     }
 }

@@ -28,6 +28,8 @@ class KnownDifferenceTests(unittest.TestCase):
                     surface = "text"
                     reason = "accepted parity gap"
                     active = true
+                    owner = "decoder-team"
+                    expires_on = "2099-12-31"
                     """
                 ).strip()
                 + "\n",
@@ -62,6 +64,8 @@ class KnownDifferenceTests(unittest.TestCase):
                     surface = "text"
                     reason = "accepted parity gap"
                     active = true
+                    owner = "decoder-team"
+                    expires_on = "2099-12-31"
                     """
                 ).strip()
                 + "\n",
@@ -95,6 +99,8 @@ class KnownDifferenceTests(unittest.TestCase):
                     surface = "text"
                     reason = "accepted parity gap"
                     active = true
+                    owner = "decoder-team"
+                    expires_on = "2099-12-31"
                     """
                 ).strip()
                 + "\n",
@@ -124,6 +130,8 @@ class KnownDifferenceTests(unittest.TestCase):
                 surface = "semantic_detail"
                 reason = "accepted semantic gap"
                 active = true
+                owner = "decoder-team"
+                expires_on = "2099-12-31"
                 """
             )
         )
@@ -131,6 +139,113 @@ class KnownDifferenceTests(unittest.TestCase):
         self.assertEqual(len(data["difference"]), 1)
         self.assertEqual(data["difference"][0]["surface"], "semantic_detail")
         self.assertTrue(data["difference"][0]["active"])
+
+    def test_active_known_difference_missing_owner_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            whitelist = repo_root / "tests" / "differential"
+            whitelist.mkdir(parents=True, exist_ok=True)
+            (whitelist / "known-differences.toml").write_text(
+                textwrap.dedent(
+                    """
+                    [[difference]]
+                    arch = "riscv32"
+                    hex = "deadbeef"
+                    surface = "text"
+                    reason = "accepted parity gap"
+                    active = true
+                    expires_on = "2099-12-31"
+                    """
+                ).strip()
+                + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(ValueError):
+                TestRunner(repo_root=repo_root)
+
+    def test_active_known_difference_missing_expiry_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            whitelist = repo_root / "tests" / "differential"
+            whitelist.mkdir(parents=True, exist_ok=True)
+            (whitelist / "known-differences.toml").write_text(
+                textwrap.dedent(
+                    """
+                    [[difference]]
+                    arch = "riscv32"
+                    hex = "deadbeef"
+                    surface = "text"
+                    reason = "accepted parity gap"
+                    active = true
+                    owner = "decoder-team"
+                    """
+                ).strip()
+                + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(ValueError):
+                TestRunner(repo_root=repo_root)
+
+    def test_expired_known_difference_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            whitelist = repo_root / "tests" / "differential"
+            whitelist.mkdir(parents=True, exist_ok=True)
+            (whitelist / "known-differences.toml").write_text(
+                textwrap.dedent(
+                    """
+                    [[difference]]
+                    arch = "riscv32"
+                    hex = "deadbeef"
+                    surface = "text"
+                    reason = "accepted parity gap"
+                    active = true
+                    owner = "decoder-team"
+                    expires_on = "2000-01-01"
+                    """
+                ).strip()
+                + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(ValueError):
+                TestRunner(repo_root=repo_root)
+
+    def test_duplicate_active_known_difference_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            whitelist = repo_root / "tests" / "differential"
+            whitelist.mkdir(parents=True, exist_ok=True)
+            (whitelist / "known-differences.toml").write_text(
+                textwrap.dedent(
+                    """
+                    [[difference]]
+                    arch = "riscv32"
+                    hex = "deadbeef"
+                    surface = "text"
+                    reason = "accepted parity gap"
+                    active = true
+                    owner = "decoder-team"
+                    expires_on = "2099-12-31"
+
+                    [[difference]]
+                    arch = "riscv32"
+                    hex = "deadbeef"
+                    surface = "text"
+                    reason = "same key should fail"
+                    active = true
+                    owner = "decoder-team"
+                    expires_on = "2099-12-31"
+                    """
+                ).strip()
+                + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(ValueError):
+                TestRunner(repo_root=repo_root)
 
 
 if __name__ == "__main__":

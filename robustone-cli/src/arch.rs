@@ -2,6 +2,9 @@ use std::str::FromStr;
 
 use crate::error::ParseError;
 use robustone_core::common::ArchitectureProfile;
+use robustone_core::{
+    all_architecture_capabilities, canonical_architecture_name, lookup_architecture_capability,
+};
 
 const MODE_BIG_ENDIAN: u32 = 0x100;
 
@@ -257,60 +260,13 @@ impl Architecture {
     }
 
     pub fn parse(input: &str) -> Result<Self, String> {
-        match input.to_lowercase().as_str() {
-            // RISC-V
-            "riscv32" => Ok(Architecture::Riscv32),
-            "riscv64" => Ok(Architecture::Riscv64),
-            "riscv32e" => Ok(Architecture::Riscv32E),
-
-            // ARM
-            "arm" => Ok(Architecture::Arm),
-            "armle" => Ok(Architecture::ArmLE),
-            "armbe" => Ok(Architecture::ArmBE),
-            "thumb" => Ok(Architecture::Thumb),
-
-            // AArch64
-            "aarch64" => Ok(Architecture::Aarch64),
-            "aarch64be" => Ok(Architecture::Aarch64BE),
-
-            // x86
-            "x16" => Ok(Architecture::X86_16),
-            "x32" => Ok(Architecture::X86_32),
-            "x86" => Ok(Architecture::X86_32),
-            "x64" | "x86-64" | "x86_64" => Ok(Architecture::X86_64),
-
-            // MIPS
-            "mips" => Ok(Architecture::Mips),
-            "mipsel" => Ok(Architecture::MipsEL),
-            "mips64" => Ok(Architecture::Mips64),
-            "mips64el" => Ok(Architecture::MipsEL64),
-
-            // PowerPC
-            "ppc" | "powerpc" | "ppc32" => Ok(Architecture::PowerPC32),
-            "powerpc32" => Ok(Architecture::PowerPC32),
-            "ppcbe" | "powerpcbe" | "ppc32be" => Ok(Architecture::PowerPC32BE),
-            "powerpc32be" => Ok(Architecture::PowerPC32BE),
-            "ppc64" | "powerpc64" => Ok(Architecture::PowerPC64),
-            "ppc64be" | "powerpc64be" => Ok(Architecture::PowerPC64BE),
-
-            // SPARC
-            "sparc" => Ok(Architecture::Sparc),
-            "sparcle" => Ok(Architecture::SparcLE),
-            "sparc64" => Ok(Architecture::Sparc64),
-
-            // Other architectures
-            "systemz" | "s390x" => Ok(Architecture::SystemZ),
-            "xcore" => Ok(Architecture::Xcore),
-            "m68k" => Ok(Architecture::M68k),
-            "tms320c64x" | "c64x" => Ok(Architecture::Tms320c64x),
-            "m680x" => Ok(Architecture::M680x),
-            "evm" => Ok(Architecture::Evm),
-            "bpf" => Ok(Architecture::Bpf),
-
-            _ => Err(format!(
-                "Invalid <arch+mode>: {input}. Supported: riscv32, riscv64, riscv32e, arm, armle, armbe, thumb, aarch64, aarch64be, x16, x32, x64, mips, mipsel, mips64, mips64el, ppc, ppc32, ppc64, sparc, sparc64, systemz, and others"
-            )),
-        }
+        canonical_architecture_name(input)
+            .and_then(Self::from_canonical_name)
+            .ok_or_else(|| {
+                format!(
+                    "Invalid <arch+mode>: {input}. Supported: riscv32, riscv64, riscv32e, arm, armle, armbe, thumb, aarch64, aarch64be, x16, x32, x64, mips, mipsel, mips64, mips64el, ppc, ppc32, ppc64, sparc, sparc64, systemz, and others"
+                )
+            })
     }
 }
 
@@ -344,6 +300,46 @@ impl FromStr for Architecture {
 }
 
 impl Architecture {
+    fn from_canonical_name(name: &str) -> Option<Self> {
+        match name {
+            "riscv32" => Some(Architecture::Riscv32),
+            "riscv64" => Some(Architecture::Riscv64),
+            "riscv32e" => Some(Architecture::Riscv32E),
+            "arm" => Some(Architecture::Arm),
+            "armle" => Some(Architecture::ArmLE),
+            "armbe" => Some(Architecture::ArmBE),
+            "thumb" => Some(Architecture::Thumb),
+            "aarch64" => Some(Architecture::Aarch64),
+            "aarch64be" => Some(Architecture::Aarch64BE),
+            "x16" => Some(Architecture::X86_16),
+            "x32" => Some(Architecture::X86_32),
+            "x64" => Some(Architecture::X86_64),
+            "mips" => Some(Architecture::Mips),
+            "mipsel" => Some(Architecture::MipsEL),
+            "mips64" => Some(Architecture::Mips64),
+            "mips64el" => Some(Architecture::MipsEL64),
+            "powerpc32" => Some(Architecture::PowerPC32),
+            "powerpc32be" => Some(Architecture::PowerPC32BE),
+            "powerpc64" => Some(Architecture::PowerPC64),
+            "powerpc64be" => Some(Architecture::PowerPC64BE),
+            "sparc" => Some(Architecture::Sparc),
+            "sparcle" => Some(Architecture::SparcLE),
+            "sparc64" => Some(Architecture::Sparc64),
+            "systemz" => Some(Architecture::SystemZ),
+            "xcore" => Some(Architecture::Xcore),
+            "m68k" => Some(Architecture::M68k),
+            "tms320c64x" => Some(Architecture::Tms320c64x),
+            "m680x" => Some(Architecture::M680x),
+            "evm" => Some(Architecture::Evm),
+            "bpf" => Some(Architecture::Bpf),
+            _ => None,
+        }
+    }
+
+    fn capability(&self) -> &'static robustone_core::ArchitectureCapability {
+        lookup_architecture_capability(self.name()).expect("canonical architecture must exist")
+    }
+
     pub fn name(&self) -> &'static str {
         match self {
             // RISC-V
@@ -395,95 +391,21 @@ impl Architecture {
     }
 
     pub fn is_implemented(&self) -> bool {
-        matches!(self, Architecture::Riscv32 | Architecture::Riscv64)
+        self.capability().decode_supported
     }
 
     pub fn implementation_status(&self) -> &'static str {
-        if self.is_implemented() { "✅" } else { "🚧" }
+        self.capability().implementation_status()
     }
 
     pub fn category(&self) -> &'static str {
-        match self {
-            // RISC-V
-            Architecture::Riscv32 | Architecture::Riscv64 | Architecture::Riscv32E => "RISC-V",
-
-            // ARM
-            Architecture::Arm | Architecture::ArmLE | Architecture::ArmBE | Architecture::Thumb => {
-                "ARM"
-            }
-
-            // AArch64
-            Architecture::Aarch64 | Architecture::Aarch64BE => "ARM",
-
-            // x86
-            Architecture::X86_16 | Architecture::X86_32 | Architecture::X86_64 => "x86",
-
-            // MIPS
-            Architecture::Mips
-            | Architecture::MipsEL
-            | Architecture::Mips64
-            | Architecture::MipsEL64 => "MIPS",
-
-            // PowerPC
-            Architecture::PowerPC32
-            | Architecture::PowerPC32BE
-            | Architecture::PowerPC64
-            | Architecture::PowerPC64BE => "PowerPC",
-
-            // SPARC
-            Architecture::Sparc | Architecture::SparcLE | Architecture::Sparc64 => "SPARC",
-
-            // Other
-            Architecture::SystemZ
-            | Architecture::Xcore
-            | Architecture::M68k
-            | Architecture::Tms320c64x
-            | Architecture::M680x
-            | Architecture::Evm
-            | Architecture::Bpf => "Other",
-        }
+        self.capability().category
     }
 
     pub fn all_architectures() -> Vec<Self> {
-        vec![
-            // RISC-V
-            Architecture::Riscv32,
-            Architecture::Riscv64,
-            Architecture::Riscv32E,
-            // ARM
-            Architecture::Arm,
-            Architecture::ArmLE,
-            Architecture::ArmBE,
-            Architecture::Thumb,
-            // AArch64
-            Architecture::Aarch64,
-            Architecture::Aarch64BE,
-            // x86
-            Architecture::X86_16,
-            Architecture::X86_32,
-            Architecture::X86_64,
-            // MIPS
-            Architecture::Mips,
-            Architecture::MipsEL,
-            Architecture::Mips64,
-            Architecture::MipsEL64,
-            // PowerPC
-            Architecture::PowerPC32,
-            Architecture::PowerPC32BE,
-            Architecture::PowerPC64,
-            Architecture::PowerPC64BE,
-            // SPARC
-            Architecture::Sparc,
-            Architecture::SparcLE,
-            Architecture::Sparc64,
-            // Other architectures
-            Architecture::SystemZ,
-            Architecture::Xcore,
-            Architecture::M68k,
-            Architecture::Tms320c64x,
-            Architecture::M680x,
-            Architecture::Evm,
-            Architecture::Bpf,
-        ]
+        all_architecture_capabilities()
+            .iter()
+            .filter_map(|capability| Self::from_canonical_name(capability.canonical_name))
+            .collect()
     }
 }

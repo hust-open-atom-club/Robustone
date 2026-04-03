@@ -7,3 +7,5 @@ hex = ""
 surface = "text"
 reason = "placeholder entry - replace or remove when a real known difference is accepted"
 active = false
+owner = "unassigned"
+expires_on = "2099-12-31"
