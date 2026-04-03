@@ -403,6 +403,64 @@ mod tests {
     }
 
     #[test]
+    fn test_execute_to_string_reports_parser_only_architecture_error() {
+        let executor = CliExecutor::new();
+        let config = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("x86+intel").unwrap(),
+            hex_bytes: vec![0x90],
+            start_address: 0,
+            display_options: DisplayOptions {
+                detailed: false,
+                alias_regs: false,
+                real_detail: false,
+                unsigned_immediate: false,
+                json: false,
+            },
+            skip_data: false,
+        };
+
+        let error = executor
+            .execute_to_string(&config)
+            .expect_err("parser-only architecture should fail before decode");
+        assert!(
+            error
+                .to_string()
+                .contains("accepted by the CLI parser, but no decode backend is implemented yet")
+        );
+    }
+
+    #[test]
+    fn test_execute_to_string_returns_json_for_parser_only_architecture_error() {
+        let executor = CliExecutor::new();
+        let config = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("x86+intel").unwrap(),
+            hex_bytes: vec![0x90],
+            start_address: 0,
+            display_options: DisplayOptions {
+                detailed: false,
+                alias_regs: false,
+                real_detail: false,
+                unsigned_immediate: false,
+                json: true,
+            },
+            skip_data: false,
+        };
+
+        let output = executor
+            .execute_to_string(&config)
+            .expect("json mode should render parser-only architecture errors as JSON");
+        let parsed: Value = serde_json::from_str(&output).unwrap();
+
+        assert_eq!(parsed["errors"][0]["kind"], "configuration_error");
+        assert!(
+            parsed["errors"][0]["message"]
+                .as_str()
+                .unwrap()
+                .contains("accepted by the CLI parser")
+        );
+    }
+
+    #[test]
     fn test_render_clap_error_json_for_invalid_arguments() {
         let executor = CliExecutor::new();
         let error = Cli::try_parse_from(["robustone", "--json", "-z"]).unwrap_err();

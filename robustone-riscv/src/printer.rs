@@ -5,8 +5,8 @@
 use super::shared::operands::csr_name_lookup;
 use super::shared::{OperandFormatter, operands::DefaultOperandFactory};
 use super::types::*;
-use robustone_core::ir::{DecodedInstruction, Operand, RegisterId, TextRenderProfile};
 use robustone_core::Instruction;
+use robustone_core::ir::{DecodedInstruction, Operand, RegisterId, TextRenderProfile};
 
 /// Text formatting profiles for the RISC-V formatter.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -398,7 +398,11 @@ impl RiscVPrinter {
 
     /// Renders the instruction mnemonic and operand list.
     pub fn print_basic(&self, instruction: &Instruction) -> String {
-        let (mnemonic, operands) = instruction.rendered_text_parts(TextRenderProfile::Capstone);
+        let (mnemonic, operands) = instruction
+            .decoded
+            .as_ref()
+            .map(|decoded| self.render_ir_parts(decoded))
+            .unwrap_or_else(|| instruction.rendered_text_parts(TextRenderProfile::Capstone));
         if operands.is_empty() {
             mnemonic
         } else {
@@ -662,5 +666,61 @@ mod tests {
         let (mnemonic, operands) = printer.render_ir_parts(&decoded);
         assert_eq!(mnemonic, "li");
         assert_eq!(operands, "ra, 1");
+    }
+
+    #[test]
+    fn test_print_basic_honors_canonical_profile() {
+        let decoder = RiscVDecoder::rv32gc();
+        let decoded = decoder
+            .decode(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
+            .unwrap();
+        let instruction =
+            Instruction::from_decoded(decoded, "li".to_string(), "ra, 1".to_string(), None);
+        let printer = RiscVPrinter::new().with_profile(RiscVTextProfile::Canonical);
+
+        assert_eq!(printer.print_basic(&instruction), "addi x1, x0, 1");
+    }
+
+    #[test]
+    fn test_print_basic_honors_unsigned_immediate_setting() {
+        let decoded = DecodedInstruction {
+            architecture: ArchitectureId::Riscv,
+            address: 0,
+            mode: "riscv32".to_string(),
+            mnemonic: "addi".to_string(),
+            opcode_id: Some("addi".to_string()),
+            size: 4,
+            raw_bytes: vec![0x13, 0x01, 0x01, 0xff],
+            operands: vec![
+                Operand::Register {
+                    register: RegisterId::riscv(2),
+                },
+                Operand::Register {
+                    register: RegisterId::riscv(2),
+                },
+                Operand::Immediate { value: -16 },
+            ],
+            registers_read: vec![RegisterId::riscv(2)],
+            registers_written: vec![RegisterId::riscv(2)],
+            implicit_registers_read: Vec::new(),
+            implicit_registers_written: Vec::new(),
+            groups: vec!["arithmetic".to_string()],
+            status: DecodeStatus::Success,
+            render_hints: RenderHints {
+                capstone_mnemonic: None,
+                capstone_hidden_operands: Vec::new(),
+            },
+        };
+        let instruction = Instruction::from_decoded(
+            decoded,
+            "addi".to_string(),
+            "sp, sp, -0x10".to_string(),
+            None,
+        );
+        let printer = RiscVPrinter::new()
+            .with_profile(RiscVTextProfile::Canonical)
+            .with_unsigned_immediate(true);
+
+        assert_eq!(printer.print_basic(&instruction), "addi x2, x2, 0xfffffff0");
     }
 }

@@ -4,6 +4,7 @@ use crate::error::{CliError, Result};
 use crate::utils::parse_hex_to_bytes;
 
 use robustone_core::ir::TextRenderProfile;
+use robustone_core::lookup_architecture_capability;
 
 /// High-level disassembly configuration that unifies all options.
 #[derive(Debug, Clone)]
@@ -96,6 +97,15 @@ impl DisasmConfig {
                 "hex_code",
                 "No hexadecimal data provided for disassembly",
             ));
+        }
+
+        if let Some(capability) = lookup_architecture_capability(self.arch_name())
+            && !capability.decode_supported
+        {
+            return Err(CliError::Configuration(format!(
+                "Architecture '{}' is accepted by the CLI parser, but no decode backend is implemented yet",
+                capability.canonical_name
+            )));
         }
 
         // Architecture-specific validation
@@ -271,5 +281,28 @@ mod tests {
         assert!(!output.alias_regs);
         assert!(!output.capstone_aliases);
         assert!(!output.compressed_aliases);
+    }
+
+    #[test]
+    fn test_validate_for_disassembly_rejects_parser_only_architecture() {
+        let config = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("x86+intel").unwrap(),
+            hex_bytes: vec![0x90],
+            start_address: 0,
+            display_options: DisplayOptions {
+                detailed: false,
+                alias_regs: false,
+                real_detail: false,
+                unsigned_immediate: false,
+                json: false,
+            },
+            skip_data: false,
+        };
+
+        let error = config
+            .validate_for_disassembly()
+            .expect_err("parser-only architecture should be rejected before decode");
+        assert!(matches!(error, CliError::Configuration(_)));
+        assert!(error.to_string().contains("accepted by the CLI parser"));
     }
 }
