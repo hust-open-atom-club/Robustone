@@ -1,5 +1,5 @@
 use crate::arch::{Architecture, ArchitectureSpec};
-use crate::command::Cli;
+use crate::command::{Cli, render_help_text};
 use crate::config::{DisasmConfig, OutputConfig};
 use crate::disasm::{DisassemblyFormatter, process_input};
 use clap::Parser;
@@ -252,4 +252,16 @@ fn test_cli_architecture_inventory_tracks_shared_registry_exactly() {
         .collect();
 
     assert_eq!(cli_names, registry_names);
+}
+
+#[test]
+fn test_help_text_tracks_shared_registry_and_parser_only_note() {
+    let help = render_help_text();
+
+    for capability in all_architecture_capabilities() {
+        assert!(help.contains(capability.canonical_name));
+    }
+
+    assert!(help.contains("parser-only"));
+    assert!(help.contains("configuration error before decode"));
 }

@@ -3,7 +3,7 @@
 //! This module wires together argument parsing, configuration building,
 //! and the actual disassembly pipeline exposed through the CLI.
 
-use crate::command::{Cli, DisplayOptions};
+use crate::command::{Cli, DisplayOptions, render_help_text};
 use crate::config::{DisasmConfig, OutputConfig};
 use crate::disasm::{DisassemblyEngine, DisassemblyFormatter, DisassemblyIssue, DisassemblyResult};
 use crate::error::{CliError, Result};
@@ -40,6 +40,10 @@ impl CliExecutor {
             {
                 println!("{}", self.render_clap_error_json(&args, &error));
                 Err(CliError::reported(2))
+            }
+            Err(error) if matches!(error.kind(), clap::error::ErrorKind::DisplayHelp) => {
+                print!("{}", render_help_text());
+                Ok(())
             }
             Err(error) => {
                 error.exit();
