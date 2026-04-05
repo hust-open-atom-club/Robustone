@@ -232,6 +232,7 @@ fn test_config_accepts_odd_length_hex_addresses() {
 fn test_architecture_helpers_still_work() {
     assert!(Architecture::parse("riscv32").is_ok());
     assert!(Architecture::parse("x86").is_ok());
+    assert_eq!(Architecture::parse("arm64").unwrap().name(), "aarch64");
     assert_eq!(Architecture::parse("riscv32").unwrap().name(), "riscv32");
 }
 

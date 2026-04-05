@@ -31,6 +31,14 @@ pub struct RiscVPrinter {
 }
 
 impl RiscVPrinter {
+    fn text_render_profile(&self) -> TextRenderProfile {
+        match self.profile {
+            RiscVTextProfile::Capstone => TextRenderProfile::Capstone,
+            RiscVTextProfile::Canonical => TextRenderProfile::Canonical,
+            RiscVTextProfile::VerboseDebug => TextRenderProfile::VerboseDebug,
+        }
+    }
+
     /// Creates a printer with default formatting behaviour.
     pub fn new() -> Self {
         Self {
@@ -402,7 +410,7 @@ impl RiscVPrinter {
             .decoded
             .as_ref()
             .map(|decoded| self.render_ir_parts(decoded))
-            .unwrap_or_else(|| instruction.rendered_text_parts(TextRenderProfile::Capstone));
+            .unwrap_or_else(|| instruction.rendered_text_parts(self.text_render_profile()));
         if operands.is_empty() {
             mnemonic
         } else {
@@ -722,5 +730,18 @@ mod tests {
             .with_unsigned_immediate(true);
 
         assert_eq!(printer.print_basic(&instruction), "addi x2, x2, 0xfffffff0");
+    }
+
+    #[test]
+    fn test_print_basic_legacy_instruction_uses_selected_profile_path() {
+        let instruction = Instruction::new(
+            0,
+            vec![0x13, 0x01, 0x01, 0xff],
+            "addi".to_string(),
+            "x2, x2, -16".to_string(),
+        );
+        let printer = RiscVPrinter::new().with_profile(RiscVTextProfile::Canonical);
+
+        assert_eq!(printer.print_basic(&instruction), "addi x2, x2, -16");
     }
 }
