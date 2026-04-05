@@ -4,13 +4,19 @@ import unittest
 from pathlib import Path
 import sys
 
+# pylint: disable=duplicate-code
+
 TEST_ROOT = Path(__file__).parent
 sys.path.insert(0, str(TEST_ROOT))
 sys.path.insert(0, str(TEST_ROOT / "core"))
 
 # pylint: disable=wrong-import-position
-from comparator import ComparisonResult, TestCaseResult
-from test_runner import TestRunner, _parse_known_differences_fallback
+try:
+    from .core.comparator import ComparisonResult, TestCaseResult
+    from .core.test_runner import TestRunner, _parse_known_differences_fallback
+except ImportError:  # pragma: no cover - script-mode fallback
+    from comparator import ComparisonResult, TestCaseResult
+    from test_runner import TestRunner, _parse_known_differences_fallback
 
 
 class KnownDifferenceTests(unittest.TestCase):

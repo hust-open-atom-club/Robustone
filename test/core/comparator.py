@@ -8,7 +8,10 @@ import json
 import re
 from typing import Any, Dict, List
 
-from utils import normalize_output
+try:
+    from .utils import normalize_output
+except ImportError:  # pragma: no cover - script-mode fallback
+    from utils import normalize_output
 
 
 class ComparisonResult(Enum):
