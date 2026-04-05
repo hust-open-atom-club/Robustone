@@ -36,7 +36,7 @@ const ARM_ALIASES: &[&str] = &["arm", "armv7"];
 const ARMLE_ALIASES: &[&str] = &["armle"];
 const ARMBE_ALIASES: &[&str] = &["armbe"];
 const THUMB_ALIASES: &[&str] = &["thumb"];
-const AARCH64_ALIASES: &[&str] = &["aarch64"];
+const AARCH64_ALIASES: &[&str] = &["aarch64", "arm64"];
 const AARCH64BE_ALIASES: &[&str] = &["aarch64be"];
 const X16_ALIASES: &[&str] = &["x16"];
 const X32_ALIASES: &[&str] = &["x32", "x86", "i386"];
@@ -494,6 +494,7 @@ mod tests {
         assert_eq!(Architecture::from("x86-64"), Architecture::X86_64);
         assert_eq!(Architecture::from("AMD64"), Architecture::X86_64);
         assert_eq!(Architecture::from("aarch64"), Architecture::AArch64);
+        assert_eq!(Architecture::from("arm64"), Architecture::AArch64);
         assert_eq!(Architecture::from("ARMV7"), Architecture::Arm);
         assert_eq!(Architecture::from("unknown"), Architecture::Unknown);
     }
@@ -518,6 +519,7 @@ mod tests {
         assert_eq!(Architecture::from("x86-64"), "x86_64");
         assert_eq!(Architecture::from("AMD64"), "x86_64");
         assert_eq!(Architecture::from("aarch64"), "aarch64");
+        assert_eq!(Architecture::from("arm64"), "aarch64");
         assert_eq!(Architecture::from("ARMV7"), "arm");
         assert_eq!(Architecture::from("unknown"), "unknown");
     }
@@ -532,6 +534,9 @@ mod tests {
         let capability = lookup_architecture_capability("ppc").expect("alias should resolve");
         assert_eq!(capability.canonical_name, "powerpc32");
         assert_eq!(capability.category, "PowerPC");
+
+        let capability = lookup_architecture_capability("arm64").expect("alias should resolve");
+        assert_eq!(capability.canonical_name, "aarch64");
     }
 
     #[test]
