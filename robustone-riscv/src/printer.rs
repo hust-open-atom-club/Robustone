@@ -39,6 +39,14 @@ impl RiscVPrinter {
         }
     }
 
+    fn should_use_alias_regs_for_ir(&self) -> bool {
+        self.alias_regs
+            || matches!(
+                self.profile,
+                RiscVTextProfile::Capstone | RiscVTextProfile::VerboseDebug
+            )
+    }
+
     /// Creates a printer with default formatting behaviour.
     pub fn new() -> Self {
         Self {
@@ -198,7 +206,16 @@ impl RiscVPrinter {
     }
 
     fn format_ir_register(&self, register: &RegisterId) -> String {
-        self.format_register(register.id)
+        let reg = RiscVRegister::from_id(register.id);
+        if self.should_use_alias_regs_for_ir() {
+            reg.name().to_string()
+        } else if register.id <= 31 {
+            format!("x{}", register.id)
+        } else if (32..=63).contains(&register.id) {
+            format!("f{}", register.id - 32)
+        } else {
+            reg.name().to_string()
+        }
     }
 
     fn format_ir_basic_operand(&self, operand: &Operand, mode: &str) -> String {
@@ -687,6 +704,18 @@ mod tests {
         let printer = RiscVPrinter::new().with_profile(RiscVTextProfile::Canonical);
 
         assert_eq!(printer.print_basic(&instruction), "addi x1, x0, 1");
+    }
+
+    #[test]
+    fn test_default_printer_keeps_capstone_aliases_for_decoded_instructions() {
+        let decoder = RiscVDecoder::rv32gc();
+        let decoded = decoder
+            .decode(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
+            .unwrap();
+        let instruction =
+            Instruction::from_decoded(decoded, "li".to_string(), "ra, 1".to_string(), None);
+
+        assert_eq!(RiscVPrinter::new().print_basic(&instruction), "li ra, 1");
     }
 
     #[test]

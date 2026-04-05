@@ -248,3 +248,12 @@ pub fn render_help_text() -> String {
     );
     help
 }
+
+pub fn render_short_help_text() -> String {
+    let mut command = Cli::command();
+    let mut output = Vec::new();
+    command
+        .write_help(&mut output)
+        .expect("short help rendering should succeed");
+    String::from_utf8(output).expect("help should be valid UTF-8")
+}

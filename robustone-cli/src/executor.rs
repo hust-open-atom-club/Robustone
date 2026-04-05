@@ -3,7 +3,7 @@
 //! This module wires together argument parsing, configuration building,
 //! and the actual disassembly pipeline exposed through the CLI.
 
-use crate::command::{Cli, DisplayOptions, render_help_text};
+use crate::command::{Cli, DisplayOptions, render_help_text, render_short_help_text};
 use crate::config::{DisasmConfig, OutputConfig};
 use crate::disasm::{DisassemblyEngine, DisassemblyFormatter, DisassemblyIssue, DisassemblyResult};
 use crate::error::{CliError, Result};
@@ -42,7 +42,7 @@ impl CliExecutor {
                 Err(CliError::reported(2))
             }
             Err(error) if matches!(error.kind(), clap::error::ErrorKind::DisplayHelp) => {
-                print!("{}", render_help_text());
+                print!("{}", self.render_display_help(&args));
                 Ok(())
             }
             Err(error) => {
@@ -332,6 +332,14 @@ impl CliExecutor {
         let formatter = DisassemblyFormatter::new(output_config);
         formatter.format(&result)
     }
+
+    fn render_display_help(&self, args: &[OsString]) -> String {
+        if args.iter().any(|arg| arg == "--help") {
+            render_help_text()
+        } else {
+            render_short_help_text()
+        }
+    }
 }
 
 #[cfg(test)]
@@ -480,6 +488,30 @@ mod tests {
 
         assert_eq!(parsed["errors"][0]["kind"], "invalid_command");
         assert_eq!(parsed["bytes_processed"], 0);
+    }
+
+    #[test]
+    fn test_render_display_help_preserves_short_help_for_dash_h() {
+        let executor = CliExecutor::new();
+        let output = executor.render_display_help(&[
+            OsString::from("robustone"),
+            OsString::from("-h"),
+        ]);
+
+        assert!(output.contains("Usage:"));
+        assert!(!output.contains("Architecture Support (shared capability registry):"));
+    }
+
+    #[test]
+    fn test_render_display_help_includes_registry_appendix_for_long_help() {
+        let executor = CliExecutor::new();
+        let output = executor.render_display_help(&[
+            OsString::from("robustone"),
+            OsString::from("--help"),
+        ]);
+
+        assert!(output.contains("Architecture Support (shared capability registry):"));
+        assert!(output.contains("parser-only"));
     }
 }
 
