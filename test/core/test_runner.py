@@ -22,15 +22,26 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(PROJECT_ROOT)
 
 # pylint: disable=wrong-import-position
-from arch_config import ArchConfig, validate_config
-from comparator import (
-    OutputComparator,
-    TestCaseResult,
-    ArchTestSummary,
-    ComparisonResult,
-    ComparisonSurface,
-)
-from utils import run_command, parse_test_case, find_repo_root
+try:
+    from .arch_config import ArchConfig, validate_config
+    from .comparator import (
+        OutputComparator,
+        TestCaseResult,
+        ArchTestSummary,
+        ComparisonResult,
+        ComparisonSurface,
+    )
+    from .utils import run_command, parse_test_case, find_repo_root
+except ImportError:  # pragma: no cover - script-mode fallback
+    from arch_config import ArchConfig, validate_config
+    from comparator import (
+        OutputComparator,
+        TestCaseResult,
+        ArchTestSummary,
+        ComparisonResult,
+        ComparisonSurface,
+    )
+    from utils import run_command, parse_test_case, find_repo_root
 
 # pylint: enable=wrong-import-position
 

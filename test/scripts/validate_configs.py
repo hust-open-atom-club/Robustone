@@ -11,10 +11,10 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(PROJECT_ROOT)
 
 # pylint: disable=wrong-import-position
-from core.arch_config import (
-    discover_arch_configs,
-    validate_config,
-)
+try:
+    from test.core.arch_config import discover_arch_configs, validate_config
+except ImportError:  # pragma: no cover - script-mode fallback
+    from core.arch_config import discover_arch_configs, validate_config
 
 # pylint: enable=wrong-import-position
 
