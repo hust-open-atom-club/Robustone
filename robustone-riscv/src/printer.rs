@@ -20,6 +20,8 @@ pub enum RiscVTextProfile {
 pub struct RiscVPrinter {
     /// Whether register aliases should be printed instead of canonical names.
     alias_regs: bool,
+    /// Whether alias register behavior was explicitly chosen by the caller.
+    alias_regs_explicit: bool,
     /// Whether Capstone-facing aliases should be emitted instead of canonical mnemonics.
     capstone_aliases: bool,
     /// Whether compressed instruction aliases should be emitted.
@@ -39,18 +41,11 @@ impl RiscVPrinter {
         }
     }
 
-    fn should_use_alias_regs_for_ir(&self) -> bool {
-        self.alias_regs
-            || matches!(
-                self.profile,
-                RiscVTextProfile::Capstone | RiscVTextProfile::VerboseDebug
-            )
-    }
-
     /// Creates a printer with default formatting behaviour.
     pub fn new() -> Self {
         Self {
-            alias_regs: false,
+            alias_regs: true,
+            alias_regs_explicit: false,
             capstone_aliases: true,
             compressed_aliases: true,
             unsigned_immediate: false,
@@ -61,6 +56,7 @@ impl RiscVPrinter {
     /// Enables or disables register alias printing.
     pub fn with_alias_regs(mut self, alias_regs: bool) -> Self {
         self.alias_regs = alias_regs;
+        self.alias_regs_explicit = true;
         self
     }
 
@@ -83,7 +79,12 @@ impl RiscVPrinter {
     /// Select the text rendering profile.
     pub fn with_profile(mut self, profile: RiscVTextProfile) -> Self {
         self.profile = profile;
-        self.alias_regs = matches!(profile, RiscVTextProfile::Capstone);
+        if !self.alias_regs_explicit {
+            self.alias_regs = matches!(
+                profile,
+                RiscVTextProfile::Capstone | RiscVTextProfile::VerboseDebug
+            );
+        }
         self.capstone_aliases = !matches!(profile, RiscVTextProfile::Canonical);
         self.compressed_aliases = self.capstone_aliases;
         self
@@ -206,16 +207,7 @@ impl RiscVPrinter {
     }
 
     fn format_ir_register(&self, register: &RegisterId) -> String {
-        let reg = RiscVRegister::from_id(register.id);
-        if self.should_use_alias_regs_for_ir() {
-            reg.name().to_string()
-        } else if register.id <= 31 {
-            format!("x{}", register.id)
-        } else if (32..=63).contains(&register.id) {
-            format!("f{}", register.id - 32)
-        } else {
-            reg.name().to_string()
-        }
+        self.format_register(register.id)
     }
 
     fn format_ir_basic_operand(&self, operand: &Operand, mode: &str) -> String {
@@ -543,7 +535,7 @@ mod tests {
     #[test]
     fn test_printer_creation() {
         let printer = RiscVPrinter::new();
-        assert!(!printer.alias_regs);
+        assert!(printer.alias_regs);
         assert!(!printer.unsigned_immediate);
 
         let printer = RiscVPrinter::new()
@@ -571,7 +563,7 @@ mod tests {
 
     #[test]
     fn test_format_register() {
-        let printer = RiscVPrinter::new();
+        let printer = RiscVPrinter::new().with_alias_regs(false);
 
         // Canonical register formatting
         assert_eq!(printer.format_register(0), "x0");
@@ -716,6 +708,19 @@ mod tests {
             Instruction::from_decoded(decoded, "li".to_string(), "ra, 1".to_string(), None);
 
         assert_eq!(RiscVPrinter::new().print_basic(&instruction), "li ra, 1");
+    }
+
+    #[test]
+    fn test_with_alias_regs_false_is_honored_for_decoded_instructions() {
+        let decoder = RiscVDecoder::rv32gc();
+        let decoded = decoder
+            .decode(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
+            .unwrap();
+        let instruction =
+            Instruction::from_decoded(decoded, "li".to_string(), "ra, 1".to_string(), None);
+        let printer = RiscVPrinter::new().with_alias_regs(false);
+
+        assert_eq!(printer.print_basic(&instruction), "li x1, 1");
     }
 
     #[test]
