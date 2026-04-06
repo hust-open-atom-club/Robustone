@@ -520,6 +520,7 @@ fn is_riscv_control_flow_mnemonic(mnemonic: &str) -> bool {
     matches!(
         mnemonic,
         "j" | "jal"
+            | "jalr"
             | "beq"
             | "bne"
             | "blt"
