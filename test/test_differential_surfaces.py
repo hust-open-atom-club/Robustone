@@ -5,13 +5,19 @@ import unittest
 from pathlib import Path
 import sys
 
+# pylint: disable=duplicate-code
+
 TEST_ROOT = Path(__file__).parent
 sys.path.insert(0, str(TEST_ROOT))
 sys.path.insert(0, str(TEST_ROOT / "core"))
 
 # pylint: disable=wrong-import-position
-from comparator import ComparisonResult, ComparisonSurface, OutputComparator
-from test_runner import TestRunner
+try:
+    from .core.comparator import ComparisonResult, ComparisonSurface, OutputComparator
+    from .core.test_runner import TestRunner
+except ImportError:  # pragma: no cover - script-mode fallback
+    from comparator import ComparisonResult, ComparisonSurface, OutputComparator
+    from test_runner import TestRunner
 
 
 ROBUSTONE_ADDI_JSON = """
@@ -271,6 +277,8 @@ class DifferentialSurfaceTests(unittest.TestCase):
                     surface = "text"
                     reason = "accepted text alias drift"
                     active = true
+                    owner = "decoder-team"
+                    expires_on = "2099-12-31"
                     """
                 ).strip()
                 + "\n",
@@ -310,6 +318,8 @@ class DifferentialSurfaceTests(unittest.TestCase):
                     surface = "semantic_detail"
                     reason = "accepted semantic gap"
                     active = true
+                    owner = "decoder-team"
+                    expires_on = "2099-12-31"
                     """
                 ).strip()
                 + "\n",

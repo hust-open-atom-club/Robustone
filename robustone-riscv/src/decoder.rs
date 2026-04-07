@@ -6,6 +6,7 @@
 
 use super::extensions::standard::Standard;
 use super::extensions::{Extensions, InstructionExtension, create_extensions};
+use super::shared::encoding::convenience as bits;
 use super::types::*;
 use robustone_core::common::ArchitectureProfile;
 use robustone_core::ir::{
@@ -141,36 +142,27 @@ impl RiscVDecoder {
             | ((bytes[2] as u32) << 16)
             | ((bytes[3] as u32) << 24);
 
-        let opcode = instruction & 0x7F;
-        let rd = ((instruction >> 7) & 0x1F) as u8;
-        let funct3 = ((instruction >> 12) & 0x7) as u8;
-        let rs1 = ((instruction >> 15) & 0x1F) as u8;
-        let rs2 = ((instruction >> 20) & 0x1F) as u8;
-        let funct7 = ((instruction >> 25) & 0x7F) as u8;
-        let funct12 = (instruction >> 20) & 0xFFF;
+        let fields = bits::extract_fields(instruction);
+        let i_fields = bits::extract_i_type(instruction);
+        let s_fields = bits::extract_s_type(instruction);
+        let b_fields = bits::extract_b_type(instruction);
+        let u_fields = bits::extract_u_type(instruction);
+        let j_fields = bits::extract_j_type(instruction);
+
+        let opcode = fields.opcode;
+        let rd = fields.rd;
+        let funct3 = fields.funct3;
+        let rs1 = fields.rs1;
+        let rs2 = fields.rs2;
+        let funct7 = fields.funct7;
+        let funct12 = fields.funct12;
         let _rs3 = ((instruction >> 27) & 0x1F) as u8;
 
-        // Immediate value extraction across instruction formats.
-        let imm_i = self.sign_extend((instruction >> 20) & 0xFFF, 12);
-        let imm_s = self.sign_extend(
-            ((instruction >> 7) & 0x1F) | (((instruction >> 25) & 0x7F) << 5),
-            12,
-        );
-        let imm_b = self.sign_extend(
-            ((instruction >> 7) & 0x1) << 11
-                | ((instruction >> 8) & 0xF) << 1
-                | ((instruction >> 25) & 0x3F) << 5
-                | ((instruction >> 31) & 0x1) << 12,
-            13,
-        );
-        let imm_u = (instruction & 0xFFFFF000) as i64; // U-type: bits[31:12], sign-extend to i64
-        let imm_j = self.sign_extend(
-            ((instruction >> 31) & 0x1) << 20
-                | ((instruction >> 21) & 0x3FF) << 1
-                | ((instruction >> 20) & 0x1) << 11
-                | ((instruction >> 12) & 0xFF) << 12,
-            21,
-        );
+        let imm_i = i_fields.imm;
+        let imm_s = s_fields.imm;
+        let imm_b = b_fields.imm;
+        let imm_u = u_fields.imm;
+        let imm_j = j_fields.imm;
 
         if let Some(error) = self.standard_extension_probe_error(
             opcode, funct3, funct7, rd, rs1, rs2, funct12, imm_i, imm_s, imm_b, imm_u, imm_j,
@@ -235,13 +227,13 @@ impl RiscVDecoder {
         let uimm_cs = uimm_cl;
 
         // CI format for c.addi/c.li/c.jal/c.slli: imm[5] | imm[4:0]
-        let imm_ci = self.sign_extend_c(
+        let imm_ci = bits::sign_extend_16(
             ((instruction >> 12) & 0x1) << 5 | ((instruction >> 2) & 0x1F),
             6,
         );
 
         // CJ format for c.j/c.jal: imm[11|4|9:8|10|6|7|3:1|5]
-        let imm_cj = self.sign_extend_c(
+        let imm_cj = bits::sign_extend_16(
             ((instruction >> 12) & 0x1) << 11
                 | ((instruction >> 8) & 0x1) << 10  // bit 10 from instruction[8]
                 | ((instruction >> 9) & 0x3) << 8   // bits 9:8 from instruction[10:9]
@@ -254,7 +246,7 @@ impl RiscVDecoder {
         );
 
         // CB format for c.beqz/c.bnez: imm[8|4:3] | imm[7:6] | imm[2:1] | imm[5]
-        let imm_cb = self.sign_extend_c(
+        let imm_cb = bits::sign_extend_16(
             ((instruction >> 12) & 0x1) << 8
                 | ((instruction >> 10) & 0x3) << 3
                 | ((instruction >> 5) & 0x3) << 6
@@ -506,25 +498,6 @@ impl RiscVDecoder {
                 detail,
             },
             other => other,
-        }
-    }
-
-    // Helper methods
-    fn sign_extend(&self, value: u32, bits: u8) -> i64 {
-        let sign_bit = 1 << (bits - 1);
-        if (value & sign_bit) != 0 {
-            (value as i64) - (1 << bits)
-        } else {
-            value as i64
-        }
-    }
-
-    fn sign_extend_c(&self, value: u16, bits: u8) -> i64 {
-        let sign_bit = 1 << (bits - 1);
-        if (value & sign_bit) != 0 {
-            (value as i64) - (1 << bits)
-        } else {
-            value as i64
         }
     }
 

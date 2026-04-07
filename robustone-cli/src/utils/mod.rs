@@ -4,64 +4,10 @@
 //! used throughout the robustone-cli application.
 
 use crate::error::{CliError, Result};
+use robustone_core::lookup_architecture_capability;
 
 /// Validate an architecture string with comprehensive error reporting.
 pub fn validate_architecture(arch_str: &str) -> Result<String> {
-    // Expanded list of architecture prefixes derived from Capstone support.
-    let valid_prefixes = [
-        // RISC-V
-        "riscv32",
-        "riscv64",
-        "riscv32e",
-        // ARM
-        "arm",
-        "armle",
-        "armbe",
-        "thumb",
-        // AArch64
-        "aarch64",
-        "aarch64be",
-        // x86
-        "x16",
-        "x32",
-        "x86",
-        "x64",
-        "x86-64",
-        "x86_64",
-        // MIPS
-        "mips",
-        "mipsel",
-        "mips64",
-        "mips64el",
-        // PowerPC
-        "ppc",
-        "powerpc",
-        "ppc32",
-        "powerpc32",
-        "ppcbe",
-        "powerpcbe",
-        "ppc32be",
-        "powerpc32be",
-        "ppc64",
-        "powerpc64",
-        "ppc64be",
-        "powerpc64be",
-        // SPARC
-        "sparc",
-        "sparcle",
-        "sparc64",
-        // Other
-        "systemz",
-        "s390x",
-        "xcore",
-        "m68k",
-        "tms320c64x",
-        "c64x",
-        "m680x",
-        "evm",
-        "bpf",
-    ];
-
     let arch_str_lower = arch_str.to_lowercase();
     let parts: Vec<&str> = arch_str_lower.split('+').collect();
 
@@ -74,13 +20,12 @@ pub fn validate_architecture(arch_str: &str) -> Result<String> {
 
     // Ensure the base architecture is supported before considering modifiers.
     let base_arch = parts[0];
-    let is_valid = valid_prefixes.contains(&base_arch);
-
-    if !is_valid {
+    if lookup_architecture_capability(base_arch).is_none() {
         return Err(CliError::validation(
             "architecture",
             format!(
-                "Invalid architecture: {base_arch}. Supported: riscv32, riscv64, arm, aarch64, x86, mips, ppc, sparc, systemz, and others",
+                "Invalid architecture: {base_arch}. Supported: {}",
+                all_supported_architectures()
             ),
         ));
     }
@@ -224,6 +169,14 @@ fn normalize_hex_number<'a>(token: &'a str, field: &'static str) -> Result<&'a s
     Ok(hex_part)
 }
 
+fn all_supported_architectures() -> String {
+    robustone_core::all_architecture_capabilities()
+        .iter()
+        .map(|capability| capability.canonical_name)
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
 /// Format bytes as a hex string with optional spaces.
 pub fn format_bytes_as_hex(bytes: &[u8], with_spaces: bool) -> String {
     if with_spaces {
@@ -274,6 +227,16 @@ mod tests {
         assert!(validate_architecture("riscv32").is_ok());
         assert!(validate_architecture("riscv64+compressed").is_ok());
         assert!(validate_architecture("invalid").is_err());
+    }
+
+    #[test]
+    fn test_validate_architecture_error_uses_shared_registry_list() {
+        let error = validate_architecture("invalid").expect_err("invalid architecture should fail");
+        let message = error.to_string();
+
+        assert!(message.contains("riscv32"));
+        assert!(message.contains("powerpc64be"));
+        assert!(message.contains("tms320c64x"));
     }
 
     #[test]
