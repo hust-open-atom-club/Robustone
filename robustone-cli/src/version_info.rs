@@ -1,15 +1,12 @@
 //! Version information presenter.
 //!
-//! Provides the `-v/--version` CLI output with:
-//! - dynamic architecture coverage statistics
-//! - category breakdowns
-//! - implementation status indicators
-//! - dedicated helper functions for maintainability
+//! Provides the `-v/--version` CLI output with dynamic capability statistics
+//! sourced from the shared architecture registry.
 
-use crate::Architecture;
+use robustone_core::all_architecture_capabilities;
 use std::collections::HashMap;
 
-/// Print the full version banner along with implementation stats.
+/// Print the full version banner along with capability stats.
 pub fn print_version_info() {
     print_basic_info();
     print_architecture_summary();
@@ -26,16 +23,21 @@ fn print_basic_info() {
 
 /// Print the high-level architecture support summary.
 fn print_architecture_summary() {
-    let archs = Architecture::all_architectures();
-    let total = archs.len();
-    let implemented = archs.iter().filter(|a| a.is_implemented()).count();
+    let capabilities = all_architecture_capabilities();
+    let total = capabilities.len();
+    let implemented = capabilities
+        .iter()
+        .filter(|cap| cap.decode_supported)
+        .count();
     println!("Architecture Support: {implemented}/{total}");
 
-    // Dedicated breakdown for the RISC-V family.
-    let riscv_count = archs.iter().filter(|a| a.category() == "RISC-V").count();
-    let riscv_implemented = archs
+    let riscv_count = capabilities
         .iter()
-        .filter(|a| a.category() == "RISC-V" && a.is_implemented())
+        .filter(|cap| cap.category == "RISC-V")
+        .count();
+    let riscv_implemented = capabilities
+        .iter()
+        .filter(|cap| cap.category == "RISC-V" && cap.decode_supported)
         .count();
 
     match riscv_implemented {
@@ -57,25 +59,28 @@ fn print_architecture_summary() {
 fn print_implementation_status() {
     println!("Supported Architectures:");
 
-    let archs = Architecture::all_architectures();
-    let mut categories: HashMap<&str, Vec<&Architecture>> = HashMap::new();
+    let capabilities = all_architecture_capabilities();
+    let mut categories: HashMap<&str, Vec<&robustone_core::ArchitectureCapability>> =
+        HashMap::new();
 
-    for arch in &archs {
-        categories.entry(arch.category()).or_default().push(arch);
+    for capability in capabilities {
+        categories
+            .entry(capability.category)
+            .or_default()
+            .push(capability);
     }
 
-    // Display entries grouped by category for readability.
     let category_order = ["RISC-V", "ARM", "x86", "MIPS", "PowerPC", "SPARC", "Other"];
 
     for category in category_order {
         if let Some(category_archs) = categories.get(category) {
             let names: Vec<String> = category_archs
                 .iter()
-                .map(|a| {
+                .map(|capability| {
                     format!(
                         "{}{}",
-                        a.name(),
-                        if a.is_implemented() { "✅" } else { "❌" }
+                        capability.canonical_name,
+                        capability.implementation_status()
                     )
                 })
                 .collect();
@@ -88,17 +93,20 @@ fn print_implementation_status() {
 
 /// Print coverage percentages and status legend.
 fn print_detailed_status() {
-    let archs = Architecture::all_architectures();
-    let total = archs.len();
-    let implemented = archs.iter().filter(|a| a.is_implemented()).count();
+    let capabilities = all_architecture_capabilities();
+    let total = capabilities.len();
+    let implemented = capabilities
+        .iter()
+        .filter(|cap| cap.decode_supported)
+        .count();
     let percentage = (implemented * 100) / total;
 
     println!("Implementation Progress:");
     println!("  {percentage}% Complete ({implemented}/{total})");
     println!();
     println!("Status Legend:");
-    println!("  ✅ Implemented and tested");
-    println!("  ❌ Not implemented");
+    println!("  ✅ Decode backend implemented");
+    println!("  ❌ Parser-only or not implemented");
     println!();
 }
 
@@ -108,23 +116,21 @@ mod tests {
 
     #[test]
     fn test_version_info_display() {
-        // Ensure the version banner prints without panicking.
         print_version_info();
     }
 
     #[test]
     fn test_architecture_categories() {
-        let archs = Architecture::all_architectures();
+        let capabilities = all_architecture_capabilities();
         let mut categories = HashMap::new();
 
-        for arch in &archs {
+        for capability in capabilities {
             categories
-                .entry(arch.category())
+                .entry(capability.category)
                 .or_insert_with(Vec::new)
-                .push(arch);
+                .push(capability);
         }
 
-        // Ensure key architecture categories are present in the summary.
         assert!(categories.contains_key("RISC-V"));
         assert!(categories.contains_key("ARM"));
         assert!(categories.contains_key("x86"));
@@ -132,11 +138,13 @@ mod tests {
 
     #[test]
     fn test_implementation_calculation() {
-        let archs = Architecture::all_architectures();
-        let implemented = archs.iter().filter(|a| a.is_implemented()).count();
-        let total = archs.len();
+        let capabilities = all_architecture_capabilities();
+        let implemented = capabilities
+            .iter()
+            .filter(|cap| cap.decode_supported)
+            .count();
+        let total = capabilities.len();
 
-        // At least the two RISC-V variants should be implemented.
         assert!(implemented >= 2);
         assert!(total > implemented);
     }

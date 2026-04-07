@@ -35,7 +35,17 @@ jobs:
           python-version: "3.12"
 
       - name: Run repository checks
+        id: repo_checks
         run: make check
+
+      - name: Summarize repository checks
+        if: always()
+        run: |
+          {
+            echo "## Repository Checks"
+            echo
+            echo "- \`make check\`: ${{ steps.repo_checks.outcome }}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   test:
     name: Workspace and Parity Tests
@@ -59,10 +69,22 @@ jobs:
           sudo apt-get install -y build-essential cmake
 
       - name: Run workspace tests
+        id: workspace_tests
         run: cargo test --workspace --all-features
 
       - name: Run parity regression suite
+        id: parity_tests
         run: make test
+
+      - name: Summarize workspace and parity tests
+        if: always()
+        run: |
+          {
+            echo "## Workspace And Parity Tests"
+            echo
+            echo "- \`cargo test --workspace --all-features\`: ${{ steps.workspace_tests.outcome }}"
+            echo "- \`make test\`: ${{ steps.parity_tests.outcome }}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   fuzz-smoke:
     name: Fuzz Smoke
@@ -79,16 +101,34 @@ jobs:
         run: cargo install cargo-fuzz
 
       - name: Run decode fuzz smoke
+        id: fuzz_decode
         run: cd fuzz && cargo fuzz run decode_riscv -- -max_total_time=15
 
       - name: Run JSON fuzz smoke
+        id: fuzz_json
         run: cd fuzz && cargo fuzz run format_riscv_json -- -max_total_time=15
 
       - name: Run hex parser fuzz smoke
+        id: fuzz_hex
         run: cd fuzz && cargo fuzz run hex_parser -- -max_total_time=15
 
       - name: Run text formatter fuzz smoke
+        id: fuzz_text
         run: cd fuzz && cargo fuzz run format_riscv_text -- -max_total_time=15
 
       - name: Run CLI argument fuzz smoke
+        id: fuzz_cli
         run: cd fuzz && cargo fuzz run cli_argument_combinations -- -max_total_time=15
+
+      - name: Summarize fuzz smoke
+        if: always()
+        run: |
+          {
+            echo "## Fuzz Smoke"
+            echo
+            echo "- \`decode_riscv\`: ${{ steps.fuzz_decode.outcome }}"
+            echo "- \`format_riscv_json\`: ${{ steps.fuzz_json.outcome }}"
+            echo "- \`hex_parser\`: ${{ steps.fuzz_hex.outcome }}"
+            echo "- \`format_riscv_text\`: ${{ steps.fuzz_text.outcome }}"
+            echo "- \`cli_argument_combinations\`: ${{ steps.fuzz_cli.outcome }}"
+          } >> "$GITHUB_STEP_SUMMARY"

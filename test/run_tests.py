@@ -17,9 +17,14 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-from core.test_runner import TestRunner
-from core.arch_config import discover_arch_configs, create_sample_config
-from core.comparator import OutputComparator
+try:
+    from test.core.test_runner import TestRunner
+    from test.core.arch_config import discover_arch_configs, create_sample_config
+    from test.core.comparator import OutputComparator
+except ImportError:  # pragma: no cover - direct script fallback
+    from core.test_runner import TestRunner
+    from core.arch_config import discover_arch_configs, create_sample_config
+    from core.comparator import OutputComparator
 
 
 def list_architectures(test_root: Path) -> None:

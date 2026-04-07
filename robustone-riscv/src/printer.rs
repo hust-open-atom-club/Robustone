@@ -20,6 +20,8 @@ pub enum RiscVTextProfile {
 pub struct RiscVPrinter {
     /// Whether register aliases should be printed instead of canonical names.
     alias_regs: bool,
+    /// Whether alias register behavior was explicitly chosen by the caller.
+    alias_regs_explicit: bool,
     /// Whether Capstone-facing aliases should be emitted instead of canonical mnemonics.
     capstone_aliases: bool,
     /// Whether compressed instruction aliases should be emitted.
@@ -31,10 +33,19 @@ pub struct RiscVPrinter {
 }
 
 impl RiscVPrinter {
+    fn text_render_profile(&self) -> TextRenderProfile {
+        match self.profile {
+            RiscVTextProfile::Capstone => TextRenderProfile::Capstone,
+            RiscVTextProfile::Canonical => TextRenderProfile::Canonical,
+            RiscVTextProfile::VerboseDebug => TextRenderProfile::VerboseDebug,
+        }
+    }
+
     /// Creates a printer with default formatting behaviour.
     pub fn new() -> Self {
         Self {
-            alias_regs: false,
+            alias_regs: true,
+            alias_regs_explicit: false,
             capstone_aliases: true,
             compressed_aliases: true,
             unsigned_immediate: false,
@@ -45,6 +56,7 @@ impl RiscVPrinter {
     /// Enables or disables register alias printing.
     pub fn with_alias_regs(mut self, alias_regs: bool) -> Self {
         self.alias_regs = alias_regs;
+        self.alias_regs_explicit = true;
         self
     }
 
@@ -67,7 +79,12 @@ impl RiscVPrinter {
     /// Select the text rendering profile.
     pub fn with_profile(mut self, profile: RiscVTextProfile) -> Self {
         self.profile = profile;
-        self.alias_regs = matches!(profile, RiscVTextProfile::Capstone);
+        if !self.alias_regs_explicit {
+            self.alias_regs = matches!(
+                profile,
+                RiscVTextProfile::Capstone | RiscVTextProfile::VerboseDebug
+            );
+        }
         self.capstone_aliases = !matches!(profile, RiscVTextProfile::Canonical);
         self.compressed_aliases = self.capstone_aliases;
         self
@@ -398,7 +415,11 @@ impl RiscVPrinter {
 
     /// Renders the instruction mnemonic and operand list.
     pub fn print_basic(&self, instruction: &Instruction) -> String {
-        let (mnemonic, operands) = instruction.rendered_text_parts(TextRenderProfile::Capstone);
+        let (mnemonic, operands) = instruction
+            .decoded
+            .as_ref()
+            .map(|decoded| self.render_ir_parts(decoded))
+            .unwrap_or_else(|| instruction.rendered_text_parts(self.text_render_profile()));
         if operands.is_empty() {
             mnemonic
         } else {
@@ -514,7 +535,7 @@ mod tests {
     #[test]
     fn test_printer_creation() {
         let printer = RiscVPrinter::new();
-        assert!(!printer.alias_regs);
+        assert!(printer.alias_regs);
         assert!(!printer.unsigned_immediate);
 
         let printer = RiscVPrinter::new()
@@ -542,7 +563,7 @@ mod tests {
 
     #[test]
     fn test_format_register() {
-        let printer = RiscVPrinter::new();
+        let printer = RiscVPrinter::new().with_alias_regs(false);
 
         // Canonical register formatting
         assert_eq!(printer.format_register(0), "x0");
@@ -662,5 +683,99 @@ mod tests {
         let (mnemonic, operands) = printer.render_ir_parts(&decoded);
         assert_eq!(mnemonic, "li");
         assert_eq!(operands, "ra, 1");
+    }
+
+    #[test]
+    fn test_print_basic_honors_canonical_profile() {
+        let decoder = RiscVDecoder::rv32gc();
+        let decoded = decoder
+            .decode(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
+            .unwrap();
+        let instruction =
+            Instruction::from_decoded(decoded, "li".to_string(), "ra, 1".to_string(), None);
+        let printer = RiscVPrinter::new().with_profile(RiscVTextProfile::Canonical);
+
+        assert_eq!(printer.print_basic(&instruction), "addi x1, x0, 1");
+    }
+
+    #[test]
+    fn test_default_printer_keeps_capstone_aliases_for_decoded_instructions() {
+        let decoder = RiscVDecoder::rv32gc();
+        let decoded = decoder
+            .decode(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
+            .unwrap();
+        let instruction =
+            Instruction::from_decoded(decoded, "li".to_string(), "ra, 1".to_string(), None);
+
+        assert_eq!(RiscVPrinter::new().print_basic(&instruction), "li ra, 1");
+    }
+
+    #[test]
+    fn test_with_alias_regs_false_is_honored_for_decoded_instructions() {
+        let decoder = RiscVDecoder::rv32gc();
+        let decoded = decoder
+            .decode(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
+            .unwrap();
+        let instruction =
+            Instruction::from_decoded(decoded, "li".to_string(), "ra, 1".to_string(), None);
+        let printer = RiscVPrinter::new().with_alias_regs(false);
+
+        assert_eq!(printer.print_basic(&instruction), "li x1, 1");
+    }
+
+    #[test]
+    fn test_print_basic_honors_unsigned_immediate_setting() {
+        let decoded = DecodedInstruction {
+            architecture: ArchitectureId::Riscv,
+            address: 0,
+            mode: "riscv32".to_string(),
+            mnemonic: "addi".to_string(),
+            opcode_id: Some("addi".to_string()),
+            size: 4,
+            raw_bytes: vec![0x13, 0x01, 0x01, 0xff],
+            operands: vec![
+                Operand::Register {
+                    register: RegisterId::riscv(2),
+                },
+                Operand::Register {
+                    register: RegisterId::riscv(2),
+                },
+                Operand::Immediate { value: -16 },
+            ],
+            registers_read: vec![RegisterId::riscv(2)],
+            registers_written: vec![RegisterId::riscv(2)],
+            implicit_registers_read: Vec::new(),
+            implicit_registers_written: Vec::new(),
+            groups: vec!["arithmetic".to_string()],
+            status: DecodeStatus::Success,
+            render_hints: RenderHints {
+                capstone_mnemonic: None,
+                capstone_hidden_operands: Vec::new(),
+            },
+        };
+        let instruction = Instruction::from_decoded(
+            decoded,
+            "addi".to_string(),
+            "sp, sp, -0x10".to_string(),
+            None,
+        );
+        let printer = RiscVPrinter::new()
+            .with_profile(RiscVTextProfile::Canonical)
+            .with_unsigned_immediate(true);
+
+        assert_eq!(printer.print_basic(&instruction), "addi x2, x2, 0xfffffff0");
+    }
+
+    #[test]
+    fn test_print_basic_legacy_instruction_uses_selected_profile_path() {
+        let instruction = Instruction::new(
+            0,
+            vec![0x13, 0x01, 0x01, 0xff],
+            "addi".to_string(),
+            "x2, x2, -16".to_string(),
+        );
+        let printer = RiscVPrinter::new().with_profile(RiscVTextProfile::Canonical);
+
+        assert_eq!(printer.print_basic(&instruction), "addi x2, x2, -16");
     }
 }

@@ -6,6 +6,7 @@ import ast
 import os
 import sys
 import time
+from datetime import date
 from pathlib import Path
 from typing import List, Optional
 
@@ -21,15 +22,26 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(PROJECT_ROOT)
 
 # pylint: disable=wrong-import-position
-from arch_config import ArchConfig, validate_config
-from comparator import (
-    OutputComparator,
-    TestCaseResult,
-    ArchTestSummary,
-    ComparisonResult,
-    ComparisonSurface,
-)
-from utils import run_command, parse_test_case, find_repo_root
+try:
+    from .arch_config import ArchConfig, validate_config
+    from .comparator import (
+        OutputComparator,
+        TestCaseResult,
+        ArchTestSummary,
+        ComparisonResult,
+        ComparisonSurface,
+    )
+    from .utils import run_command, parse_test_case, find_repo_root
+except ImportError:  # pragma: no cover - script-mode fallback
+    from arch_config import ArchConfig, validate_config
+    from comparator import (
+        OutputComparator,
+        TestCaseResult,
+        ArchTestSummary,
+        ComparisonResult,
+        ComparisonSurface,
+    )
+    from utils import run_command, parse_test_case, find_repo_root
 
 # pylint: enable=wrong-import-position
 
@@ -239,13 +251,71 @@ class TestRunner:
         for entry in data.get("difference", []):
             if not entry.get("active", False):
                 continue
+            self._validate_active_known_difference(entry)
             arch = str(entry.get("arch", "")).strip()
             hex_input = str(entry.get("hex", "")).strip().lower()
             surface = str(entry.get("surface", "")).strip().lower()
             reason = str(entry.get("reason", "")).strip()
-            if arch and hex_input and surface in {s.value for s in ComparisonSurface}:
-                differences[(arch, hex_input, surface)] = reason
+            key = (arch, hex_input, surface)
+            if key in differences:
+                raise ValueError(
+                    "Duplicate active known-difference entry for "
+                    f"arch={arch}, hex={hex_input}, surface={surface}"
+                )
+            differences[key] = reason
         return differences
+
+    def _validate_active_known_difference(self, entry: dict) -> None:
+        """Reject malformed or stale active known-difference entries."""
+        required_fields = {
+            "arch",
+            "hex",
+            "surface",
+            "reason",
+            "owner",
+            "expires_on",
+            "active",
+        }
+        allowed_fields = required_fields
+
+        unknown_fields = set(entry.keys()) - allowed_fields
+        if unknown_fields:
+            raise ValueError(
+                "Unknown field(s) in active known-difference entry: "
+                + ", ".join(sorted(unknown_fields))
+            )
+
+        for field in required_fields:
+            value = entry.get(field)
+            if field == "active":
+                continue
+            if value is None or not str(value).strip():
+                raise ValueError(
+                    f"Active known-difference entry is missing required field '{field}'"
+                )
+
+        arch = str(entry["arch"]).strip()
+        hex_input = str(entry["hex"]).strip().lower()
+        surface = str(entry["surface"]).strip().lower()
+        expires_on = str(entry["expires_on"]).strip()
+
+        if surface not in {candidate.value for candidate in ComparisonSurface}:
+            raise ValueError(f"Unsupported known-difference surface: {surface}")
+
+        if not all(character in "0123456789abcdef" for character in hex_input):
+            raise ValueError(
+                "Known-difference hex field must be normalized lowercase hexadecimal"
+            )
+
+        if not arch:
+            raise ValueError("Known-difference arch field must not be empty")
+
+        expiry_date = date.fromisoformat(expires_on)
+        if date.today() > expiry_date:
+            raise ValueError(
+                "Known-difference entry expired on "
+                f"{expires_on} for arch={arch}, hex={hex_input}, surface={surface}"
+            )
 
     def apply_known_difference(
         self, arch_name: str, result: TestCaseResult
