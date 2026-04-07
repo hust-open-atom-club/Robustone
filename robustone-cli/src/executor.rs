@@ -493,10 +493,8 @@ mod tests {
     #[test]
     fn test_render_display_help_preserves_short_help_for_dash_h() {
         let executor = CliExecutor::new();
-        let output = executor.render_display_help(&[
-            OsString::from("robustone"),
-            OsString::from("-h"),
-        ]);
+        let output =
+            executor.render_display_help(&[OsString::from("robustone"), OsString::from("-h")]);
 
         assert!(output.contains("Usage:"));
         assert!(!output.contains("Architecture Support (shared capability registry):"));
@@ -505,10 +503,8 @@ mod tests {
     #[test]
     fn test_render_display_help_includes_registry_appendix_for_long_help() {
         let executor = CliExecutor::new();
-        let output = executor.render_display_help(&[
-            OsString::from("robustone"),
-            OsString::from("--help"),
-        ]);
+        let output =
+            executor.render_display_help(&[OsString::from("robustone"), OsString::from("--help")]);
 
         assert!(output.contains("Architecture Support (shared capability registry):"));
         assert!(output.contains("parser-only"));
