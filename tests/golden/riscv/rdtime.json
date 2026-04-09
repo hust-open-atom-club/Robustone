@@ -1,0 +1,15 @@
+{
+  "arch": "riscv64",
+  "hex": "f32210c0",
+  "expected_capstone": {
+    "mnemonic": "rdtime",
+    "operands": "t0"
+  },
+  "expected_ir": {
+    "mnemonic": "csrrs",
+    "render_hint_mnemonic": "rdtime",
+    "hidden_operands": [1, 2],
+    "groups": ["system"],
+    "operand_kinds": ["register", "immediate", "register"]
+  }
+}

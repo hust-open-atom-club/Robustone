@@ -150,6 +150,16 @@ When adding new instructions or features:
 2. Add parity test cases under `test/architectures/<arch>/test_cases.txt`
 3. Validate configurations: `make test-validate`
 
+### ISA / Compatibility Triple Gate
+
+For any ISA addition, decode-behavior change, formatter change, or Capstone-compatibility change, contributors must satisfy all of the following:
+
+1. **Parity coverage**: add or update parity cases under `test/architectures/<arch>/test_cases.txt`
+2. **Rust coverage**: add or update Rust tests (unit/golden/property as appropriate)
+3. **Known-difference accounting**: if parity is intentionally incomplete, record the accepted divergence in `tests/differential/known-differences.toml` with an owner and expiry date
+
+Do not leave compatibility gaps undocumented. If a change alters user-visible decode or formatting behavior, update the parity corpus and either close the gap immediately or document it in the known-differences ledger.
+
 ## Submitting Changes
 
 1. Create a new branch from `main`:
@@ -193,6 +203,7 @@ Before submitting your pull request, verify:
 - [ ] All tests pass (`make test`)
 - [ ] Pre-commit hooks pass (`pre-commit run --all-files`)
 - [ ] New code includes appropriate tests
+- [ ] ISA / compatibility changes include parity cases, Rust tests, and (if needed) a known-difference ledger update
 - [ ] Public APIs include documentation
 - [ ] Commit messages follow the format above
 

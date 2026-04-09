@@ -1,4 +1,5 @@
 use crate::arch::ArchitectureSpec;
+use crate::capabilities::parser_only_configuration_message;
 use crate::command::{DisplayOptions, ValidatedConfig};
 use crate::error::{CliError, Result};
 use crate::utils::parse_hex_to_bytes;
@@ -25,6 +26,15 @@ impl DisasmConfig {
         })?;
         let arch_spec = ArchitectureSpec::parse(&arch_mode)
             .map_err(|e| CliError::parse("architecture", e.to_string()))?;
+
+        if let Some(capability) = lookup_architecture_capability(arch_spec.arch.name())
+            && !capability.decode_supported
+        {
+            return Err(CliError::Configuration(parser_only_configuration_message(
+                &arch_mode, capability,
+            )));
+        }
+
         let display_options = config.display_options();
 
         validate_display_options(&display_options)?;
@@ -102,9 +112,9 @@ impl DisasmConfig {
         if let Some(capability) = lookup_architecture_capability(self.arch_name())
             && !capability.decode_supported
         {
-            return Err(CliError::Configuration(format!(
-                "Architecture '{}' is accepted by the CLI parser, but no decode backend is implemented yet",
-                capability.canonical_name
+            return Err(CliError::Configuration(parser_only_configuration_message(
+                self.arch_name(),
+                capability,
             )));
         }
 
@@ -303,6 +313,7 @@ mod tests {
             .validate_for_disassembly()
             .expect_err("parser-only architecture should be rejected before decode");
         assert!(matches!(error, CliError::Configuration(_)));
-        assert!(error.to_string().contains("accepted by the CLI parser"));
+        assert!(error.to_string().contains("currently parser-only"));
+        assert!(error.to_string().contains("robustone --capabilities"));
     }
 }
