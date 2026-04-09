@@ -1,9 +1,11 @@
 use crate::arch::{Architecture, ArchitectureSpec};
+use crate::capabilities::{render_capabilities_json, render_capabilities_text};
 use crate::command::{Cli, render_help_text};
 use crate::config::{DisasmConfig, OutputConfig};
 use crate::disasm::{DisassemblyFormatter, process_input};
 use clap::Parser;
 use robustone_core::all_architecture_capabilities;
+use serde_json::Value;
 
 #[test]
 fn test_cli_basic_parsing() {
@@ -265,4 +267,47 @@ fn test_help_text_tracks_shared_registry_and_parser_only_note() {
 
     assert!(help.contains("parser-only"));
     assert!(help.contains("configuration error before decode"));
+    assert!(help.contains("robustone --capabilities"));
+}
+
+#[test]
+fn test_cli_parses_capability_reporting_flags() {
+    let cli = Cli::try_parse_from(["robustone", "--capabilities"]).expect("flag should parse");
+    assert!(cli.should_show_capabilities());
+
+    let alias_cli =
+        Cli::try_parse_from(["robustone", "--support-matrix"]).expect("alias should parse");
+    assert!(alias_cli.should_show_capabilities());
+}
+
+#[test]
+fn test_capability_renderers_share_registry_surface() {
+    let text = render_capabilities_text();
+    let json = render_capabilities_json();
+    let parsed: Value = serde_json::from_str(&json).unwrap();
+
+    assert!(text.contains("Summary:"));
+    assert!(text.contains("decode-ready"));
+    assert_eq!(parsed["architectures"][0]["canonical_name"], "riscv32");
+}
+
+#[test]
+fn test_capabilities_mode_rejects_mixed_disassembly_inputs() {
+    let cli = Cli::try_parse_from(["robustone", "--capabilities", "x86", "90"])
+        .expect("arguments should still parse before validation");
+    let error = cli
+        .validate_capabilities_request()
+        .expect_err("mixed capability/disassembly mode should be rejected");
+
+    assert!(error.to_string().contains("`--capabilities`"));
+}
+
+#[test]
+fn test_config_from_cli_reports_user_entered_parser_only_alias() {
+    let cli = Cli::try_parse_from(["robustone", "x86", "90"]).expect("CLI arguments should parse");
+    let error = DisasmConfig::config_from_cli(&cli)
+        .expect_err("parser-only alias input should fail during config creation");
+
+    assert!(error.to_string().contains("x86"));
+    assert!(error.to_string().contains("x32"));
 }

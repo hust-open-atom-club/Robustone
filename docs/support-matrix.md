@@ -1,6 +1,6 @@
 # Robustone Support Matrix
 
-This matrix documents what the repository supports today and what it intentionally does not claim yet. It was synchronized with the shared architecture capability registry on 2026-04-03.
+This matrix documents what the repository supports today and what it intentionally does not claim yet. It was synchronized with the shared architecture capability registry on 2026-04-08.
 
 ## Capstone Compatibility Layers
 
@@ -81,6 +81,8 @@ Canonical tokens below are the normalized architecture names emitted by the shar
 | `make build` | Verified | Builds the top-level crate in debug mode. |
 | `make check` | Verified | Runs `rustfmt`, `clippy`, `black`, and `pylint` against workspace code and repository-owned Python test scripts. |
 | `make run RUN_ARGS="riscv32 93001000 -d"` | Verified | Produces a RISC-V disassembly with detail output. |
+| `cargo run --manifest-path robustone/Cargo.toml -- --capabilities` | Verified | Prints the registry-derived architecture capability report without requiring disassembly input. |
+| `cargo run --manifest-path robustone/Cargo.toml -- --json --capabilities` | Verified | Prints the same capability report as structured JSON for automation. |
 | `cargo run --manifest-path robustone/Cargo.toml -- --json riscv32 93001000` | Verified | Produces structured JSON backed by the shared decode IR. |
 | `make test` | Verified | Builds Capstone if needed, runs parity tests, then runs `cargo test --workspace --all-features`. |
 | `python3 test/run_tests.py --list` | Verified | Lists the currently configured parity suites. |
@@ -97,6 +99,7 @@ Canonical tokens below are the normalized architecture names emitted by the shar
 ## Known Gaps and Non-Goals
 
 - Parser coverage is intentionally broader than decode-backend coverage; the capability registry and this document should be read as proof of what can be parsed and what can actually be decoded, not just one or the other.
+- Parser-only architecture failures should point users to `robustone --capabilities` / `--support-matrix` and the registry-derived help appendix instead of pretending the backend exists.
 - The repository exposes a shared decode IR, but the Capstone-style CLI formatter still keeps some compatibility-oriented display behavior for parity purposes.
 - The repository contains golden/property/fuzz scaffolding, but the coverage remains RISC-V-first and does not yet amount to a complete cross-architecture claim.
 - Accepted or investigated output differences belong in `tests/differential/known-differences.toml`; that file is the canonical repository record for parity exceptions.

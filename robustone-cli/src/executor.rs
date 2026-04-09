@@ -3,6 +3,7 @@
 //! This module wires together argument parsing, configuration building,
 //! and the actual disassembly pipeline exposed through the CLI.
 
+use crate::capabilities::{render_capabilities_json, render_capabilities_text};
 use crate::command::{Cli, DisplayOptions, render_help_text, render_short_help_text};
 use crate::config::{DisasmConfig, OutputConfig};
 use crate::disasm::{DisassemblyEngine, DisassemblyFormatter, DisassemblyIssue, DisassemblyResult};
@@ -53,6 +54,21 @@ impl CliExecutor {
 
     /// Execute the workflow with the provided CLI arguments.
     fn execute_cli(&self, cli: Cli) -> Result<()> {
+        if cli.should_show_capabilities() {
+            if let Err(error) = cli.validate_capabilities_request() {
+                if cli.json {
+                    println!(
+                        "{}",
+                        self.render_cli_error_json(&cli, &error, "validate_capabilities")
+                    );
+                    return Err(CliError::reported(1));
+                }
+                return Err(error);
+            }
+            println!("{}", self.render_capabilities(cli.json));
+            return Ok(());
+        }
+
         // Handle version display request
         if cli.should_show_version() {
             print_version_info();
@@ -340,6 +356,14 @@ impl CliExecutor {
             render_short_help_text()
         }
     }
+
+    fn render_capabilities(&self, as_json: bool) -> String {
+        if as_json {
+            render_capabilities_json()
+        } else {
+            render_capabilities_text()
+        }
+    }
 }
 
 #[cfg(test)]
@@ -434,11 +458,7 @@ mod tests {
         let error = executor
             .execute_to_string(&config)
             .expect_err("parser-only architecture should fail before decode");
-        assert!(
-            error
-                .to_string()
-                .contains("accepted by the CLI parser, but no decode backend is implemented yet")
-        );
+        assert!(error.to_string().contains("currently parser-only"));
     }
 
     #[test]
@@ -468,8 +488,51 @@ mod tests {
             parsed["errors"][0]["message"]
                 .as_str()
                 .unwrap()
-                .contains("accepted by the CLI parser")
+                .contains("robustone --capabilities")
         );
+    }
+
+    #[test]
+    fn test_render_capabilities_returns_human_readable_registry_report() {
+        let executor = CliExecutor::new();
+        let output = executor.render_capabilities(false);
+
+        assert!(output.contains("Architecture Capabilities (shared registry)"));
+        assert!(output.contains("| `riscv32` |"));
+        assert!(output.contains("robustone --capabilities"));
+    }
+
+    #[test]
+    fn test_render_capabilities_returns_structured_json_report() {
+        let executor = CliExecutor::new();
+        let output = executor.render_capabilities(true);
+        let parsed: Value = serde_json::from_str(&output).unwrap();
+
+        assert_eq!(parsed["summary"]["decode_ready"], 2);
+        assert_eq!(parsed["architectures"][0]["canonical_name"], "riscv32");
+    }
+
+    #[test]
+    fn test_execute_to_string_reports_canonical_token_for_manual_parser_only_config() {
+        let executor = CliExecutor::new();
+        let config = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("x86+intel").unwrap(),
+            hex_bytes: vec![0x90],
+            start_address: 0,
+            display_options: DisplayOptions {
+                detailed: false,
+                alias_regs: false,
+                real_detail: false,
+                unsigned_immediate: false,
+                json: false,
+            },
+            skip_data: false,
+        };
+
+        let error = executor
+            .execute_to_string(&config)
+            .expect_err("manual parser-only config should still fail");
+        assert!(error.to_string().contains("x32"));
     }
 
     #[test]
@@ -508,6 +571,7 @@ mod tests {
 
         assert!(output.contains("Architecture Support (shared capability registry):"));
         assert!(output.contains("parser-only"));
+        assert!(output.contains("--capabilities"));
     }
 }
 

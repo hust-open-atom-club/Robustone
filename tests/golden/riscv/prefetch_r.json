@@ -1,0 +1,15 @@
+{
+  "arch": "riscv64",
+  "hex": "13601500",
+  "expected_capstone": {
+    "mnemonic": "prefetch.r",
+    "operands": "0(a0)"
+  },
+  "expected_ir": {
+    "mnemonic": "prefetch.r",
+    "render_hint_mnemonic": null,
+    "hidden_operands": [],
+    "groups": ["load"],
+    "operand_kinds": ["memory"]
+  }
+}

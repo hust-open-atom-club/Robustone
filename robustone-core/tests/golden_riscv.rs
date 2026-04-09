@@ -118,6 +118,51 @@ fn test_c_jr_golden_fixture() {
 }
 
 #[test]
+fn test_rdcycle_golden_fixture() {
+    assert_case(load_case("rdcycle.json"));
+}
+
+#[test]
+fn test_rdtime_golden_fixture() {
+    assert_case(load_case("rdtime.json"));
+}
+
+#[test]
+fn test_mhpmcounter3_golden_fixture() {
+    assert_case(load_case("mhpmcounter3.json"));
+}
+
+#[test]
+fn test_prefetch_i_golden_fixture() {
+    assert_case(load_case("prefetch_i.json"));
+}
+
+#[test]
+fn test_prefetch_r_golden_fixture() {
+    assert_case(load_case("prefetch_r.json"));
+}
+
+#[test]
+fn test_prefetch_w_golden_fixture() {
+    assert_case(load_case("prefetch_w.json"));
+}
+
+#[test]
+fn test_csrr_stvec_golden_fixture() {
+    assert_case(load_case("csrr_stvec.json"));
+}
+
+#[test]
+fn test_csrr_stval_golden_fixture() {
+    assert_case(load_case("csrr_stval.json"));
+}
+
+#[test]
+fn test_csrr_scounteren_golden_fixture() {
+    assert_case(load_case("csrr_scounteren.json"));
+}
+
+#[test]
 fn test_ir_rendering_covers_control_flow_and_atomic_variants() {
     let dispatcher = dispatcher();
     let cases = [
