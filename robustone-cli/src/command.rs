@@ -105,6 +105,18 @@ If not provided, defaults to 0. Prefix with 0x or use plain hex."
         long_help = "Display version number, build timestamp, and supported architectures"
     )]
     pub version: bool,
+
+    /// `--capabilities`: show the registry-derived architecture support surface.
+    #[arg(
+        long = "capabilities",
+        visible_alias = "support-matrix",
+        help = "Show architecture capability report",
+        long_help = "Show the architecture capability report derived from the shared registry.\n\
+Combine with --json for machine-readable output.\n\
+This mode does not require an architecture token or disassembly bytes.",
+        conflicts_with = "version"
+    )]
+    pub capabilities: bool,
 }
 
 impl Cli {
@@ -159,6 +171,31 @@ impl Cli {
     /// Check if version information should be displayed.
     pub fn should_show_version(&self) -> bool {
         self.version
+    }
+
+    /// Check if architecture capabilities should be displayed.
+    pub fn should_show_capabilities(&self) -> bool {
+        self.capabilities
+    }
+
+    /// Validate that capability-report mode is not mixed with disassembly inputs.
+    pub fn validate_capabilities_request(&self) -> Result<()> {
+        let has_disassembly_inputs =
+            self.arch_mode.is_some() || self.hex_code.is_some() || self.address.is_some();
+        let has_disassembly_flags = self.detailed
+            || self.alias_regs
+            || self.real_detail
+            || self.unsigned_immediate
+            || self.skip_data;
+
+        if has_disassembly_inputs || has_disassembly_flags {
+            return Err(CliError::validation(
+                "capabilities",
+                "`--capabilities` only supports optional `--json`; remove ARCH_MODE/HEX_CODE/ADDRESS and disassembly-only flags",
+            ));
+        }
+
+        Ok(())
     }
 
     /// Check if the CLI has valid input for disassembly.
@@ -244,7 +281,7 @@ pub fn render_help_text() -> String {
     }
 
     help.push_str(
-        "\n  Note: tokens marked parser-only are accepted by the CLI parser, but they currently fail with a configuration error before decode because no backend is implemented yet.\n",
+        "\n  Note: tokens marked parser-only are accepted by the CLI parser, but they currently fail with a configuration error before decode because no backend is implemented yet. Run `robustone --capabilities` for the full registry-derived support report.\n",
     );
     help
 }

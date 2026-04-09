@@ -20,6 +20,18 @@ except ImportError:  # pragma: no cover - script-mode fallback
 
 
 class KnownDifferenceTests(unittest.TestCase):
+    def test_empty_known_difference_ledger_is_allowed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            whitelist = repo_root / "tests" / "differential"
+            whitelist.mkdir(parents=True, exist_ok=True)
+            (whitelist / "known-differences.toml").write_text(
+                "# intentionally empty\n", encoding="utf-8"
+            )
+
+            runner = TestRunner(repo_root=repo_root)
+            self.assertEqual(runner.known_differences, {})
+
     def test_active_known_difference_is_honored(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)

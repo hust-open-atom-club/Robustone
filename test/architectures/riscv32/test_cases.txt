@@ -58,12 +58,21 @@ b37d9d03  # 0 b3 7d 9d 03 remu s11, s10, s9
 f3155530  # 0 f3 15 55 30 csrrw a1, mtvec, a0
 f3262634  # 0 f3 26 26 34 csrrs a3, mcause, a2
 f33707c0  # 0 f3 37 07 c0 csrrc a5, cycle, a4
+f32200c0  # 0 f3 22 00 c0 rdcycle t0
+f32210c0  # 0 f3 22 10 c0 rdtime t0
+f32230b0  # 0 f3 22 30 b0 csrr t0, mhpmcounter3
 f3220318  # 0 f3 22 03 18 csrrs t0, satp, t1
 f3120318  # 0 f3 12 03 18 csrrw t0, satp, t1
 f3320318  # 0 f3 32 03 18 csrrc t0, satp, t1
+f3225010  # 0 f3 22 50 10 csrr t0, stvec
+f3223014  # 0 f3 22 30 14 csrr t0, stval
+f3226010  # 0 f3 22 60 10 csrr t0, scounteren
 73d85030  # 0 73 d8 50 30 csrrwi a6, mtvec, 1
 f3682134  # 0 f3 68 21 34 csrrsi a7, mcause, 2
 73f901c0  # 0 73 f9 01 c0 csrrci s2, cycle, 3
+13600500  # 0 13 60 05 00 prefetch.i 0(a0)
+13601500  # 0 13 60 15 00 prefetch.r 0(a0)
+13603500  # 0 13 60 35 00 prefetch.w 0(a0)
 e940      # 0 e9 40 li ra, 0x1a
 a917      # 0 a9 17 addi a5, a5, -0x16
 7e86      # 0 7e 86 mv a2, t6

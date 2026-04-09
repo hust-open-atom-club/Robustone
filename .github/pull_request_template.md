@@ -16,6 +16,12 @@
 - [ ] `cargo test --workspace --all-features`
 - [ ] `make test`
 
+## ISA / Compatibility Guardrails
+
+- [ ] If this change adds or changes ISA/compatibility behavior, I added or updated parity coverage under `test/architectures/<arch>/test_cases.txt`.
+- [ ] If this change adds or changes ISA/compatibility behavior, I added or updated Rust tests/golden/property coverage in the affected crate.
+- [ ] If parity is intentionally incomplete, I updated `tests/differential/known-differences.toml` with owner/expiry metadata instead of leaving the divergence undocumented.
+
 ## Notes
 
 - Follow-up work or accepted limitations:

@@ -903,6 +903,84 @@ mod tests {
     }
 
     #[test]
+    fn test_json_formatter_preserves_prefetch_w_memory_surface() {
+        let engine = DisassemblyEngine::new("riscv64");
+        let config = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
+            hex_bytes: vec![0x13, 0x60, 0x35, 0x00],
+            start_address: 0,
+            display_options: DisplayOptions {
+                detailed: true,
+                alias_regs: false,
+                real_detail: true,
+                unsigned_immediate: false,
+                json: true,
+            },
+            skip_data: false,
+        };
+        let result = engine.disassemble(&config).unwrap();
+        let formatter =
+            DisassemblyFormatter::new(OutputConfig::from_display_options(&config.display_options));
+        let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
+
+        assert_eq!(parsed["instructions"][0]["mnemonic"], "prefetch.w");
+        assert_eq!(parsed["instructions"][0]["operands"], "0(a0)");
+        assert_eq!(
+            parsed["instructions"][0]["decoded"]["mnemonic"],
+            "prefetch.w"
+        );
+        assert_eq!(
+            parsed["instructions"][0]["decoded"]["operands"][0]["kind"],
+            "memory"
+        );
+        assert_eq!(
+            parsed["instructions"][0]["decoded"]["operands"][0]["base"]["id"],
+            10
+        );
+        assert_eq!(parsed["instructions"][0]["decoded"]["groups"][0], "load");
+    }
+
+    #[test]
+    fn test_json_formatter_preserves_supervisor_csr_names() {
+        let engine = DisassemblyEngine::new("riscv64");
+        let cases = [
+            (vec![0xf3, 0x22, 0x50, 0x10], "t0, stvec", 0x105),
+            (vec![0xf3, 0x22, 0x30, 0x14], "t0, stval", 0x143),
+            (vec![0xf3, 0x22, 0x60, 0x10], "t0, scounteren", 0x106),
+        ];
+
+        for (hex_bytes, expected_operands, expected_csr) in cases {
+            let config = DisasmConfig {
+                arch_spec: ArchitectureSpec::parse("riscv64").unwrap(),
+                hex_bytes,
+                start_address: 0,
+                display_options: DisplayOptions {
+                    detailed: true,
+                    alias_regs: false,
+                    real_detail: true,
+                    unsigned_immediate: false,
+                    json: true,
+                },
+                skip_data: false,
+            };
+            let result = engine.disassemble(&config).unwrap();
+            let formatter = DisassemblyFormatter::new(OutputConfig::from_display_options(
+                &config.display_options,
+            ));
+            let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
+
+            assert_eq!(parsed["instructions"][0]["mnemonic"], "csrr");
+            assert_eq!(parsed["instructions"][0]["operands"], expected_operands);
+            assert_eq!(parsed["instructions"][0]["decoded"]["mnemonic"], "csrrs");
+            assert_eq!(
+                parsed["instructions"][0]["decoded"]["operands"][1]["value"],
+                expected_csr
+            );
+            assert_eq!(parsed["instructions"][0]["decoded"]["groups"][0], "system");
+        }
+    }
+
+    #[test]
     fn test_text_formatter_emits_structured_error_kinds() {
         let result = DisassemblyResult {
             instructions: Vec::new(),

@@ -144,6 +144,18 @@ impl Rvi {
         rs1: u8,
         imm: i64,
     ) -> Result<DecodedInstruction, DisasmError> {
+        if mnemonic == "ori"
+            && rd == 0
+            && let Some(prefetch_mnemonic) = prefetch_mnemonic(imm)
+        {
+            return Ok(self.formatter.create_decoded_instruction(
+                prefetch_mnemonic,
+                RiscVInstructionFormat::I,
+                4,
+                vec![self.operand_factory.make_memory_operand(rs1, 0)],
+            ));
+        }
+
         let instruction = self.formatter.create_decoded_instruction(
             mnemonic,
             RiscVInstructionFormat::I,
@@ -542,24 +554,8 @@ impl Rvi {
         rs1: u8,
         csr: i64,
     ) -> Result<DecodedInstruction, DisasmError> {
-        // Handle pseudo-instructions: csrr, csrc, csrw
-        // csrrs with rs1=0 → csrr
-        // csrrc with rs1=0 → csrc
-        // csrrw with rs1=0 → csrw
         let _ = &self.register_manager;
-        let (capstone_alias, hidden_operands) = if rs1 == 0 {
-            (
-                match mnemonic {
-                    "csrrs" => Some("csrr"),
-                    "csrrc" => Some("csrc"),
-                    "csrrw" => Some("csrw"),
-                    _ => None,
-                },
-                vec![2],
-            )
-        } else {
-            (None, Vec::new())
-        };
+        let (capstone_alias, hidden_operands) = csr_capstone_alias(mnemonic, rd, rs1, csr as u16);
 
         let instruction = self.formatter.create_decoded_instruction(
             mnemonic,
@@ -589,7 +585,7 @@ impl Rvi {
         csr: i64,
     ) -> Result<DecodedInstruction, DisasmError> {
         let _ = &self.register_manager;
-        Ok(self.formatter.create_decoded_instruction(
+        let instruction = self.formatter.create_decoded_instruction(
             mnemonic,
             RiscVInstructionFormat::I,
             4,
@@ -599,7 +595,54 @@ impl Rvi {
                 self.operand_factory.make_immediate_operand(csr),
                 self.operand_factory.make_immediate_operand(zimm),
             ],
-        ))
+        );
+
+        let capstone_alias = if rd == 0 {
+            match mnemonic {
+                "csrrwi" => Some("csrwi"),
+                "csrrsi" => Some("csrsi"),
+                "csrrci" => Some("csrci"),
+                _ => None,
+            }
+        } else {
+            None
+        };
+
+        if let Some(capstone_alias) = capstone_alias {
+            Ok(instruction.with_capstone_alias(capstone_alias, vec![0]))
+        } else {
+            Ok(instruction)
+        }
+    }
+}
+
+fn prefetch_mnemonic(imm: i64) -> Option<&'static str> {
+    match imm {
+        0 => Some("prefetch.i"),
+        1 => Some("prefetch.r"),
+        3 => Some("prefetch.w"),
+        _ => None,
+    }
+}
+
+fn csr_capstone_alias(
+    mnemonic: &str,
+    rd: u8,
+    rs1: u8,
+    csr: u16,
+) -> (Option<&'static str>, Vec<usize>) {
+    match (mnemonic, rd, rs1, csr) {
+        ("csrrs", _, 0, 0xC00) => (Some("rdcycle"), vec![1, 2]),
+        ("csrrs", _, 0, 0xC01) => (Some("rdtime"), vec![1, 2]),
+        ("csrrs", _, 0, 0xC02) => (Some("rdinstret"), vec![1, 2]),
+        ("csrrs", _, 0, 0xC80) => (Some("rdcycleh"), vec![1, 2]),
+        ("csrrs", _, 0, 0xC81) => (Some("rdtimeh"), vec![1, 2]),
+        ("csrrs", _, 0, 0xC82) => (Some("rdinstreth"), vec![1, 2]),
+        ("csrrs", _, 0, _) => (Some("csrr"), vec![2]),
+        ("csrrw", 0, _, _) => (Some("csrw"), vec![0]),
+        ("csrrs", 0, _, _) => (Some("csrs"), vec![0]),
+        ("csrrc", 0, _, _) => (Some("csrc"), vec![0]),
+        _ => (None, Vec::new()),
     }
 }
 

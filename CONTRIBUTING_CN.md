@@ -150,6 +150,16 @@ make test-parity
 2. 在 `test/architectures/<arch>/test_cases.txt` 中添加一致性测试用例
 3. 验证配置：`make test-validate`
 
+### ISA / 兼容性三重护栏
+
+对于任何 ISA 新增、解码行为变化、格式化变化或 Capstone 兼容性变化，贡献者都必须同时满足以下要求：
+
+1. **一致性覆盖**：在 `test/architectures/<arch>/test_cases.txt` 中添加或更新一致性测试用例
+2. **Rust 覆盖**：添加或更新 Rust 测试（按需选择单元 / golden / property 测试）
+3. **已知差异台账**：如果一致性暂时无法完全对齐，必须在 `tests/differential/known-differences.toml` 中登记该差异，并填写 owner 与 expires_on
+
+不要让兼容性差异处于未记录状态。凡是会影响用户可见解码或格式化行为的变更，都应更新一致性测试集；如果暂时不能完全消除差异，就必须记录到 known-differences 台账中。
+
 ## 提交更改
 
 1. 从 `main` 创建新分支：
@@ -193,6 +203,7 @@ git push origin feature/your-feature-name
 - [ ] 所有测试通过（`make test`）
 - [ ] Pre-commit 钩子通过（`pre-commit run --all-files`）
 - [ ] 新代码包含适当的测试
+- [ ] ISA / 兼容性变更同时提交了一致性测试、Rust 测试，以及（如需要）known-differences 台账更新
 - [ ] 公共 API 包含文档
 - [ ] 提交信息遵循上述格式
 

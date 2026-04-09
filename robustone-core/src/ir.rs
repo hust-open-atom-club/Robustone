@@ -557,7 +557,13 @@ fn csr_name_lookup(csr: u16) -> Option<&'static str> {
         0x305 => Some("mtvec"),
         0x342 => Some("mcause"),
         0xb00 => Some("mcycle"),
+        0xb03 => Some("mhpmcounter3"),
         0xc00 => Some("cycle"),
+        0xc01 => Some("time"),
+        0xc02 => Some("instret"),
+        0xc80 => Some("cycleh"),
+        0xc81 => Some("timeh"),
+        0xc82 => Some("instreth"),
         _ => None,
     }
 }

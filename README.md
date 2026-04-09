@@ -14,6 +14,7 @@ Current repository status:
 
 - Implemented decode backends: `riscv`, `riscv32`, and `riscv64`
 - Public support matrix: [docs/support-matrix.md](docs/support-matrix.md)
+- Current `0.0.0` scope: a RISC-V-mainline experimental release, not a multi-ISA Capstone replacement
 
 ## Requirements
 
@@ -75,6 +76,13 @@ To inspect the currently advertised CLI surface:
 
 ```bash
 cargo run --manifest-path robustone/Cargo.toml -- --help
+```
+
+To inspect the registry-derived capability surface directly:
+
+```bash
+cargo run --manifest-path robustone/Cargo.toml -- --capabilities
+cargo run --manifest-path robustone/Cargo.toml -- --json --capabilities
 ```
 
 To emit structured JSON from the shared decode IR:

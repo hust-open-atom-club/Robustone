@@ -5,6 +5,7 @@
 //! across multiple architectures with extensive configuration options.
 
 pub mod arch;
+pub mod capabilities;
 pub mod command;
 pub mod config;
 pub mod disasm;

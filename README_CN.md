@@ -14,6 +14,7 @@ Robustone 将与 Capstone 的兼容目标拆分为三层：
 
 - 已实现的解码后端：`riscv`、`riscv32`、`riscv64`
 - 当前支持矩阵：[`docs/support-matrix.md`](docs/support-matrix.md)
+- 当前 `0.0.0` 范围：面向 RISC-V 主线的实验版，而不是多 ISA 的 Capstone 替代品
 
 ## 系统要求
 
@@ -75,6 +76,13 @@ make run RUN_ARGS="riscv32 93001000 -d"
 
 ```bash
 cargo run --manifest-path robustone/Cargo.toml -- --help
+```
+
+如果需要直接查看共享能力注册表导出的支持面，请运行：
+
+```bash
+cargo run --manifest-path robustone/Cargo.toml -- --capabilities
+cargo run --manifest-path robustone/Cargo.toml -- --json --capabilities
 ```
 
 如果需要从共享解码 IR 导出结构化 JSON，请运行：

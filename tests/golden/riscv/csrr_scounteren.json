@@ -1,0 +1,15 @@
+{
+  "arch": "riscv64",
+  "hex": "f3226010",
+  "expected_capstone": {
+    "mnemonic": "csrr",
+    "operands": "t0, scounteren"
+  },
+  "expected_ir": {
+    "mnemonic": "csrrs",
+    "render_hint_mnemonic": "csrr",
+    "hidden_operands": [2],
+    "groups": ["system"],
+    "operand_kinds": ["register", "immediate", "register"]
+  }
+}

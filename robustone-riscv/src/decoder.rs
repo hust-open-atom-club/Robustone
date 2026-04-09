@@ -602,6 +602,9 @@ fn infer_groups(mnemonic: &str) -> Vec<String> {
     ) {
         groups.push("load".to_string());
     }
+    if mnemonic.starts_with("prefetch.") {
+        groups.push("load".to_string());
+    }
     if matches!(
         mnemonic,
         "sb" | "sh" | "sw" | "sd" | "fsw" | "fsd" | "c.sw" | "c.swsp"
