@@ -47,14 +47,14 @@ repos:
 
       - id: cargo-check
         name: cargo check
-        entry: cargo check --workspace
+        entry: cargo check --workspace --all-features
         language: system
         types: [rust]
         pass_filenames: false
 
       - id: cargo-test
         name: cargo test
-        entry: cargo test --workspace
+        entry: cargo test --workspace --all-features
         language: system
         types: [rust]
         pass_filenames: false
