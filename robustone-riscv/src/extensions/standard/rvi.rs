@@ -526,6 +526,7 @@ impl Rvi {
                 0x002 => Ok(DefaultInstructionFormatter::simple_instruction("uret")),
                 0x102 => Ok(DefaultInstructionFormatter::simple_instruction("sret")),
                 0x302 => Ok(DefaultInstructionFormatter::simple_instruction("mret")),
+                0x7b2 => Ok(DefaultInstructionFormatter::simple_instruction("dret")),
                 0x105 => Ok(DefaultInstructionFormatter::simple_instruction("wfi")),
                 _ if (funct12 >> 5) == 0x09 && rd == 0 => {
                     // SFENCE.VMA: funct7=0x09 in bits 31:25, rs2 in bits 24:20.
