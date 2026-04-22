@@ -89,6 +89,7 @@ impl Architecture {
                 )
             }
             "sparc" | "sparcle" | "sparc64" => matches!(modifier, "v9" | "be" | "le"),
+            "loongarch" | "loongarch64" => false,
             _ => false,
         }
     }

@@ -446,7 +446,7 @@ mod tests {
     fn test_execute_to_string_reports_parser_only_architecture_error() {
         let executor = CliExecutor::new();
         let config = DisasmConfig {
-            arch_spec: ArchitectureSpec::parse("x86+intel").unwrap(),
+            arch_spec: ArchitectureSpec::parse("riscv32e").unwrap(),
             hex_bytes: vec![0x90],
             start_address: 0,
             display_options: DisplayOptions {
@@ -469,7 +469,7 @@ mod tests {
     fn test_execute_to_string_returns_json_for_parser_only_architecture_error() {
         let executor = CliExecutor::new();
         let config = DisasmConfig {
-            arch_spec: ArchitectureSpec::parse("x86+intel").unwrap(),
+            arch_spec: ArchitectureSpec::parse("riscv32e").unwrap(),
             hex_bytes: vec![0x90],
             start_address: 0,
             display_options: DisplayOptions {
@@ -512,7 +512,7 @@ mod tests {
         let output = executor.render_capabilities(true);
         let parsed: Value = serde_json::from_str(&output).unwrap();
 
-        assert_eq!(parsed["summary"]["decode_ready"], 2);
+        assert_eq!(parsed["summary"]["decode_ready"], 6);
         assert_eq!(parsed["architectures"][0]["canonical_name"], "riscv32");
     }
 
@@ -520,7 +520,7 @@ mod tests {
     fn test_execute_to_string_reports_canonical_token_for_manual_parser_only_config() {
         let executor = CliExecutor::new();
         let config = DisasmConfig {
-            arch_spec: ArchitectureSpec::parse("x86+intel").unwrap(),
+            arch_spec: ArchitectureSpec::parse("riscv32e").unwrap(),
             hex_bytes: vec![0x90],
             start_address: 0,
             display_options: DisplayOptions {
@@ -536,7 +536,7 @@ mod tests {
         let error = executor
             .execute_to_string(&config)
             .expect_err("manual parser-only config should still fail");
-        assert!(error.to_string().contains("x32"));
+        assert!(error.to_string().contains("riscv32e"));
     }
 
     #[test]
