@@ -684,6 +684,7 @@ mod tests {
                 capstone_mnemonic: Some("li".to_string()),
                 capstone_hidden_operands: vec![1],
             },
+            render: Some(robustone_riscv::render::render_riscv_text_parts),
         };
         let instruction =
             Instruction::from_decoded(decoded, "legacy".to_string(), "legacy".to_string(), None);

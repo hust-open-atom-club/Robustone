@@ -103,6 +103,7 @@ fn build_instruction(data: &[u8]) -> Instruction {
             },
             capstone_hidden_operands: vec![usize::from(next_byte(data, &mut cursor) % 4)],
         },
+        render: None,
     };
 
     Instruction::from_decoded(decoded, "legacy".to_string(), "legacy".to_string(), None)
