@@ -32,6 +32,7 @@ try:
         ComparisonSurface,
     )
     from .utils import run_command, parse_test_case, find_repo_root
+    from .yaml_loader import load_yaml_test_cases
 except ImportError:  # pragma: no cover - script-mode fallback
     from arch_config import ArchConfig, validate_config
     from comparator import (
@@ -42,6 +43,7 @@ except ImportError:  # pragma: no cover - script-mode fallback
         ComparisonSurface,
     )
     from utils import run_command, parse_test_case, find_repo_root
+    from yaml_loader import load_yaml_test_cases
 
 # pylint: enable=wrong-import-position
 
@@ -173,6 +175,15 @@ class TestRunner:
         """
         start_time = time.time()
 
+        # Allow per-test-case cstool arch override from note (YAML loader embeds it)
+        cstool_arch = config.cstool_arch
+        if note and "cstool_arch=" in note:
+            for part in note.split(";"):
+                part = part.strip()
+                if part.startswith("cstool_arch="):
+                    cstool_arch = part[len("cstool_arch=") :].strip()
+                    break
+
         # Build commands
         robustone_cmd = [
             str(self.robustone_bin),
@@ -186,7 +197,7 @@ class TestRunner:
 
         cstool_cmd = [
             str(self.cstool_bin),
-            config.cstool_arch,
+            cstool_arch,
             hex_input,
         ] + config.cstool_flags
         semantic_robustone_cmd = [
@@ -201,7 +212,7 @@ class TestRunner:
             str(self.cstool_bin),
             "-d",
             "-r",
-            config.cstool_arch,
+            cstool_arch,
             hex_input,
         ] + config.cstool_flags
 
@@ -387,13 +398,14 @@ class TestRunner:
             )
 
         # Load test cases
-        test_cases = self._load_test_cases(config.cases_file)
+        test_cases = self._load_test_cases(config)
         if limit is not None:
             test_cases = test_cases[:limit]
 
         if not test_cases:
             if verbose:
-                print(f"Warning: No test cases found in {config.cases_file}")
+                source = config.yaml_source or config.cases_file
+                print(f"Warning: No test cases found in {source}")
             # Return empty summary instead of raising error
             return self.comparator.generate_summary(config.name, [], 0)
 
@@ -427,18 +439,30 @@ class TestRunner:
         total_time = int((time.time() - start_time) * 1000)
         return self.comparator.generate_summary(config.name, results, total_time)
 
-    def _load_test_cases(self, cases_file: Path) -> List[tuple]:
+    def _load_test_cases(self, config: ArchConfig) -> List[tuple]:
         """
-        Load test cases from a file.
+        Load test cases from the configured source.
+
+        Supports both legacy text files and Capstone YAML sources.
 
         Args:
-            cases_file: Path to test cases file
+            config: Architecture configuration
 
         Returns:
             List of (hex_input, expected, note) tuples
         """
+        # YAML source takes precedence if configured
+        if config.yaml_source is not None:
+            return list(
+                load_yaml_test_cases(
+                    config.yaml_source,
+                    yaml_filter=config.yaml_filter,
+                )
+            )
+
+        # Fall back to legacy text format
         test_cases = []
-        with cases_file.open("r", encoding="utf-8") as f:
+        with config.cases_file.open("r", encoding="utf-8") as f:
             for _, line in enumerate(f, start=1):
                 hex_input, expected, note = parse_test_case(line)
                 if hex_input:  # Skip empty lines and comments

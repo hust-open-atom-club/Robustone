@@ -1,0 +1,14 @@
+{
+  "name": "capstone-sparc-mc",
+  "robustone_arch": "sparc",
+  "cstool_arch": "sparc",
+  "yaml_source": "../../../third_party/capstone/tests/MC/Sparc",
+  "yaml_filter": {
+    "arch": "CS_ARCH_SPARC",
+    "options_exclude": [],
+    "hex_exclude": [],
+    "require_single_insn": true
+  },
+  "description": "Capstone Sparc MC regression tests",
+  "category": "capstone"
+}

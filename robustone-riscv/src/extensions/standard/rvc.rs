@@ -413,6 +413,7 @@ impl Rvc {
         rs2: u8,
         funct2: u8,
         xlen: Xlen,
+        imm_ci: i64,
     ) -> Result<DecodedInstruction, DisasmError> {
         let (mnemonic, capstone_alias) = match (funct6, funct2, xlen) {
             (0b100011, 0b00, _) => ("c.sub", None),
@@ -423,10 +424,10 @@ impl Rvc {
             (0b100111, 0b01, Xlen::X64) => ("c.addw", Some("addw")),
             (0b100111, 0b00, _) => return Err(unsupported_mode("c.subw requires RV64")),
             (0b100111, 0b01, _) => return Err(unsupported_mode("c.addw requires RV64")),
-            _ => match (funct6 & 0b11, funct2) {
-                (0b00, 0b00) => ("c.srli", None),
-                (0b01, 0b00) => ("c.srai", None),
-                (0b10, 0b00) => ("c.andi", None),
+            _ => match funct6 & 0b11 {
+                0b00 => ("c.srli", None),
+                0b01 => ("c.srai", None),
+                0b10 => ("c.andi", None),
                 _ => return Err(invalid_encoding("invalid C.ALU encoding")),
             },
         };
@@ -441,6 +442,16 @@ impl Rvc {
                     convenience::register(rs1 + 8, Access::write()),
                     convenience::register(rs1 + 8, Access::read()),
                     convenience::register(rs2 + 8, Access::read()),
+                ],
+            )
+        } else if matches!(mnemonic, "c.srli" | "c.srai" | "c.andi") {
+            build_riscv_decoded_instruction(
+                mnemonic,
+                RiscVInstructionFormat::CA,
+                2,
+                vec![
+                    convenience::register(rs1 + 8, Access::read_write()),
+                    convenience::immediate(imm_ci),
                 ],
             )
         } else {
@@ -657,8 +668,8 @@ impl InstructionExtension for Rvc {
                     let imm_val = (((instruction >> 12) & 0x1) << 9)
                         | (((instruction >> 3) & 0x3) << 7)
                         | (((instruction >> 5) & 0x1) << 6)
-                        | (((instruction >> 2) & 0x3) << 4)
-                        | (((instruction >> 6) & 0x1) << 5);
+                        | (((instruction >> 2) & 0x1) << 5)
+                        | (((instruction >> 6) & 0x1) << 4);
                     Some(self.decode_c_addi16sp(rd_full, imm_val))
                 } else if rd_full != 0 && imm_ci != 0 {
                     Some(self.decode_c_lui(rd_full, imm_ci))
@@ -669,7 +680,7 @@ impl InstructionExtension for Rvc {
             (0b01, 0b100) => {
                 let funct6 = ((instruction >> 10) & 0x3F) as u8;
                 let funct2 = ((instruction >> 5) & 0x3) as u8;
-                Some(self.decode_c_alu(funct6, rs1p, rs2p, funct2, xlen))
+                Some(self.decode_c_alu(funct6, rs1p, rs2p, funct2, xlen, imm_ci))
             }
             (0b01, 0b101) => Some(self.decode_c_j(imm_cj)),
             (0b01, 0b110) => Some(self.decode_c_beqz(rs1p, imm_cb)),

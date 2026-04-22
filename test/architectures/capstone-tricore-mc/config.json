@@ -1,0 +1,14 @@
+{
+  "name": "capstone-tricore-mc",
+  "robustone_arch": "tc162",
+  "cstool_arch": "tc162",
+  "yaml_source": "../../../third_party/capstone/tests/MC/TriCore",
+  "yaml_filter": {
+    "arch": "CS_ARCH_TRICORE",
+    "options_exclude": [],
+    "hex_exclude": [],
+    "require_single_insn": true
+  },
+  "description": "Capstone TriCore MC regression tests",
+  "category": "capstone"
+}

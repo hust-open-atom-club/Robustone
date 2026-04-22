@@ -1,0 +1,14 @@
+{
+  "name": "capstone-arm-mc",
+  "robustone_arch": "arm",
+  "cstool_arch": "arm",
+  "yaml_source": "../../../third_party/capstone/tests/MC/ARM",
+  "yaml_filter": {
+    "arch": "CS_ARCH_ARM",
+    "options_exclude": [],
+    "hex_exclude": [],
+    "require_single_insn": true
+  },
+  "description": "Capstone ARM MC regression tests",
+  "category": "capstone"
+}

@@ -1,0 +1,14 @@
+{
+  "name": "capstone-powerpc-mc",
+  "robustone_arch": "powerpc64",
+  "cstool_arch": "ppc64",
+  "yaml_source": "../../../third_party/capstone/tests/MC/PowerPC",
+  "yaml_filter": {
+    "arch": "CS_ARCH_PPC",
+    "options_exclude": [],
+    "hex_exclude": [],
+    "require_single_insn": true
+  },
+  "description": "Capstone PowerPC MC regression tests",
+  "category": "capstone"
+}

@@ -12,3 +12,5 @@ RFC.md
 .humanize/
 fuzz/artifacts/
 fuzz/corpus/
+plan.md
+.codex

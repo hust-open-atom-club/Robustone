@@ -1,0 +1,14 @@
+{
+  "name": "capstone-loongarch-mc",
+  "robustone_arch": "loongarch64",
+  "cstool_arch": "loongarch64",
+  "yaml_source": "../../../third_party/capstone/tests/MC/LoongArch",
+  "yaml_filter": {
+    "arch": "CS_ARCH_LOONGARCH",
+    "options_exclude": [],
+    "hex_exclude": [],
+    "require_single_insn": true
+  },
+  "description": "Capstone LoongArch MC regression tests",
+  "category": "capstone"
+}

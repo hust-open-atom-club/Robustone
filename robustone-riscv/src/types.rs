@@ -103,77 +103,6 @@ pub fn rounding_mode_name(rm: u8) -> &'static str {
     }
 }
 
-/// Instruction-level detail (mirrors `cs_riscv`).
-#[derive(Debug, Clone)]
-pub struct RiscVInstructionDetail {
-    /// Whether an effective address is required.
-    pub need_effective_addr: bool,
-    /// Number of populated operands.
-    pub op_count: u8,
-    /// Operand list (up to eight entries).
-    pub operands: [RiscVOperand; 8],
-    /// Registers read by the instruction.
-    pub regs_read: Vec<u32>,
-    /// Registers written by the instruction.
-    pub regs_write: Vec<u32>,
-    /// Instruction group tags.
-    pub groups: Vec<String>,
-}
-
-impl Default for RiscVInstructionDetail {
-    fn default() -> Self {
-        Self {
-            need_effective_addr: false,
-            op_count: 0,
-            operands: [
-                RiscVOperand {
-                    op_type: RiscVOperandType::Invalid,
-                    access: Access::none(),
-                    value: RiscVOperandValue::Immediate(0),
-                },
-                RiscVOperand {
-                    op_type: RiscVOperandType::Invalid,
-                    access: Access::none(),
-                    value: RiscVOperandValue::Immediate(0),
-                },
-                RiscVOperand {
-                    op_type: RiscVOperandType::Invalid,
-                    access: Access::none(),
-                    value: RiscVOperandValue::Immediate(0),
-                },
-                RiscVOperand {
-                    op_type: RiscVOperandType::Invalid,
-                    access: Access::none(),
-                    value: RiscVOperandValue::Immediate(0),
-                },
-                RiscVOperand {
-                    op_type: RiscVOperandType::Invalid,
-                    access: Access::none(),
-                    value: RiscVOperandValue::Immediate(0),
-                },
-                RiscVOperand {
-                    op_type: RiscVOperandType::Invalid,
-                    access: Access::none(),
-                    value: RiscVOperandValue::Immediate(0),
-                },
-                RiscVOperand {
-                    op_type: RiscVOperandType::Invalid,
-                    access: Access::none(),
-                    value: RiscVOperandValue::Immediate(0),
-                },
-                RiscVOperand {
-                    op_type: RiscVOperandType::Invalid,
-                    access: Access::none(),
-                    value: RiscVOperandValue::Immediate(0),
-                },
-            ],
-            regs_read: Vec::new(),
-            regs_write: Vec::new(),
-            groups: Vec::new(),
-        }
-    }
-}
-
 /// Comprehensive RISC-V register enumeration (compatible with `riscv_reg`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RiscVRegister {
@@ -462,26 +391,41 @@ impl RiscVRegister {
             61 => RiscVRegister::F29_32,
             62 => RiscVRegister::F30_32,
             63 => RiscVRegister::F31_32,
+            64 => RiscVRegister::F0_64,
+            65 => RiscVRegister::F1_64,
+            66 => RiscVRegister::F2_64,
+            67 => RiscVRegister::F3_64,
+            68 => RiscVRegister::F4_64,
+            69 => RiscVRegister::F5_64,
+            70 => RiscVRegister::F6_64,
+            71 => RiscVRegister::F7_64,
+            72 => RiscVRegister::F8_64,
+            73 => RiscVRegister::F9_64,
+            74 => RiscVRegister::F10_64,
+            75 => RiscVRegister::F11_64,
+            76 => RiscVRegister::F12_64,
+            77 => RiscVRegister::F13_64,
+            78 => RiscVRegister::F14_64,
+            79 => RiscVRegister::F15_64,
+            80 => RiscVRegister::F16_64,
+            81 => RiscVRegister::F17_64,
+            82 => RiscVRegister::F18_64,
+            83 => RiscVRegister::F19_64,
+            84 => RiscVRegister::F20_64,
+            85 => RiscVRegister::F21_64,
+            86 => RiscVRegister::F22_64,
+            87 => RiscVRegister::F23_64,
+            88 => RiscVRegister::F24_64,
+            89 => RiscVRegister::F25_64,
+            90 => RiscVRegister::F26_64,
+            91 => RiscVRegister::F27_64,
+            92 => RiscVRegister::F28_64,
+            93 => RiscVRegister::F29_64,
+            94 => RiscVRegister::F30_64,
+            95 => RiscVRegister::F31_64,
             _ => RiscVRegister::Invalid,
         }
     }
-}
-
-/// Supported RISC-V ISA extensions.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum RiscVExtension {
-    /// Base integer ISA.
-    I,
-    /// Multiply/divide extension.
-    M,
-    /// Atomic operations extension.
-    A,
-    /// Single-precision floating-point extension.
-    F,
-    /// Double-precision floating-point extension.
-    D,
-    /// Compressed instruction extension.
-    C,
 }
 
 /// Instruction encoding formats available in RISC-V.

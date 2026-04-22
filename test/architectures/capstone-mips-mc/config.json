@@ -1,0 +1,14 @@
+{
+  "name": "capstone-mips-mc",
+  "robustone_arch": "mips",
+  "cstool_arch": "mips",
+  "yaml_source": "../../../third_party/capstone/tests/MC/Mips",
+  "yaml_filter": {
+    "arch": "CS_ARCH_MIPS",
+    "options_exclude": [],
+    "hex_exclude": [],
+    "require_single_insn": true
+  },
+  "description": "Capstone Mips MC regression tests",
+  "category": "capstone"
+}
