@@ -9,7 +9,7 @@ PARITY_SCRIPT := test/run_tests.py
 
 VENV_DIR := virt-py
 VENV_PIP := $(VENV_DIR)/bin/pip
-VENV_PYTHON := $(VENV_DIR)/bin/python
+VENV_PYTHON := $(CURDIR)/$(VENV_DIR)/bin/python
 VENV_BLACK := $(VENV_DIR)/bin/black
 VENV_PYLINT := $(VENV_DIR)/bin/pylint
 
