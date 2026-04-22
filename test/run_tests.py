@@ -21,10 +21,12 @@ try:
     from test.core.test_runner import TestRunner
     from test.core.arch_config import discover_arch_configs, create_sample_config
     from test.core.comparator import OutputComparator
+    from test.core.yaml_loader import count_yaml_test_cases
 except ImportError:  # pragma: no cover - direct script fallback
     from core.test_runner import TestRunner
     from core.arch_config import discover_arch_configs, create_sample_config
     from core.comparator import OutputComparator
+    from core.yaml_loader import count_yaml_test_cases
 
 
 def list_architectures(test_root: Path) -> None:
@@ -38,21 +40,53 @@ def list_architectures(test_root: Path) -> None:
     print("Available architectures:")
     print("-" * 40)
     for name, config in sorted(archs.items()):
-        cases_count = _count_test_cases(config.cases_file)
+        cases_count = _count_test_cases(config)
         print(f"  {name:<15} ({cases_count:3d} cases) - {config.description}")
 
 
-def _count_test_cases(cases_file: Path) -> int:
-    """Count test cases in a file."""
-    if not cases_file.exists():
-        return 0
-    count = 0
-    with cases_file.open("r") as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith("#") and "#" in line:
-                count += 1
-    return count
+def _count_test_cases(config) -> int:
+    """Count test cases for an architecture configuration."""
+    if config.cases_file is not None:
+        if not config.cases_file.exists():
+            return 0
+        count = 0
+        with config.cases_file.open("r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "#" in line:
+                    count += 1
+        return count
+
+    if config.yaml_source is not None:
+        try:
+            return _quick_count_yaml_cases(config.yaml_source)
+        except Exception:
+            return 0
+
+    return 0
+
+
+def _quick_count_yaml_cases(yaml_source: str) -> int:
+    """Quickly estimate YAML test cases by counting 'asm_text' occurrences."""
+    from pathlib import Path
+    import glob
+
+    source_path = Path(yaml_source)
+    if source_path.is_dir():
+        yaml_files = list(source_path.rglob("*.yaml"))
+    else:
+        yaml_files = [source_path]
+
+    total = 0
+    for yaml_file in yaml_files:
+        try:
+            with yaml_file.open("r", encoding="utf-8") as f:
+                text = f.read()
+            # Rough estimate: each test case has one asm_text line
+            total += text.count("asm_text:")
+        except Exception:
+            pass
+    return total
 
 
 def init_architecture(arch_name: str, test_root: Path) -> None:

@@ -280,6 +280,8 @@ mod tests {
         assert_eq!(RiscVRegister::from_id(0), RiscVRegister::X0);
         assert_eq!(RiscVRegister::from_id(1), RiscVRegister::X1);
         assert_eq!(RiscVRegister::from_id(32), RiscVRegister::F0_32);
+        assert_eq!(RiscVRegister::from_id(64), RiscVRegister::F0_64);
+        assert_eq!(RiscVRegister::from_id(95), RiscVRegister::F31_64);
         assert_eq!(RiscVRegister::from_id(100), RiscVRegister::Invalid);
     }
 

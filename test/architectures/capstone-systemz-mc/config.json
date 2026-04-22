@@ -1,0 +1,14 @@
+{
+  "name": "capstone-systemz-mc",
+  "robustone_arch": "systemz",
+  "cstool_arch": "systemz",
+  "yaml_source": "../../../third_party/capstone/tests/MC/SystemZ",
+  "yaml_filter": {
+    "arch": "CS_ARCH_SYSTEMZ",
+    "options_exclude": [],
+    "hex_exclude": [],
+    "require_single_insn": true
+  },
+  "description": "Capstone SystemZ MC regression tests",
+  "category": "capstone"
+}

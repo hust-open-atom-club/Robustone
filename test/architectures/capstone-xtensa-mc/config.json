@@ -1,0 +1,14 @@
+{
+  "name": "capstone-xtensa-mc",
+  "robustone_arch": "xtensa",
+  "cstool_arch": "xtensa",
+  "yaml_source": "../../../third_party/capstone/tests/MC/Xtensa",
+  "yaml_filter": {
+    "arch": "CS_ARCH_XTENSA",
+    "options_exclude": [],
+    "hex_exclude": [],
+    "require_single_insn": true
+  },
+  "description": "Capstone Xtensa MC regression tests",
+  "category": "capstone"
+}

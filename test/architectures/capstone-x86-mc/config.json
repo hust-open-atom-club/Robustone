@@ -1,0 +1,14 @@
+{
+  "name": "capstone-x86-mc",
+  "robustone_arch": "x64",
+  "cstool_arch": "x64",
+  "yaml_source": "../../../third_party/capstone/tests/MC/X86",
+  "yaml_filter": {
+    "arch": "CS_ARCH_X86",
+    "options_exclude": [],
+    "hex_exclude": [],
+    "require_single_insn": true
+  },
+  "description": "Capstone X86 MC regression tests",
+  "category": "capstone"
+}
