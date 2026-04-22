@@ -296,7 +296,7 @@ mod tests {
     #[test]
     fn test_validate_for_disassembly_rejects_parser_only_architecture() {
         let config = DisasmConfig {
-            arch_spec: ArchitectureSpec::parse("x86+intel").unwrap(),
+            arch_spec: ArchitectureSpec::parse("riscv32e").unwrap(),
             hex_bytes: vec![0x90],
             start_address: 0,
             display_options: DisplayOptions {

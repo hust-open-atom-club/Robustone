@@ -183,7 +183,7 @@ mod tests {
         let output = render_capabilities_json();
         let parsed: Value = serde_json::from_str(&output).unwrap();
 
-        assert_eq!(parsed["summary"]["decode_ready"], 2);
+        assert_eq!(parsed["summary"]["decode_ready"], 6);
         assert_eq!(parsed["architectures"][0]["canonical_name"], "riscv32");
         assert_eq!(parsed["architectures"][0]["status"], "decode-ready");
         assert!(parsed["architectures"][1]["aliases"].is_array());
@@ -193,13 +193,12 @@ mod tests {
     fn test_parser_only_configuration_message_points_to_capability_surface() {
         let capability = all_architecture_capabilities()
             .iter()
-            .find(|capability| capability.canonical_name == "x32")
-            .expect("x32 capability should exist");
-        let message = parser_only_configuration_message("x86", capability);
+            .find(|capability| capability.canonical_name == "riscv32e")
+            .expect("riscv32e capability should exist");
+        let message = parser_only_configuration_message("riscv32e", capability);
 
-        assert!(message.contains("parser-only canonical token"));
-        assert!(message.contains("x86"));
-        assert!(message.contains("x32"));
+        assert!(message.contains("parser-only"));
+        assert!(message.contains("riscv32e"));
         assert!(message.contains("robustone --capabilities"));
     }
 }
