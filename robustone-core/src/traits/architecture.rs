@@ -158,4 +158,15 @@ pub trait ArchitectureHandler: Sync {
     /// `true` if this handler can disassemble for the given architecture,
     /// `false` otherwise.
     fn supports(&self, arch_name: &str) -> bool;
+
+    /// Controls whether the handler should produce detailed instruction
+    /// metadata (registers read/written, groups, etc.) during disassembly.
+    ///
+    /// This mirrors Capstone's `CS_OPT_DETAIL` option. When disabled,
+    /// handlers can skip the expensive detail construction and return
+    /// `Instruction` objects with `detail` set to `None`.
+    ///
+    /// The default implementation is a no-op for handlers that do not yet
+    /// implement detail toggling.
+    fn set_detail(&mut self, _detail: bool) {}
 }

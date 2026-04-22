@@ -48,7 +48,7 @@ use decoder::{RiscVDecoder, Xlen};
 use extensions::Extensions;
 use robustone_core::{
     common::ArchitectureProfile, ir::DecodedInstruction, traits::ArchitectureHandler,
-    types::error::DisasmError,
+    traits::instruction::Detail, types::error::DisasmError,
 };
 
 /// Architecture handler implementation for RISC-V targets.
@@ -56,6 +56,7 @@ pub struct RiscVHandler {
     rv32_decoder: RiscVDecoder,
     rv64_decoder: RiscVDecoder,
     configured_xlen: Option<Xlen>,
+    detail: bool,
 }
 
 impl RiscVHandler {
@@ -65,6 +66,7 @@ impl RiscVHandler {
             rv32_decoder: RiscVDecoder::rv32gc(),
             rv64_decoder: RiscVDecoder::rv64gc(),
             configured_xlen: None,
+            detail: true,
         }
     }
 
@@ -74,6 +76,7 @@ impl RiscVHandler {
             rv32_decoder: RiscVDecoder::rv32gc(),
             rv64_decoder: RiscVDecoder::rv64gc(),
             configured_xlen: Some(Xlen::X32),
+            detail: true,
         }
     }
 
@@ -83,6 +86,7 @@ impl RiscVHandler {
             rv32_decoder: RiscVDecoder::rv32gc(),
             rv64_decoder: RiscVDecoder::rv64gc(),
             configured_xlen: Some(Xlen::X64),
+            detail: true,
         }
     }
 
@@ -93,11 +97,13 @@ impl RiscVHandler {
                 rv32_decoder: RiscVDecoder::new(Xlen::X32, extensions),
                 rv64_decoder: RiscVDecoder::rv64gc(),
                 configured_xlen: Some(Xlen::X32),
+                detail: true,
             },
             Xlen::X64 => Self {
                 rv32_decoder: RiscVDecoder::rv32gc(),
                 rv64_decoder: RiscVDecoder::new(Xlen::X64, extensions),
                 configured_xlen: Some(Xlen::X64),
+                detail: true,
             },
         }
     }
@@ -120,11 +126,13 @@ impl RiscVHandler {
                 rv32_decoder: decoder,
                 rv64_decoder: RiscVDecoder::rv64gc(),
                 configured_xlen: Some(Xlen::X32),
+                detail: true,
             }),
             crate::architecture::Architecture::RiscV64 => Ok(Self {
                 rv32_decoder: RiscVDecoder::rv32gc(),
                 rv64_decoder: decoder,
                 configured_xlen: Some(Xlen::X64),
+                detail: true,
             }),
             other => Err(DisasmError::UnsupportedArchitecture(
                 other.as_str().to_string(),
@@ -140,6 +148,10 @@ impl Default for RiscVHandler {
 }
 
 impl ArchitectureHandler for RiscVHandler {
+    fn set_detail(&mut self, detail: bool) {
+        self.detail = detail;
+    }
+
     fn decode_instruction(
         &self,
         bytes: &[u8],
@@ -172,29 +184,33 @@ impl ArchitectureHandler for RiscVHandler {
         let ir = decoder.decode(bytes, arch_name, addr)?;
         let (mnemonic, operands) = ir.render_capstone_text_parts();
 
-        let mut riscv_detail = RiscVInstructionDetail::new();
-        for register in ir
-            .registers_read
-            .iter()
-            .chain(ir.implicit_registers_read.iter())
-        {
-            if !riscv_detail.regs_read.contains(&register.id) {
-                riscv_detail = riscv_detail.reads_register(register.id);
+        let detail: Option<Box<dyn Detail>> = if self.detail {
+            let mut riscv_detail = RiscVInstructionDetail::new();
+            for register in ir
+                .registers_read
+                .iter()
+                .chain(ir.implicit_registers_read.iter())
+            {
+                if !riscv_detail.regs_read.contains(&register.id) {
+                    riscv_detail = riscv_detail.reads_register(register.id);
+                }
             }
-        }
-        for register in ir
-            .registers_written
-            .iter()
-            .chain(ir.implicit_registers_written.iter())
-        {
-            if !riscv_detail.regs_write.contains(&register.id) {
-                riscv_detail = riscv_detail.writes_register(register.id);
+            for register in ir
+                .registers_written
+                .iter()
+                .chain(ir.implicit_registers_written.iter())
+            {
+                if !riscv_detail.regs_write.contains(&register.id) {
+                    riscv_detail = riscv_detail.writes_register(register.id);
+                }
             }
-        }
+            Some(Box::new(riscv_detail))
+        } else {
+            None
+        };
 
         let size = ir.size;
-        let instruction =
-            Instruction::from_decoded(ir, mnemonic, operands, Some(Box::new(riscv_detail)));
+        let instruction = Instruction::from_decoded(ir, mnemonic, operands, detail);
         Ok((instruction, size))
     }
 
@@ -204,7 +220,8 @@ impl ArchitectureHandler for RiscVHandler {
         profile: &ArchitectureProfile,
         addr: u64,
     ) -> Result<(Instruction, usize), DisasmError> {
-        let handler = Self::from_profile(profile)?;
+        let mut handler = Self::from_profile(profile)?;
+        handler.set_detail(self.detail);
         handler.disassemble(bytes, profile.mode_name, addr)
     }
 
@@ -214,7 +231,7 @@ impl ArchitectureHandler for RiscVHandler {
 
     fn supports(&self, arch_name: &str) -> bool {
         match self.configured_xlen {
-            Some(Xlen::X32) => arch_name == "riscv32",
+            Some(Xlen::X32) => matches!(arch_name, "riscv32"),
             Some(Xlen::X64) => matches!(arch_name, "riscv64" | "riscv"),
             None => matches!(arch_name, "riscv32" | "riscv64" | "riscv"),
         }

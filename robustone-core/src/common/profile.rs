@@ -14,6 +14,39 @@ pub struct ArchitectureProfile {
 }
 
 impl ArchitectureProfile {
+    /// Create a canonical RV32I profile (base integer only).
+    pub fn riscv32i() -> Self {
+        Self {
+            architecture: Architecture::RiscV32,
+            mode_name: "riscv32",
+            bit_width: 32,
+            endianness: Endianness::Little,
+            enabled_extensions: vec!["I"],
+        }
+    }
+
+    /// Create a canonical RV32E profile (embedded base integer).
+    pub fn riscv32e() -> Self {
+        Self {
+            architecture: Architecture::RiscV32,
+            mode_name: "riscv32e",
+            bit_width: 32,
+            endianness: Endianness::Little,
+            enabled_extensions: vec!["I"],
+        }
+    }
+
+    /// Create a canonical RV64I profile (base integer only).
+    pub fn riscv64i() -> Self {
+        Self {
+            architecture: Architecture::RiscV64,
+            mode_name: "riscv64",
+            bit_width: 64,
+            endianness: Endianness::Little,
+            enabled_extensions: vec!["I"],
+        }
+    }
+
     /// Create a canonical RV32GC profile.
     pub fn riscv32gc() -> Self {
         Self {

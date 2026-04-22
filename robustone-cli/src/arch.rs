@@ -189,31 +189,79 @@ impl ArchitectureSpec {
     }
 
     pub fn riscv_profile(&self) -> Option<ArchitectureProfile> {
-        let mut profile = match self.arch.name() {
-            "riscv32" => ArchitectureProfile::riscv32gc(),
-            "riscv64" => ArchitectureProfile::riscv64gc(),
-            _ => return None,
+        let arch_name = self.arch.name();
+        if !matches!(arch_name, "riscv32" | "riscv64") {
+            return None;
+        }
+
+        let has_extension_modifier = self
+            .options
+            .iter()
+            .any(|opt| matches!(opt.as_str(), "a" | "c" | "fd" | "f" | "d" | "m"));
+
+        if !has_extension_modifier {
+            // No extension modifiers: use the default GC profile for backward
+            // compatibility and parity with Capstone's default RISC-V behavior.
+            return Some(match arch_name {
+                "riscv32" => ArchitectureProfile::riscv32gc(),
+                "riscv64" => ArchitectureProfile::riscv64gc(),
+                _ => unreachable!(),
+            });
+        }
+
+        // When explicit extension modifiers are present, build the profile
+        // incrementally from a base RV32I/RV64I + M baseline.
+        // Capstone's RISC-V target treats M as part of the default baseline.
+        let mut profile = match arch_name {
+            "riscv32" | "riscv32e" => ArchitectureProfile::riscv32i(),
+            "riscv64" => ArchitectureProfile::riscv64i(),
+            _ => unreachable!(),
         };
+        if arch_name == "riscv32e" {
+            profile = ArchitectureProfile::riscv32e();
+        }
+        profile.enabled_extensions.push("M");
 
-        let mut uses_explicit_profile = false;
+        for option in &self.options {
+            match option.as_str() {
+                "a" if !profile.enabled_extensions.contains(&"A") => {
+                    profile.enabled_extensions.push("A");
+                }
+                "c" if !profile.enabled_extensions.contains(&"C") => {
+                    profile.enabled_extensions.push("C");
+                }
+                "fd" => {
+                    if !profile.enabled_extensions.contains(&"F") {
+                        profile.enabled_extensions.push("F");
+                    }
+                    if !profile.enabled_extensions.contains(&"D") {
+                        profile.enabled_extensions.push("D");
+                    }
+                }
+                "f" if !profile.enabled_extensions.contains(&"F") => {
+                    profile.enabled_extensions.push("F");
+                }
+                "d" => {
+                    if !profile.enabled_extensions.contains(&"D") {
+                        profile.enabled_extensions.push("D");
+                    }
+                    if !profile.enabled_extensions.contains(&"F") {
+                        profile.enabled_extensions.push("F");
+                    }
+                }
+                "m" => {
+                    // Already part of the baseline; explicit +m is a no-op.
+                }
+                "noalias" | "noaliascompressed" => {
+                    // Display-only modifiers; do not affect the extension set.
+                }
+                _ => {}
+            }
+        }
 
-        if self.has_option("a") {
-            uses_explicit_profile = true;
-        }
-        if self.has_option("c") {
-            uses_explicit_profile = true;
-        }
-        if self.has_option("fd") {
-            uses_explicit_profile = true;
-        }
-
-        if uses_explicit_profile {
-            profile.enabled_extensions.sort_unstable();
-            profile.enabled_extensions.dedup();
-            Some(profile)
-        } else {
-            None
-        }
+        profile.enabled_extensions.sort_unstable();
+        profile.enabled_extensions.dedup();
+        Some(profile)
     }
 
     pub fn has_option(&self, option: &str) -> bool {
@@ -249,7 +297,10 @@ fn endianness_mode_bits(modifier: &str) -> u32 {
 }
 
 fn is_supported_riscv_modifier(modifier: &str) -> bool {
-    matches!(modifier, "a" | "c" | "fd" | "noalias" | "noaliascompressed")
+    matches!(
+        modifier,
+        "a" | "c" | "fd" | "f" | "d" | "m" | "noalias" | "noaliascompressed"
+    )
 }
 
 fn normalize_modifier(modifier: &str) -> String {

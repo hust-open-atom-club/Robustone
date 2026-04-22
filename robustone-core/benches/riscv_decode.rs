@@ -31,7 +31,7 @@ fn bench_riscv_decode(c: &mut Criterion) {
 
     c.bench_function("riscv32_compat_text_render", |b| {
         b.iter(|| {
-            let instruction = dispatcher.disassemble(hex, "riscv32".to_string());
+            let (instruction, _) = dispatcher.disassemble_bytes(&bytes, "riscv32", 0).unwrap();
             let rendered = instruction.rendered_text_parts(TextRenderProfile::Capstone);
             black_box((instruction, rendered))
         });
