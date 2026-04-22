@@ -6,6 +6,7 @@ use robustone_core::{
 use robustone_core::{RenderOptions, RenderedIssue};
 use robustone_riscv::{RiscVHandler, types::RiscVRegister};
 use serde::Serialize;
+use std::cell::RefCell;
 
 fn create_dispatcher(_arch: &str) -> ArchitectureDispatcher {
     let mut dispatcher = ArchitectureDispatcher::new();
@@ -236,16 +237,25 @@ impl<'a> IntoIterator for &'a DisassemblyResult {
 }
 
 /// High-level disassembly engine that processes byte sequences.
-#[derive(Default)]
 pub struct DisassemblyEngine {
-    dispatcher: ArchitectureDispatcher,
+    dispatcher: RefCell<ArchitectureDispatcher>,
+    detail: bool,
+    skip_data: bool,
+}
+
+impl Default for DisassemblyEngine {
+    fn default() -> Self {
+        Self::new("riscv64")
+    }
 }
 
 impl DisassemblyEngine {
     /// Create a new disassembly engine for the given architecture.
     pub fn new(arch: &str) -> Self {
         Self {
-            dispatcher: create_dispatcher(arch),
+            dispatcher: RefCell::new(create_dispatcher(arch)),
+            detail: false,
+            skip_data: false,
         }
     }
 
@@ -254,11 +264,30 @@ impl DisassemblyEngine {
         Self::new("riscv64")
     }
 
+    /// Enable or disable decode-time detail generation.
+    ///
+    /// This mirrors Capstone's `CS_OPT_DETAIL` option.
+    pub fn with_detail(mut self, detail: bool) -> Self {
+        self.detail = detail;
+        self.dispatcher.borrow_mut().set_detail(detail);
+        self
+    }
+
+    /// Enable or disable SKIPDATA mode.
+    pub fn with_skip_data(mut self, skip_data: bool) -> Self {
+        self.skip_data = skip_data;
+        self
+    }
+
     /// Disassemble bytes using the provided configuration.
     pub fn disassemble(&self, config: &DisasmConfig) -> Result<DisassemblyResult, DisasmError> {
         config
             .validate_for_disassembly()
             .map_err(|e| DisasmError::DecodingError(e.to_string()))?;
+
+        // Control decode-time detail generation based on display options.
+        let detail = config.display_options.detailed || config.display_options.real_detail;
+        self.dispatcher.borrow_mut().set_detail(detail);
 
         let mut result =
             DisassemblyResult::new(config.start_address, config.arch_name().to_string());
@@ -272,9 +301,11 @@ impl DisassemblyEngine {
 
             let disassembly = if let Some(profile) = riscv_profile.as_ref() {
                 self.dispatcher
+                    .borrow()
                     .disassemble_with_profile(slice, profile, current_address)
             } else {
                 self.dispatcher
+                    .borrow()
                     .disassemble_bytes(slice, arch_name, current_address)
             };
 
@@ -292,18 +323,34 @@ impl DisassemblyEngine {
                 }
                 Err(err) => {
                     if config.skip_data {
-                        // Skip the problematic byte and continue
-                        result.add_error(DisassemblyIssue::from_core_error(
-                            &err,
-                            "decode_instruction",
-                            arch_name,
+                        // Architecture-aware skip size: RISC-V should resync on
+                        // 2-byte boundaries when possible.
+                        let skip_size = if arch_name.starts_with("riscv") {
+                            let remaining = config.hex_bytes.len() - offset;
+                            if remaining == 1 || !current_address.is_multiple_of(2) {
+                                1
+                            } else {
+                                2 // Skip a 2-byte chunk
+                            }
+                        } else {
+                            1
+                        };
+
+                        let skipped = &config.hex_bytes[offset..offset + skip_size];
+                        let operands = skipped
+                            .iter()
+                            .map(|b| format!("0x{b:02x}"))
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        let pseudo = Instruction::new(
                             current_address,
-                            offset,
-                            slice,
-                        ));
-                        result.advance_bytes(1);
-                        offset += 1;
-                        current_address = current_address.saturating_add(1);
+                            skipped.to_vec(),
+                            ".byte".to_string(),
+                            operands,
+                        );
+                        result.add_instruction(pseudo);
+                        offset += skip_size;
+                        current_address = current_address.saturating_add(skip_size as u64);
                     } else {
                         return Err(err);
                     }
@@ -321,7 +368,9 @@ impl DisassemblyEngine {
         arch_name: &str,
         address: u64,
     ) -> Result<(Instruction, usize), DisasmError> {
-        self.dispatcher.disassemble_bytes(bytes, arch_name, address)
+        self.dispatcher
+            .borrow()
+            .disassemble_bytes(bytes, arch_name, address)
     }
 }
 
@@ -551,7 +600,13 @@ mod tests {
     fn test_disassembly_engine() {
         let engine = DisassemblyEngine::new("riscv64");
         // The exact number of architectures may vary, so just check it's a reasonable number
-        assert!(!engine.dispatcher.supported_architectures().is_empty()); // Basic sanity check
+        assert!(
+            !engine
+                .dispatcher
+                .borrow()
+                .supported_architectures()
+                .is_empty()
+        ); // Basic sanity check
     }
 
     #[test]
@@ -596,6 +651,7 @@ mod tests {
 
         assert_eq!(parsed["architecture"], "riscv32");
         assert_eq!(parsed["instructions"][0]["mnemonic"], "li");
+        assert_eq!(parsed["instructions"][0]["kind"], "instruction");
         assert_eq!(parsed["instructions"][0]["decoded"]["mnemonic"], "addi");
     }
 
@@ -647,7 +703,7 @@ mod tests {
     }
 
     #[test]
-    fn test_json_formatter_emits_structured_errors() {
+    fn test_json_formatter_emits_data_pseudo_instructions_on_skipdata() {
         let engine = DisassemblyEngine::new("riscv64");
         let config = DisasmConfig {
             arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
@@ -675,19 +731,21 @@ mod tests {
         });
         let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
 
-        assert_eq!(parsed["errors"][0]["kind"], "need_more_bytes");
-        assert_eq!(parsed["errors"][0]["architecture"], "riscv32");
-        assert_eq!(parsed["errors"][0]["address"], 0x40);
-        assert_eq!(parsed["errors"][0]["input_offset"], 0);
-        assert_eq!(parsed["errors"][0]["raw_bytes"][0], 0xff);
+        // SKIPDATA should emit data pseudo-instructions, not errors.
+        assert!(parsed["errors"].as_array().unwrap().is_empty());
+        assert_eq!(parsed["instructions"][0]["mnemonic"], ".byte");
+        assert_eq!(parsed["instructions"][0]["kind"], "data");
+        assert_eq!(parsed["instructions"][0]["operands"], "0xff, 0xff");
+        assert_eq!(parsed["instructions"][0]["address"], 0x40);
+        assert_eq!(parsed["instructions"][0]["size"], 2);
     }
 
     #[test]
-    fn test_json_formatter_emits_unimplemented_instruction_errors() {
-        let engine = DisassemblyEngine::new("riscv64");
+    fn test_json_formatter_emits_data_pseudo_for_undecodable_compressed() {
+        let engine = DisassemblyEngine::new("riscv32");
         let config = DisasmConfig {
-            arch_spec: ArchitectureSpec::parse("riscv64").unwrap(),
-            hex_bytes: vec![0x00, 0x60],
+            arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
+            hex_bytes: vec![0x01, 0x60],
             start_address: 0,
             display_options: DisplayOptions {
                 detailed: false,
@@ -711,8 +769,11 @@ mod tests {
         });
         let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
 
-        assert_eq!(parsed["errors"][0]["kind"], "unimplemented_instruction");
-        assert_eq!(parsed["errors"][0]["architecture"], "riscv64");
+        // SKIPDATA should emit a data pseudo-instruction instead of an error.
+        assert!(parsed["errors"].as_array().unwrap().is_empty());
+        assert_eq!(parsed["instructions"][0]["mnemonic"], ".byte");
+        assert_eq!(parsed["instructions"][0]["kind"], "data");
+        assert_eq!(parsed["instructions"][0]["operands"], "0x01, 0x60");
     }
 
     #[test]
@@ -745,15 +806,19 @@ mod tests {
         let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
 
         assert_eq!(parsed["bytes_processed"], 2);
-        assert_eq!(parsed["errors"].as_array().unwrap().len(), 2);
+        // SKIPDATA emits data pseudo-instructions, not errors.
+        assert!(parsed["errors"].as_array().unwrap().is_empty());
+        assert_eq!(parsed["instructions"].as_array().unwrap().len(), 1);
+        assert_eq!(parsed["instructions"][0]["mnemonic"], ".byte");
+        assert_eq!(parsed["instructions"][0]["kind"], "data");
     }
 
     #[test]
-    fn test_text_formatter_emits_unsupported_mode_errors() {
+    fn test_text_formatter_emits_data_pseudo_on_skipdata() {
         let engine = DisassemblyEngine::new("riscv64");
         let config = DisasmConfig {
             arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
-            hex_bytes: vec![0x83, 0x30, 0x00, 0x00],
+            hex_bytes: vec![0xff, 0xff, 0xff, 0xff],
             start_address: 0,
             display_options: DisplayOptions {
                 detailed: false,
@@ -768,16 +833,18 @@ mod tests {
         let formatter = DisassemblyFormatter::new(OutputConfig::minimal());
         let output = formatter.format(&result);
 
-        assert!(output.contains("[unsupported_mode] ld requires RV64"));
-        assert!(output.contains("arch=riscv32"));
+        // SKIPDATA should emit .byte pseudo-instructions, not error lines.
+        assert!(!output.contains("ERROR"));
+        assert!(output.contains(".byte"));
+        assert!(output.contains("0xff, 0xff"));
     }
 
     #[test]
-    fn test_json_formatter_emits_unsupported_mode_errors() {
+    fn test_json_formatter_emits_data_pseudo_on_skipdata() {
         let engine = DisassemblyEngine::new("riscv64");
         let config = DisasmConfig {
             arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
-            hex_bytes: vec![0x83, 0x30, 0x00, 0x00],
+            hex_bytes: vec![0xff, 0xff, 0xff, 0xff],
             start_address: 0,
             display_options: DisplayOptions {
                 detailed: false,
@@ -801,9 +868,15 @@ mod tests {
         });
         let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
 
-        assert_eq!(parsed["errors"][0]["kind"], "unsupported_mode");
-        assert_eq!(parsed["errors"][0]["architecture"], "riscv32");
-        assert_eq!(parsed["errors"][0]["message"], "ld requires RV64");
+        // SKIPDATA should emit data pseudo-instructions, not errors.
+        assert!(parsed["errors"].as_array().unwrap().is_empty());
+        assert_eq!(parsed["instructions"].as_array().unwrap().len(), 2);
+        assert_eq!(parsed["instructions"][0]["mnemonic"], ".byte");
+        assert_eq!(parsed["instructions"][0]["kind"], "data");
+        assert_eq!(parsed["instructions"][0]["operands"], "0xff, 0xff");
+        assert_eq!(parsed["instructions"][1]["mnemonic"], ".byte");
+        assert_eq!(parsed["instructions"][1]["kind"], "data");
+        assert_eq!(parsed["instructions"][1]["operands"], "0xff, 0xff");
     }
 
     #[test]
@@ -875,6 +948,7 @@ mod tests {
         let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
 
         assert_eq!(parsed["instructions"][0]["mnemonic"], "addi");
+        assert_eq!(parsed["instructions"][0]["kind"], "instruction");
         assert_eq!(parsed["instructions"][0]["operands"], "x1, x0, 1");
     }
 
@@ -1073,5 +1147,50 @@ mod tests {
         assert!(text_output.contains("addi\tx1, x0, 1"));
         assert_eq!(parsed["instructions"][0]["mnemonic"], "addi");
         assert_eq!(parsed["instructions"][0]["operands"], "x1, x0, 1");
+    }
+
+    #[test]
+    fn test_detail_toggle_suppresses_detail_generation() {
+        let engine = DisassemblyEngine::new("riscv64");
+
+        // With detail enabled (default when -d/-r is used), detail should be present.
+        let config_with_detail = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
+            hex_bytes: vec![0x93, 0x00, 0x10, 0x00],
+            start_address: 0,
+            display_options: DisplayOptions {
+                detailed: true,
+                alias_regs: false,
+                real_detail: false,
+                unsigned_immediate: false,
+                json: false,
+            },
+            skip_data: false,
+        };
+        let result = engine.disassemble(&config_with_detail).unwrap();
+        assert!(
+            result.instructions[0].detail.is_some(),
+            "detail should be present when detailed=true"
+        );
+
+        // With detail disabled, detail should be None.
+        let config_without_detail = DisasmConfig {
+            arch_spec: ArchitectureSpec::parse("riscv32").unwrap(),
+            hex_bytes: vec![0x93, 0x00, 0x10, 0x00],
+            start_address: 0,
+            display_options: DisplayOptions {
+                detailed: false,
+                alias_regs: false,
+                real_detail: false,
+                unsigned_immediate: false,
+                json: false,
+            },
+            skip_data: false,
+        };
+        let result = engine.disassemble(&config_without_detail).unwrap();
+        assert!(
+            result.instructions[0].detail.is_none(),
+            "detail should be suppressed when detailed=false and real_detail=false"
+        );
     }
 }

@@ -312,8 +312,8 @@ impl InstructionExtension for Rvf {
                     (0b01011, rm) => {
                         Some(self.decode_fp_unary_type_with_rm("fsqrt.s", rd, rs1, rm))
                     }
-                    (0b01000, rm) => match rs2 {
-                        1 => Some(self.decode_fp_unary_type_with_rm("fcvt.s.d", rd, rs1, rm)),
+                    (0b01000, _rm) => match rs2 {
+                        1 => None, // Let RVD handle fcvt.s.d
                         _ => Some(Err(invalid_encoding(
                             "invalid F-extension floating conversion",
                         ))),

@@ -41,11 +41,12 @@ fn load_case(path: &str) -> GoldenCase {
 fn assert_case(case: GoldenCase) {
     let dispatcher = dispatcher();
 
-    let compatibility = dispatcher.disassemble(&case.hex, case.arch.clone());
+    let bytes = hex::decode(&case.hex).expect("hex fixture should decode");
+    let (compatibility, _) = dispatcher
+        .disassemble_bytes(&bytes, &case.arch, 0)
+        .expect("disassembly should succeed");
     assert_eq!(compatibility.mnemonic, case.expected_capstone.mnemonic);
     assert_eq!(compatibility.operands, case.expected_capstone.operands);
-
-    let bytes = hex::decode(&case.hex).expect("hex fixture should decode");
     let (decoded, size) = dispatcher
         .decode_instruction(&bytes, &case.arch, 0)
         .expect("low-level decode should succeed");
@@ -221,7 +222,7 @@ fn test_ir_rendering_covers_control_flow_and_atomic_variants() {
 fn test_invalid_compressed_encoding_reports_failure() {
     let dispatcher = dispatcher();
     let error = dispatcher
-        .decode_instruction(&[0x00, 0x20], "riscv32", 0)
+        .decode_instruction(&[0x01, 0x20], "riscv64", 0)
         .expect_err("invalid compressed encoding should fail");
 
     match error {
