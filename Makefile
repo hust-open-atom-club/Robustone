@@ -9,6 +9,7 @@ PARITY_SCRIPT := test/run_tests.py
 
 VENV_DIR := virt-py
 VENV_PIP := $(VENV_DIR)/bin/pip
+VENV_PYTHON := $(VENV_DIR)/bin/python
 VENV_BLACK := $(VENV_DIR)/bin/black
 VENV_PYLINT := $(VENV_DIR)/bin/pylint
 
@@ -24,7 +25,7 @@ endif
 
 RUN_ARGS ?=
 
-.PHONY: format run build check check-clippy check-pylint check-fmt check-all test test-parity test-validate clean-help help virt-env
+.PHONY: format run build check check-clippy check-pylint check-fmt check-all test test-parity test-validate test-list test-quick clean-help help virt-env pre-commit-install
 
 virt-env:
 	$(PYTHON) -m venv virt-py
@@ -57,9 +58,11 @@ check-fmt: virt-env
 	$(VENV_BLACK) --check test
 
 check-all: check check-clippy check-pylint check-fmt
+	@echo "Running Rust workspace tests..."
+	$(CARGO) test --workspace --all-features
 	@echo "All checks passed!"
 
-test:
+test: virt-env
 	@mkdir -p $(dir $(CAPSTONE_DIR))
 	@if [ ! -d "$(CAPSTONE_DIR)" ]; then \
 		echo "Cloning Capstone into $(CAPSTONE_DIR)..."; \
@@ -69,27 +72,27 @@ test:
 	fi
 	@bash $(CAPSTONE_BUILD_SCRIPT) $(CAPSTONE_DIR)
 	@echo "Running Python unit tests..."
-	@$(PYTHON) -m unittest discover -s test -p "test_*.py"
+	@$(VENV_PYTHON) -m unittest discover -s test -p "test_*.py"
 	@echo "Running parity tests with new framework..."
-	@cd test && $(PYTHON) run_tests.py --all
+	@cd test && $(VENV_PYTHON) run_tests.py --all
 	@echo "Running Rust workspace tests..."
 	$(CARGO) test --workspace --all-features
 
-test-parity:
+test-parity: virt-env
 	@echo "Running parity tests only..."
-	@cd test && $(PYTHON) run_tests.py --all
+	@cd test && $(VENV_PYTHON) run_tests.py --all
 
-test-validate:
+test-validate: virt-env
 	@echo "Validating test configurations..."
-	@cd test && $(PYTHON) scripts/validate_configs.py
+	@cd test && $(VENV_PYTHON) scripts/validate_configs.py
 
-test-list:
+test-list: virt-env
 	@echo "Available test architectures:"
-	@cd test && $(PYTHON) run_tests.py --list
+	@cd test && $(VENV_PYTHON) run_tests.py --list
 
-test-quick:
+test-quick: virt-env
 	@echo "Running quick parity test (limited cases)..."
-	@cd test && $(PYTHON) run_tests.py --all --limit 20
+	@cd test && $(VENV_PYTHON) run_tests.py --all --limit 20
 
 clean-help:
 	@echo "Available targets:"
@@ -113,8 +116,13 @@ clean-help:
 	@echo "  run          - Run the CLI with args (usage: make run -- <args>)"
 	@echo "  help         - Show this help message"
 	@echo "  clean-help   - Backward-compatible alias for help"
+	@echo "  pre-commit-install - Install pre-commit hooks"
 	@echo ""
 	@echo "For more test options, see test/Makefile or run:"
 	@echo "  cd test && make help"
+
+pre-commit-install: virt-env
+	$(VENV_PIP) install pre-commit
+	$(VENV_DIR)/bin/pre-commit install --install-hooks
 
 help: clean-help

@@ -1,6 +1,6 @@
 {
   "name": "riscv64",
-  "robustone_arch": "riscv64+a+fd",
+  "robustone_arch": "riscv64",
   "cstool_arch": "riscv64+a+fd",
   "cases_file": "test_cases.txt",
   "robustone_flags": [],

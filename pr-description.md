@@ -47,7 +47,7 @@ Fixed several bugs in `decoder.rs` that produced incorrect displacements for com
 ## Compatibility Checklist
 
 - [ ] This change affects CLI compatibility promises.
-- [x] This change affects shared IR semantics or formatter behavior.  
+- [x] This change affects shared IR semantics or formatter behavior.
   *New mnemonics (`c.ld`, `c.sd`, `c.flw`, `c.fsw`, `c.fld`, `c.fsd`, and stack variants) are now emitted instead of errors for previously-unhandled encodings.*
 - [ ] This change affects public Rust API behavior.
 - [ ] This change updates benchmark baselines, known differences, or support-matrix claims.
