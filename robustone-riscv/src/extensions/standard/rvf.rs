@@ -312,6 +312,12 @@ impl InstructionExtension for Rvf {
                     (0b01011, rm) => {
                         Some(self.decode_fp_unary_type_with_rm("fsqrt.s", rd, rs1, rm))
                     }
+                    (0b01000, rm) => match rs2 {
+                        1 => Some(self.decode_fp_unary_type_with_rm("fcvt.s.d", rd, rs1, rm)),
+                        _ => Some(Err(invalid_encoding(
+                            "invalid F-extension floating conversion",
+                        ))),
+                    },
                     (0b00100, 0b000) => Some(self.decode_fp_r_type("fsgnj.s", rd, rs1, rs2)),
                     (0b00100, 0b001) => Some(self.decode_fp_r_type("fsgnjn.s", rd, rs1, rs2)),
                     (0b00100, 0b010) => Some(self.decode_fp_r_type("fsgnjx.s", rd, rs1, rs2)),
@@ -420,6 +426,7 @@ impl InstructionExtension for Rvf {
         _opcode: u8,
         _funct3: u8,
         _xlen: Xlen,
+        _extensions: &Extensions,
         _rd_full: u8,
         _rs1_full: u8,
         _rs2_full: u8,
@@ -435,6 +442,9 @@ impl InstructionExtension for Rvf {
         _uimm_css: u16,
         _uimm_clsp: u16,
         _uimm_fldsp: u16,
+        _uimm_cld: u16,
+        _uimm_sdsp: u16,
+        _uimm_cldsp: u16,
     ) -> Option<Result<DecodedInstruction, DisasmError>> {
         // RVF extension doesn't handle compressed instructions in this implementation
         None
