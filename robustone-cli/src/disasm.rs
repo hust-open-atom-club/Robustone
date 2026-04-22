@@ -1,16 +1,22 @@
 use crate::config::{DisasmConfig, OutputConfig};
+use robustone_arm::ArmHandler;
 use robustone_core::ir::TextRenderProfile;
 use robustone_core::{
     ArchitectureDispatcher, DisasmError, Instruction, render_disassembly, render_instruction_text,
 };
 use robustone_core::{RenderOptions, RenderedIssue};
+use robustone_loongarch::LoongArchHandler;
 use robustone_riscv::{RiscVHandler, types::RiscVRegister};
+use robustone_x86::X86Handler;
 use serde::Serialize;
 use std::cell::RefCell;
 
 fn create_dispatcher(_arch: &str) -> ArchitectureDispatcher {
     let mut dispatcher = ArchitectureDispatcher::new();
     dispatcher.register(Box::new(RiscVHandler::new()));
+    dispatcher.register(Box::new(ArmHandler::new()));
+    dispatcher.register(Box::new(X86Handler::new()));
+    dispatcher.register(Box::new(LoongArchHandler::new()));
     dispatcher
 }
 

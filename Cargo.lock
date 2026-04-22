@@ -707,8 +707,11 @@ dependencies = [
  "criterion",
  "hex",
  "lazy_static",
+ "robustone-arm",
  "robustone-core",
+ "robustone-loongarch",
  "robustone-riscv",
+ "robustone-x86",
  "serde",
  "serde_json",
 ]
