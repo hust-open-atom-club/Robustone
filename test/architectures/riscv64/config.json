@@ -5,6 +5,6 @@
   "cases_file": "test_cases.txt",
   "robustone_flags": [],
   "cstool_flags": [],
-  "description": "RISC-V 64-bit instruction set tests (default GC profile with +a+fd). Profile-specific extension gating is covered by Rust unit/integration tests rather than this parity harness."
+  "description": "RISC-V 64-bit instruction set tests (default GC profile with +a+fd). Profile-specific extension gating is covered by Rust unit/integration tests rather than this parity harness.",
   "category": "riscv"
 }

@@ -291,6 +291,15 @@ impl InstructionExtension for Rvd {
                 let funct5 = funct7 >> 2;
                 let fmt = funct7 & 0b11;
 
+                if fmt == 0b00 {
+                    // fmt=00 conversion instructions that require D extension
+                    if funct5 == 0b01000 && rs2 == 1 {
+                        return Some(
+                            self.decode_fp_unary_type_with_rm("fcvt.s.d", rd, rs1, funct3),
+                        );
+                    }
+                    return Some(Err(invalid_encoding("invalid D-extension fmt")));
+                }
                 if fmt != 0b01 {
                     // Only double-precision (fmt=01)
                     return Some(Err(invalid_encoding("invalid D-extension fmt")));

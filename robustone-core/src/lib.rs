@@ -22,11 +22,11 @@
 //!
 //! # Example
 //!
-//! ```rust
-//! use robustone_core::prelude::*;
-//! use robustone_core::ArchitectureDispatcher;
+//! ```rust,ignore
+//! // Use the meta-crate helper for a ready-to-use dispatcher:
+//! use robustone::dispatcher;
 //!
-//! let dispatcher = ArchitectureDispatcher::default();
+//! let dispatcher = dispatcher();
 //! match dispatcher.disassemble_bytes(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0x1000) {
 //!     Ok((instruction, size)) => {
 //!         println!("Instruction: {} {}", instruction.mnemonic, instruction.operands);
@@ -39,6 +39,10 @@
 //!     }
 //! }
 //! ```
+//!
+//! `ArchitectureDispatcher::new()` and `ArchitectureDispatcher::default()` return an
+//! empty dispatcher with no handlers registered. You must call `register()` to add
+//! architecture backends before disassembling.
 
 pub mod architecture;
 pub mod common;
@@ -122,11 +126,23 @@ impl ArchitectureDispatcher {
         self.handlers.push(handler);
     }
 
+    /// Sets the detail flag on all registered handlers.
+    ///
+    /// This mirrors Capstone's `CS_OPT_DETAIL` option. When `false`, handlers
+    /// may skip expensive detail construction and return `Instruction` objects
+    /// with `detail` set to `None`.
+    pub fn set_detail(&mut self, detail: bool) {
+        for handler in &mut self.handlers {
+            handler.set_detail(detail);
+        }
+    }
+
     /// Legacy convenience method for disassembling a hex string.
     ///
-    /// This method provides backwards compatibility with the original API.
-    /// It parses a hexadecimal string and attempts to disassemble it using
-    /// the specified architecture.
+    /// **Deprecated:** This is a compatibility shim for demos/REPL only.
+    /// It silently swallows parse and decode errors, returning an `unknown`
+    /// instruction instead of a `Result`. For production analysis tooling,
+    /// use [`Self::disassemble_bytes`] which returns `Result`.
     ///
     /// # Arguments
     ///
@@ -137,15 +153,10 @@ impl ArchitectureDispatcher {
     ///
     /// Returns the decoded `Instruction`. If disassembly fails, returns
     /// an "unknown" instruction with the original bytes.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use robustone_core::ArchitectureDispatcher;
-    /// let dispatcher = ArchitectureDispatcher::default();
-    /// let instruction = dispatcher.disassemble("93001000", "riscv32".to_string());
-    /// println!("Instruction: {} {}", instruction.mnemonic, instruction.operands);
-    /// ```
+    #[deprecated(
+        since = "0.0.1",
+        note = "Use disassemble_bytes() which returns Result instead of swallowing errors"
+    )]
     pub fn disassemble(&self, hex: &str, arch: String) -> Instruction {
         // Use the improved hex parser with architecture-specific handling
         let bytes = match self.hex_parser.parse_for_architecture(hex, &arch) {
@@ -394,18 +405,15 @@ mod tests {
 
     #[test]
     fn test_hex_parsing() {
-        let dispatcher = ArchitectureDispatcher::default();
+        let parser = crate::utils::HexParser::new();
 
         // Hex parsing should succeed for bare strings.
-        let instruction = dispatcher.disassemble("deadbeef", "unknown".to_string());
-        assert_eq!(instruction.mnemonic, "unknown");
-        assert_eq!(instruction.bytes, vec![0xde, 0xad, 0xbe, 0xef]);
-        assert_eq!(instruction.size, 4);
+        let bytes = parser.parse("deadbeef", None).unwrap();
+        assert_eq!(bytes, vec![0xde, 0xad, 0xbe, 0xef]);
 
         // Hex parsing should also accept a `0x` prefix.
-        let instruction = dispatcher.disassemble("0x1234", "unknown".to_string());
-        assert_eq!(instruction.bytes, vec![0x12, 0x34]);
-        assert_eq!(instruction.size, 2);
+        let bytes = parser.parse("0x1234", None).unwrap();
+        assert_eq!(bytes, vec![0x12, 0x34]);
     }
 
     #[test]
@@ -467,12 +475,13 @@ mod tests {
     }
 
     #[test]
-    fn test_unimplemented_compressed_rv64_returns_structured_error() {
+    fn test_rv64_compressed_ld_decodes_successfully() {
         let dispatcher = dispatcher_with_riscv();
-        let error = dispatcher
+        let (decoded, size) = dispatcher
             .decode_instruction(&[0x00, 0x60], "riscv64", 0)
-            .expect_err("legal but unimplemented compressed RV64 instruction should fail");
-        assert_eq!(error.stable_kind(), "unimplemented_instruction");
+            .expect("RV64 should decode c.ld");
+        assert_eq!(size, 2);
+        assert_eq!(decoded.mnemonic, "c.ld");
     }
 
     #[test]
@@ -548,17 +557,30 @@ mod tests {
     fn test_rv64_only_compressed_families_report_unsupported_mode_on_rv32() {
         let dispatcher = dispatcher_with_riscv();
 
-        let rv64_error = dispatcher
+        let (decoded, size) = dispatcher
             .decode_instruction(&[0x00, 0x60], "riscv64", 0)
-            .expect_err("RV64 compressed ld remains unimplemented");
-        assert_eq!(rv64_error.stable_kind(), "unimplemented_instruction");
+            .expect("RV64 should decode c.ld");
+        assert_eq!(size, 2);
+        assert_eq!(decoded.mnemonic, "c.ld");
 
-        let rv32_error = dispatcher
+        // RV32 GC profile includes F, so c.ld encoding (0x6000) decodes as c.flw
+        let (decoded, size) = dispatcher
             .decode_instruction(&[0x00, 0x60], "riscv32", 0)
-            .expect_err("RV32 should reject c.ld with unsupported_mode");
+            .expect("RV32 GC should decode c.flw");
+        assert_eq!(size, 2);
+        assert_eq!(decoded.mnemonic, "c.flw");
 
-        assert_eq!(rv32_error.stable_kind(), "unsupported_mode");
-        assert_eq!(rv32_error.architecture_name(), Some("riscv32"));
+        // RV32 I+M+C profile (no F) should reject this encoding
+        let profile = ArchitectureProfile::riscv(
+            robustone::architecture::Architecture::RiscV32,
+            "riscv32",
+            32,
+            vec!["I", "M", "C"],
+        );
+        let rv32_error = dispatcher
+            .decode_with_profile(&[0x00, 0x60], &profile, 0)
+            .expect_err("RV32 without F should reject c.flw encoding");
+        assert_eq!(rv32_error.stable_kind(), "invalid_encoding");
     }
 
     #[test]
@@ -615,5 +637,100 @@ mod tests {
             assert_eq!(error.stable_kind(), "unsupported_mode");
             assert_eq!(error.architecture_name(), Some("riscv32"));
         }
+    }
+
+    /// Profile-matrix test: verify that ArchitectureProfile extension sets are
+    /// strictly enforced at decode time.
+    #[test]
+    fn test_profile_matrix_enforces_extension_boundaries() {
+        let dispatcher = dispatcher_with_riscv();
+
+        // Bytes for AMOADD.W (A extension), little-endian.
+        let amoadd_w: &[u8] = &[0xaf, 0x21, 0x52, 0x00];
+        // Bytes for MUL (M extension), little-endian.
+        let mul: &[u8] = &[0xb3, 0x01, 0x52, 0x02];
+        // Bytes for FADD.S (F extension), little-endian.
+        let fadd_s: &[u8] = &[0xd3, 0x00, 0x31, 0x00];
+        // Bytes for C.ADDI (C extension), little-endian.
+        let c_addi: &[u8] = &[0x05, 0x05];
+
+        // GC profile: everything should decode.
+        let gc = ArchitectureProfile::riscv32gc();
+        dispatcher
+            .decode_with_profile(amoadd_w, &gc, 0)
+            .expect("GC should decode A");
+        dispatcher
+            .decode_with_profile(mul, &gc, 0)
+            .expect("GC should decode M");
+        dispatcher
+            .decode_with_profile(fadd_s, &gc, 0)
+            .expect("GC should decode F");
+        dispatcher
+            .decode_with_profile(c_addi, &gc, 0)
+            .expect("GC should decode C");
+
+        // I-only profile: A/M/F/C should all report unsupported_extension.
+        let i_only = ArchitectureProfile::riscv(
+            robustone::architecture::Architecture::RiscV32,
+            "riscv32",
+            32,
+            vec!["I"],
+        );
+        assert_eq!(
+            dispatcher
+                .decode_with_profile(amoadd_w, &i_only, 0)
+                .unwrap_err()
+                .stable_kind(),
+            "unsupported_extension"
+        );
+        assert_eq!(
+            dispatcher
+                .decode_with_profile(mul, &i_only, 0)
+                .unwrap_err()
+                .stable_kind(),
+            "unsupported_extension"
+        );
+        assert_eq!(
+            dispatcher
+                .decode_with_profile(fadd_s, &i_only, 0)
+                .unwrap_err()
+                .stable_kind(),
+            "unsupported_extension"
+        );
+        assert_eq!(
+            dispatcher
+                .decode_with_profile(c_addi, &i_only, 0)
+                .unwrap_err()
+                .stable_kind(),
+            "unsupported_extension"
+        );
+
+        // I+M+C profile (like "riscv32+c"): A and F should report unsupported_extension.
+        let imc = ArchitectureProfile::riscv(
+            robustone::architecture::Architecture::RiscV32,
+            "riscv32",
+            32,
+            vec!["I", "M", "C"],
+        );
+        dispatcher
+            .decode_with_profile(mul, &imc, 0)
+            .expect("IMC should decode M");
+        dispatcher
+            .decode_with_profile(c_addi, &imc, 0)
+            .expect("IMC should decode C");
+        assert_eq!(
+            dispatcher
+                .decode_with_profile(amoadd_w, &imc, 0)
+                .unwrap_err()
+                .stable_kind(),
+            "unsupported_extension"
+        );
+        assert_eq!(
+            dispatcher
+                .decode_with_profile(fadd_s, &imc, 0)
+                .unwrap_err()
+                .stable_kind(),
+            "unsupported_extension"
+        );
     }
 }

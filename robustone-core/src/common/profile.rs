@@ -29,7 +29,7 @@ impl ArchitectureProfile {
     pub fn riscv32e() -> Self {
         Self {
             architecture: Architecture::RiscV32,
-            mode_name: "riscv32e",
+            mode_name: "riscv32",
             bit_width: 32,
             endianness: Endianness::Little,
             enabled_extensions: vec!["I"],
