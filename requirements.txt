@@ -13,4 +13,5 @@ pycodestyle==2.14.0
 pylint==3.3.9
 pytokens==0.2.0
 tomlkit==0.13.3
+PyYAML==6.0.2
 pre-commit==4.0.1

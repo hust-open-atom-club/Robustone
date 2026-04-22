@@ -1,0 +1,14 @@
+{
+  "name": "capstone-aarch64-mc",
+  "robustone_arch": "aarch64",
+  "cstool_arch": "aarch64",
+  "yaml_source": "../../../third_party/capstone/tests/MC/AArch64",
+  "yaml_filter": {
+    "arch": "CS_ARCH_AARCH64",
+    "options_exclude": [],
+    "hex_exclude": [],
+    "require_single_insn": true
+  },
+  "description": "Capstone AArch64 MC regression tests",
+  "category": "capstone"
+}

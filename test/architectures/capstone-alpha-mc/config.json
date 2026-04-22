@@ -1,0 +1,14 @@
+{
+  "name": "capstone-alpha-mc",
+  "robustone_arch": "alpha",
+  "cstool_arch": "alpha",
+  "yaml_source": "../../../third_party/capstone/tests/MC/Alpha",
+  "yaml_filter": {
+    "arch": "CS_ARCH_ALPHA",
+    "options_exclude": [],
+    "hex_exclude": [],
+    "require_single_insn": true
+  },
+  "description": "Capstone Alpha MC regression tests",
+  "category": "capstone"
+}
