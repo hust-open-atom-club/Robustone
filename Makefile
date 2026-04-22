@@ -94,6 +94,10 @@ test-quick: virt-env
 	@echo "Running quick parity test (limited cases)..."
 	@cd test && $(VENV_PYTHON) run_tests.py --all --limit 20
 
+capstone-tests: virt-env
+	@echo "Running Capstone YAML parity tests..."
+	@cd test && $(VENV_PYTHON) run_tests.py --all
+
 clean-help:
 	@echo "Available targets:"
 	@echo ""

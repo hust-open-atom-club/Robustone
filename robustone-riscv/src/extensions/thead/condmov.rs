@@ -161,10 +161,15 @@ mod tests {
         assert!(result.is_some());
         let instr = result.unwrap().unwrap();
         assert_eq!(instr.mnemonic, "th.mveqz");
-        let rendered = instr
-            .clone()
-            .with_context("riscv32", 0, vec![0; 4])
-            .render_capstone_text_parts();
+        let instr = instr.with_context("riscv32", 0, vec![0; 4]);
+        let rendered = crate::render::render_riscv_text_parts(
+            &instr,
+            robustone_core::ir::TextRenderProfile::Capstone,
+            true,
+            true,
+            true,
+            false,
+        );
         assert_eq!(rendered.1, "ra, sp, gp");
         assert_eq!(instr.size, 4);
     }
@@ -180,10 +185,15 @@ mod tests {
         assert!(result.is_some());
         let instr = result.unwrap().unwrap();
         assert_eq!(instr.mnemonic, "th.mvnez");
-        let rendered = instr
-            .clone()
-            .with_context("riscv32", 0, vec![0; 4])
-            .render_capstone_text_parts();
+        let instr = instr.with_context("riscv32", 0, vec![0; 4]);
+        let rendered = crate::render::render_riscv_text_parts(
+            &instr,
+            robustone_core::ir::TextRenderProfile::Capstone,
+            true,
+            true,
+            true,
+            false,
+        );
         assert_eq!(rendered.1, "ra, sp, gp");
         assert_eq!(instr.size, 4);
     }

@@ -683,10 +683,20 @@ checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 name = "robustone"
 version = "0.0.0"
 dependencies = [
+ "robustone-arm",
  "robustone-cli",
  "robustone-core",
+ "robustone-loongarch",
  "robustone-riscv",
+ "robustone-x86",
  "serde_json",
+]
+
+[[package]]
+name = "robustone-arm"
+version = "0.1.0"
+dependencies = [
+ "robustone-core",
 ]
 
 [[package]]
@@ -718,11 +728,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "robustone-loongarch"
+version = "0.1.0"
+dependencies = [
+ "robustone-core",
+]
+
+[[package]]
 name = "robustone-riscv"
 version = "0.1.0"
 dependencies = [
  "bitflags",
  "hex",
+ "robustone-core",
+]
+
+[[package]]
+name = "robustone-x86"
+version = "0.1.0"
+dependencies = [
  "robustone-core",
 ]
 

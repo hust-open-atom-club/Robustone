@@ -13,6 +13,7 @@ pub mod arch;
 pub mod decoder;
 pub mod extensions;
 pub mod printer;
+pub mod render;
 pub mod shared;
 pub mod types;
 
@@ -47,8 +48,11 @@ use arch::RiscVInstructionDetail;
 use decoder::{RiscVDecoder, Xlen};
 use extensions::Extensions;
 use robustone_core::{
-    common::ArchitectureProfile, ir::DecodedInstruction, traits::ArchitectureHandler,
-    traits::instruction::Detail, types::error::DisasmError,
+    common::ArchitectureProfile,
+    ir::{DecodedInstruction, TextRenderProfile},
+    traits::ArchitectureHandler,
+    traits::instruction::Detail,
+    types::error::DisasmError,
 };
 
 /// Architecture handler implementation for RISC-V targets.
@@ -182,7 +186,14 @@ impl ArchitectureHandler for RiscVHandler {
     ) -> Result<(Instruction, usize), DisasmError> {
         let decoder = self.decoder_for_arch(arch_name)?;
         let ir = decoder.decode(bytes, arch_name, addr)?;
-        let (mnemonic, operands) = ir.render_capstone_text_parts();
+        let (mnemonic, operands) = crate::render::render_riscv_text_parts(
+            &ir,
+            TextRenderProfile::Capstone,
+            true,
+            true,
+            true,
+            false,
+        );
 
         let detail: Option<Box<dyn Detail>> = if self.detail {
             let mut riscv_detail = RiscVInstructionDetail::new();

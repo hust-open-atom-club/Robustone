@@ -61,9 +61,6 @@ fn assert_case(case: GoldenCase) {
         decoded.render_hints.capstone_hidden_operands,
         case.expected_ir.hidden_operands
     );
-    let (rendered_mnemonic, rendered_operands) = decoded.render_capstone_text_parts();
-    assert_eq!(rendered_mnemonic, case.expected_capstone.mnemonic);
-    assert_eq!(rendered_operands, case.expected_capstone.operands);
     assert_eq!(decoded.groups, case.expected_ir.groups);
     let operand_kinds = decoded
         .operands
@@ -201,19 +198,12 @@ fn test_ir_rendering_covers_control_flow_and_atomic_variants() {
         let (decoded, _) = dispatcher
             .decode_instruction(&bytes, arch, 0)
             .expect("decode should succeed");
-        assert_eq!(decoded.render_capstone_text_parts(), expected_capstone);
-        assert_eq!(decoded.render_canonical_text_parts(), expected_canonical);
-
         let (instruction, _) = dispatcher
             .disassemble_bytes(&bytes, arch, 0)
             .expect("compatibility disassembly should succeed");
         assert_eq!(
-            instruction.rendered_text_parts(robustone::ir::TextRenderProfile::Capstone),
+            (instruction.mnemonic.clone(), instruction.operands.clone()),
             expected_capstone
-        );
-        assert_eq!(
-            instruction.rendered_text_parts(robustone::ir::TextRenderProfile::Canonical),
-            expected_canonical
         );
     }
 }

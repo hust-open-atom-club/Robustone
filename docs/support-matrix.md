@@ -46,6 +46,7 @@ Canonical tokens below are the normalized architecture names emitted by the shar
 | `m680x` | `Other` | yes | no | no | no |
 | `evm` | `Other` | yes | no | no | no |
 | `bpf` | `Other` | yes | no | no | no |
+| `loongarch64` | `LoongArch` | yes | no | no | no |
 
 ## Decode Backends
 
