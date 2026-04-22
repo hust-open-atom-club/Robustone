@@ -22,6 +22,7 @@ pub use rvm::Rvm;
 
 bitflags! {
     /// Bitflags representing enabled standard RISC-V extensions.
+    #[derive(Debug, PartialEq)]
     pub struct Standard: u32 {
         const I    = 1;
         const M    = 1 << 1;

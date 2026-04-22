@@ -1,0 +1,14 @@
+{
+  "name": "capstone-hppa-mc",
+  "robustone_arch": "hppa",
+  "cstool_arch": "hppa",
+  "yaml_source": "../../../third_party/capstone/tests/MC/HPPA",
+  "yaml_filter": {
+    "arch": "CS_ARCH_HPPA",
+    "options_exclude": [],
+    "hex_exclude": [],
+    "require_single_insn": true
+  },
+  "description": "Capstone HPPA MC regression tests",
+  "category": "capstone"
+}

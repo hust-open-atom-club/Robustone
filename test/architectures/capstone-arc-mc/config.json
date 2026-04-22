@@ -1,0 +1,14 @@
+{
+  "name": "capstone-arc-mc",
+  "robustone_arch": "arc",
+  "cstool_arch": "arc",
+  "yaml_source": "../../../third_party/capstone/tests/MC/ARC",
+  "yaml_filter": {
+    "arch": "CS_ARCH_ARC",
+    "options_exclude": [],
+    "hex_exclude": [],
+    "require_single_insn": true
+  },
+  "description": "Capstone ARC MC regression tests",
+  "category": "capstone"
+}

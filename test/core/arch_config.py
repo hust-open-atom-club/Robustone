@@ -3,9 +3,10 @@ Architecture configuration management for the test framework.
 """
 
 import json
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 
 @dataclass
@@ -15,7 +16,9 @@ class ArchConfig:
     name: str
     robustone_arch: str
     cstool_arch: str
-    cases_file: Path
+    cases_file: Optional[Path] = None
+    yaml_source: Optional[str] = None
+    yaml_filter: Optional[Dict] = None
     robustone_flags: List[str] = field(default_factory=list)
     cstool_flags: List[str] = field(default_factory=list)
     description: str = ""
@@ -43,9 +46,23 @@ def load_config(config_path: Path) -> ArchConfig:
         raise ValueError(f"Invalid JSON in {config_path}: {e}") from e
 
     # Convert cases_file to absolute path
-    cases_file = Path(data.get("cases_file", "test_cases.txt"))
-    if not cases_file.is_absolute():
-        cases_file = config_path.parent / cases_file
+    raw_cases = data.get("cases_file")
+    if raw_cases:
+        cases_file = Path(raw_cases)
+        if not cases_file.is_absolute():
+            cases_file = config_path.parent / cases_file
+    else:
+        cases_file = None
+
+    # Resolve yaml_source relative to config file if provided
+    raw_yaml = data.get("yaml_source")
+    if raw_yaml:
+        yaml_source = Path(raw_yaml)
+        if not yaml_source.is_absolute():
+            yaml_source = config_path.parent / yaml_source
+        yaml_source = str(Path(os.path.normpath(str(yaml_source))))
+    else:
+        yaml_source = None
 
     return ArchConfig(
         name=data.get("name", config_path.parent.name),
@@ -54,6 +71,8 @@ def load_config(config_path: Path) -> ArchConfig:
         ),
         cstool_arch=data.get("cstool_arch", data.get("name", config_path.parent.name)),
         cases_file=cases_file,
+        yaml_source=yaml_source,
+        yaml_filter=data.get("yaml_filter"),
         robustone_flags=data.get("robustone_flags", []),
         cstool_flags=data.get("cstool_flags", []),
         description=data.get("description", ""),
@@ -91,8 +110,14 @@ def validate_config(config: ArchConfig) -> List[str]:
     """Validate an architecture configuration and return list of issues."""
     issues: List[str] = []
 
-    # Check if test cases file exists
-    if not config.cases_file.exists():
+    # Must have at least one test source
+    has_text_source = config.cases_file is not None
+    has_yaml_source = config.yaml_source is not None
+
+    if not has_text_source and not has_yaml_source:
+        issues.append("No test source configured (cases_file or yaml_source required)")
+
+    if has_text_source and not config.cases_file.exists():
         issues.append(f"Test cases file not found: {config.cases_file}")
 
     # Validate flag formats

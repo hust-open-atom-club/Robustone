@@ -175,14 +175,14 @@ impl DefaultInstructionFormatter {
     }
 
     /// Create a simple decoded instruction with just mnemonic and operands.
-    pub fn simple_instruction(mnemonic: &str, operands: &str) -> DecodedInstruction {
-        let _ = operands;
+    pub fn simple_instruction(mnemonic: &str) -> DecodedInstruction {
         Self::instance().create_decoded_instruction(mnemonic, RiscVInstructionFormat::I, 4, vec![])
     }
 
     /// Create an unknown instruction placeholder.
     pub fn unknown_instruction(value: u32) -> DecodedInstruction {
-        Self::simple_instruction("unknown", &format!("0x{value:08x}"))
+        let _ = value;
+        Self::instance().create_decoded_instruction("unknown", RiscVInstructionFormat::I, 4, vec![])
     }
 
     /// Create an unknown compressed instruction placeholder.
@@ -399,8 +399,8 @@ pub mod convenience {
     }
 
     /// Create a simple decoded instruction.
-    pub fn simple_instruction(mnemonic: &str, operands: &str) -> DecodedInstruction {
-        DefaultInstructionFormatter::simple_instruction(mnemonic, operands)
+    pub fn simple_instruction(mnemonic: &str) -> DecodedInstruction {
+        DefaultInstructionFormatter::simple_instruction(mnemonic)
     }
 
     /// Create an unknown instruction.
