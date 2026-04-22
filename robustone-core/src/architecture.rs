@@ -130,9 +130,9 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         category: "ARM",
         aliases: AARCH64_ALIASES,
         parse_supported: true,
-        decode_supported: false,
+        decode_supported: true,
         detail_supported: false,
-        json_supported: false,
+        json_supported: true,
     },
     ArchitectureCapability {
         canonical_name: "aarch64be",
@@ -157,18 +157,18 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         category: "x86",
         aliases: X32_ALIASES,
         parse_supported: true,
-        decode_supported: false,
+        decode_supported: true,
         detail_supported: false,
-        json_supported: false,
+        json_supported: true,
     },
     ArchitectureCapability {
         canonical_name: "x64",
         category: "x86",
         aliases: X64_ALIASES,
         parse_supported: true,
-        decode_supported: false,
+        decode_supported: true,
         detail_supported: false,
-        json_supported: false,
+        json_supported: true,
     },
     ArchitectureCapability {
         canonical_name: "mips",
@@ -337,9 +337,9 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         category: "LoongArch",
         aliases: LOONGARCH64_ALIASES,
         parse_supported: true,
-        decode_supported: false,
+        decode_supported: true,
         detail_supported: false,
-        json_supported: false,
+        json_supported: true,
     },
 ];
 
@@ -542,14 +542,16 @@ mod tests {
         let capability = lookup_architecture_capability("x86-64").expect("alias should resolve");
         assert_eq!(capability.canonical_name, "x64");
         assert!(capability.parse_supported);
-        assert!(!capability.decode_supported);
+        assert!(capability.decode_supported);
 
         let capability = lookup_architecture_capability("ppc").expect("alias should resolve");
         assert_eq!(capability.canonical_name, "powerpc32");
+        assert!(!capability.decode_supported);
         assert_eq!(capability.category, "PowerPC");
 
         let capability = lookup_architecture_capability("arm64").expect("alias should resolve");
         assert_eq!(capability.canonical_name, "aarch64");
+        assert!(capability.decode_supported);
     }
 
     #[test]

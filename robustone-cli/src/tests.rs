@@ -307,12 +307,12 @@ fn test_capabilities_mode_rejects_mixed_disassembly_inputs() {
 
 #[test]
 fn test_config_from_cli_reports_user_entered_parser_only_alias() {
-    let cli = Cli::try_parse_from(["robustone", "x86", "90"]).expect("CLI arguments should parse");
+    let cli =
+        Cli::try_parse_from(["robustone", "armbe", "90"]).expect("CLI arguments should parse");
     let error = DisasmConfig::config_from_cli(&cli)
         .expect_err("parser-only alias input should fail during config creation");
 
-    assert!(error.to_string().contains("x86"));
-    assert!(error.to_string().contains("x32"));
+    assert!(error.to_string().contains("armbe"));
 }
 
 #[test]
