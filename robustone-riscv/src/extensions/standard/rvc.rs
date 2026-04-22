@@ -7,7 +7,7 @@ use super::Standard;
 use crate::ir::DecodedInstruction;
 use crate::riscv::decoder::{Xlen, build_riscv_decoded_instruction};
 use crate::riscv::extensions::{
-    Extensions, InstructionExtension, invalid_encoding, unimplemented_instruction, unsupported_mode,
+    Extensions, InstructionExtension, invalid_encoding, unsupported_mode,
 };
 use crate::riscv::shared::{
     encoding::convenience as encoding_conv, operands::convenience, registers::RegisterManager,
@@ -180,6 +180,186 @@ impl Rvc {
             ],
         )
         .with_capstone_alias("sw", Vec::new()))
+    }
+
+    fn decode_c_ld(&self, rd: u8, rs1: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
+        let imm_val = imm as i64;
+        let _ = &self.register_manager;
+        Ok(build_riscv_decoded_instruction(
+            "c.ld",
+            RiscVInstructionFormat::CL,
+            2,
+            vec![
+                convenience::register(rd + 8, Access::write()),
+                convenience::memory(rs1 + 8, imm_val),
+            ],
+        )
+        .with_capstone_alias("ld", Vec::new()))
+    }
+
+    fn decode_c_sd(&self, rs2: u8, rs1: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
+        let imm_val = imm as i64;
+        let _ = &self.register_manager;
+        Ok(build_riscv_decoded_instruction(
+            "c.sd",
+            RiscVInstructionFormat::CS,
+            2,
+            vec![
+                convenience::register(rs2 + 8, Access::read()),
+                convenience::memory(rs1 + 8, imm_val),
+            ],
+        )
+        .with_capstone_alias("sd", Vec::new()))
+    }
+
+    fn decode_c_ldsp(&self, rd: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
+        let imm_val = imm as i64;
+        let _ = &self.register_manager;
+        Ok(build_riscv_decoded_instruction(
+            "c.ldsp",
+            RiscVInstructionFormat::CI,
+            2,
+            vec![
+                convenience::register(rd, Access::write()),
+                convenience::memory(2, imm_val),
+            ],
+        )
+        .with_capstone_alias("ld", Vec::new()))
+    }
+
+    fn decode_c_sdsp(&self, rs2: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
+        let imm_val = imm as i64;
+        let _ = &self.register_manager;
+        Ok(build_riscv_decoded_instruction(
+            "c.sdsp",
+            RiscVInstructionFormat::CSS,
+            2,
+            vec![
+                convenience::register(rs2, Access::read()),
+                convenience::memory(2, imm_val),
+            ],
+        )
+        .with_capstone_alias("sd", Vec::new()))
+    }
+
+    fn decode_c_fld(&self, rd: u8, rs1: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
+        let imm_val = imm as i64;
+        let _ = &self.register_manager;
+        Ok(build_riscv_decoded_instruction(
+            "c.fld",
+            RiscVInstructionFormat::CL,
+            2,
+            vec![
+                convenience::fp_register(rd + 8, Access::write()),
+                convenience::memory(rs1 + 8, imm_val),
+            ],
+        )
+        .with_capstone_alias("fld", Vec::new()))
+    }
+
+    fn decode_c_fsd(&self, rs2: u8, rs1: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
+        let imm_val = imm as i64;
+        let _ = &self.register_manager;
+        Ok(build_riscv_decoded_instruction(
+            "c.fsd",
+            RiscVInstructionFormat::CS,
+            2,
+            vec![
+                convenience::fp_register(rs2 + 8, Access::read()),
+                convenience::memory(rs1 + 8, imm_val),
+            ],
+        )
+        .with_capstone_alias("fsd", Vec::new()))
+    }
+
+    fn decode_c_flw(&self, rd: u8, rs1: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
+        let imm_val = imm as i64;
+        let _ = &self.register_manager;
+        Ok(build_riscv_decoded_instruction(
+            "c.flw",
+            RiscVInstructionFormat::CL,
+            2,
+            vec![
+                convenience::fp_register(rd + 8, Access::write()),
+                convenience::memory(rs1 + 8, imm_val),
+            ],
+        )
+        .with_capstone_alias("flw", Vec::new()))
+    }
+
+    fn decode_c_fsw(&self, rs2: u8, rs1: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
+        let imm_val = imm as i64;
+        let _ = &self.register_manager;
+        Ok(build_riscv_decoded_instruction(
+            "c.fsw",
+            RiscVInstructionFormat::CS,
+            2,
+            vec![
+                convenience::fp_register(rs2 + 8, Access::read()),
+                convenience::memory(rs1 + 8, imm_val),
+            ],
+        )
+        .with_capstone_alias("fsw", Vec::new()))
+    }
+
+    fn decode_c_fldsp(&self, rd: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
+        let imm_val = imm as i64;
+        let _ = &self.register_manager;
+        Ok(build_riscv_decoded_instruction(
+            "c.fldsp",
+            RiscVInstructionFormat::CI,
+            2,
+            vec![
+                convenience::fp_register(rd, Access::write()),
+                convenience::memory(2, imm_val),
+            ],
+        )
+        .with_capstone_alias("fld", Vec::new()))
+    }
+
+    fn decode_c_fsdsp(&self, rs2: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
+        let imm_val = imm as i64;
+        let _ = &self.register_manager;
+        Ok(build_riscv_decoded_instruction(
+            "c.fsdsp",
+            RiscVInstructionFormat::CSS,
+            2,
+            vec![
+                convenience::fp_register(rs2, Access::read()),
+                convenience::memory(2, imm_val),
+            ],
+        )
+        .with_capstone_alias("fsd", Vec::new()))
+    }
+
+    fn decode_c_flwsp(&self, rd: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
+        let imm_val = imm as i64;
+        let _ = &self.register_manager;
+        Ok(build_riscv_decoded_instruction(
+            "c.flwsp",
+            RiscVInstructionFormat::CI,
+            2,
+            vec![
+                convenience::fp_register(rd, Access::write()),
+                convenience::memory(2, imm_val),
+            ],
+        )
+        .with_capstone_alias("flw", Vec::new()))
+    }
+
+    fn decode_c_fswsp(&self, rs2: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
+        let imm_val = imm as i64;
+        let _ = &self.register_manager;
+        Ok(build_riscv_decoded_instruction(
+            "c.fswsp",
+            RiscVInstructionFormat::CSS,
+            2,
+            vec![
+                convenience::fp_register(rs2, Access::read()),
+                convenience::memory(2, imm_val),
+            ],
+        )
+        .with_capstone_alias("fsw", Vec::new()))
     }
 
     fn decode_c_addi(&self, rd: u8, imm: i64) -> Result<DecodedInstruction, DisasmError> {
@@ -363,16 +543,6 @@ impl Rvc {
             "unrecognized compressed instruction 0x{instruction:04x}"
         )))
     }
-
-    fn decode_c_unimplemented(
-        &self,
-        mnemonic: &str,
-        detail: &str,
-    ) -> Result<DecodedInstruction, DisasmError> {
-        Err(unimplemented_instruction(format!(
-            "{mnemonic} is a legal compressed instruction but is not implemented: {detail}"
-        )))
-    }
 }
 
 impl InstructionExtension for Rvc {
@@ -411,6 +581,7 @@ impl InstructionExtension for Rvc {
         opcode: u8,
         funct3: u8,
         xlen: Xlen,
+        extensions: &Extensions,
         rd_full: u8,
         _rs1_full: u8,
         rs2_full: u8,
@@ -425,7 +596,10 @@ impl InstructionExtension for Rvc {
         imm_cb: i64,
         uimm_css: u16,
         uimm_clsp: u16,
-        _uimm_fldsp: u16,
+        uimm_fldsp: u16,
+        uimm_cld: u16,
+        uimm_sdsp: u16,
+        uimm_cldsp: u16,
     ) -> Option<Result<DecodedInstruction, DisasmError>> {
         match (opcode, funct3) {
             // C0 opcode (quarters 0)
@@ -437,18 +611,40 @@ impl InstructionExtension for Rvc {
                     Some(self.decode_c_addi4spn(rdp, nzuimm_ciw))
                 }
             }
-            (0b00, 0b011) if xlen == Xlen::X64 => Some(self.decode_c_unimplemented(
-                "c.ld",
-                "compressed RV64 load-double path is not implemented",
-            )),
-            (0b00, 0b011) => Some(Err(unsupported_mode("c.ld requires RV64"))),
+            (0b00, 0b001) => {
+                if extensions.standard.contains(Standard::D) {
+                    Some(self.decode_c_fld(rdp, rs1p, uimm_cld))
+                } else {
+                    Some(self.decode_c_unknown(instruction))
+                }
+            }
             (0b00, 0b010) => Some(self.decode_c_lw(rdp, rs1p, uimm_cl)),
+            (0b00, 0b011) => {
+                if xlen == Xlen::X64 {
+                    Some(self.decode_c_ld(rdp, rs1p, uimm_cld))
+                } else if extensions.standard.contains(Standard::F) {
+                    Some(self.decode_c_flw(rdp, rs1p, uimm_cl))
+                } else {
+                    Some(self.decode_c_unknown(instruction))
+                }
+            }
+            (0b00, 0b101) => {
+                if extensions.standard.contains(Standard::D) {
+                    Some(self.decode_c_fsd(rs2p, rs1p, uimm_cld))
+                } else {
+                    Some(self.decode_c_unknown(instruction))
+                }
+            }
             (0b00, 0b110) => Some(self.decode_c_sw(rs2p, rs1p, uimm_cs)),
-            (0b00, 0b111) if xlen == Xlen::X64 => Some(self.decode_c_unimplemented(
-                "c.sd",
-                "compressed RV64 store-double path is not implemented",
-            )),
-            (0b00, 0b111) => Some(Err(unsupported_mode("c.sd requires RV64"))),
+            (0b00, 0b111) => {
+                if xlen == Xlen::X64 {
+                    Some(self.decode_c_sd(rs2p, rs1p, uimm_cld))
+                } else if extensions.standard.contains(Standard::F) {
+                    Some(self.decode_c_fsw(rs2p, rs1p, uimm_cs))
+                } else {
+                    Some(self.decode_c_unknown(instruction))
+                }
+            }
 
             // C1 opcode (quarters 1)
             (0b01, 0b000) => Some(self.decode_c_addi(rd_full, imm_ci)),
@@ -481,12 +677,23 @@ impl InstructionExtension for Rvc {
 
             // C2 opcode (quarters 2)
             (0b10, 0b000) => Some(self.decode_c_slli(rd_full, imm_ci)),
+            (0b10, 0b001) => {
+                if extensions.standard.contains(Standard::D) {
+                    Some(self.decode_c_fldsp(rd_full, uimm_fldsp))
+                } else {
+                    Some(self.decode_c_unknown(instruction))
+                }
+            }
             (0b10, 0b010) => Some(self.decode_c_lwsp(rd_full, uimm_clsp)),
-            (0b10, 0b011) if xlen == Xlen::X64 => Some(self.decode_c_unimplemented(
-                "c.ldsp",
-                "compressed RV64 stack load-double path is not implemented",
-            )),
-            (0b10, 0b011) => Some(Err(unsupported_mode("c.ldsp requires RV64"))),
+            (0b10, 0b011) => {
+                if xlen == Xlen::X64 {
+                    Some(self.decode_c_ldsp(rd_full, uimm_cldsp))
+                } else if extensions.standard.contains(Standard::F) {
+                    Some(self.decode_c_flwsp(rd_full, uimm_clsp))
+                } else {
+                    Some(self.decode_c_unknown(instruction))
+                }
+            }
             (0b10, 0b100) => {
                 let bit12 = ((instruction >> 12) & 0x1) as u8;
                 match (bit12, rd_full, rs2_full) {
@@ -498,12 +705,23 @@ impl InstructionExtension for Rvc {
                     _ => Some(self.decode_c_unknown(instruction)),
                 }
             }
+            (0b10, 0b101) => {
+                if extensions.standard.contains(Standard::D) {
+                    Some(self.decode_c_fsdsp(rs2_full, uimm_sdsp))
+                } else {
+                    Some(self.decode_c_unknown(instruction))
+                }
+            }
             (0b10, 0b110) => Some(self.decode_c_swsp(rs2_full, uimm_css)),
-            (0b10, 0b111) if xlen == Xlen::X64 => Some(self.decode_c_unimplemented(
-                "c.sdsp",
-                "compressed RV64 stack store-double path is not implemented",
-            )),
-            (0b10, 0b111) => Some(Err(unsupported_mode("c.sdsp requires RV64"))),
+            (0b10, 0b111) => {
+                if xlen == Xlen::X64 {
+                    Some(self.decode_c_sdsp(rs2_full, uimm_sdsp))
+                } else if extensions.standard.contains(Standard::F) {
+                    Some(self.decode_c_fswsp(rs2_full, uimm_css))
+                } else {
+                    Some(self.decode_c_unknown(instruction))
+                }
+            }
 
             _ => Some(self.decode_c_unknown(instruction)),
         }
