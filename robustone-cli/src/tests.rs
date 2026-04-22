@@ -76,25 +76,28 @@ fn test_architecture_spec_accepts_riscv_capstone_modifiers() {
 
 #[test]
 fn test_process_input_honors_riscv_extension_modifiers() {
+    // +a does not include F, so fadd.s should fail with unsupported_extension.
     let args = vec!["robustone", "riscv64+a", "d3027300"];
     let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
     let config = DisasmConfig::config_from_cli(&cli).expect("configuration should be valid");
-    let result = process_input(&config).expect("baseline GC capabilities should remain enabled");
+    let result = process_input(&config);
+    assert!(
+        result.is_err(),
+        "fadd.s should require F extension, which +a does not enable"
+    );
 
-    assert_eq!(result.instructions[0].mnemonic, "fadd.s");
-
+    // +a+fd includes F and D, so fadd.s should decode successfully.
     let args = vec!["robustone", "riscv64+a+fd", "d3027300"];
     let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
     let config = DisasmConfig::config_from_cli(&cli).expect("configuration should be valid");
     let result = process_input(&config).expect("explicit F/D should decode");
-
     assert_eq!(result.instructions[0].mnemonic, "fadd.s");
 
+    // +a+fd includes M (baseline), so mulw should decode successfully.
     let args = vec!["robustone", "riscv64+a+fd", "bb003102"];
     let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
     let config = DisasmConfig::config_from_cli(&cli).expect("configuration should be valid");
-    let result = process_input(&config).expect("baseline M/C capabilities should remain enabled");
-
+    let result = process_input(&config).expect("baseline M capability should remain enabled");
     assert_eq!(result.instructions[0].mnemonic, "mulw");
 }
 
@@ -310,4 +313,154 @@ fn test_config_from_cli_reports_user_entered_parser_only_alias() {
 
     assert!(error.to_string().contains("x86"));
     assert!(error.to_string().contains("x32"));
+}
+
+#[test]
+fn test_riscv_profile_modifier_builds_correct_extension_set() {
+    // Plain riscv32 should default to GC.
+    let spec = ArchitectureSpec::parse("riscv32").unwrap();
+    let profile = spec.riscv_profile().expect("should return profile");
+    let mut exts = profile.enabled_extensions.clone();
+    exts.sort_unstable();
+    assert_eq!(exts, vec!["A", "C", "D", "F", "I", "M"]);
+
+    // Plain riscv64 should default to GC.
+    let spec = ArchitectureSpec::parse("riscv64").unwrap();
+    let profile = spec.riscv_profile().expect("should return profile");
+    let mut exts = profile.enabled_extensions.clone();
+    exts.sort_unstable();
+    assert_eq!(exts, vec!["A", "C", "D", "F", "I", "M"]);
+
+    // +c should add C to the base set.
+    let spec = ArchitectureSpec::parse("riscv32+c").unwrap();
+    let profile = spec.riscv_profile().expect("should return profile");
+    assert!(profile.enabled_extensions.contains(&"C"));
+    assert!(profile.enabled_extensions.contains(&"I"));
+    assert!(profile.enabled_extensions.contains(&"M"));
+    assert!(!profile.enabled_extensions.contains(&"A"));
+    assert!(!profile.enabled_extensions.contains(&"F"));
+    assert!(!profile.enabled_extensions.contains(&"D"));
+
+    // +a should add A but not C/F/D.
+    let spec = ArchitectureSpec::parse("riscv32+a").unwrap();
+    let profile = spec.riscv_profile().expect("should return profile");
+    assert!(profile.enabled_extensions.contains(&"A"));
+    assert!(!profile.enabled_extensions.contains(&"C"));
+
+    // +fd should add F and D.
+    let spec = ArchitectureSpec::parse("riscv64+fd").unwrap();
+    let profile = spec.riscv_profile().expect("should return profile");
+    assert!(profile.enabled_extensions.contains(&"F"));
+    assert!(profile.enabled_extensions.contains(&"D"));
+    assert!(profile.enabled_extensions.contains(&"M"));
+    assert!(!profile.enabled_extensions.contains(&"A"));
+    assert!(!profile.enabled_extensions.contains(&"C"));
+
+    // +d should imply F.
+    let spec = ArchitectureSpec::parse("riscv32+d").unwrap();
+    let profile = spec.riscv_profile().expect("should return profile");
+    assert!(profile.enabled_extensions.contains(&"D"));
+    assert!(profile.enabled_extensions.contains(&"F"));
+}
+
+#[test]
+fn test_riscv_profile_extension_semantics_at_decode_time() {
+    // A compressed instruction (c.addi t0, t0, 1 = 0x0105) should succeed with +c.
+    // Note: Capstone renders c.addi as "addi", so we verify the decoded IR instead.
+    let args = vec!["robustone", "riscv32+c", "0105"];
+    let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
+    let config = DisasmConfig::config_from_cli(&cli).expect("configuration should be valid");
+    let result = process_input(&config).expect("compressed instruction should decode with +c");
+    let decoded = result.instructions[0]
+        .decoded
+        .as_ref()
+        .expect("decoded IR should be present");
+    assert_eq!(decoded.mnemonic, "c.addi");
+    assert_eq!(decoded.size, 2);
+
+    // ...and fail without +c when explicit modifiers are used.
+    let args = vec!["robustone", "riscv32+a", "0105"];
+    let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
+    let config = DisasmConfig::config_from_cli(&cli).expect("configuration should be valid");
+    let result = process_input(&config);
+    assert!(
+        result.is_err(),
+        "compressed instruction should fail without C extension when explicit modifiers are used"
+    );
+}
+
+/// End-to-end CLI test verifying that profile modifiers strictly change decode
+/// permissions for A, M, and F extensions.
+#[test]
+fn test_riscv_profile_modifiers_strictly_gate_extensions() {
+    let cli_decode = |arch: &str, hex: &str| {
+        let args = vec!["robustone", arch, hex];
+        let cli = Cli::try_parse_from(args).expect("CLI should parse");
+        let config = DisasmConfig::config_from_cli(&cli).expect("config should be valid");
+        process_input(&config)
+    };
+
+    // AMOADD.W (A extension), little-endian encoding.
+    let amoadd_w = "af215200";
+    // MUL (M extension), little-endian encoding.
+    let mul = "b3015202";
+    // FADD.S (F extension), little-endian encoding.
+    let fadd_s = "d3003100";
+
+    // GC profile (default riscv32) should decode all three.
+    cli_decode("riscv32", amoadd_w).expect("GC should decode A");
+    cli_decode("riscv32", mul).expect("GC should decode M");
+    cli_decode("riscv32", fadd_s).expect("GC should decode F");
+
+    // +c profile (I+M+C) should reject A and F.
+    cli_decode("riscv32+c", mul).expect("+c should decode M");
+    let err = cli_decode("riscv32+c", amoadd_w).unwrap_err();
+    assert_eq!(err.stable_kind(), "unsupported_extension");
+    let err = cli_decode("riscv32+c", fadd_s).unwrap_err();
+    assert_eq!(err.stable_kind(), "unsupported_extension");
+
+    // +a profile (I+M+A) should reject C and F.
+    cli_decode("riscv32+a", amoadd_w).expect("+a should decode A");
+    cli_decode("riscv32+a", mul).expect("+a should decode M");
+    let err = cli_decode("riscv32+a", fadd_s).unwrap_err();
+    assert_eq!(err.stable_kind(), "unsupported_extension");
+}
+
+/// End-to-end CLI test for newly completed RV64C and C.FP instructions.
+#[test]
+fn test_riscv_new_compressed_instructions_decode() {
+    let cli_decode = |arch: &str, hex: &str| {
+        let args = vec!["robustone", arch, hex];
+        let cli = Cli::try_parse_from(args).expect("CLI should parse");
+        let config = DisasmConfig::config_from_cli(&cli).expect("config should be valid");
+        process_input(&config)
+    };
+
+    // RV64C: c.ld s0, 0(s0) -> 0x6000 (bytes [0x00, 0x60])
+    let result = cli_decode("riscv64", "0060").unwrap();
+    assert!(result.instructions[0].mnemonic.contains("ld"));
+
+    // RV64C: c.sd s1, 0xc8(s0) -> 0xe464 (bytes [0x64, 0xe4])
+    let result = cli_decode("riscv64", "64e4").unwrap();
+    assert!(result.instructions[0].mnemonic.contains("sd"));
+
+    // RV32C FP: c.flw fs0, 0(s0) -> 0x6000 (bytes [0x00, 0x60])
+    let result = cli_decode("riscv32", "0060").unwrap();
+    assert!(result.instructions[0].mnemonic.contains("flw"));
+
+    // RV32C FP: c.fld fs0, 0(s0) -> 0x2000 (bytes [0x00, 0x20])
+    let result = cli_decode("riscv32", "0020").unwrap();
+    assert!(result.instructions[0].mnemonic.contains("fld"));
+
+    // RV64C FP: c.fld fs0, 0(s0) -> 0x2000 (bytes [0x00, 0x20])
+    let result = cli_decode("riscv64", "0020").unwrap();
+    assert!(result.instructions[0].mnemonic.contains("fld"));
+
+    // System: mret -> 0x30200073 (bytes [0x73, 0x00, 0x20, 0x30])
+    let result = cli_decode("riscv32", "73002030").unwrap();
+    assert_eq!(result.instructions[0].mnemonic, "mret");
+
+    // FCVT: fcvt.s.d ft1, ft2, rne -> 0x401100d3 (bytes [0xd3, 0x00, 0x11, 0x40])
+    let result = cli_decode("riscv64", "d3001140").unwrap();
+    assert_eq!(result.instructions[0].mnemonic, "fcvt.s.d");
 }
