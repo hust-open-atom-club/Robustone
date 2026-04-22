@@ -1,0 +1,8 @@
+[package]
+name = "robustone-loongarch"
+version = "0.1.0"
+edition = "2024"
+description = "LoongArch LA64 architecture support for Robustone"
+
+[dependencies]
+robustone-core = { path = "../robustone-core" }

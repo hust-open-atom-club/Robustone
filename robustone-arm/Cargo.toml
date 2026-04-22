@@ -1,0 +1,8 @@
+[package]
+name = "robustone-arm"
+version = "0.1.0"
+edition = "2024"
+description = "ARM (AArch64) architecture support for Robustone"
+
+[dependencies]
+robustone-core = { path = "../robustone-core" }

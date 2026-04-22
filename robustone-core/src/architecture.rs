@@ -59,6 +59,7 @@ const TMS320C64X_ALIASES: &[&str] = &["tms320c64x", "c64x"];
 const M680X_ALIASES: &[&str] = &["m680x"];
 const EVM_ALIASES: &[&str] = &["evm"];
 const BPF_ALIASES: &[&str] = &["bpf"];
+const LOONGARCH64_ALIASES: &[&str] = &["loongarch", "loongarch64"];
 
 const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
     ArchitectureCapability {
@@ -331,6 +332,15 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         detail_supported: false,
         json_supported: false,
     },
+    ArchitectureCapability {
+        canonical_name: "loongarch64",
+        category: "LoongArch",
+        aliases: LOONGARCH64_ALIASES,
+        parse_supported: true,
+        decode_supported: false,
+        detail_supported: false,
+        json_supported: false,
+    },
 ];
 
 pub fn all_architecture_capabilities() -> &'static [ArchitectureCapability] {
@@ -365,6 +375,7 @@ pub enum Architecture {
     X86_64,
     AArch64,
     Arm,
+    LoongArch64,
     Unknown,
 }
 
@@ -423,6 +434,7 @@ impl Architecture {
             Architecture::X86_64 => "x86_64",
             Architecture::AArch64 => "aarch64",
             Architecture::Arm => "arm",
+            Architecture::LoongArch64 => "loongarch64",
             Architecture::Unknown => "unknown",
         }
     }
@@ -463,6 +475,7 @@ impl Architecture {
             Some("x64") => Architecture::X86_64,
             Some("aarch64" | "aarch64be") => Architecture::AArch64,
             Some("arm" | "armle" | "armbe" | "thumb") => Architecture::Arm,
+            Some("loongarch" | "loongarch64") => Architecture::LoongArch64,
             _ => Architecture::Unknown,
         }
     }

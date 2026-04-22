@@ -438,9 +438,15 @@ mod tests {
         assert_eq!(instruction.mnemonic, "add");
         assert_eq!(instruction.size, 4);
         assert_eq!(instruction.operands.len(), 3);
-        let rendered = instruction
-            .with_context("riscv32", 0, vec![0; 4])
-            .render_capstone_text_parts();
+        let instruction = instruction.with_context("riscv32", 0, vec![0; 4]);
+        let rendered = crate::render::render_riscv_text_parts(
+            &instruction,
+            robustone_core::ir::TextRenderProfile::Capstone,
+            true,
+            true,
+            true,
+            false,
+        );
         assert_eq!(rendered.1, "ra, sp, gp");
     }
 

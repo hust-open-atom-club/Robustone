@@ -156,6 +156,7 @@ prop_compose! {
                 capstone_mnemonic,
                 capstone_hidden_operands,
             },
+            render: None,
         }
     }
 }

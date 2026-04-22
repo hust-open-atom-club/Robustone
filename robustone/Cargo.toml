@@ -7,6 +7,9 @@ edition = "2024"
 robustone-core = { path = "../robustone-core" }
 robustone-cli = { path = "../robustone-cli" }
 robustone-riscv = { path = "../robustone-riscv" }
+robustone-arm = { path = "../robustone-arm" }
+robustone-x86 = { path = "../robustone-x86" }
+robustone-loongarch = { path = "../robustone-loongarch" }
 
 [dev-dependencies]
 serde_json = "1.0"

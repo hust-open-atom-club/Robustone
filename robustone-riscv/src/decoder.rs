@@ -588,6 +588,7 @@ pub(crate) fn build_riscv_decoded_instruction(
         groups: infer_groups(&mnemonic),
         status: DecodeStatus::Success,
         render_hints: RenderHints::default(),
+        render: Some(crate::render::render_riscv_text_parts),
     }
 }
 
