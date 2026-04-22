@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 import json
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 try:
     from .utils import normalize_output
@@ -646,7 +646,7 @@ class OutputComparator:
 
     def _normalize_robustone_operand(
         self, operand: Dict[str, Any]
-    ) -> Dict[str, Any] | None:
+    ) -> Optional[Dict[str, Any]]:
         kind = operand.get("kind")
         if kind == "register":
             return {
