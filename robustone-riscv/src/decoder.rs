@@ -217,11 +217,10 @@ impl RiscVDecoder {
             | ((instruction >> 10) & 0x1) << 9
             | ((instruction >> 12) & 0x1) << 5;
 
-        // CL format for c.lw/c.flw: uimm[5:3|6|2|7]
-        let uimm_cl = ((instruction >> 5) & 0x3) << 6
-            | ((instruction >> 10) & 0x1) << 5
-            | ((instruction >> 6) & 0x1) << 2
-            | ((instruction >> 12) & 0x1) << 3;
+        // CL format for c.lw/c.flw: uimm[6|5:3|2]
+        let uimm_cl = ((instruction >> 5) & 0x1) << 6
+            | ((instruction >> 10) & 0x7) << 3
+            | ((instruction >> 6) & 0x1) << 2;
 
         // CS format for c.sw/c.fsw: same as CL
         let uimm_cs = uimm_cl;
@@ -255,20 +254,31 @@ impl RiscVDecoder {
             9,
         );
 
-        // CSS format for c.swsp: uimm[5:2|6:7]
-        let uimm_css = ((instruction >> 7) & 0x3) << 2 | ((instruction >> 9) & 0x3) << 6;
+        // CSS format for c.swsp/c.fswsp: uimm[7:6|5:2]
+        let uimm_css = ((instruction >> 7) & 0x3) << 6 | ((instruction >> 9) & 0xF) << 2;
 
         // CI format for c.lwsp: uimm[5|4:2|7:6]
         let uimm_clsp = ((instruction >> 12) & 0x1) << 5
             | ((instruction >> 4) & 0x7) << 2
             | ((instruction >> 2) & 0x3) << 6;
 
-        // CI format for c.fldsp: uimm[5:3|2|4|6|8:7] (RISC-V spec)
-        let uimm_fldsp = ((instruction >> 7) & 0x7) << 3  // imm[5:3] from rd[2:0]
-            | ((instruction >> 5) & 0x1) << 2          // imm[2] from instruction[5]
-            | ((instruction >> 12) & 0x1) << 4         // imm[4] from instruction[12]
-            | ((instruction >> 6) & 0x1) << 6          // imm[6] from instruction[6]
-            | ((instruction >> 9) & 0x3) << 7; // imm[8:7] from instruction[9:8]
+        // CI format for c.ldsp/c.fldsp: uimm[8:7|6|5|4:3]
+        let uimm_fldsp = ((instruction >> 5) & 0x3) << 7   // imm[8:7] = inst[6:5]
+            | ((instruction >> 2) & 0x1) << 6              // imm[6] = inst[2]
+            | ((instruction >> 12) & 0x1) << 5             // imm[5] = inst[12]
+            | ((instruction >> 3) & 0x3) << 3; // imm[4:3] = inst[4:3]
+
+        // CL format for c.ld/c.fld (RV64/RV32D): uimm[7:6|5:3]
+        let uimm_cld = ((instruction >> 5) & 0x3) << 6 | ((instruction >> 10) & 0x7) << 3;
+
+        // CSS format for c.sdsp/c.fsdsp (RV64/RV32D): uimm[8:6|5:3]
+        let uimm_sdsp = ((instruction >> 7) & 0x7) << 6 | ((instruction >> 10) & 0x7) << 3;
+
+        // CI format for c.ldsp (RV64): uimm[8:7|6|5|4:3]
+        let uimm_cldsp = ((instruction >> 5) & 0x3) << 7   // imm[8:7] = inst[6:5]
+            | ((instruction >> 2) & 0x1) << 6              // imm[6] = inst[2]
+            | ((instruction >> 12) & 0x1) << 5             // imm[5] = inst[12]
+            | ((instruction >> 3) & 0x3) << 3; // imm[4:3] = inst[4:3]
 
         // Try each enabled extension for compressed instructions
         for extension in &self.extension_handlers {
@@ -281,6 +291,7 @@ impl RiscVDecoder {
                 opcode as u8,
                 funct3,
                 self.xlen,
+                &self.extensions,
                 rd_full,
                 rs1_full,
                 rs2_full,
@@ -296,6 +307,9 @@ impl RiscVDecoder {
                 uimm_css,
                 uimm_clsp,
                 uimm_fldsp,
+                uimm_cld,
+                uimm_sdsp,
+                uimm_cldsp,
             ) {
                 return result.map_err(|error| self.normalize_extension_error(error));
             }
@@ -630,7 +644,12 @@ fn infer_groups(mnemonic: &str) -> Vec<String> {
     if mnemonic.starts_with("feq") || mnemonic.starts_with("flt") || mnemonic.starts_with("fle") {
         groups.push("compare".to_string());
     }
-    if mnemonic.starts_with("csr") || mnemonic == "ecall" || mnemonic == "ebreak" {
+    if mnemonic.starts_with("csr")
+        || matches!(
+            mnemonic,
+            "ecall" | "ebreak" | "uret" | "sret" | "mret" | "wfi" | "sfence.vma"
+        )
+    {
         groups.push("system".to_string());
     }
     if groups.is_empty() {
@@ -736,6 +755,162 @@ mod tests {
                 );
             }
             other => panic!("expected unsupported extension, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_fcvt_s_d_decodes() {
+        let decoder = RiscVDecoder::rv64gc();
+        // fcvt.s.d ft1, ft2, rne -> 0x401100d3
+        let bytes = [0xd3, 0x00, 0x11, 0x40];
+        let result = decoder.decode(&bytes, "riscv64", 0).unwrap();
+        assert_eq!(result.mnemonic, "fcvt.s.d");
+        assert_eq!(result.size, 4);
+    }
+
+    #[test]
+    fn test_system_privileged_instructions() {
+        let decoder = RiscVDecoder::rv32gc();
+
+        // mret -> 0x30200073
+        let result = decoder
+            .decode(&[0x73, 0x00, 0x20, 0x30], "riscv32", 0)
+            .unwrap();
+        assert_eq!(result.mnemonic, "mret");
+
+        // sret -> 0x10200073
+        let result = decoder
+            .decode(&[0x73, 0x00, 0x20, 0x10], "riscv32", 0)
+            .unwrap();
+        assert_eq!(result.mnemonic, "sret");
+
+        // uret -> 0x00200073
+        let result = decoder
+            .decode(&[0x73, 0x00, 0x20, 0x00], "riscv32", 0)
+            .unwrap();
+        assert_eq!(result.mnemonic, "uret");
+
+        // wfi -> 0x10500073
+        let result = decoder
+            .decode(&[0x73, 0x00, 0x50, 0x10], "riscv32", 0)
+            .unwrap();
+        assert_eq!(result.mnemonic, "wfi");
+
+        // sfence.vma -> 0x12000073 (rs1=0, rs2=0)
+        let result = decoder
+            .decode(&[0x73, 0x00, 0x00, 0x12], "riscv32", 0)
+            .unwrap();
+        assert_eq!(result.mnemonic, "sfence.vma");
+    }
+
+    #[test]
+    fn test_system_groups_include_privileged() {
+        let decoder = RiscVDecoder::rv32gc();
+        let result = decoder
+            .decode(&[0x73, 0x00, 0x20, 0x30], "riscv32", 0)
+            .unwrap();
+        assert!(result.groups.contains(&"system".to_string()));
+    }
+
+    #[test]
+    fn test_rv64c_ld_sd_decodes() {
+        let decoder = RiscVDecoder::rv64gc();
+        // c.ld s0, 0(s0) -> 0x6000 (bytes [0x00, 0x60])
+        let result = decoder.decode(&[0x00, 0x60], "riscv64", 0).unwrap();
+        assert_eq!(result.mnemonic, "c.ld");
+        assert_eq!(result.size, 2);
+
+        // c.sd s0, 0(s0) -> 0xe000 (bytes [0x00, 0xe0])
+        let result = decoder.decode(&[0x00, 0xe0], "riscv64", 0).unwrap();
+        assert_eq!(result.mnemonic, "c.sd");
+        assert_eq!(result.size, 2);
+    }
+
+    #[test]
+    fn test_rv64c_ldsp_sdsp_decodes() {
+        let decoder = RiscVDecoder::rv64gc();
+        // c.ldsp s0, 0x18(sp) -> 0x641a (bytes [0x1a, 0x64])
+        let result = decoder.decode(&[0x1a, 0x64], "riscv64", 0).unwrap();
+        assert_eq!(result.mnemonic, "c.ldsp");
+        assert_eq!(result.size, 2);
+
+        // c.sdsp s0, 0x18(sp) -> 0xe41a (bytes [0x1a, 0xe4])
+        let result = decoder.decode(&[0x1a, 0xe4], "riscv64", 0).unwrap();
+        assert_eq!(result.mnemonic, "c.sdsp");
+        assert_eq!(result.size, 2);
+    }
+
+    #[test]
+    fn test_rv32c_fp_load_store_decodes() {
+        let decoder = RiscVDecoder::rv32gc();
+        // c.flw fs0, 0(s0) -> 0x6000 (bytes [0x00, 0x60])
+        let result = decoder.decode(&[0x00, 0x60], "riscv32", 0).unwrap();
+        assert_eq!(result.mnemonic, "c.flw");
+        assert_eq!(result.size, 2);
+
+        // c.fsw fs0, 0(s0) -> 0xe000 (bytes [0x00, 0xe0])
+        let result = decoder.decode(&[0x00, 0xe0], "riscv32", 0).unwrap();
+        assert_eq!(result.mnemonic, "c.fsw");
+        assert_eq!(result.size, 2);
+    }
+
+    #[test]
+    fn test_rv32c_fp_stack_decodes() {
+        let decoder = RiscVDecoder::rv32gc();
+        // c.flwsp fs0, 0x24(sp) -> 0x641a (bytes [0x1a, 0x64])
+        let result = decoder.decode(&[0x1a, 0x64], "riscv32", 0).unwrap();
+        assert_eq!(result.mnemonic, "c.flwsp");
+        assert_eq!(result.size, 2);
+
+        // c.fswsp fs0, 0x24(sp) -> 0xf322 (bytes [0x22, 0xf3])
+        let result = decoder.decode(&[0x22, 0xf3], "riscv32", 0).unwrap();
+        assert_eq!(result.mnemonic, "c.fswsp");
+        assert_eq!(result.size, 2);
+    }
+
+    #[test]
+    fn test_rv64c_fp_decodes() {
+        let decoder = RiscVDecoder::rv64gc();
+        // c.fld fs0, 0(s0) -> 0x2000 (bytes [0x00, 0x20])
+        let result = decoder.decode(&[0x00, 0x20], "riscv64", 0).unwrap();
+        assert_eq!(result.mnemonic, "c.fld");
+        assert_eq!(result.size, 2);
+
+        // c.fsd fs0, 0(s0) -> 0xa000 (bytes [0x00, 0xa0])
+        let result = decoder.decode(&[0x00, 0xa0], "riscv64", 0).unwrap();
+        assert_eq!(result.mnemonic, "c.fsd");
+        assert_eq!(result.size, 2);
+    }
+
+    #[test]
+    fn test_rv64c_fp_stack_decodes() {
+        let decoder = RiscVDecoder::rv64gc();
+        // c.fldsp fs0, 0x30(sp) -> 0x241a (bytes [0x1a, 0x24])
+        let result = decoder.decode(&[0x1a, 0x24], "riscv64", 0).unwrap();
+        assert_eq!(result.mnemonic, "c.fldsp");
+        assert_eq!(result.size, 2);
+
+        // c.fsdsp fs0, 0x30(sp) -> 0xb822 (bytes [0x22, 0xb8])
+        let result = decoder.decode(&[0x22, 0xb8], "riscv64", 0).unwrap();
+        assert_eq!(result.mnemonic, "c.fsdsp");
+        assert_eq!(result.size, 2);
+    }
+
+    #[test]
+    fn test_c_fp_requires_extension() {
+        let decoder = RiscVDecoder::new(
+            Xlen::X32,
+            Extensions::from_enabled_extensions(&["I", "C"]).unwrap(),
+        );
+        // c.flw encoding without F should fail
+        let error = decoder
+            .decode(&[0x00, 0x60], "riscv32", 0)
+            .expect_err("c.flw should require F extension");
+        match error {
+            DisasmError::DecodeFailure { kind, .. } => {
+                assert_eq!(kind, crate::types::error::DecodeErrorKind::InvalidEncoding);
+            }
+            other => panic!("expected invalid encoding, got {other:?}"),
         }
     }
 }

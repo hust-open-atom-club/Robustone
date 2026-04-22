@@ -149,6 +149,7 @@ impl InstructionExtension for Rvm {
         _opcode: u8,
         _funct3: u8,
         _xlen: Xlen,
+        _extensions: &Extensions,
         _rd_full: u8,
         _rs1_full: u8,
         _rs2_full: u8,
@@ -164,6 +165,9 @@ impl InstructionExtension for Rvm {
         _uimm_css: u16,
         _uimm_clsp: u16,
         _uimm_fldsp: u16,
+        _uimm_cld: u16,
+        _uimm_sdsp: u16,
+        _uimm_cldsp: u16,
     ) -> Option<Result<DecodedInstruction, DisasmError>> {
         // RVM extension doesn't handle compressed instructions
         None
