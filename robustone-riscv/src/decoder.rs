@@ -194,7 +194,7 @@ impl RiscVDecoder {
         bytes: &[u8],
         _address: u64,
     ) -> Result<DecodedInstruction, DisasmError> {
-        // cstool compatibility: interpret bytes in reverse order for 16-bit instructions
+        // RISC-V instructions are little-endian: reconstruct the 16-bit value from bytes.
         let instruction = ((bytes[1] as u16) << 8) | (bytes[0] as u16);
         let opcode = instruction & 0x03;
         let funct3 = ((instruction >> 13) & 0x7) as u8;
@@ -208,14 +208,10 @@ impl RiscVDecoder {
         let rs2p = ((instruction >> 2) & 0x7) as u8; // bits 4..2 (0..7)
 
         // Decode immediate fields for each compressed encoding shape.
-        // CIW format for c.addi4spn: nzuimm[5:4|3:2|6|7] (bits[12:5] of instruction)
-        let nzuimm_ciw = ((instruction >> 5) & 0x1) << 4
-            | ((instruction >> 6) & 0x1) << 5
-            | ((instruction >> 7) & 0x1) << 6
-            | ((instruction >> 8) & 0x1) << 7
-            | ((instruction >> 9) & 0x1) << 8
-            | ((instruction >> 10) & 0x1) << 9
-            | ((instruction >> 12) & 0x1) << 5;
+        // CIW format for c.addi4spn: nzuimm[5:4|9:6|3:2] (bits[12:5] of instruction)
+        let nzuimm_ciw = ((instruction >> 5) & 0x3) << 2
+            | ((instruction >> 11) & 0x3) << 4
+            | ((instruction >> 7) & 0xf) << 6;
 
         // CL format for c.lw/c.flw: uimm[6|5:3|2]
         let uimm_cl = ((instruction >> 5) & 0x1) << 6

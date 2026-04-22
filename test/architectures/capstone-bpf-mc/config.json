@@ -1,0 +1,14 @@
+{
+  "name": "capstone-bpf-mc",
+  "robustone_arch": "bpf",
+  "cstool_arch": "bpf",
+  "yaml_source": "../../../third_party/capstone/tests/MC/BPF",
+  "yaml_filter": {
+    "arch": "CS_ARCH_BPF",
+    "options_exclude": [],
+    "hex_exclude": [],
+    "require_single_insn": true
+  },
+  "description": "Capstone BPF MC regression tests",
+  "category": "capstone"
+}

@@ -500,9 +500,9 @@ impl Rvi {
                     )
                     .with_hidden_operands(vec![0, 1]))
             }
-            Self::FUNCT3_MISC_MEM_FENCE_I => Ok(DefaultInstructionFormatter::simple_instruction(
-                "fence.i", "",
-            )),
+            Self::FUNCT3_MISC_MEM_FENCE_I => {
+                Ok(DefaultInstructionFormatter::simple_instruction("fence.i"))
+            }
             _ => Err(invalid_encoding("invalid misc mem funct3")),
         }
     }
@@ -518,15 +518,15 @@ impl Rvi {
         match funct3 {
             Self::FUNCT3_SYSTEM_PRIV => match funct12 {
                 Self::FUNCT12_SYSTEM_ECALL => {
-                    Ok(DefaultInstructionFormatter::simple_instruction("ecall", ""))
+                    Ok(DefaultInstructionFormatter::simple_instruction("ecall"))
                 }
-                Self::FUNCT12_SYSTEM_EBREAK => Ok(DefaultInstructionFormatter::simple_instruction(
-                    "ebreak", "",
-                )),
-                0x002 => Ok(DefaultInstructionFormatter::simple_instruction("uret", "")),
-                0x102 => Ok(DefaultInstructionFormatter::simple_instruction("sret", "")),
-                0x302 => Ok(DefaultInstructionFormatter::simple_instruction("mret", "")),
-                0x105 => Ok(DefaultInstructionFormatter::simple_instruction("wfi", "")),
+                Self::FUNCT12_SYSTEM_EBREAK => {
+                    Ok(DefaultInstructionFormatter::simple_instruction("ebreak"))
+                }
+                0x002 => Ok(DefaultInstructionFormatter::simple_instruction("uret")),
+                0x102 => Ok(DefaultInstructionFormatter::simple_instruction("sret")),
+                0x302 => Ok(DefaultInstructionFormatter::simple_instruction("mret")),
+                0x105 => Ok(DefaultInstructionFormatter::simple_instruction("wfi")),
                 _ if (funct12 >> 5) == 0x09 && rd == 0 => {
                     // SFENCE.VMA: funct7=0x09 in bits 31:25, rs2 in bits 24:20.
                     let rs2_vma = (funct12 & 0x1F) as u8;
@@ -651,6 +651,7 @@ fn prefetch_mnemonic(imm: i64) -> Option<&'static str> {
     match imm {
         0 => Some("prefetch.i"),
         1 => Some("prefetch.r"),
+        2 => Some("prefetch.t"),
         3 => Some("prefetch.w"),
         _ => None,
     }
@@ -845,5 +846,14 @@ mod tests {
             0,
         );
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_prefetch_mnemonic_coverage() {
+        assert_eq!(prefetch_mnemonic(0), Some("prefetch.i"));
+        assert_eq!(prefetch_mnemonic(1), Some("prefetch.r"));
+        assert_eq!(prefetch_mnemonic(2), Some("prefetch.t"));
+        assert_eq!(prefetch_mnemonic(3), Some("prefetch.w"));
+        assert_eq!(prefetch_mnemonic(4), None);
     }
 }
