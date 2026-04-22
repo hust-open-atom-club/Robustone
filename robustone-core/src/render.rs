@@ -20,6 +20,7 @@ pub struct RenderedInstruction {
     pub operands: String,
     pub size: usize,
     pub bytes: Vec<u8>,
+    pub kind: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub decoded: Option<DecodedInstruction>,
 }
@@ -27,12 +28,18 @@ pub struct RenderedInstruction {
 impl RenderedInstruction {
     pub fn from_instruction(instruction: &Instruction, options: RenderOptions) -> Self {
         let (mnemonic, operands) = render_instruction_text(instruction, options);
+        let kind = if mnemonic == ".byte" {
+            "data".to_string()
+        } else {
+            "instruction".to_string()
+        };
         Self {
             address: instruction.address,
             mnemonic,
             operands,
             size: instruction.size,
             bytes: instruction.bytes.clone(),
+            kind,
             decoded: instruction.decoded.clone(),
         }
     }

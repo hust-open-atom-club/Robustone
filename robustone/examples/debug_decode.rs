@@ -16,7 +16,9 @@ fn main() {
 
     for hex in test_instructions {
         println!("Testing: {hex}");
-        let instruction = dispatcher.disassemble(hex, "riscv32".to_string());
+        let parser = robustone::utils::HexParser::new();
+        let bytes = parser.parse(hex, None).unwrap();
+        let (instruction, _) = dispatcher.disassemble_bytes(&bytes, "riscv32", 0).unwrap();
         println!(
             "  Result: {} {}",
             instruction.mnemonic, instruction.operands

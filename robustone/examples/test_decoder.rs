@@ -8,12 +8,15 @@ fn main() {
         dispatcher.supported_architectures()
     );
 
-    let instruction = dispatcher.disassemble("37010000", "riscv32".to_string());
+    let parser = robustone::utils::HexParser::new();
+    let bytes1 = parser.parse("37010000", None).unwrap();
+    let (instruction, _) = dispatcher.disassemble_bytes(&bytes1, "riscv32", 0).unwrap();
     println!("Instruction: {}", instruction.mnemonic);
     println!("Operands: {}", instruction.operands);
     println!("Bytes: {:02x?}", instruction.bytes);
 
-    let instruction2 = dispatcher.disassemble("b3003100", "riscv32".to_string());
+    let bytes2 = parser.parse("b3003100", None).unwrap();
+    let (instruction2, _) = dispatcher.disassemble_bytes(&bytes2, "riscv32", 0).unwrap();
     println!("Instruction2: {}", instruction2.mnemonic);
     println!("Operands2: {}", instruction2.operands);
     println!("Bytes2: {:02x?}", instruction2.bytes);
