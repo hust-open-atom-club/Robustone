@@ -128,6 +128,7 @@ pub trait InstructionExtension: Sync {
         opcode: u8,
         funct3: u8,
         xlen: Xlen,
+        extensions: &Extensions,
         // Compressed instruction fields
         rd_full: u8,
         rs1_full: u8,
@@ -145,6 +146,9 @@ pub trait InstructionExtension: Sync {
         uimm_css: u16,
         uimm_clsp: u16,
         uimm_fldsp: u16,
+        uimm_cld: u16,
+        uimm_sdsp: u16,
+        uimm_cldsp: u16,
     ) -> Option<Result<DecodedInstruction, DisasmError>>;
 
     /// Get the name of this extension.
@@ -169,14 +173,6 @@ pub fn create_extensions() -> Vec<Box<dyn InstructionExtension>> {
 
 pub(crate) fn invalid_encoding(detail: impl Into<String>) -> DisasmError {
     DisasmError::decode_failure(DecodeErrorKind::InvalidEncoding, None::<String>, detail)
-}
-
-pub(crate) fn unimplemented_instruction(detail: impl Into<String>) -> DisasmError {
-    DisasmError::decode_failure(
-        DecodeErrorKind::UnimplementedInstruction,
-        None::<String>,
-        detail,
-    )
 }
 
 pub(crate) fn unsupported_mode(detail: impl Into<String>) -> DisasmError {
