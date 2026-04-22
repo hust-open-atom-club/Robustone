@@ -15,6 +15,7 @@ use std::ffi::OsString;
 
 /// High-level application executor that orchestrates the entire CLI workflow.
 pub struct CliExecutor {
+    #[allow(dead_code)]
     engine: DisassemblyEngine,
 }
 
@@ -134,9 +135,10 @@ impl CliExecutor {
             Err(error) => return Err(error),
         }
 
-        // Create engine with correct architecture
-        let arch = config.arch_name();
-        let engine = DisassemblyEngine::new(arch);
+        // Create engine with correct architecture and options.
+        let engine = DisassemblyEngine::new(config.arch_name())
+            .with_detail(config.display_options.detailed || config.display_options.real_detail)
+            .with_skip_data(config.skip_data);
 
         // Perform the disassembly
         let result = match engine.disassemble(config) {
@@ -183,7 +185,8 @@ impl CliExecutor {
             Err(error) => return Err(error),
         }
 
-        let result = match self.engine.disassemble(config) {
+        let engine = DisassemblyEngine::new(config.arch_name());
+        let result = match engine.disassemble(config) {
             Ok(result) => result,
             Err(error) if config.display_options.json => {
                 println!("{}", self.render_fatal_json(config, &error));
@@ -226,7 +229,8 @@ impl CliExecutor {
             Err(error) => return Err(error),
         }
 
-        let result = match self.engine.disassemble(config) {
+        let engine = DisassemblyEngine::new(config.arch_name());
+        let result = match engine.disassemble(config) {
             Ok(result) => result,
             Err(error) if config.display_options.json => {
                 return Ok(self.render_fatal_json(config, &error));
@@ -244,8 +248,8 @@ impl CliExecutor {
     pub fn execute_minimal(&self, config: &DisasmConfig) -> Result<String> {
         config.validate_for_disassembly()?;
 
-        let result = self
-            .engine
+        let engine = DisassemblyEngine::new(config.arch_name());
+        let result = engine
             .disassemble(config)
             .map_err(|error| CliError::disassembly(&error))?;
 

@@ -4,7 +4,9 @@ fn main() {
     let dispatcher = dispatcher();
 
     // Test the ADDI instruction - this should produce detailed operand information
-    let instruction = dispatcher.disassemble("130101ff", "riscv32".to_string());
+    let parser = robustone::utils::HexParser::new();
+    let bytes = parser.parse("130101ff", None).unwrap();
+    let (instruction, _) = dispatcher.disassemble_bytes(&bytes, "riscv32", 0).unwrap();
 
     println!("=== Basic Output ===");
     println!("{} {}", instruction.mnemonic, instruction.operands);
@@ -31,7 +33,8 @@ fn main() {
     ];
 
     for (hex, _expected) in test_instructions {
-        let instr = dispatcher.disassemble(hex, "riscv32".to_string());
+        let bytes = parser.parse(hex, None).unwrap();
+        let (instr, _) = dispatcher.disassemble_bytes(&bytes, "riscv32", 0).unwrap();
         println!("{} -> {} {}", hex, instr.mnemonic, instr.operands);
         if instr.mnemonic != "unknown" && instr.mnemonic != "c.unimp" {
             println!("  ✓ Success");
