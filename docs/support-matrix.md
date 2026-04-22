@@ -23,11 +23,11 @@ Canonical tokens below are the normalized architecture names emitted by the shar
 | `armle` | `ARM` | yes | no | no | no |
 | `armbe` | `ARM` | yes | no | no | no |
 | `thumb` | `ARM` | yes | no | no | no |
-| `aarch64` | `ARM` | yes | no | no | no |
+| `aarch64` | `ARM` | yes | yes | no | yes |
 | `aarch64be` | `ARM` | yes | no | no | no |
 | `x16` | `x86` | yes | no | no | no |
-| `x32` | `x86` | yes | no | no | no |
-| `x64` | `x86` | yes | no | no | no |
+| `x32` | `x86` | yes | yes | no | yes |
+| `x64` | `x86` | yes | yes | no | yes |
 | `mips` | `MIPS` | yes | no | no | no |
 | `mipsel` | `MIPS` | yes | no | no | no |
 | `mips64` | `MIPS` | yes | no | no | no |
@@ -46,7 +46,7 @@ Canonical tokens below are the normalized architecture names emitted by the shar
 | `m680x` | `Other` | yes | no | no | no |
 | `evm` | `Other` | yes | no | no | no |
 | `bpf` | `Other` | yes | no | no | no |
-| `loongarch64` | `LoongArch` | yes | no | no | no |
+| `loongarch64` | `LoongArch` | yes | yes | no | yes |
 
 ## Decode Backends
 
