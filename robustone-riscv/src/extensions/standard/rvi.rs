@@ -523,7 +523,38 @@ impl Rvi {
                 Self::FUNCT12_SYSTEM_EBREAK => Ok(DefaultInstructionFormatter::simple_instruction(
                     "ebreak", "",
                 )),
-                _ => self.decode_csr_instruction("csrrw", rd, rs1, funct12 as i64),
+                0x002 => Ok(DefaultInstructionFormatter::simple_instruction("uret", "")),
+                0x102 => Ok(DefaultInstructionFormatter::simple_instruction("sret", "")),
+                0x302 => Ok(DefaultInstructionFormatter::simple_instruction("mret", "")),
+                0x105 => Ok(DefaultInstructionFormatter::simple_instruction("wfi", "")),
+                _ if (funct12 >> 5) == 0x09 && rd == 0 => {
+                    // SFENCE.VMA: funct7=0x09 in bits 31:25, rs2 in bits 24:20.
+                    let rs2_vma = (funct12 & 0x1F) as u8;
+                    let operands = if rs1 == 0 && rs2_vma == 0 {
+                        vec![]
+                    } else if rs2_vma == 0 {
+                        vec![
+                            self.operand_factory
+                                .make_register_operand(rs1, Access::read()),
+                        ]
+                    } else {
+                        vec![
+                            self.operand_factory
+                                .make_register_operand(rs1, Access::read()),
+                            self.operand_factory
+                                .make_register_operand(rs2_vma, Access::read()),
+                        ]
+                    };
+                    Ok(self.formatter.create_decoded_instruction(
+                        "sfence.vma",
+                        RiscVInstructionFormat::R,
+                        4,
+                        operands,
+                    ))
+                }
+                _ => Err(invalid_encoding(
+                    "invalid system privileged instruction encoding",
+                )),
             },
             Self::FUNCT3_SYSTEM_CSRRW => {
                 self.decode_csr_instruction("csrrw", rd, rs1, funct12 as i64)
@@ -706,6 +737,7 @@ impl InstructionExtension for Rvi {
         _opcode: u8,
         _funct3: u8,
         _xlen: Xlen,
+        _extensions: &Extensions,
         _rd_full: u8,
         _rs1_full: u8,
         _rs2_full: u8,
@@ -721,6 +753,9 @@ impl InstructionExtension for Rvi {
         _uimm_css: u16,
         _uimm_clsp: u16,
         _uimm_fldsp: u16,
+        _uimm_cld: u16,
+        _uimm_sdsp: u16,
+        _uimm_cldsp: u16,
     ) -> Option<Result<DecodedInstruction, DisasmError>> {
         // RV32I/RV64I extension doesn't handle compressed instructions
         None
@@ -789,12 +824,16 @@ mod tests {
             0b01,
             0b000,
             Xlen::X32,
+            &Extensions::rv32gc(),
             1,
             2,
             3,
             0,
             1,
             2,
+            0,
+            0,
+            0,
             0,
             0,
             0,
