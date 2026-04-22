@@ -416,8 +416,13 @@ impl InstructionExtension for Rvd {
                     (0b11110, 0b000) => {
                         Some(self.decode_fp_int_type("fmv.d.x", rd, rs1, rs2, true, false))
                     } // rs2 ignored
-                    (0b01000, 0b000) => Some(self.decode_fp_r_type("fcvt.d.s", rd, rs1, rs2)), // fmt=00, rs2 is rs1
-                    (0b01000, 0b001) => Some(self.decode_fp_r_type("fcvt.s.d", rd, rs1, rs2)), // fmt=01, rs2 is rs1
+                    (0b01000, rm) => match rs2 {
+                        0 => Some(self.decode_fp_unary_type_with_rm("fcvt.d.s", rd, rs1, rm)),
+                        1 => Some(self.decode_fp_unary_type_with_rm("fcvt.s.d", rd, rs1, rm)),
+                        _ => Some(Err(invalid_encoding(
+                            "invalid D-extension floating conversion",
+                        ))),
+                    },
                     _ => Some(Err(invalid_encoding("invalid D-extension encoding"))),
                 }
             }
