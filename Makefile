@@ -25,7 +25,7 @@ endif
 
 RUN_ARGS ?=
 
-.PHONY: format run build check check-clippy check-pylint check-fmt check-all test test-parity test-validate test-list test-quick clean-help help virt-env pre-commit-install
+.PHONY: format run build check check-clippy check-pylint check-fmt check-all ensure-capstone test test-parity test-validate test-list test-quick capstone-tests clean-help help virt-env pre-commit-install
 
 virt-env:
 	$(PYTHON) -m venv virt-py
@@ -62,7 +62,11 @@ check-all: check check-clippy check-pylint check-fmt
 	$(CARGO) test --workspace --all-features
 	@echo "All checks passed!"
 
-test: virt-env
+# Architectures with full decode support for CI parity testing
+PARITY_TEST_ARCHES := riscv32 riscv64 capstone-riscv32-mc capstone-riscv64-mc
+PARITY_TEST_ARGS := $(foreach a,$(PARITY_TEST_ARCHES),--arch $(a)) --loose-match
+
+ensure-capstone:
 	@mkdir -p $(dir $(CAPSTONE_DIR))
 	@if [ ! -d "$(CAPSTONE_DIR)" ]; then \
 		echo "Cloning Capstone into $(CAPSTONE_DIR)..."; \
@@ -71,6 +75,8 @@ test: virt-env
 		echo "Capstone already present at $(CAPSTONE_DIR)."; \
 	fi
 	@bash $(CAPSTONE_BUILD_SCRIPT) $(CAPSTONE_DIR)
+
+test: virt-env ensure-capstone
 	@echo "Running Python unit tests..."
 	@$(VENV_PYTHON) -m unittest discover -s test -p "test_*.py"
 	@echo "Running parity tests with new framework..."
@@ -78,11 +84,7 @@ test: virt-env
 	@echo "Running Rust workspace tests..."
 	$(CARGO) test --workspace --all-features
 
-# Architectures with full decode support for CI parity testing
-PARITY_TEST_ARCHES := riscv32 riscv64 capstone-riscv32-mc capstone-riscv64-mc
-PARITY_TEST_ARGS := $(foreach a,$(PARITY_TEST_ARCHES),--arch $(a)) --loose-match
-
-test-parity: virt-env
+test-parity: virt-env ensure-capstone
 	@echo "Running parity tests only..."
 	@cd test && $(VENV_PYTHON) run_tests.py $(PARITY_TEST_ARGS)
 
@@ -94,11 +96,11 @@ test-list: virt-env
 	@echo "Available test architectures:"
 	@cd test && $(VENV_PYTHON) run_tests.py --list
 
-test-quick: virt-env
+test-quick: virt-env ensure-capstone
 	@echo "Running quick parity test (limited cases)..."
 	@cd test && $(VENV_PYTHON) run_tests.py $(PARITY_TEST_ARGS) --limit 20
 
-capstone-tests: virt-env
+capstone-tests: virt-env ensure-capstone
 	@echo "Running Capstone YAML parity tests..."
 	@cd test && $(VENV_PYTHON) run_tests.py $(PARITY_TEST_ARGS)
 
