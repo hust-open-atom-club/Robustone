@@ -21,12 +21,10 @@ try:
     from test.core.test_runner import TestRunner
     from test.core.arch_config import discover_arch_configs, create_sample_config
     from test.core.comparator import OutputComparator
-    from test.core.yaml_loader import count_yaml_test_cases
 except ImportError:  # pragma: no cover - direct script fallback
     from core.test_runner import TestRunner
     from core.arch_config import discover_arch_configs, create_sample_config
     from core.comparator import OutputComparator
-    from core.yaml_loader import count_yaml_test_cases
 
 
 def list_architectures(test_root: Path) -> None:
@@ -68,9 +66,6 @@ def _count_test_cases(config) -> int:
 
 def _quick_count_yaml_cases(yaml_source: str) -> int:
     """Quickly estimate YAML test cases by counting 'asm_text' occurrences."""
-    from pathlib import Path
-    import glob
-
     source_path = Path(yaml_source)
     if source_path.is_dir():
         yaml_files = list(source_path.rglob("*.yaml"))
