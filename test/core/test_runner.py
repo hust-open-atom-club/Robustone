@@ -371,7 +371,7 @@ class TestRunner:
             result.result = ComparisonResult.MATCH
         return result
 
-    def run_arch_tests(
+    def run_arch_tests(  # pylint: disable=too-many-branches
         self,
         config: ArchConfig,
         limit: Optional[int] = None,
@@ -411,10 +411,12 @@ class TestRunner:
 
         if verbose:
             print(f"Running {len(test_cases)} test cases for {config.name}...")
-            try:
-                print(f"Test file: {config.cases_file.relative_to(self.repo_root)}")
-            except ValueError:
-                print(f"Test file: {config.cases_file}")
+            source = config.yaml_source or config.cases_file
+            if source is not None:
+                try:
+                    print(f"Test file: {Path(source).relative_to(self.repo_root)}")
+                except ValueError:
+                    print(f"Test file: {source}")
 
         start_time = time.time()
         results: List[TestCaseResult] = []
