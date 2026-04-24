@@ -6,7 +6,6 @@ and produces the same (hex_input, expected_output, note) tuples that
 the existing text-based loader produces.
 """
 
-import glob
 from pathlib import Path
 from typing import Dict, Iterator, List, Optional, Set, Tuple
 
@@ -245,6 +244,7 @@ def _build_cstool_flags(options: List[str]) -> List[str]:
 
 
 def _build_cstool_arch(arch: str, options: List[str]) -> str:
+    # pylint: disable=too-many-return-statements,too-many-branches
     """Build cstool architecture string from Capstone options."""
     opts = set(options)
     be = "CS_MODE_BIG_ENDIAN" in opts
@@ -291,14 +291,14 @@ def _build_cstool_arch(arch: str, options: List[str]) -> str:
         esuf = "be" if be else "el" if le else ""
         if "CS_MODE_MICRO" in opts:
             if "CS_MODE_MIPS32R3" in opts:
-                return f"micromipselr3" if le else f"micromipsr3"
+                return "micromipselr3" if le else "micromipsr3"
             if "CS_MODE_MIPS32R6" in opts:
-                return f"micromipselr6" if le else f"micromipsr6"
+                return "micromipselr6" if le else "micromipsr6"
             return f"micromips{esuf}"
         if "CS_MODE_OCTEON" in opts:
-            return f"octeonle" if le else f"octeon"
+            return "octeonle" if le else "octeon"
         if "CS_MODE_OCTEONP" in opts:
-            return f"octeonple" if le else f"octeonp"
+            return "octeonple" if le else "octeonp"
         if "CS_MODE_NANOMIPS" in opts:
             return "nanomips"
         if "CS_MODE_NMS1" in opts:
@@ -537,6 +537,7 @@ class YamlFilter:
         self.only_supported_modes = only_supported_modes
 
     def matches(self, test_case: dict) -> bool:
+        # pylint: disable=too-many-return-statements
         inp = test_case.get("input", {})
         opts = set(inp.get("options", []))
 
@@ -616,7 +617,7 @@ def load_yaml_test_cases(
         try:
             with yaml_file.open("r", encoding="utf-8") as fh:
                 data = yaml.safe_load(fh)
-        except yaml.YAMLError as exc:
+        except yaml.YAMLError:
             # Skip malformed YAML files gracefully
             continue
 

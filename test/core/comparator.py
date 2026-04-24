@@ -398,7 +398,7 @@ class OutputComparator:
         actual_norm = normalize_output(_extract_asm_text(actual))
         return expected_norm != actual_norm
 
-    def classify_result(
+    def classify_result(  # pylint: disable=too-many-return-statements
         self,
         expected: str,
         cstool_out: str,
@@ -417,18 +417,32 @@ class OutputComparator:
         Returns:
             ComparisonResult classification
         """
-        # Text surface is authoritative; semantic_detail may diverge due to
-        # alias expansion differences (e.g., c.sub vs sub have different operand
-        # counts in Capstone's semantic output but encode the same instruction).
         text_matched = any(
             s.matched for s in surface_results if s.surface == ComparisonSurface.TEXT
         )
+
+        # In strict mode, require all surfaces to match.
+        # In loose mode, text match is sufficient (semantic_detail may diverge
+        # due to alias expansion differences, e.g. c.sub vs sub).
+        if self.strict_match:
+            if not text_matched:
+                if command_failed:
+                    return ComparisonResult.COMMAND_FAILURE
+                if expected and self.check_documentation_drift(expected, cstool_out):
+                    return ComparisonResult.DOCUMENTATION_DRIFT
+                return ComparisonResult.MISMATCH
+
+            if all(surface.matched for surface in surface_results):
+                return ComparisonResult.MATCH
+
+            if command_failed:
+                return ComparisonResult.COMMAND_FAILURE
+            return ComparisonResult.MISMATCH
+
+        # Loose mode: text surface is authoritative
         if text_matched:
             return ComparisonResult.MATCH
 
-        # Only treat as command failure if the *text* commands failed.
-        # Semantic parse errors (e.g., unknown CSR names) should not override
-        # a text mismatch classification.
         if command_failed:
             return ComparisonResult.COMMAND_FAILURE
 

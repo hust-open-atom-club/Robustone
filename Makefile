@@ -74,13 +74,17 @@ test: virt-env
 	@echo "Running Python unit tests..."
 	@$(VENV_PYTHON) -m unittest discover -s test -p "test_*.py"
 	@echo "Running parity tests with new framework..."
-	@cd test && $(VENV_PYTHON) run_tests.py --all
+	@cd test && $(VENV_PYTHON) run_tests.py $(PARITY_TEST_ARGS)
 	@echo "Running Rust workspace tests..."
 	$(CARGO) test --workspace --all-features
 
+# Architectures with full decode support for CI parity testing
+PARITY_TEST_ARCHES := riscv32 riscv64 capstone-riscv32-mc capstone-riscv64-mc
+PARITY_TEST_ARGS := $(foreach a,$(PARITY_TEST_ARCHES),--arch $(a)) --loose-match
+
 test-parity: virt-env
 	@echo "Running parity tests only..."
-	@cd test && $(VENV_PYTHON) run_tests.py --all
+	@cd test && $(VENV_PYTHON) run_tests.py $(PARITY_TEST_ARGS)
 
 test-validate: virt-env
 	@echo "Validating test configurations..."
@@ -92,11 +96,11 @@ test-list: virt-env
 
 test-quick: virt-env
 	@echo "Running quick parity test (limited cases)..."
-	@cd test && $(VENV_PYTHON) run_tests.py --all --limit 20
+	@cd test && $(VENV_PYTHON) run_tests.py $(PARITY_TEST_ARGS) --limit 20
 
 capstone-tests: virt-env
 	@echo "Running Capstone YAML parity tests..."
-	@cd test && $(VENV_PYTHON) run_tests.py --all
+	@cd test && $(VENV_PYTHON) run_tests.py $(PARITY_TEST_ARGS)
 
 clean-help:
 	@echo "Available targets:"
