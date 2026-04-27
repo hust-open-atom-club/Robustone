@@ -1,11 +1,13 @@
 //! LoongArch LA64 decoder for Robustone.
 //!
-//! Auto-generated from Capstone YAML test data.
+//! Delegates to instruction families defined in `extensions/`.
 
 use robustone_core::{
-    ir::{ArchitectureId, DecodeStatus, DecodedInstruction, RenderHints},
+    ir::DecodedInstruction,
     types::error::{DecodeErrorKind, DisasmError},
 };
+
+use crate::extensions::create_families;
 
 /// LoongArch decoder.
 pub struct LoongArchDecoder;
@@ -36,48 +38,20 @@ impl LoongArchDecoder {
         }
 
         let word = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
-        let (mnemonic, operands, size) = crate::decoder_generated::decode_loongarch_word(word)?;
-
-        let mut render_hints = RenderHints::default();
-        match mnemonic {
-            "nop" => {
-                render_hints.capstone_hidden_operands = vec![0, 1, 2];
+        let families = create_families();
+        for family in &families {
+            if let Some(result) = family.try_decode(word, addr) {
+                let mut decoded = result?;
+                decoded.raw_bytes = bytes[..decoded.size].to_vec();
+                decoded.render = Some(crate::render::render_loongarch_text_parts);
+                return Ok(decoded);
             }
-            "move" => {
-                render_hints.capstone_hidden_operands = vec![2];
-            }
-            _ => {}
         }
 
-        // Capstone renders invtlb as "invtlb imm, Rj, Rk" but the generated decoder
-        // produces operands in the wire order "Rk, Rj, imm".
-        let operands = if mnemonic == "invtlb" && operands.len() == 3 {
-            vec![
-                operands[2].clone(),
-                operands[1].clone(),
-                operands[0].clone(),
-            ]
-        } else {
-            operands
-        };
-
-        Ok(DecodedInstruction {
-            architecture: ArchitectureId::LoongArch,
-            address: addr,
-            mode: "loongarch64".to_string(),
-            mnemonic: mnemonic.to_string(),
-            opcode_id: Some(mnemonic.to_string()),
-            size,
-            raw_bytes: bytes[..size].to_vec(),
-            operands,
-            registers_read: Vec::new(),
-            registers_written: Vec::new(),
-            implicit_registers_read: Vec::new(),
-            implicit_registers_written: Vec::new(),
-            groups: Vec::new(),
-            status: DecodeStatus::Success,
-            render_hints,
-            render: Some(crate::render::render_loongarch_text_parts),
+        Err(DisasmError::DecodeFailure {
+            kind: DecodeErrorKind::InvalidEncoding,
+            architecture: Some("loongarch64".to_string()),
+            detail: format!("unrecognized LoongArch encoding 0x{word:08x}"),
         })
     }
 }
