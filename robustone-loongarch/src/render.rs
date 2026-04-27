@@ -50,7 +50,7 @@ pub fn render_loongarch_text_parts(
     let is_branch = BRANCH_MNEMONICS.contains(&mnemonic.as_str());
     let pc = instruction.address as i64;
 
-    let operands = visible_operands
+    let mut operands = visible_operands
         .iter()
         .enumerate()
         .map(|(i, (_, operand))| {
@@ -65,6 +65,12 @@ pub fn render_loongarch_text_parts(
         })
         .collect::<Vec<_>>()
         .join(", ");
+
+    // Capstone uses $vr for LSX (128-bit) vector registers and $xr for LASX (256-bit).
+    // LASX instructions contain "xv" anywhere in the mnemonic; LSX instructions start with 'v' but do not contain "xv".
+    if mnemonic.starts_with('v') && !mnemonic.contains("xv") {
+        operands = operands.replace("$xr", "$vr");
+    }
 
     (mnemonic, operands)
 }

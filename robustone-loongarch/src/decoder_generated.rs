@@ -25,6 +25,153 @@ fn extract_layout_1(word: u32) -> Vec<Operand> {
 fn extract_layout_10(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 32;
     let reg5_5 = ((word >> 5) & 0x1F) + 32;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg0_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+    ]
+}
+
+fn extract_layout_100(word: u32) -> Vec<Operand> {
+    let reg5_5 = (word >> 5) & 0x1F;
+    let imm0 = ((word >> 10) & 0xF) as i64;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+        Operand::Immediate { value: imm0 },
+    ]
+}
+
+fn extract_layout_101(word: u32) -> Vec<Operand> {
+    let reg5_5 = (word >> 5) & 0x1F;
+    let reg10_5 = (word >> 10) & 0x1F;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg10_5),
+        },
+    ]
+}
+
+fn extract_layout_102(word: u32) -> Vec<Operand> {
+    let reg5_5 = (word >> 5) & 0x1F;
+    let reg10_5 = (word >> 10) & 0x1F;
+    let imm0 = (word & 0xF) as i64;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg10_5),
+        },
+        Operand::Immediate { value: imm0 },
+    ]
+}
+
+fn extract_layout_103(word: u32) -> Vec<Operand> {
+    let reg5_5 = (word >> 5) & 0x1F;
+    let imm0 = ((word >> 10) & 0x1F) as i64;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+        Operand::Immediate { value: imm0 },
+    ]
+}
+
+fn extract_layout_104(word: u32) -> Vec<Operand> {
+    let reg5_5 = (word >> 5) & 0x1F;
+    let imm0 = ((word >> 10) & 0x1F) as i64;
+    let imm1 = (word & 0xF) as i64;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+        Operand::Immediate { value: imm0 },
+        Operand::Immediate { value: imm1 },
+    ]
+}
+
+fn extract_layout_105(word: u32) -> Vec<Operand> {
+    let reg5_5 = (word >> 5) & 0x1F;
+    let imm0 = ((word >> 10) & 0x3F) as i64;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+        Operand::Immediate { value: imm0 },
+    ]
+}
+
+fn extract_layout_106(word: u32) -> Vec<Operand> {
+    let reg5_5 = (word >> 5) & 0x1F;
+    let imm0 = ((word >> 10) & 0xFF) as i64;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+        Operand::Immediate { value: imm0 },
+    ]
+}
+
+fn extract_layout_107(word: u32) -> Vec<Operand> {
+    let reg5_5 = (word >> 5) & 0x1F;
+    vec![Operand::Register {
+        register: RegisterId::loongarch(reg5_5),
+    }]
+}
+
+fn extract_layout_108(_word: u32) -> Vec<Operand> {
+    vec![]
+}
+
+fn extract_layout_11(word: u32) -> Vec<Operand> {
+    let reg0_5 = (word & 0x1F) + 32;
+    let reg5_5 = ((word >> 5) & 0x1F) + 32;
+    let reg10_5 = ((word >> 10) & 0x1F) + 32;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg0_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg10_5),
+        },
+    ]
+}
+
+fn extract_layout_12(word: u32) -> Vec<Operand> {
+    let reg0_5 = (word & 0x1F) + 32;
+    let reg5_5 = ((word >> 5) & 0x1F) + 32;
+    let reg10_5 = ((word >> 10) & 0x1F) + 32;
+    let reg15_3 = ((word >> 15) & 0x7) + 96;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg0_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg10_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg15_3),
+        },
+    ]
+}
+
+fn extract_layout_13(word: u32) -> Vec<Operand> {
+    let reg0_5 = (word & 0x1F) + 32;
+    let reg5_5 = ((word >> 5) & 0x1F) + 32;
     let reg10_5 = ((word >> 10) & 0x1F) + 32;
     let reg15_5 = ((word >> 15) & 0x1F) + 32;
     vec![
@@ -43,64 +190,7 @@ fn extract_layout_10(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_100(word: u32) -> Vec<Operand> {
-    let reg5_5 = (word >> 5) & 0x1F;
-    let imm0 = ((word >> 10) & 0x1F) as i64;
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg5_5),
-        },
-        Operand::Immediate { value: imm0 },
-    ]
-}
-
-fn extract_layout_101(word: u32) -> Vec<Operand> {
-    let reg5_5 = (word >> 5) & 0x1F;
-    let imm0 = ((word >> 10) & 0x1F) as i64;
-    let imm1 = (word & 0xF) as i64;
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg5_5),
-        },
-        Operand::Immediate { value: imm0 },
-        Operand::Immediate { value: imm1 },
-    ]
-}
-
-fn extract_layout_102(word: u32) -> Vec<Operand> {
-    let reg5_5 = (word >> 5) & 0x1F;
-    let imm0 = ((word >> 10) & 0x3F) as i64;
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg5_5),
-        },
-        Operand::Immediate { value: imm0 },
-    ]
-}
-
-fn extract_layout_103(word: u32) -> Vec<Operand> {
-    let reg5_5 = (word >> 5) & 0x1F;
-    let imm0 = ((word >> 10) & 0xFF) as i64;
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg5_5),
-        },
-        Operand::Immediate { value: imm0 },
-    ]
-}
-
-fn extract_layout_104(word: u32) -> Vec<Operand> {
-    let reg5_5 = (word >> 5) & 0x1F;
-    vec![Operand::Register {
-        register: RegisterId::loongarch(reg5_5),
-    }]
-}
-
-fn extract_layout_105(_word: u32) -> Vec<Operand> {
-    vec![]
-}
-
-fn extract_layout_11(word: u32) -> Vec<Operand> {
+fn extract_layout_14(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 32;
     let reg5_5 = ((word >> 5) & 0x1F) + 32;
     vec![
@@ -113,7 +203,7 @@ fn extract_layout_11(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_12(word: u32) -> Vec<Operand> {
+fn extract_layout_15(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 32;
     let reg5_5 = (word >> 5) & 0x1F;
     vec![
@@ -126,7 +216,7 @@ fn extract_layout_12(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_13(word: u32) -> Vec<Operand> {
+fn extract_layout_16(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 32;
     let reg5_5 = (word >> 5) & 0x1F;
     let imm0_raw = (word >> 10) & 0xFFF;
@@ -142,7 +232,7 @@ fn extract_layout_13(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_14(word: u32) -> Vec<Operand> {
+fn extract_layout_17(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 32;
     let reg5_5 = (word >> 5) & 0x1F;
     let reg10_5 = (word >> 10) & 0x1F;
@@ -159,75 +249,22 @@ fn extract_layout_14(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_15(word: u32) -> Vec<Operand> {
-    let reg0_5 = (word & 0x1F) + 32;
-    let reg5_5 = ((word >> 5) & 0x1F) + 32;
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg0_5),
-        },
-        Operand::Register {
-            register: RegisterId::loongarch(reg5_5),
-        },
-    ]
-}
-
-fn extract_layout_16(word: u32) -> Vec<Operand> {
-    let reg0_5 = (word & 0x1F) + 32;
-    let reg5_5 = ((word >> 5) & 0x1F) + 32;
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg0_5),
-        },
-        Operand::Register {
-            register: RegisterId::loongarch(reg5_5),
-        },
-    ]
-}
-
-fn extract_layout_17(word: u32) -> Vec<Operand> {
-    let reg0_5 = (word & 0x1F) + 32;
-    let reg5_5 = ((word >> 5) & 0x1F) + 32;
-    let reg10_5 = ((word >> 10) & 0x1F) + 32;
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg0_5),
-        },
-        Operand::Register {
-            register: RegisterId::loongarch(reg5_5),
-        },
-        Operand::Register {
-            register: RegisterId::loongarch(reg10_5),
-        },
-    ]
-}
-
 fn extract_layout_18(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 32;
     let reg5_5 = ((word >> 5) & 0x1F) + 32;
-    let reg10_5 = ((word >> 10) & 0x1F) + 32;
-    let reg15_5 = ((word >> 15) & 0x1F) + 32;
     vec![
         Operand::Register {
             register: RegisterId::loongarch(reg0_5),
         },
         Operand::Register {
             register: RegisterId::loongarch(reg5_5),
-        },
-        Operand::Register {
-            register: RegisterId::loongarch(reg10_5),
-        },
-        Operand::Register {
-            register: RegisterId::loongarch(reg15_5),
         },
     ]
 }
 
 fn extract_layout_19(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 32;
-    let reg5_5 = (word >> 5) & 0x1F;
-    let imm0_raw = (word >> 10) & 0xFFF;
-    let imm0 = sign_extend(imm0_raw, 12);
+    let reg5_5 = ((word >> 5) & 0x1F) + 32;
     vec![
         Operand::Register {
             register: RegisterId::loongarch(reg0_5),
@@ -235,7 +272,6 @@ fn extract_layout_19(word: u32) -> Vec<Operand> {
         Operand::Register {
             register: RegisterId::loongarch(reg5_5),
         },
-        Operand::Immediate { value: imm0 },
     ]
 }
 
@@ -254,6 +290,60 @@ fn extract_layout_2(word: u32) -> Vec<Operand> {
 
 fn extract_layout_20(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 32;
+    let reg5_5 = ((word >> 5) & 0x1F) + 32;
+    let reg10_5 = ((word >> 10) & 0x1F) + 32;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg0_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg10_5),
+        },
+    ]
+}
+
+fn extract_layout_21(word: u32) -> Vec<Operand> {
+    let reg0_5 = (word & 0x1F) + 32;
+    let reg5_5 = ((word >> 5) & 0x1F) + 32;
+    let reg10_5 = ((word >> 10) & 0x1F) + 32;
+    let reg15_5 = ((word >> 15) & 0x1F) + 32;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg0_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg10_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg15_5),
+        },
+    ]
+}
+
+fn extract_layout_22(word: u32) -> Vec<Operand> {
+    let reg0_5 = (word & 0x1F) + 32;
+    let reg5_5 = (word >> 5) & 0x1F;
+    let imm0_raw = (word >> 10) & 0xFFF;
+    let imm0 = sign_extend(imm0_raw, 12);
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg0_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+        Operand::Immediate { value: imm0 },
+    ]
+}
+
+fn extract_layout_23(word: u32) -> Vec<Operand> {
+    let reg0_5 = (word & 0x1F) + 32;
     let reg5_5 = (word >> 5) & 0x1F;
     let reg10_5 = (word >> 10) & 0x1F;
     vec![
@@ -269,7 +359,7 @@ fn extract_layout_20(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_21(word: u32) -> Vec<Operand> {
+fn extract_layout_24(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
     let imm0 = ((word >> 10) & 0x3FFF) as i64;
     vec![
@@ -280,7 +370,7 @@ fn extract_layout_21(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_22(word: u32) -> Vec<Operand> {
+fn extract_layout_25(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
     let reg5_5 = (word >> 5) & 0x1F;
     vec![
@@ -293,7 +383,7 @@ fn extract_layout_22(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_23(word: u32) -> Vec<Operand> {
+fn extract_layout_26(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
     let reg5_5 = (word >> 5) & 0x1F;
     let imm0_raw = ((word >> 10) & 0x3FFF) << 2;
@@ -309,7 +399,7 @@ fn extract_layout_23(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_24(word: u32) -> Vec<Operand> {
+fn extract_layout_27(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
     let reg5_5 = (word >> 5) & 0x1F;
     let imm0 = ((word >> 10) & 0x3FFF) as i64;
@@ -324,7 +414,7 @@ fn extract_layout_24(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_25(word: u32) -> Vec<Operand> {
+fn extract_layout_28(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
     let reg5_5 = (word >> 5) & 0x1F;
     let imm0 = ((word >> 16) & 0x1F) as i64;
@@ -341,7 +431,7 @@ fn extract_layout_25(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_26(word: u32) -> Vec<Operand> {
+fn extract_layout_29(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
     let imm0 = ((word >> 10) & 0x3FFF) as i64;
     vec![
@@ -349,41 +439,6 @@ fn extract_layout_26(word: u32) -> Vec<Operand> {
             register: RegisterId::loongarch(reg0_5),
         },
         Operand::Immediate { value: imm0 },
-    ]
-}
-
-fn extract_layout_27(word: u32) -> Vec<Operand> {
-    let reg0_5 = word & 0x1F;
-    let imm0 = ((word >> 10) & 0xF) as i64;
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg0_5),
-        },
-        Operand::Immediate { value: imm0 },
-    ]
-}
-
-fn extract_layout_28(word: u32) -> Vec<Operand> {
-    let reg0_5 = word & 0x1F;
-    let imm0 = ((word >> 10) & 0xFF) as i64;
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg0_5),
-        },
-        Operand::Immediate { value: imm0 },
-    ]
-}
-
-fn extract_layout_29(word: u32) -> Vec<Operand> {
-    let reg0_5 = word & 0x1F;
-    let reg5_2 = ((word >> 5) & 0x3) + 104;
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg0_5),
-        },
-        Operand::Register {
-            register: RegisterId::loongarch(reg5_2),
-        },
     ]
 }
 
@@ -406,6 +461,41 @@ fn extract_layout_3(word: u32) -> Vec<Operand> {
 
 fn extract_layout_30(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
+    let imm0 = ((word >> 10) & 0xF) as i64;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg0_5),
+        },
+        Operand::Immediate { value: imm0 },
+    ]
+}
+
+fn extract_layout_31(word: u32) -> Vec<Operand> {
+    let reg0_5 = word & 0x1F;
+    let imm0 = ((word >> 10) & 0xFF) as i64;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg0_5),
+        },
+        Operand::Immediate { value: imm0 },
+    ]
+}
+
+fn extract_layout_32(word: u32) -> Vec<Operand> {
+    let reg0_5 = word & 0x1F;
+    let reg5_2 = ((word >> 5) & 0x3) + 104;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg0_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_2),
+        },
+    ]
+}
+
+fn extract_layout_33(word: u32) -> Vec<Operand> {
+    let reg0_5 = word & 0x1F;
     let imm0_raw = (word >> 5) & 0xFFFFF;
     let imm0 = sign_extend(imm0_raw, 20);
     vec![
@@ -416,7 +506,7 @@ fn extract_layout_30(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_31(word: u32) -> Vec<Operand> {
+fn extract_layout_34(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
     let reg5_5 = ((word >> 5) & 0x1F) + 96;
     vec![
@@ -429,7 +519,7 @@ fn extract_layout_31(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_32(word: u32) -> Vec<Operand> {
+fn extract_layout_35(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
     let reg5_5 = ((word >> 5) & 0x1F) + 108;
     vec![
@@ -442,7 +532,7 @@ fn extract_layout_32(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_33(word: u32) -> Vec<Operand> {
+fn extract_layout_36(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
     let reg5_5 = ((word >> 5) & 0x1F) + 32;
     vec![
@@ -455,7 +545,7 @@ fn extract_layout_33(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_34(word: u32) -> Vec<Operand> {
+fn extract_layout_37(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
     let reg5_5 = (word >> 5) & 0x1F;
     vec![
@@ -468,7 +558,7 @@ fn extract_layout_34(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_35(word: u32) -> Vec<Operand> {
+fn extract_layout_38(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
     let reg5_5 = (word >> 5) & 0x1F;
     let imm0_raw = (word >> 10) & 0xFFF;
@@ -484,57 +574,10 @@ fn extract_layout_35(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_36(word: u32) -> Vec<Operand> {
-    let reg0_5 = word & 0x1F;
-    let reg5_5 = (word >> 5) & 0x1F;
-    let imm0 = ((word >> 10) & 0xFFF) as i64;
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg0_5),
-        },
-        Operand::Register {
-            register: RegisterId::loongarch(reg5_5),
-        },
-        Operand::Immediate { value: imm0 },
-    ]
-}
-
-fn extract_layout_37(word: u32) -> Vec<Operand> {
-    let reg0_5 = word & 0x1F;
-    let reg5_5 = (word >> 5) & 0x1F;
-    let imm0_raw = ((word >> 10) & 0x3FFF) << 2;
-    let imm0 = sign_extend(imm0_raw, 16);
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg0_5),
-        },
-        Operand::Register {
-            register: RegisterId::loongarch(reg5_5),
-        },
-        Operand::Immediate { value: imm0 },
-    ]
-}
-
-fn extract_layout_38(word: u32) -> Vec<Operand> {
-    let reg0_5 = word & 0x1F;
-    let reg5_5 = (word >> 5) & 0x1F;
-    let imm0_raw = ((word >> 10) & 0xFFFF) << 2;
-    let imm0 = sign_extend(imm0_raw, 18);
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg0_5),
-        },
-        Operand::Register {
-            register: RegisterId::loongarch(reg5_5),
-        },
-        Operand::Immediate { value: imm0 },
-    ]
-}
-
 fn extract_layout_39(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
     let reg5_5 = (word >> 5) & 0x1F;
-    let imm0 = ((word >> 10) & 0x7) as i64;
+    let imm0 = ((word >> 10) & 0xFFF) as i64;
     vec![
         Operand::Register {
             register: RegisterId::loongarch(reg0_5),
@@ -566,7 +609,8 @@ fn extract_layout_4(word: u32) -> Vec<Operand> {
 fn extract_layout_40(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
     let reg5_5 = (word >> 5) & 0x1F;
-    let imm0 = ((word >> 10) & 0xF) as i64;
+    let imm0_raw = ((word >> 10) & 0x3FFF) << 2;
+    let imm0 = sign_extend(imm0_raw, 16);
     vec![
         Operand::Register {
             register: RegisterId::loongarch(reg0_5),
@@ -579,6 +623,52 @@ fn extract_layout_40(word: u32) -> Vec<Operand> {
 }
 
 fn extract_layout_41(word: u32) -> Vec<Operand> {
+    let reg0_5 = word & 0x1F;
+    let reg5_5 = (word >> 5) & 0x1F;
+    let imm0_raw = ((word >> 10) & 0xFFFF) << 2;
+    let imm0 = sign_extend(imm0_raw, 18);
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg0_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+        Operand::Immediate { value: imm0 },
+    ]
+}
+
+fn extract_layout_42(word: u32) -> Vec<Operand> {
+    let reg0_5 = word & 0x1F;
+    let reg5_5 = (word >> 5) & 0x1F;
+    let imm0 = ((word >> 10) & 0x7) as i64;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg0_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+        Operand::Immediate { value: imm0 },
+    ]
+}
+
+fn extract_layout_43(word: u32) -> Vec<Operand> {
+    let reg0_5 = word & 0x1F;
+    let reg5_5 = (word >> 5) & 0x1F;
+    let imm0 = ((word >> 10) & 0xF) as i64;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg0_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+        Operand::Immediate { value: imm0 },
+    ]
+}
+
+fn extract_layout_44(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
     let reg5_5 = (word >> 5) & 0x1F;
     let reg10_5 = (word >> 10) & 0x1F;
@@ -595,7 +685,7 @@ fn extract_layout_41(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_42(word: u32) -> Vec<Operand> {
+fn extract_layout_45(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
     let reg5_5 = (word >> 5) & 0x1F;
     let reg10_5 = (word >> 10) & 0x1F;
@@ -614,7 +704,7 @@ fn extract_layout_42(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_43(word: u32) -> Vec<Operand> {
+fn extract_layout_46(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
     let reg5_5 = (word >> 5) & 0x1F;
     let reg10_5 = (word >> 10) & 0x1F;
@@ -633,7 +723,7 @@ fn extract_layout_43(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_44(word: u32) -> Vec<Operand> {
+fn extract_layout_47(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
     let reg5_5 = (word >> 5) & 0x1F;
     let imm0_raw = (word >> 10) & 0x1F;
@@ -649,7 +739,7 @@ fn extract_layout_44(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_45(word: u32) -> Vec<Operand> {
+fn extract_layout_48(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
     let reg5_5 = (word >> 5) & 0x1F;
     let imm0 = ((word >> 10) & 0x1F) as i64;
@@ -664,57 +754,10 @@ fn extract_layout_45(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_46(word: u32) -> Vec<Operand> {
+fn extract_layout_49(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
     let reg5_5 = (word >> 5) & 0x1F;
     let imm0 = ((word >> 10) & 0x3F) as i64;
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg0_5),
-        },
-        Operand::Register {
-            register: RegisterId::loongarch(reg5_5),
-        },
-        Operand::Immediate { value: imm0 },
-    ]
-}
-
-fn extract_layout_47(word: u32) -> Vec<Operand> {
-    let reg0_5 = word & 0x1F;
-    let reg5_5 = (word >> 5) & 0x1F;
-    let imm0 = ((word >> 10) & 0xFF) as i64;
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg0_5),
-        },
-        Operand::Register {
-            register: RegisterId::loongarch(reg5_5),
-        },
-        Operand::Immediate { value: imm0 },
-    ]
-}
-
-fn extract_layout_48(word: u32) -> Vec<Operand> {
-    let reg0_5 = word & 0x1F;
-    let reg5_5 = (word >> 5) & 0x1F;
-    let imm0 = ((word >> 16) & 0x1F) as i64;
-    let imm1 = ((word >> 10) & 0x1F) as i64;
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg0_5),
-        },
-        Operand::Register {
-            register: RegisterId::loongarch(reg5_5),
-        },
-        Operand::Immediate { value: imm0 },
-        Operand::Immediate { value: imm1 },
-    ]
-}
-
-fn extract_layout_49(word: u32) -> Vec<Operand> {
-    let reg0_5 = word & 0x1F;
-    let reg5_5 = ((word >> 5) & 0x1F) + 64;
-    let imm0 = ((word >> 10) & 0x3) as i64;
     vec![
         Operand::Register {
             register: RegisterId::loongarch(reg0_5),
@@ -741,8 +784,8 @@ fn extract_layout_5(word: u32) -> Vec<Operand> {
 
 fn extract_layout_50(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
-    let reg5_5 = ((word >> 5) & 0x1F) + 64;
-    let imm0 = ((word >> 10) & 0x7) as i64;
+    let reg5_5 = (word >> 5) & 0x1F;
+    let imm0 = ((word >> 10) & 0xFF) as i64;
     vec![
         Operand::Register {
             register: RegisterId::loongarch(reg0_5),
@@ -756,11 +799,15 @@ fn extract_layout_50(word: u32) -> Vec<Operand> {
 
 fn extract_layout_51(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
-    let imm0 = ((word >> 5) & 0x1F) as i64;
-    let imm1 = ((word >> 10) & 0xFF) as i64;
+    let reg5_5 = (word >> 5) & 0x1F;
+    let imm0 = ((word >> 16) & 0x1F) as i64;
+    let imm1 = ((word >> 10) & 0x1F) as i64;
     vec![
         Operand::Register {
             register: RegisterId::loongarch(reg0_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
         },
         Operand::Immediate { value: imm0 },
         Operand::Immediate { value: imm1 },
@@ -769,15 +816,23 @@ fn extract_layout_51(word: u32) -> Vec<Operand> {
 
 fn extract_layout_52(word: u32) -> Vec<Operand> {
     let reg0_5 = word & 0x1F;
-    vec![Operand::Register {
-        register: RegisterId::loongarch(reg0_5),
-    }]
+    let reg5_5 = ((word >> 5) & 0x1F) + 64;
+    let imm0 = ((word >> 10) & 0x3) as i64;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg0_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+        Operand::Immediate { value: imm0 },
+    ]
 }
 
 fn extract_layout_53(word: u32) -> Vec<Operand> {
-    let reg0_5 = (word & 0x1F) + 64;
-    let reg5_5 = (word >> 5) & 0x1F;
-    let imm0 = ((word >> 10) & 0x3) as i64;
+    let reg0_5 = word & 0x1F;
+    let reg5_5 = ((word >> 5) & 0x1F) + 64;
+    let imm0 = ((word >> 10) & 0x7) as i64;
     vec![
         Operand::Register {
             register: RegisterId::loongarch(reg0_5),
@@ -790,6 +845,41 @@ fn extract_layout_53(word: u32) -> Vec<Operand> {
 }
 
 fn extract_layout_54(word: u32) -> Vec<Operand> {
+    let reg0_5 = word & 0x1F;
+    let imm0 = ((word >> 5) & 0x1F) as i64;
+    let imm1 = ((word >> 10) & 0xFF) as i64;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg0_5),
+        },
+        Operand::Immediate { value: imm0 },
+        Operand::Immediate { value: imm1 },
+    ]
+}
+
+fn extract_layout_55(word: u32) -> Vec<Operand> {
+    let reg0_5 = word & 0x1F;
+    vec![Operand::Register {
+        register: RegisterId::loongarch(reg0_5),
+    }]
+}
+
+fn extract_layout_56(word: u32) -> Vec<Operand> {
+    let reg0_5 = (word & 0x1F) + 64;
+    let reg5_5 = (word >> 5) & 0x1F;
+    let imm0 = ((word >> 10) & 0x3) as i64;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg0_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+        Operand::Immediate { value: imm0 },
+    ]
+}
+
+fn extract_layout_57(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = (word >> 5) & 0x1F;
     let imm0 = ((word >> 10) & 0x7) as i64;
@@ -804,7 +894,7 @@ fn extract_layout_54(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_55(word: u32) -> Vec<Operand> {
+fn extract_layout_58(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let imm0 = ((word >> 10) & 0x3) as i64;
@@ -819,7 +909,7 @@ fn extract_layout_55(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_56(word: u32) -> Vec<Operand> {
+fn extract_layout_59(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let imm0 = ((word >> 10) & 0x7) as i64;
@@ -834,7 +924,20 @@ fn extract_layout_56(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_57(word: u32) -> Vec<Operand> {
+fn extract_layout_6(word: u32) -> Vec<Operand> {
+    let reg0_5 = (word & 0x1F) + 96;
+    let reg5_5 = ((word >> 5) & 0x1F) + 32;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg0_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+    ]
+}
+
+fn extract_layout_60(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let imm0 = ((word >> 10) & 0xF) as i64;
@@ -849,7 +952,7 @@ fn extract_layout_57(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_58(word: u32) -> Vec<Operand> {
+fn extract_layout_61(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let reg10_5 = ((word >> 10) & 0x1F) + 64;
@@ -866,7 +969,7 @@ fn extract_layout_58(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_59(word: u32) -> Vec<Operand> {
+fn extract_layout_62(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let imm0 = ((word >> 10) & 0x1F) as i64;
@@ -881,20 +984,7 @@ fn extract_layout_59(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_6(word: u32) -> Vec<Operand> {
-    let reg0_5 = (word & 0x1F) + 96;
-    let reg5_5 = (word >> 5) & 0x1F;
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg0_5),
-        },
-        Operand::Register {
-            register: RegisterId::loongarch(reg5_5),
-        },
-    ]
-}
-
-fn extract_layout_60(word: u32) -> Vec<Operand> {
+fn extract_layout_63(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let imm0 = ((word >> 10) & 0x3F) as i64;
@@ -909,7 +999,7 @@ fn extract_layout_60(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_61(word: u32) -> Vec<Operand> {
+fn extract_layout_64(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let imm0 = ((word >> 10) & 0x7F) as i64;
@@ -924,7 +1014,7 @@ fn extract_layout_61(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_62(word: u32) -> Vec<Operand> {
+fn extract_layout_65(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let imm0 = ((word >> 10) & 0xFF) as i64;
@@ -939,7 +1029,7 @@ fn extract_layout_62(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_63(word: u32) -> Vec<Operand> {
+fn extract_layout_66(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = (word >> 5) & 0x1F;
     vec![
@@ -952,7 +1042,7 @@ fn extract_layout_63(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_64(word: u32) -> Vec<Operand> {
+fn extract_layout_67(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = (word >> 5) & 0x1F;
     let imm0_raw = ((word >> 10) & 0x3FF) << 2;
@@ -968,7 +1058,7 @@ fn extract_layout_64(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_65(word: u32) -> Vec<Operand> {
+fn extract_layout_68(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = (word >> 5) & 0x1F;
     let imm0_raw = ((word >> 10) & 0x7FF) << 1;
@@ -984,7 +1074,7 @@ fn extract_layout_65(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_66(word: u32) -> Vec<Operand> {
+fn extract_layout_69(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = (word >> 5) & 0x1F;
     let imm0_raw = (word >> 10) & 0xFFF;
@@ -1000,7 +1090,20 @@ fn extract_layout_66(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_67(word: u32) -> Vec<Operand> {
+fn extract_layout_7(word: u32) -> Vec<Operand> {
+    let reg0_5 = (word & 0x1F) + 96;
+    let reg5_5 = (word >> 5) & 0x1F;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg0_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+    ]
+}
+
+fn extract_layout_70(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = (word >> 5) & 0x1F;
     let reg10_5 = (word >> 10) & 0x1F;
@@ -1017,7 +1120,7 @@ fn extract_layout_67(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_68(word: u32) -> Vec<Operand> {
+fn extract_layout_71(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = (word >> 5) & 0x1F;
     let imm0_raw = (word >> 10) & 0xFF;
@@ -1035,7 +1138,7 @@ fn extract_layout_68(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_69(word: u32) -> Vec<Operand> {
+fn extract_layout_72(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = (word >> 5) & 0x1F;
     let imm0_raw = ((word >> 10) & 0xFF) << 1;
@@ -1053,20 +1156,7 @@ fn extract_layout_69(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_7(word: u32) -> Vec<Operand> {
-    let reg0_5 = (word & 0x1F) + 108;
-    let reg5_5 = (word >> 5) & 0x1F;
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg0_5),
-        },
-        Operand::Register {
-            register: RegisterId::loongarch(reg5_5),
-        },
-    ]
-}
-
-fn extract_layout_70(word: u32) -> Vec<Operand> {
+fn extract_layout_73(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = (word >> 5) & 0x1F;
     let imm0_raw = ((word >> 10) & 0xFF) << 2;
@@ -1084,7 +1174,7 @@ fn extract_layout_70(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_71(word: u32) -> Vec<Operand> {
+fn extract_layout_74(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = (word >> 5) & 0x1F;
     let imm0_raw = ((word >> 10) & 0xFF) << 3;
@@ -1102,7 +1192,7 @@ fn extract_layout_71(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_72(word: u32) -> Vec<Operand> {
+fn extract_layout_75(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = (word >> 5) & 0x1F;
     let imm0_raw = ((word >> 10) & 0x1FF) << 3;
@@ -1118,7 +1208,7 @@ fn extract_layout_72(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_73(word: u32) -> Vec<Operand> {
+fn extract_layout_76(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     vec![
@@ -1131,7 +1221,7 @@ fn extract_layout_73(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_74(word: u32) -> Vec<Operand> {
+fn extract_layout_77(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let imm0 = ((word >> 10) & 0x1) as i64;
@@ -1146,7 +1236,7 @@ fn extract_layout_74(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_75(word: u32) -> Vec<Operand> {
+fn extract_layout_78(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let imm0 = ((word >> 10) & 0x3) as i64;
@@ -1161,7 +1251,7 @@ fn extract_layout_75(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_76(word: u32) -> Vec<Operand> {
+fn extract_layout_79(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let imm0 = ((word >> 10) & 0x7) as i64;
@@ -1176,7 +1266,20 @@ fn extract_layout_76(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_77(word: u32) -> Vec<Operand> {
+fn extract_layout_8(word: u32) -> Vec<Operand> {
+    let reg0_5 = (word & 0x1F) + 108;
+    let reg5_5 = (word >> 5) & 0x1F;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg0_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+    ]
+}
+
+fn extract_layout_80(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let imm0 = ((word >> 10) & 0xF) as i64;
@@ -1191,7 +1294,7 @@ fn extract_layout_77(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_78(word: u32) -> Vec<Operand> {
+fn extract_layout_81(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let reg10_5 = (word >> 10) & 0x1F;
@@ -1208,7 +1311,7 @@ fn extract_layout_78(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_79(word: u32) -> Vec<Operand> {
+fn extract_layout_82(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let reg10_5 = ((word >> 10) & 0x1F) + 64;
@@ -1225,20 +1328,7 @@ fn extract_layout_79(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_8(word: u32) -> Vec<Operand> {
-    let reg0_5 = (word & 0x1F) + 32;
-    let reg5_5 = ((word >> 5) & 0x1F) + 32;
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg0_5),
-        },
-        Operand::Register {
-            register: RegisterId::loongarch(reg5_5),
-        },
-    ]
-}
-
-fn extract_layout_80(word: u32) -> Vec<Operand> {
+fn extract_layout_83(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let reg10_5 = ((word >> 10) & 0x1F) + 64;
@@ -1259,7 +1349,7 @@ fn extract_layout_80(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_81(word: u32) -> Vec<Operand> {
+fn extract_layout_84(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let imm0_raw = (word >> 10) & 0x1F;
@@ -1275,7 +1365,7 @@ fn extract_layout_81(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_82(word: u32) -> Vec<Operand> {
+fn extract_layout_85(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let imm0 = ((word >> 10) & 0x1F) as i64;
@@ -1290,7 +1380,7 @@ fn extract_layout_82(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_83(word: u32) -> Vec<Operand> {
+fn extract_layout_86(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let imm0 = ((word >> 10) & 0x3F) as i64;
@@ -1305,7 +1395,7 @@ fn extract_layout_83(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_84(word: u32) -> Vec<Operand> {
+fn extract_layout_87(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let imm0 = ((word >> 10) & 0xFF) as i64;
@@ -1320,7 +1410,7 @@ fn extract_layout_84(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_85(word: u32) -> Vec<Operand> {
+fn extract_layout_88(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let imm0 = ((word >> 10) & 0x1) as i64;
@@ -1335,7 +1425,7 @@ fn extract_layout_85(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_86(word: u32) -> Vec<Operand> {
+fn extract_layout_89(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let imm0 = ((word >> 10) & 0x3) as i64;
@@ -1350,7 +1440,20 @@ fn extract_layout_86(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_87(word: u32) -> Vec<Operand> {
+fn extract_layout_9(word: u32) -> Vec<Operand> {
+    let reg0_5 = (word & 0x1F) + 32;
+    let reg5_5 = ((word >> 5) & 0x1F) + 96;
+    vec![
+        Operand::Register {
+            register: RegisterId::loongarch(reg0_5),
+        },
+        Operand::Register {
+            register: RegisterId::loongarch(reg5_5),
+        },
+    ]
+}
+
+fn extract_layout_90(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let imm0 = ((word >> 10) & 0x7) as i64;
@@ -1365,7 +1468,7 @@ fn extract_layout_87(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_88(word: u32) -> Vec<Operand> {
+fn extract_layout_91(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 64;
     let reg5_5 = ((word >> 5) & 0x1F) + 64;
     let imm0 = ((word >> 10) & 0xF) as i64;
@@ -1380,7 +1483,7 @@ fn extract_layout_88(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_89(word: u32) -> Vec<Operand> {
+fn extract_layout_92(word: u32) -> Vec<Operand> {
     let imm0 = (word & 0x1F) as i64;
     let reg5_5 = (word >> 5) & 0x1F;
     let imm1_raw = (word >> 10) & 0xFFF;
@@ -1394,30 +1497,13 @@ fn extract_layout_89(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_9(word: u32) -> Vec<Operand> {
-    let reg0_5 = (word & 0x1F) + 32;
-    let reg5_5 = ((word >> 5) & 0x1F) + 32;
-    let reg10_5 = ((word >> 10) & 0x1F) + 32;
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg0_5),
-        },
-        Operand::Register {
-            register: RegisterId::loongarch(reg5_5),
-        },
-        Operand::Register {
-            register: RegisterId::loongarch(reg10_5),
-        },
-    ]
-}
-
-fn extract_layout_90(word: u32) -> Vec<Operand> {
+fn extract_layout_93(word: u32) -> Vec<Operand> {
     let imm0_raw = ((word >> 10) & 0xFFFF) << 2;
     let imm0 = sign_extend(imm0_raw, 23);
     vec![Operand::Immediate { value: imm0 }]
 }
 
-fn extract_layout_91(word: u32) -> Vec<Operand> {
+fn extract_layout_94(word: u32) -> Vec<Operand> {
     let reg10_5 = (word >> 10) & 0x1F;
     let reg5_5 = (word >> 5) & 0x1F;
     let imm0 = (word & 0x1F) as i64;
@@ -1432,7 +1518,7 @@ fn extract_layout_91(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_92(word: u32) -> Vec<Operand> {
+fn extract_layout_95(word: u32) -> Vec<Operand> {
     let reg5_3 = ((word >> 5) & 0x7) + 96;
     let imm0_raw = ((word >> 10) & 0xFFFF) << 2;
     let imm0 = sign_extend(imm0_raw, 23);
@@ -1444,12 +1530,12 @@ fn extract_layout_92(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_93(word: u32) -> Vec<Operand> {
+fn extract_layout_96(word: u32) -> Vec<Operand> {
     let imm0 = ((word >> 5) & 0x7) as i64;
     vec![Operand::Immediate { value: imm0 }]
 }
 
-fn extract_layout_94(word: u32) -> Vec<Operand> {
+fn extract_layout_97(word: u32) -> Vec<Operand> {
     let reg5_5 = (word >> 5) & 0x1F;
     let reg0_5 = word & 0x1F;
     let imm0_raw = ((word >> 10) & 0xFFFF) << 2;
@@ -1465,7 +1551,7 @@ fn extract_layout_94(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_95(word: u32) -> Vec<Operand> {
+fn extract_layout_98(word: u32) -> Vec<Operand> {
     let reg5_5 = (word >> 5) & 0x1F;
     let imm0_raw = ((word >> 10) & 0xFFFF) << 2;
     let imm0 = sign_extend(imm0_raw, 23);
@@ -1477,7 +1563,7 @@ fn extract_layout_95(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_96(word: u32) -> Vec<Operand> {
+fn extract_layout_99(word: u32) -> Vec<Operand> {
     let reg5_5 = (word >> 5) & 0x1F;
     let imm0 = ((word >> 10) & 0x7) as i64;
     vec![
@@ -1488,397 +1574,360 @@ fn extract_layout_96(word: u32) -> Vec<Operand> {
     ]
 }
 
-fn extract_layout_97(word: u32) -> Vec<Operand> {
-    let reg5_5 = (word >> 5) & 0x1F;
-    let imm0 = ((word >> 10) & 0xF) as i64;
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg5_5),
-        },
-        Operand::Immediate { value: imm0 },
-    ]
-}
-
-fn extract_layout_98(word: u32) -> Vec<Operand> {
-    let reg5_5 = (word >> 5) & 0x1F;
-    let reg10_5 = (word >> 10) & 0x1F;
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg5_5),
-        },
-        Operand::Register {
-            register: RegisterId::loongarch(reg10_5),
-        },
-    ]
-}
-
-fn extract_layout_99(word: u32) -> Vec<Operand> {
-    let reg5_5 = (word >> 5) & 0x1F;
-    let reg10_5 = (word >> 10) & 0x1F;
-    let imm0 = (word & 0xF) as i64;
-    vec![
-        Operand::Register {
-            register: RegisterId::loongarch(reg5_5),
-        },
-        Operand::Register {
-            register: RegisterId::loongarch(reg10_5),
-        },
-        Operand::Immediate { value: imm0 },
-    ]
-}
-
 pub fn decode_loongarch_word(
     word: u32,
 ) -> Result<(&'static str, Vec<Operand>, usize), DisasmError> {
     let (mnemonic, operands) = match word {
         0x000008A0 => ("movgr2scr", extract_layout_2(word)),
-        0x00000C24 => ("movscr2gr", extract_layout_29(word)),
-        0x00001061 => ("clo.w", extract_layout_34(word)),
-        0x00001547 => ("clz.w", extract_layout_34(word)),
-        0x000018C2 => ("cto.w", extract_layout_34(word)),
-        0x00001EC5 => ("ctz.w", extract_layout_34(word)),
-        0x00003174 => ("revb.2h", extract_layout_34(word)),
-        0x00004B75 => ("bitrev.4b", extract_layout_34(word)),
-        0x000050B9 => ("bitrev.w", extract_layout_34(word)),
-        0x00006098 => ("rdtimel.w", extract_layout_34(word)),
-        0x000064AB => ("rdtimeh.w", extract_layout_34(word)),
-        0x00006D03 => ("cpucfg", extract_layout_34(word)),
-        0x00007020 => ("x86mttop", extract_layout_93(word)),
-        0x00007404 => ("x86mftop", extract_layout_52(word)),
-        0x000078A4 => ("setx86loope", extract_layout_34(word)),
-        0x00007CA4 => ("setx86loopne", extract_layout_34(word)),
-        0x00008008 => ("x86settm", extract_layout_105(word)),
-        0x00008009 => ("x86inctop", extract_layout_105(word)),
-        0x00008028 => ("x86clrtm", extract_layout_105(word)),
-        0x00008029 => ("x86dectop", extract_layout_105(word)),
-        0x00008080 => ("x86inc.b", extract_layout_104(word)),
-        0x00008081 => ("x86inc.h", extract_layout_104(word)),
-        0x00008082 => ("x86inc.w", extract_layout_104(word)),
-        0x00008083 => ("x86inc.d", extract_layout_104(word)),
-        0x00008084 => ("x86dec.b", extract_layout_104(word)),
-        0x00008085 => ("x86dec.h", extract_layout_104(word)),
-        0x00008086 => ("x86dec.w", extract_layout_104(word)),
-        0x00008087 => ("x86dec.d", extract_layout_104(word)),
-        0x00058A22 => ("alsl.w", extract_layout_42(word)),
-        0x0008401D => ("bytepick.w", extract_layout_43(word)),
-        0x00107C29 => ("add.w", extract_layout_41(word)),
-        0x00114F35 => ("sub.w", extract_layout_41(word)),
-        0x00120B5D => ("slt", extract_layout_41(word)),
-        0x0012F6AB => ("sltu", extract_layout_41(word)),
-        0x00134974 => ("maskeqz", extract_layout_41(word)),
-        0x0013E9B4 => ("masknez", extract_layout_41(word)),
-        0x00141645 => ("nor", extract_layout_41(word)),
-        0x001487F3 => ("and", extract_layout_41(word)),
-        0x00150128 => ("move", extract_layout_41(word)),
-        0x00157A11 => ("or", extract_layout_41(word)),
-        0x0015A26F => ("xor", extract_layout_41(word)),
-        0x00166462 => ("orn", extract_layout_41(word)),
-        0x0016973C => ("andn", extract_layout_41(word)),
-        0x00175F78 => ("sll.w", extract_layout_41(word)),
-        0x00179E3F => ("srl.w", extract_layout_41(word)),
-        0x00182B8C => ("sra.w", extract_layout_41(word)),
-        0x001A18A4 => ("rotr.b", extract_layout_41(word)),
-        0x001A98A4 => ("rotr.h", extract_layout_41(word)),
-        0x001B4B41 => ("rotr.w", extract_layout_41(word)),
-        0x001C0E44 => ("mul.w", extract_layout_41(word)),
-        0x001C82FB => ("mulh.w", extract_layout_41(word)),
-        0x001D622A => ("mulh.wu", extract_layout_41(word)),
-        0x002065BE => ("div.w", extract_layout_41(word)),
-        0x0020AB41 => ("mod.w", extract_layout_41(word)),
-        0x002102F3 => ("div.wu", extract_layout_41(word)),
-        0x0021C53B => ("mod.wu", extract_layout_41(word)),
-        0x002408F8 => ("crc.w.b.w", extract_layout_41(word)),
-        0x0024C95F => ("crc.w.h.w", extract_layout_41(word)),
-        0x002528DC => ("crc.w.w.w", extract_layout_41(word)),
-        0x0025FD7C => ("crc.w.d.w", extract_layout_41(word)),
-        0x00260E4F => ("crcc.w.b.w", extract_layout_41(word)),
-        0x0026CBB5 => ("crcc.w.h.w", extract_layout_41(word)),
-        0x002735D1 => ("crcc.w.w.w", extract_layout_41(word)),
-        0x0027EEBE => ("crcc.w.d.w", extract_layout_41(word)),
-        0x002904A4 => ("addu12i.w", extract_layout_44(word)),
-        0x002984A4 => ("addu12i.d", extract_layout_44(word)),
+        0x00000C24 => ("movscr2gr", extract_layout_32(word)),
+        0x00001061 => ("clo.w", extract_layout_37(word)),
+        0x00001547 => ("clz.w", extract_layout_37(word)),
+        0x000018C2 => ("cto.w", extract_layout_37(word)),
+        0x00001EC5 => ("ctz.w", extract_layout_37(word)),
+        0x00003174 => ("revb.2h", extract_layout_37(word)),
+        0x00004B75 => ("bitrev.4b", extract_layout_37(word)),
+        0x000050B9 => ("bitrev.w", extract_layout_37(word)),
+        0x00006098 => ("rdtimel.w", extract_layout_37(word)),
+        0x000064AB => ("rdtimeh.w", extract_layout_37(word)),
+        0x00006D03 => ("cpucfg", extract_layout_37(word)),
+        0x00007020 => ("x86mttop", extract_layout_96(word)),
+        0x00007404 => ("x86mftop", extract_layout_55(word)),
+        0x000078A4 => ("setx86loope", extract_layout_37(word)),
+        0x00007CA4 => ("setx86loopne", extract_layout_37(word)),
+        0x00008008 => ("x86settm", extract_layout_108(word)),
+        0x00008009 => ("x86inctop", extract_layout_108(word)),
+        0x00008028 => ("x86clrtm", extract_layout_108(word)),
+        0x00008029 => ("x86dectop", extract_layout_108(word)),
+        0x00008080 => ("x86inc.b", extract_layout_107(word)),
+        0x00008081 => ("x86inc.h", extract_layout_107(word)),
+        0x00008082 => ("x86inc.w", extract_layout_107(word)),
+        0x00008083 => ("x86inc.d", extract_layout_107(word)),
+        0x00008084 => ("x86dec.b", extract_layout_107(word)),
+        0x00008085 => ("x86dec.h", extract_layout_107(word)),
+        0x00008086 => ("x86dec.w", extract_layout_107(word)),
+        0x00008087 => ("x86dec.d", extract_layout_107(word)),
+        0x00058A22 => ("alsl.w", extract_layout_45(word)),
+        0x0008401D => ("bytepick.w", extract_layout_46(word)),
+        0x00107C29 => ("add.w", extract_layout_44(word)),
+        0x00114F35 => ("sub.w", extract_layout_44(word)),
+        0x00120B5D => ("slt", extract_layout_44(word)),
+        0x0012F6AB => ("sltu", extract_layout_44(word)),
+        0x00134974 => ("maskeqz", extract_layout_44(word)),
+        0x0013E9B4 => ("masknez", extract_layout_44(word)),
+        0x00141645 => ("nor", extract_layout_44(word)),
+        0x001487F3 => ("and", extract_layout_44(word)),
+        0x00150128 => ("move", extract_layout_44(word)),
+        0x00157A11 => ("or", extract_layout_44(word)),
+        0x0015A26F => ("xor", extract_layout_44(word)),
+        0x00166462 => ("orn", extract_layout_44(word)),
+        0x0016973C => ("andn", extract_layout_44(word)),
+        0x00175F78 => ("sll.w", extract_layout_44(word)),
+        0x00179E3F => ("srl.w", extract_layout_44(word)),
+        0x00182B8C => ("sra.w", extract_layout_44(word)),
+        0x001A18A4 => ("rotr.b", extract_layout_44(word)),
+        0x001A98A4 => ("rotr.h", extract_layout_44(word)),
+        0x001B4B41 => ("rotr.w", extract_layout_44(word)),
+        0x001C0E44 => ("mul.w", extract_layout_44(word)),
+        0x001C82FB => ("mulh.w", extract_layout_44(word)),
+        0x001D622A => ("mulh.wu", extract_layout_44(word)),
+        0x002065BE => ("div.w", extract_layout_44(word)),
+        0x0020AB41 => ("mod.w", extract_layout_44(word)),
+        0x002102F3 => ("div.wu", extract_layout_44(word)),
+        0x0021C53B => ("mod.wu", extract_layout_44(word)),
+        0x002408F8 => ("crc.w.b.w", extract_layout_44(word)),
+        0x0024C95F => ("crc.w.h.w", extract_layout_44(word)),
+        0x002528DC => ("crc.w.w.w", extract_layout_44(word)),
+        0x0025FD7C => ("crc.w.d.w", extract_layout_44(word)),
+        0x00260E4F => ("crcc.w.b.w", extract_layout_44(word)),
+        0x0026CBB5 => ("crcc.w.h.w", extract_layout_44(word)),
+        0x002735D1 => ("crcc.w.w.w", extract_layout_44(word)),
+        0x0027EEBE => ("crcc.w.d.w", extract_layout_44(word)),
+        0x002904A4 => ("addu12i.w", extract_layout_47(word)),
+        0x002984A4 => ("addu12i.d", extract_layout_47(word)),
         0x002A00C7 => ("break", extract_layout_1(word)),
         0x002A80C9 => ("dbcl", extract_layout_1(word)),
         0x002B0064 => ("syscall", extract_layout_1(word)),
         0x002B8001 => ("hvcl", extract_layout_1(word)),
-        0x003018A4 => ("adc.b", extract_layout_41(word)),
-        0x003098A4 => ("adc.h", extract_layout_41(word)),
-        0x003118A4 => ("adc.w", extract_layout_41(word)),
-        0x003198A4 => ("adc.d", extract_layout_41(word)),
-        0x003218A4 => ("sbc.b", extract_layout_41(word)),
-        0x003298A4 => ("sbc.h", extract_layout_41(word)),
-        0x003318A4 => ("sbc.w", extract_layout_41(word)),
-        0x003398A4 => ("sbc.d", extract_layout_41(word)),
-        0x003418A4 => ("rcr.b", extract_layout_41(word)),
-        0x003498A4 => ("rcr.h", extract_layout_41(word)),
-        0x003518A4 => ("rcr.w", extract_layout_41(word)),
-        0x003598A4 => ("rcr.d", extract_layout_41(word)),
-        0x003644A4 => ("armmove", extract_layout_40(word)),
-        0x00368404 => ("setx86j", extract_layout_27(word)),
-        0x0036C404 => ("setarmj", extract_layout_27(word)),
-        0x00371491 => ("armadd.w", extract_layout_99(word)),
-        0x00379491 => ("armsub.w", extract_layout_99(word)),
-        0x00381491 => ("armadc.w", extract_layout_99(word)),
-        0x00389491 => ("armsbc.w", extract_layout_99(word)),
-        0x00391491 => ("armand.w", extract_layout_99(word)),
-        0x00399491 => ("armor.w", extract_layout_99(word)),
-        0x003A1491 => ("armxor.w", extract_layout_99(word)),
-        0x003A9491 => ("armsll.w", extract_layout_99(word)),
-        0x003B1491 => ("armsrl.w", extract_layout_99(word)),
-        0x003B9491 => ("armsra.w", extract_layout_99(word)),
-        0x003C1491 => ("armrotr.w", extract_layout_99(word)),
-        0x003C8491 => ("armslli.w", extract_layout_101(word)),
-        0x003D0491 => ("armsrli.w", extract_layout_101(word)),
-        0x003D8491 => ("armsrai.w", extract_layout_101(word)),
-        0x003E0491 => ("armrotri.w", extract_layout_101(word)),
-        0x003E9480 => ("x86mul.b", extract_layout_98(word)),
-        0x003E9481 => ("x86mul.h", extract_layout_98(word)),
-        0x003E9482 => ("x86mul.w", extract_layout_98(word)),
-        0x003E9483 => ("x86mul.d", extract_layout_98(word)),
-        0x003E9484 => ("x86mul.bu", extract_layout_98(word)),
-        0x003E9485 => ("x86mul.hu", extract_layout_98(word)),
-        0x003E9486 => ("x86mul.wu", extract_layout_98(word)),
-        0x003E9487 => ("x86mul.du", extract_layout_98(word)),
-        0x003F1480 => ("x86add.wu", extract_layout_98(word)),
-        0x003F1481 => ("x86add.du", extract_layout_98(word)),
-        0x003F1482 => ("x86sub.wu", extract_layout_98(word)),
-        0x003F1483 => ("x86sub.du", extract_layout_98(word)),
-        0x003F1484 => ("x86add.b", extract_layout_98(word)),
-        0x003F1485 => ("x86add.h", extract_layout_98(word)),
-        0x003F1486 => ("x86add.w", extract_layout_98(word)),
-        0x003F1487 => ("x86add.d", extract_layout_98(word)),
-        0x003F1488 => ("x86sub.b", extract_layout_98(word)),
-        0x003F1489 => ("x86sub.h", extract_layout_98(word)),
-        0x003F148A => ("x86sub.w", extract_layout_98(word)),
-        0x003F148B => ("x86sub.d", extract_layout_98(word)),
-        0x003F148C => ("x86adc.b", extract_layout_98(word)),
-        0x003F148D => ("x86adc.h", extract_layout_98(word)),
-        0x003F148E => ("x86adc.w", extract_layout_98(word)),
-        0x003F148F => ("x86adc.d", extract_layout_98(word)),
-        0x003F1490 => ("x86sbc.b", extract_layout_98(word)),
-        0x003F1491 => ("x86sbc.h", extract_layout_98(word)),
-        0x003F1492 => ("x86sbc.w", extract_layout_98(word)),
-        0x003F1493 => ("x86sbc.d", extract_layout_98(word)),
-        0x003F1494 => ("x86sll.b", extract_layout_98(word)),
-        0x003F1495 => ("x86sll.h", extract_layout_98(word)),
-        0x003F1496 => ("x86sll.w", extract_layout_98(word)),
-        0x003F1497 => ("x86sll.d", extract_layout_98(word)),
-        0x003F1498 => ("x86srl.b", extract_layout_98(word)),
-        0x003F1499 => ("x86srl.h", extract_layout_98(word)),
-        0x003F149A => ("x86srl.w", extract_layout_98(word)),
-        0x003F149B => ("x86srl.d", extract_layout_98(word)),
-        0x003F149C => ("x86sra.b", extract_layout_98(word)),
-        0x003F149D => ("x86sra.h", extract_layout_98(word)),
-        0x003F149E => ("x86sra.w", extract_layout_98(word)),
-        0x003F149F => ("x86sra.d", extract_layout_98(word)),
-        0x003F9480 => ("x86rotr.b", extract_layout_98(word)),
-        0x003F9481 => ("x86rotr.h", extract_layout_98(word)),
-        0x003F9482 => ("x86rotr.d", extract_layout_98(word)),
-        0x003F9483 => ("x86rotr.w", extract_layout_98(word)),
-        0x003F9484 => ("x86rotl.b", extract_layout_98(word)),
-        0x003F9485 => ("x86rotl.h", extract_layout_98(word)),
-        0x003F9486 => ("x86rotl.w", extract_layout_98(word)),
-        0x003F9487 => ("x86rotl.d", extract_layout_98(word)),
-        0x003F9488 => ("x86rcr.b", extract_layout_98(word)),
-        0x003F9489 => ("x86rcr.h", extract_layout_98(word)),
-        0x003F948A => ("x86rcr.w", extract_layout_98(word)),
-        0x003F948B => ("x86rcr.d", extract_layout_98(word)),
-        0x003F948C => ("x86rcl.b", extract_layout_98(word)),
-        0x003F948D => ("x86rcl.h", extract_layout_98(word)),
-        0x003F948E => ("x86rcl.w", extract_layout_98(word)),
-        0x003F948F => ("x86rcl.d", extract_layout_98(word)),
-        0x003F9490 => ("x86and.b", extract_layout_98(word)),
-        0x003F9491 => ("x86and.h", extract_layout_98(word)),
-        0x003F9492 => ("x86and.w", extract_layout_98(word)),
-        0x003F9493 => ("x86and.d", extract_layout_98(word)),
-        0x003F9494 => ("x86or.b", extract_layout_98(word)),
-        0x003F9495 => ("x86or.h", extract_layout_98(word)),
-        0x003F9496 => ("x86or.w", extract_layout_98(word)),
-        0x003F9497 => ("x86or.d", extract_layout_98(word)),
-        0x003F9498 => ("x86xor.b", extract_layout_98(word)),
-        0x003F9499 => ("x86xor.h", extract_layout_98(word)),
-        0x003F949A => ("x86xor.w", extract_layout_98(word)),
-        0x003F949B => ("x86xor.d", extract_layout_98(word)),
-        0x003FC49C => ("armnot.w", extract_layout_97(word)),
-        0x003FC49D => ("armmov.w", extract_layout_97(word)),
-        0x003FC49E => ("armmov.d", extract_layout_97(word)),
-        0x003FC49F => ("armrrx.w", extract_layout_97(word)),
-        0x0040825A => ("slli.w", extract_layout_45(word)),
-        0x0044F9CA => ("srli.w", extract_layout_45(word)),
-        0x0048E228 => ("srai.w", extract_layout_45(word)),
-        0x004C24A4 => ("rotri.b", extract_layout_39(word)),
-        0x004C44A4 => ("rotri.h", extract_layout_40(word)),
-        0x004CDE97 => ("rotri.w", extract_layout_45(word)),
-        0x005024A4 => ("rcri.b", extract_layout_39(word)),
-        0x005044A4 => ("rcri.h", extract_layout_40(word)),
-        0x005084A4 => ("rcri.w", extract_layout_45(word)),
-        0x005104A4 => ("rcri.d", extract_layout_46(word)),
-        0x00542480 => ("x86slli.b", extract_layout_96(word)),
-        0x00542484 => ("x86srli.b", extract_layout_96(word)),
-        0x00542488 => ("x86srai.b", extract_layout_96(word)),
-        0x0054248C => ("x86rotri.b", extract_layout_96(word)),
-        0x00542490 => ("x86rcri.b", extract_layout_96(word)),
-        0x00542494 => ("x86rotli.b", extract_layout_96(word)),
-        0x00542498 => ("x86rcli.b", extract_layout_96(word)),
-        0x00544481 => ("x86slli.h", extract_layout_97(word)),
-        0x00544485 => ("x86srli.h", extract_layout_97(word)),
-        0x00544489 => ("x86srai.h", extract_layout_97(word)),
-        0x0054448D => ("x86rotri.h", extract_layout_97(word)),
-        0x00544491 => ("x86rcri.h", extract_layout_97(word)),
-        0x00544495 => ("x86rotli.h", extract_layout_97(word)),
-        0x00544499 => ("x86rcli.h", extract_layout_97(word)),
-        0x00548482 => ("x86slli.w", extract_layout_100(word)),
-        0x00548486 => ("x86srli.w", extract_layout_100(word)),
-        0x0054848A => ("x86srai.w", extract_layout_100(word)),
-        0x0054848E => ("x86rotri.w", extract_layout_100(word)),
-        0x00548492 => ("x86rcri.w", extract_layout_100(word)),
-        0x00548496 => ("x86rotli.w", extract_layout_100(word)),
-        0x0054849A => ("x86rcli.w", extract_layout_100(word)),
-        0x00550483 => ("x86slli.d", extract_layout_102(word)),
-        0x00550487 => ("x86srli.d", extract_layout_102(word)),
-        0x0055048B => ("x86srai.d", extract_layout_102(word)),
-        0x0055048F => ("x86rotri.d", extract_layout_102(word)),
-        0x00550493 => ("x86rcri.d", extract_layout_102(word)),
-        0x00550497 => ("x86rotli.d", extract_layout_102(word)),
-        0x0055049B => ("x86rcli.d", extract_layout_102(word)),
-        0x00580424 => ("x86settag", extract_layout_51(word)),
-        0x005C0404 => ("x86mfflag", extract_layout_28(word)),
-        0x005C0424 => ("x86mtflag", extract_layout_28(word)),
-        0x005C0444 => ("armmfflag", extract_layout_28(word)),
-        0x005C0464 => ("armmtflag", extract_layout_28(word)),
-        0x00670968 => ("bstrins.w", extract_layout_25(word)),
-        0x006A9121 => ("bstrpick.w", extract_layout_48(word)),
-        0x0100E5FD => ("fadd.s", extract_layout_9(word)),
-        0x010134F9 => ("fadd.d", extract_layout_17(word)),
-        0x0102FCCE => ("fsub.s", extract_layout_9(word)),
-        0x0103483D => ("fsub.d", extract_layout_17(word)),
-        0x0104C4E0 => ("fmul.s", extract_layout_9(word)),
-        0x01051FC4 => ("fmul.d", extract_layout_17(word)),
-        0x0106CF14 => ("fdiv.s", extract_layout_9(word)),
-        0x01077323 => ("fdiv.d", extract_layout_17(word)),
-        0x0108ECD6 => ("fmax.s", extract_layout_9(word)),
-        0x0109374B => ("fmax.d", extract_layout_17(word)),
-        0x010ACD4E => ("fmin.s", extract_layout_9(word)),
-        0x010B6DA1 => ("fmin.d", extract_layout_17(word)),
-        0x010CFF69 => ("fmaxa.s", extract_layout_9(word)),
-        0x010D11B8 => ("fmaxa.d", extract_layout_17(word)),
-        0x010E864F => ("fmina.s", extract_layout_9(word)),
-        0x010F0152 => ("fmina.d", extract_layout_17(word)),
-        0x01109AF5 => ("fscaleb.s", extract_layout_9(word)),
-        0x011169CC => ("fscaleb.d", extract_layout_17(word)),
-        0x0112DF0D => ("fcopysign.s", extract_layout_9(word)),
-        0x01131B50 => ("fcopysign.d", extract_layout_17(word)),
-        0x0114059C => ("fabs.s", extract_layout_8(word)),
-        0x01140877 => ("fabs.d", extract_layout_16(word)),
-        0x01141715 => ("fneg.s", extract_layout_8(word)),
-        0x01141B4B => ("fneg.d", extract_layout_16(word)),
-        0x011426FF => ("flogb.s", extract_layout_8(word)),
-        0x01142BB5 => ("flogb.d", extract_layout_16(word)),
-        0x01143534 => ("fclass.s", extract_layout_8(word)),
-        0x01143853 => ("fclass.d", extract_layout_16(word)),
-        0x0114465B => ("fsqrt.s", extract_layout_8(word)),
-        0x01144962 => ("fsqrt.d", extract_layout_16(word)),
-        0x01145771 => ("frecip.s", extract_layout_8(word)),
-        0x01145B7B => ("frecip.d", extract_layout_16(word)),
-        0x01146599 => ("frsqrt.s", extract_layout_8(word)),
-        0x01146876 => ("frsqrt.d", extract_layout_16(word)),
-        0x01147400 => ("frecipe.s", extract_layout_8(word)),
-        0x01147800 => ("frecipe.d", extract_layout_16(word)),
-        0x01148421 => ("frsqrte.s", extract_layout_8(word)),
-        0x01148821 => ("frsqrte.d", extract_layout_16(word)),
-        0x011496ED => ("fmov.s", extract_layout_8(word)),
-        0x0114993E => ("fmov.d", extract_layout_16(word)),
-        0x0114A446 => ("movgr2fr.w", extract_layout_12(word)),
-        0x0114B6CA => ("movfr2gr.s", extract_layout_33(word)),
-        0x0114C080 => ("movgr2fcsr", extract_layout_7(word)),
-        0x0114C081 => ("movgr2fcsr", extract_layout_7(word)),
-        0x0114C082 => ("movgr2fcsr", extract_layout_7(word)),
-        0x0114C083 => ("movgr2fcsr", extract_layout_7(word)),
-        0x0114C804 => ("movfcsr2gr", extract_layout_32(word)),
-        0x0114C824 => ("movfcsr2gr", extract_layout_32(word)),
-        0x0114C844 => ("movfcsr2gr", extract_layout_32(word)),
-        0x0114C864 => ("movfcsr2gr", extract_layout_32(word)),
-        0x0114D825 => ("movgr2cf", extract_layout_6(word)),
-        0x0114DCF5 => ("movcf2gr", extract_layout_31(word)),
-        0x0114E020 => ("fcvt.ld.d", extract_layout_8(word)),
-        0x0114E420 => ("fcvt.ud.d", extract_layout_8(word)),
-        0x01150820 => ("fcvt.d.ld", extract_layout_9(word)),
-        0x01191A6C => ("fcvt.s.d", extract_layout_11(word)),
-        0x011924CA => ("fcvt.d.s", extract_layout_15(word)),
-        0x011A0610 => ("ftintrm.w.s", extract_layout_8(word)),
-        0x011A0907 => ("ftintrm.w.d", extract_layout_11(word)),
-        0x011A2558 => ("ftintrm.l.s", extract_layout_15(word)),
-        0x011A2929 => ("ftintrm.l.d", extract_layout_16(word)),
-        0x011A47EE => ("ftintrp.w.s", extract_layout_8(word)),
-        0x011A486C => ("ftintrp.w.d", extract_layout_11(word)),
-        0x011A6600 => ("ftintrp.l.s", extract_layout_15(word)),
-        0x011A6BA4 => ("ftintrp.l.d", extract_layout_16(word)),
-        0x011A87A4 => ("ftintrz.w.s", extract_layout_8(word)),
-        0x011A8B19 => ("ftintrz.w.d", extract_layout_11(word)),
-        0x011AA4B7 => ("ftintrz.l.s", extract_layout_15(word)),
-        0x011AA943 => ("ftintrz.l.d", extract_layout_16(word)),
-        0x011AC624 => ("ftintrne.w.s", extract_layout_8(word)),
-        0x011AC99F => ("ftintrne.w.d", extract_layout_11(word)),
-        0x011AE776 => ("ftintrne.l.s", extract_layout_15(word)),
-        0x011AE8DC => ("ftintrne.l.d", extract_layout_16(word)),
-        0x011B05B5 => ("ftint.w.s", extract_layout_8(word)),
-        0x011B09C3 => ("ftint.w.d", extract_layout_11(word)),
-        0x011B271F => ("ftint.l.s", extract_layout_15(word)),
-        0x011B2B10 => ("ftint.l.d", extract_layout_16(word)),
-        0x011D10BE => ("ffint.s.w", extract_layout_8(word)),
-        0x011D18A6 => ("ffint.s.l", extract_layout_11(word)),
-        0x011D2258 => ("ffint.d.w", extract_layout_15(word)),
-        0x011D2B57 => ("ffint.d.l", extract_layout_16(word)),
-        0x011E4625 => ("frint.s", extract_layout_8(word)),
-        0x011E485D => ("frint.d", extract_layout_16(word)),
-        0x0203AC3B => ("slti", extract_layout_35(word)),
-        0x02428900 => ("sltui", extract_layout_35(word)),
-        0x0283D8E5 => ("addi.w", extract_layout_35(word)),
-        0x03400000 => ("nop", extract_layout_36(word)),
-        0x0341A819 => ("andi", extract_layout_36(word)),
-        0x0380BCB1 => ("ori", extract_layout_36(word)),
-        0x03C18EF2 => ("xori", extract_layout_36(word)),
-        0x0400781A => ("csrrd", extract_layout_26(word)),
-        0x04030838 => ("csrwr", extract_layout_21(word)),
-        0x04035B66 => ("csrxchg", extract_layout_24(word)),
-        0x05000404 => ("gcsrrd", extract_layout_26(word)),
-        0x05000424 => ("gcsrwr", extract_layout_21(word)),
-        0x050004A4 => ("gcsrxchg", extract_layout_24(word)),
-        0x06006D40 => ("cacop", extract_layout_89(word)),
-        0x064173CC => ("lddir", extract_layout_47(word)),
-        0x06472240 => ("ldpte", extract_layout_103(word)),
-        0x0648031A => ("iocsrrd.b", extract_layout_34(word)),
-        0x06480765 => ("iocsrrd.h", extract_layout_34(word)),
-        0x06480A8A => ("iocsrrd.w", extract_layout_34(word)),
-        0x064812E4 => ("iocsrwr.b", extract_layout_34(word)),
-        0x0648140B => ("iocsrwr.h", extract_layout_34(word)),
-        0x06481B54 => ("iocsrwr.w", extract_layout_34(word)),
-        0x06482000 => ("tlbclr", extract_layout_105(word)),
-        0x06482400 => ("tlbflush", extract_layout_105(word)),
-        0x06482401 => ("gtlbflush", extract_layout_105(word)),
-        0x06482800 => ("tlbsrch", extract_layout_105(word)),
-        0x06482C00 => ("tlbrd", extract_layout_105(word)),
-        0x06483000 => ("tlbwr", extract_layout_105(word)),
-        0x06483400 => ("tlbfill", extract_layout_105(word)),
-        0x06483800 => ("ertn", extract_layout_105(word)),
+        0x003018A4 => ("adc.b", extract_layout_44(word)),
+        0x003098A4 => ("adc.h", extract_layout_44(word)),
+        0x003118A4 => ("adc.w", extract_layout_44(word)),
+        0x003198A4 => ("adc.d", extract_layout_44(word)),
+        0x003218A4 => ("sbc.b", extract_layout_44(word)),
+        0x003298A4 => ("sbc.h", extract_layout_44(word)),
+        0x003318A4 => ("sbc.w", extract_layout_44(word)),
+        0x003398A4 => ("sbc.d", extract_layout_44(word)),
+        0x003418A4 => ("rcr.b", extract_layout_44(word)),
+        0x003498A4 => ("rcr.h", extract_layout_44(word)),
+        0x003518A4 => ("rcr.w", extract_layout_44(word)),
+        0x003598A4 => ("rcr.d", extract_layout_44(word)),
+        0x003644A4 => ("armmove", extract_layout_43(word)),
+        0x00368404 => ("setx86j", extract_layout_30(word)),
+        0x0036C404 => ("setarmj", extract_layout_30(word)),
+        0x00371491 => ("armadd.w", extract_layout_102(word)),
+        0x00379491 => ("armsub.w", extract_layout_102(word)),
+        0x00381491 => ("armadc.w", extract_layout_102(word)),
+        0x00389491 => ("armsbc.w", extract_layout_102(word)),
+        0x00391491 => ("armand.w", extract_layout_102(word)),
+        0x00399491 => ("armor.w", extract_layout_102(word)),
+        0x003A1491 => ("armxor.w", extract_layout_102(word)),
+        0x003A9491 => ("armsll.w", extract_layout_102(word)),
+        0x003B1491 => ("armsrl.w", extract_layout_102(word)),
+        0x003B9491 => ("armsra.w", extract_layout_102(word)),
+        0x003C1491 => ("armrotr.w", extract_layout_102(word)),
+        0x003C8491 => ("armslli.w", extract_layout_104(word)),
+        0x003D0491 => ("armsrli.w", extract_layout_104(word)),
+        0x003D8491 => ("armsrai.w", extract_layout_104(word)),
+        0x003E0491 => ("armrotri.w", extract_layout_104(word)),
+        0x003E9480 => ("x86mul.b", extract_layout_101(word)),
+        0x003E9481 => ("x86mul.h", extract_layout_101(word)),
+        0x003E9482 => ("x86mul.w", extract_layout_101(word)),
+        0x003E9483 => ("x86mul.d", extract_layout_101(word)),
+        0x003E9484 => ("x86mul.bu", extract_layout_101(word)),
+        0x003E9485 => ("x86mul.hu", extract_layout_101(word)),
+        0x003E9486 => ("x86mul.wu", extract_layout_101(word)),
+        0x003E9487 => ("x86mul.du", extract_layout_101(word)),
+        0x003F1480 => ("x86add.wu", extract_layout_101(word)),
+        0x003F1481 => ("x86add.du", extract_layout_101(word)),
+        0x003F1482 => ("x86sub.wu", extract_layout_101(word)),
+        0x003F1483 => ("x86sub.du", extract_layout_101(word)),
+        0x003F1484 => ("x86add.b", extract_layout_101(word)),
+        0x003F1485 => ("x86add.h", extract_layout_101(word)),
+        0x003F1486 => ("x86add.w", extract_layout_101(word)),
+        0x003F1487 => ("x86add.d", extract_layout_101(word)),
+        0x003F1488 => ("x86sub.b", extract_layout_101(word)),
+        0x003F1489 => ("x86sub.h", extract_layout_101(word)),
+        0x003F148A => ("x86sub.w", extract_layout_101(word)),
+        0x003F148B => ("x86sub.d", extract_layout_101(word)),
+        0x003F148C => ("x86adc.b", extract_layout_101(word)),
+        0x003F148D => ("x86adc.h", extract_layout_101(word)),
+        0x003F148E => ("x86adc.w", extract_layout_101(word)),
+        0x003F148F => ("x86adc.d", extract_layout_101(word)),
+        0x003F1490 => ("x86sbc.b", extract_layout_101(word)),
+        0x003F1491 => ("x86sbc.h", extract_layout_101(word)),
+        0x003F1492 => ("x86sbc.w", extract_layout_101(word)),
+        0x003F1493 => ("x86sbc.d", extract_layout_101(word)),
+        0x003F1494 => ("x86sll.b", extract_layout_101(word)),
+        0x003F1495 => ("x86sll.h", extract_layout_101(word)),
+        0x003F1496 => ("x86sll.w", extract_layout_101(word)),
+        0x003F1497 => ("x86sll.d", extract_layout_101(word)),
+        0x003F1498 => ("x86srl.b", extract_layout_101(word)),
+        0x003F1499 => ("x86srl.h", extract_layout_101(word)),
+        0x003F149A => ("x86srl.w", extract_layout_101(word)),
+        0x003F149B => ("x86srl.d", extract_layout_101(word)),
+        0x003F149C => ("x86sra.b", extract_layout_101(word)),
+        0x003F149D => ("x86sra.h", extract_layout_101(word)),
+        0x003F149E => ("x86sra.w", extract_layout_101(word)),
+        0x003F149F => ("x86sra.d", extract_layout_101(word)),
+        0x003F9480 => ("x86rotr.b", extract_layout_101(word)),
+        0x003F9481 => ("x86rotr.h", extract_layout_101(word)),
+        0x003F9482 => ("x86rotr.d", extract_layout_101(word)),
+        0x003F9483 => ("x86rotr.w", extract_layout_101(word)),
+        0x003F9484 => ("x86rotl.b", extract_layout_101(word)),
+        0x003F9485 => ("x86rotl.h", extract_layout_101(word)),
+        0x003F9486 => ("x86rotl.w", extract_layout_101(word)),
+        0x003F9487 => ("x86rotl.d", extract_layout_101(word)),
+        0x003F9488 => ("x86rcr.b", extract_layout_101(word)),
+        0x003F9489 => ("x86rcr.h", extract_layout_101(word)),
+        0x003F948A => ("x86rcr.w", extract_layout_101(word)),
+        0x003F948B => ("x86rcr.d", extract_layout_101(word)),
+        0x003F948C => ("x86rcl.b", extract_layout_101(word)),
+        0x003F948D => ("x86rcl.h", extract_layout_101(word)),
+        0x003F948E => ("x86rcl.w", extract_layout_101(word)),
+        0x003F948F => ("x86rcl.d", extract_layout_101(word)),
+        0x003F9490 => ("x86and.b", extract_layout_101(word)),
+        0x003F9491 => ("x86and.h", extract_layout_101(word)),
+        0x003F9492 => ("x86and.w", extract_layout_101(word)),
+        0x003F9493 => ("x86and.d", extract_layout_101(word)),
+        0x003F9494 => ("x86or.b", extract_layout_101(word)),
+        0x003F9495 => ("x86or.h", extract_layout_101(word)),
+        0x003F9496 => ("x86or.w", extract_layout_101(word)),
+        0x003F9497 => ("x86or.d", extract_layout_101(word)),
+        0x003F9498 => ("x86xor.b", extract_layout_101(word)),
+        0x003F9499 => ("x86xor.h", extract_layout_101(word)),
+        0x003F949A => ("x86xor.w", extract_layout_101(word)),
+        0x003F949B => ("x86xor.d", extract_layout_101(word)),
+        0x003FC49C => ("armnot.w", extract_layout_100(word)),
+        0x003FC49D => ("armmov.w", extract_layout_100(word)),
+        0x003FC49E => ("armmov.d", extract_layout_100(word)),
+        0x003FC49F => ("armrrx.w", extract_layout_100(word)),
+        0x0040825A => ("slli.w", extract_layout_48(word)),
+        0x0044F9CA => ("srli.w", extract_layout_48(word)),
+        0x0048E228 => ("srai.w", extract_layout_48(word)),
+        0x004C24A4 => ("rotri.b", extract_layout_42(word)),
+        0x004C44A4 => ("rotri.h", extract_layout_43(word)),
+        0x004CDE97 => ("rotri.w", extract_layout_48(word)),
+        0x005024A4 => ("rcri.b", extract_layout_42(word)),
+        0x005044A4 => ("rcri.h", extract_layout_43(word)),
+        0x005084A4 => ("rcri.w", extract_layout_48(word)),
+        0x005104A4 => ("rcri.d", extract_layout_49(word)),
+        0x00542480 => ("x86slli.b", extract_layout_99(word)),
+        0x00542484 => ("x86srli.b", extract_layout_99(word)),
+        0x00542488 => ("x86srai.b", extract_layout_99(word)),
+        0x0054248C => ("x86rotri.b", extract_layout_99(word)),
+        0x00542490 => ("x86rcri.b", extract_layout_99(word)),
+        0x00542494 => ("x86rotli.b", extract_layout_99(word)),
+        0x00542498 => ("x86rcli.b", extract_layout_99(word)),
+        0x00544481 => ("x86slli.h", extract_layout_100(word)),
+        0x00544485 => ("x86srli.h", extract_layout_100(word)),
+        0x00544489 => ("x86srai.h", extract_layout_100(word)),
+        0x0054448D => ("x86rotri.h", extract_layout_100(word)),
+        0x00544491 => ("x86rcri.h", extract_layout_100(word)),
+        0x00544495 => ("x86rotli.h", extract_layout_100(word)),
+        0x00544499 => ("x86rcli.h", extract_layout_100(word)),
+        0x00548482 => ("x86slli.w", extract_layout_103(word)),
+        0x00548486 => ("x86srli.w", extract_layout_103(word)),
+        0x0054848A => ("x86srai.w", extract_layout_103(word)),
+        0x0054848E => ("x86rotri.w", extract_layout_103(word)),
+        0x00548492 => ("x86rcri.w", extract_layout_103(word)),
+        0x00548496 => ("x86rotli.w", extract_layout_103(word)),
+        0x0054849A => ("x86rcli.w", extract_layout_103(word)),
+        0x00550483 => ("x86slli.d", extract_layout_105(word)),
+        0x00550487 => ("x86srli.d", extract_layout_105(word)),
+        0x0055048B => ("x86srai.d", extract_layout_105(word)),
+        0x0055048F => ("x86rotri.d", extract_layout_105(word)),
+        0x00550493 => ("x86rcri.d", extract_layout_105(word)),
+        0x00550497 => ("x86rotli.d", extract_layout_105(word)),
+        0x0055049B => ("x86rcli.d", extract_layout_105(word)),
+        0x00580424 => ("x86settag", extract_layout_54(word)),
+        0x005C0404 => ("x86mfflag", extract_layout_31(word)),
+        0x005C0424 => ("x86mtflag", extract_layout_31(word)),
+        0x005C0444 => ("armmfflag", extract_layout_31(word)),
+        0x005C0464 => ("armmtflag", extract_layout_31(word)),
+        0x00670968 => ("bstrins.w", extract_layout_28(word)),
+        0x006A9121 => ("bstrpick.w", extract_layout_51(word)),
+        0x0100E5FD => ("fadd.s", extract_layout_11(word)),
+        0x010134F9 => ("fadd.d", extract_layout_20(word)),
+        0x0102FCCE => ("fsub.s", extract_layout_11(word)),
+        0x0103483D => ("fsub.d", extract_layout_20(word)),
+        0x0104C4E0 => ("fmul.s", extract_layout_11(word)),
+        0x01051FC4 => ("fmul.d", extract_layout_20(word)),
+        0x0106CF14 => ("fdiv.s", extract_layout_11(word)),
+        0x01077323 => ("fdiv.d", extract_layout_20(word)),
+        0x0108ECD6 => ("fmax.s", extract_layout_11(word)),
+        0x0109374B => ("fmax.d", extract_layout_20(word)),
+        0x010ACD4E => ("fmin.s", extract_layout_11(word)),
+        0x010B6DA1 => ("fmin.d", extract_layout_20(word)),
+        0x010CFF69 => ("fmaxa.s", extract_layout_11(word)),
+        0x010D11B8 => ("fmaxa.d", extract_layout_20(word)),
+        0x010E864F => ("fmina.s", extract_layout_11(word)),
+        0x010F0152 => ("fmina.d", extract_layout_20(word)),
+        0x01109AF5 => ("fscaleb.s", extract_layout_11(word)),
+        0x011169CC => ("fscaleb.d", extract_layout_20(word)),
+        0x0112DF0D => ("fcopysign.s", extract_layout_11(word)),
+        0x01131B50 => ("fcopysign.d", extract_layout_20(word)),
+        0x0114059C => ("fabs.s", extract_layout_10(word)),
+        0x01140877 => ("fabs.d", extract_layout_19(word)),
+        0x01141715 => ("fneg.s", extract_layout_10(word)),
+        0x01141B4B => ("fneg.d", extract_layout_19(word)),
+        0x011426FF => ("flogb.s", extract_layout_10(word)),
+        0x01142BB5 => ("flogb.d", extract_layout_19(word)),
+        0x01143534 => ("fclass.s", extract_layout_10(word)),
+        0x01143853 => ("fclass.d", extract_layout_19(word)),
+        0x0114465B => ("fsqrt.s", extract_layout_10(word)),
+        0x01144962 => ("fsqrt.d", extract_layout_19(word)),
+        0x01145771 => ("frecip.s", extract_layout_10(word)),
+        0x01145B7B => ("frecip.d", extract_layout_19(word)),
+        0x01146599 => ("frsqrt.s", extract_layout_10(word)),
+        0x01146876 => ("frsqrt.d", extract_layout_19(word)),
+        0x01147400 => ("frecipe.s", extract_layout_10(word)),
+        0x01147800 => ("frecipe.d", extract_layout_19(word)),
+        0x01148421 => ("frsqrte.s", extract_layout_10(word)),
+        0x01148821 => ("frsqrte.d", extract_layout_19(word)),
+        0x011496ED => ("fmov.s", extract_layout_10(word)),
+        0x0114993E => ("fmov.d", extract_layout_19(word)),
+        0x0114A446 => ("movgr2fr.w", extract_layout_15(word)),
+        0x0114B6CA => ("movfr2gr.s", extract_layout_36(word)),
+        0x0114C080 => ("movgr2fcsr", extract_layout_8(word)),
+        0x0114C081 => ("movgr2fcsr", extract_layout_8(word)),
+        0x0114C082 => ("movgr2fcsr", extract_layout_8(word)),
+        0x0114C083 => ("movgr2fcsr", extract_layout_8(word)),
+        0x0114C804 => ("movfcsr2gr", extract_layout_35(word)),
+        0x0114C824 => ("movfcsr2gr", extract_layout_35(word)),
+        0x0114C844 => ("movfcsr2gr", extract_layout_35(word)),
+        0x0114C864 => ("movfcsr2gr", extract_layout_35(word)),
+        0x0114D164 => ("movfr2cf", extract_layout_6(word)),
+        0x0114D410 => ("movcf2fr", extract_layout_9(word)),
+        0x0114D825 => ("movgr2cf", extract_layout_7(word)),
+        0x0114DCF5 => ("movcf2gr", extract_layout_34(word)),
+        0x0114E020 => ("fcvt.ld.d", extract_layout_10(word)),
+        0x0114E420 => ("fcvt.ud.d", extract_layout_10(word)),
+        0x01150820 => ("fcvt.d.ld", extract_layout_11(word)),
+        0x01191A6C => ("fcvt.s.d", extract_layout_14(word)),
+        0x011924CA => ("fcvt.d.s", extract_layout_18(word)),
+        0x011A0610 => ("ftintrm.w.s", extract_layout_10(word)),
+        0x011A0907 => ("ftintrm.w.d", extract_layout_14(word)),
+        0x011A2558 => ("ftintrm.l.s", extract_layout_18(word)),
+        0x011A2929 => ("ftintrm.l.d", extract_layout_19(word)),
+        0x011A47EE => ("ftintrp.w.s", extract_layout_10(word)),
+        0x011A486C => ("ftintrp.w.d", extract_layout_14(word)),
+        0x011A6600 => ("ftintrp.l.s", extract_layout_18(word)),
+        0x011A6BA4 => ("ftintrp.l.d", extract_layout_19(word)),
+        0x011A87A4 => ("ftintrz.w.s", extract_layout_10(word)),
+        0x011A8B19 => ("ftintrz.w.d", extract_layout_14(word)),
+        0x011AA4B7 => ("ftintrz.l.s", extract_layout_18(word)),
+        0x011AA943 => ("ftintrz.l.d", extract_layout_19(word)),
+        0x011AC624 => ("ftintrne.w.s", extract_layout_10(word)),
+        0x011AC99F => ("ftintrne.w.d", extract_layout_14(word)),
+        0x011AE776 => ("ftintrne.l.s", extract_layout_18(word)),
+        0x011AE8DC => ("ftintrne.l.d", extract_layout_19(word)),
+        0x011B05B5 => ("ftint.w.s", extract_layout_10(word)),
+        0x011B09C3 => ("ftint.w.d", extract_layout_14(word)),
+        0x011B271F => ("ftint.l.s", extract_layout_18(word)),
+        0x011B2B10 => ("ftint.l.d", extract_layout_19(word)),
+        0x011D10BE => ("ffint.s.w", extract_layout_10(word)),
+        0x011D18A6 => ("ffint.s.l", extract_layout_14(word)),
+        0x011D2258 => ("ffint.d.w", extract_layout_18(word)),
+        0x011D2B57 => ("ffint.d.l", extract_layout_19(word)),
+        0x011E4625 => ("frint.s", extract_layout_10(word)),
+        0x011E485D => ("frint.d", extract_layout_19(word)),
+        0x0203AC3B => ("slti", extract_layout_38(word)),
+        0x02428900 => ("sltui", extract_layout_38(word)),
+        0x0283D8E5 => ("addi.w", extract_layout_38(word)),
+        0x03400000 => ("nop", extract_layout_39(word)),
+        0x0341A819 => ("andi", extract_layout_39(word)),
+        0x0380BCB1 => ("ori", extract_layout_39(word)),
+        0x03C18EF2 => ("xori", extract_layout_39(word)),
+        0x0400781A => ("csrrd", extract_layout_29(word)),
+        0x04030838 => ("csrwr", extract_layout_24(word)),
+        0x04035B66 => ("csrxchg", extract_layout_27(word)),
+        0x05000404 => ("gcsrrd", extract_layout_29(word)),
+        0x05000424 => ("gcsrwr", extract_layout_24(word)),
+        0x050004A4 => ("gcsrxchg", extract_layout_27(word)),
+        0x06006D40 => ("cacop", extract_layout_92(word)),
+        0x064173CC => ("lddir", extract_layout_50(word)),
+        0x06472240 => ("ldpte", extract_layout_106(word)),
+        0x0648031A => ("iocsrrd.b", extract_layout_37(word)),
+        0x06480765 => ("iocsrrd.h", extract_layout_37(word)),
+        0x06480A8A => ("iocsrrd.w", extract_layout_37(word)),
+        0x064812E4 => ("iocsrwr.b", extract_layout_37(word)),
+        0x0648140B => ("iocsrwr.h", extract_layout_37(word)),
+        0x06481B54 => ("iocsrwr.w", extract_layout_37(word)),
+        0x06482000 => ("tlbclr", extract_layout_108(word)),
+        0x06482400 => ("tlbflush", extract_layout_108(word)),
+        0x06482401 => ("gtlbflush", extract_layout_108(word)),
+        0x06482800 => ("tlbsrch", extract_layout_108(word)),
+        0x06482C00 => ("tlbrd", extract_layout_108(word)),
+        0x06483000 => ("tlbwr", extract_layout_108(word)),
+        0x06483400 => ("tlbfill", extract_layout_108(word)),
+        0x06483800 => ("ertn", extract_layout_108(word)),
         0x064880CC => ("idle", extract_layout_1(word)),
-        0x0649E7B0 => ("invtlb", extract_layout_91(word)),
-        0x08178E03 => ("fmadd.s", extract_layout_10(word)),
-        0x082C7315 => ("fmadd.d", extract_layout_18(word)),
-        0x08525577 => ("fmsub.s", extract_layout_10(word)),
-        0x086DD246 => ("fmsub.d", extract_layout_18(word)),
-        0x089A603D => ("fnmadd.s", extract_layout_10(word)),
-        0x08AF4DB9 => ("fnmadd.d", extract_layout_18(word)),
-        0x08DCE088 => ("fnmsub.s", extract_layout_10(word)),
-        0x08EC1F5E => ("fnmsub.d", extract_layout_18(word)),
-        0x0A1DFFE5 => ("xvfmadd.s", extract_layout_80(word)),
-        0x0A2CFE09 => ("xvfmadd.d", extract_layout_80(word)),
-        0x0A5B8C71 => ("xvfmsub.s", extract_layout_80(word)),
-        0x0A6741FE => ("xvfmsub.d", extract_layout_80(word)),
-        0x0A9C5ECE => ("xvfnmadd.s", extract_layout_80(word)),
-        0x0AA65FC1 => ("xvfnmadd.d", extract_layout_80(word)),
-        0x0AD590B6 => ("xvfnmsub.s", extract_layout_80(word)),
-        0x0AEE7408 => ("xvfnmsub.d", extract_layout_80(word)),
+        0x0649E7B0 => ("invtlb", extract_layout_94(word)),
+        0x08178E03 => ("fmadd.s", extract_layout_13(word)),
+        0x082C7315 => ("fmadd.d", extract_layout_21(word)),
+        0x08525577 => ("fmsub.s", extract_layout_13(word)),
+        0x086DD246 => ("fmsub.d", extract_layout_21(word)),
+        0x089A603D => ("fnmadd.s", extract_layout_13(word)),
+        0x08AF4DB9 => ("fnmadd.d", extract_layout_21(word)),
+        0x08DCE088 => ("fnmsub.s", extract_layout_13(word)),
+        0x08EC1F5E => ("fnmsub.d", extract_layout_21(word)),
+        0x0A1DFFE5 => ("xvfmadd.s", extract_layout_83(word)),
+        0x0A2CFE09 => ("xvfmadd.d", extract_layout_83(word)),
+        0x0A5B8C71 => ("xvfmsub.s", extract_layout_83(word)),
+        0x0A6741FE => ("xvfmsub.d", extract_layout_83(word)),
+        0x0A9C5ECE => ("xvfnmadd.s", extract_layout_83(word)),
+        0x0AA65FC1 => ("xvfnmadd.d", extract_layout_83(word)),
+        0x0AD590B6 => ("xvfnmsub.s", extract_layout_83(word)),
+        0x0AEE7408 => ("xvfnmsub.d", extract_layout_83(word)),
         0x0C100400 => ("fcmp.caf.s", extract_layout_3(word)),
         0x0C108400 => ("fcmp.saf.s", extract_layout_3(word)),
         0x0C110400 => ("fcmp.clt.s", extract_layout_3(word)),
@@ -1923,583 +1972,584 @@ pub fn decode_loongarch_word(
         0x0C2A8400 => ("fcmp.sor.d", extract_layout_4(word)),
         0x0C2C0400 => ("fcmp.cune.d", extract_layout_4(word)),
         0x0C2C8400 => ("fcmp.sune.d", extract_layout_4(word)),
-        0x0C907D01 => ("xvfcmp.caf.s", extract_layout_79(word)),
-        0x0C908977 => ("xvfcmp.saf.s", extract_layout_79(word)),
-        0x0C910524 => ("xvfcmp.clt.s", extract_layout_79(word)),
-        0x0C91FE59 => ("xvfcmp.slt.s", extract_layout_79(word)),
-        0x0C920020 => ("xvfcmp.ceq.s", extract_layout_79(word)),
-        0x0C92EEEF => ("xvfcmp.seq.s", extract_layout_79(word)),
-        0x0C933ED6 => ("xvfcmp.cle.s", extract_layout_79(word)),
-        0x0C93C0A1 => ("xvfcmp.sle.s", extract_layout_79(word)),
-        0x0C947528 => ("xvfcmp.cun.s", extract_layout_79(word)),
-        0x0C94F8E0 => ("xvfcmp.sun.s", extract_layout_79(word)),
-        0x0C950E2F => ("xvfcmp.cult.s", extract_layout_79(word)),
-        0x0C95C9E8 => ("xvfcmp.sult.s", extract_layout_79(word)),
-        0x0C967DA5 => ("xvfcmp.cueq.s", extract_layout_79(word)),
-        0x0C96A74C => ("xvfcmp.sueq.s", extract_layout_79(word)),
-        0x0C977441 => ("xvfcmp.cule.s", extract_layout_79(word)),
-        0x0C978577 => ("xvfcmp.sule.s", extract_layout_79(word)),
-        0x0C986A27 => ("xvfcmp.cne.s", extract_layout_79(word)),
-        0x0C98F99B => ("xvfcmp.sne.s", extract_layout_79(word)),
-        0x0C9A3841 => ("xvfcmp.cor.s", extract_layout_79(word)),
-        0x0C9A89AB => ("xvfcmp.sor.s", extract_layout_79(word)),
-        0x0C9C1235 => ("xvfcmp.cune.s", extract_layout_79(word)),
-        0x0C9CA20B => ("xvfcmp.sune.s", extract_layout_79(word)),
-        0x0CA053F3 => ("xvfcmp.caf.d", extract_layout_79(word)),
-        0x0CA09D87 => ("xvfcmp.saf.d", extract_layout_79(word)),
-        0x0CA15493 => ("xvfcmp.clt.d", extract_layout_79(word)),
-        0x0CA1E351 => ("xvfcmp.slt.d", extract_layout_79(word)),
-        0x0CA252FD => ("xvfcmp.ceq.d", extract_layout_79(word)),
-        0x0CA28ECF => ("xvfcmp.seq.d", extract_layout_79(word)),
-        0x0CA33335 => ("xvfcmp.cle.d", extract_layout_79(word)),
-        0x0CA3DC23 => ("xvfcmp.sle.d", extract_layout_79(word)),
-        0x0CA472D3 => ("xvfcmp.cun.d", extract_layout_79(word)),
-        0x0CA4F964 => ("xvfcmp.sun.d", extract_layout_79(word)),
-        0x0CA51A34 => ("xvfcmp.cult.d", extract_layout_79(word)),
-        0x0CA59484 => ("xvfcmp.sult.d", extract_layout_79(word)),
-        0x0CA61EC4 => ("xvfcmp.cueq.d", extract_layout_79(word)),
-        0x0CA6C645 => ("xvfcmp.sueq.d", extract_layout_79(word)),
-        0x0CA72CA0 => ("xvfcmp.cule.d", extract_layout_79(word)),
-        0x0CA7C54B => ("xvfcmp.sule.d", extract_layout_79(word)),
-        0x0CA80332 => ("xvfcmp.cne.d", extract_layout_79(word)),
-        0x0CA8C694 => ("xvfcmp.sne.d", extract_layout_79(word)),
-        0x0CAA5E6C => ("xvfcmp.cor.d", extract_layout_79(word)),
-        0x0CAA9B86 => ("xvfcmp.sor.d", extract_layout_79(word)),
-        0x0CAC33D4 => ("xvfcmp.cune.d", extract_layout_79(word)),
-        0x0CACECBE => ("xvfcmp.sune.d", extract_layout_79(word)),
-        0x0D2ABFB2 => ("xvbitsel.v", extract_layout_80(word)),
-        0x0D67ACD4 => ("xvshuf.b", extract_layout_80(word)),
-        0x14000630 => ("lu12i.w", extract_layout_30(word)),
-        0x15FFFFE4 => ("lu12i.w", extract_layout_30(word)),
-        0x18001769 => ("pcaddi", extract_layout_30(word)),
-        0x1A000B2A => ("pcalau12i", extract_layout_30(word)),
-        0x1C0004A0 => ("pcaddu12i", extract_layout_30(word)),
-        0x2000DF62 => ("ll.w", extract_layout_37(word)),
-        0x210039D3 => ("sc.w", extract_layout_23(word)),
-        0x28005518 => ("ld.b", extract_layout_35(word)),
-        0x28414247 => ("ld.h", extract_layout_35(word)),
-        0x28817352 => ("ld.w", extract_layout_35(word)),
-        0x29017CE3 => ("st.b", extract_layout_35(word)),
-        0x2941EA19 => ("st.h", extract_layout_35(word)),
-        0x2982BDAD => ("st.w", extract_layout_35(word)),
-        0x2A0259AD => ("ld.bu", extract_layout_35(word)),
-        0x2A431BB2 => ("ld.hu", extract_layout_35(word)),
-        0x2AC05C0A => ("preld", extract_layout_89(word)),
-        0x2B03E9F7 => ("fld.s", extract_layout_13(word)),
-        0x2B439A7E => ("fst.s", extract_layout_13(word)),
-        0x2B81CA36 => ("fld.d", extract_layout_19(word)),
-        0x2BC318FC => ("fst.d", extract_layout_19(word)),
-        0x2CB5B863 => ("xvld", extract_layout_66(word)),
-        0x2CCEBD8E => ("xvst", extract_layout_66(word)),
-        0x2E0004A4 => ("ldl.w", extract_layout_35(word)),
-        0x2E4004A4 => ("ldr.w", extract_layout_35(word)),
-        0x2E8004A4 => ("ldl.d", extract_layout_35(word)),
-        0x2EC004A4 => ("ldr.d", extract_layout_35(word)),
-        0x2F0004A4 => ("stl.w", extract_layout_35(word)),
-        0x2F4004A4 => ("str.w", extract_layout_35(word)),
-        0x2F8004A4 => ("stl.d", extract_layout_35(word)),
-        0x2FC004A4 => ("str.d", extract_layout_35(word)),
-        0x3213DD9C => ("xvldrepl.d", extract_layout_72(word)),
-        0x322A0F4B => ("xvldrepl.w", extract_layout_64(word)),
-        0x324DC620 => ("xvldrepl.h", extract_layout_65(word)),
-        0x329D92B3 => ("xvldrepl.b", extract_layout_66(word)),
-        0x331DE3D6 => ("xvstelm.d", extract_layout_71(word)),
-        0x33219E53 => ("xvstelm.w", extract_layout_70(word)),
-        0x33514028 => ("xvstelm.h", extract_layout_69(word)),
-        0x33AA5C54 => ("xvstelm.b", extract_layout_68(word)),
-        0x38304DE1 => ("fldx.s", extract_layout_14(word)),
-        0x38347DBB => ("fldx.d", extract_layout_20(word)),
-        0x3838587A => ("fstx.s", extract_layout_14(word)),
-        0x383C45E6 => ("fstx.d", extract_layout_20(word)),
-        0x38483937 => ("xvldx", extract_layout_67(word)),
-        0x384C5527 => ("xvstx", extract_layout_67(word)),
-        0x385781CD => ("llacq.w", extract_layout_34(word)),
-        0x385785CD => ("screl.w", extract_layout_22(word)),
+        0x0C907D01 => ("xvfcmp.caf.s", extract_layout_82(word)),
+        0x0C908977 => ("xvfcmp.saf.s", extract_layout_82(word)),
+        0x0C910524 => ("xvfcmp.clt.s", extract_layout_82(word)),
+        0x0C91FE59 => ("xvfcmp.slt.s", extract_layout_82(word)),
+        0x0C920020 => ("xvfcmp.ceq.s", extract_layout_82(word)),
+        0x0C92EEEF => ("xvfcmp.seq.s", extract_layout_82(word)),
+        0x0C933ED6 => ("xvfcmp.cle.s", extract_layout_82(word)),
+        0x0C93C0A1 => ("xvfcmp.sle.s", extract_layout_82(word)),
+        0x0C947528 => ("xvfcmp.cun.s", extract_layout_82(word)),
+        0x0C94F8E0 => ("xvfcmp.sun.s", extract_layout_82(word)),
+        0x0C950E2F => ("xvfcmp.cult.s", extract_layout_82(word)),
+        0x0C95C9E8 => ("xvfcmp.sult.s", extract_layout_82(word)),
+        0x0C967DA5 => ("xvfcmp.cueq.s", extract_layout_82(word)),
+        0x0C96A74C => ("xvfcmp.sueq.s", extract_layout_82(word)),
+        0x0C977441 => ("xvfcmp.cule.s", extract_layout_82(word)),
+        0x0C978577 => ("xvfcmp.sule.s", extract_layout_82(word)),
+        0x0C986A27 => ("xvfcmp.cne.s", extract_layout_82(word)),
+        0x0C98F99B => ("xvfcmp.sne.s", extract_layout_82(word)),
+        0x0C9A3841 => ("xvfcmp.cor.s", extract_layout_82(word)),
+        0x0C9A89AB => ("xvfcmp.sor.s", extract_layout_82(word)),
+        0x0C9C1235 => ("xvfcmp.cune.s", extract_layout_82(word)),
+        0x0C9CA20B => ("xvfcmp.sune.s", extract_layout_82(word)),
+        0x0CA053F3 => ("xvfcmp.caf.d", extract_layout_82(word)),
+        0x0CA09D87 => ("xvfcmp.saf.d", extract_layout_82(word)),
+        0x0CA15493 => ("xvfcmp.clt.d", extract_layout_82(word)),
+        0x0CA1E351 => ("xvfcmp.slt.d", extract_layout_82(word)),
+        0x0CA252FD => ("xvfcmp.ceq.d", extract_layout_82(word)),
+        0x0CA28ECF => ("xvfcmp.seq.d", extract_layout_82(word)),
+        0x0CA33335 => ("xvfcmp.cle.d", extract_layout_82(word)),
+        0x0CA3DC23 => ("xvfcmp.sle.d", extract_layout_82(word)),
+        0x0CA472D3 => ("xvfcmp.cun.d", extract_layout_82(word)),
+        0x0CA4F964 => ("xvfcmp.sun.d", extract_layout_82(word)),
+        0x0CA51A34 => ("xvfcmp.cult.d", extract_layout_82(word)),
+        0x0CA59484 => ("xvfcmp.sult.d", extract_layout_82(word)),
+        0x0CA61EC4 => ("xvfcmp.cueq.d", extract_layout_82(word)),
+        0x0CA6C645 => ("xvfcmp.sueq.d", extract_layout_82(word)),
+        0x0CA72CA0 => ("xvfcmp.cule.d", extract_layout_82(word)),
+        0x0CA7C54B => ("xvfcmp.sule.d", extract_layout_82(word)),
+        0x0CA80332 => ("xvfcmp.cne.d", extract_layout_82(word)),
+        0x0CA8C694 => ("xvfcmp.sne.d", extract_layout_82(word)),
+        0x0CAA5E6C => ("xvfcmp.cor.d", extract_layout_82(word)),
+        0x0CAA9B86 => ("xvfcmp.sor.d", extract_layout_82(word)),
+        0x0CAC33D4 => ("xvfcmp.cune.d", extract_layout_82(word)),
+        0x0CACECBE => ("xvfcmp.sune.d", extract_layout_82(word)),
+        0x0D025692 => ("fsel", extract_layout_12(word)),
+        0x0D2ABFB2 => ("xvbitsel.v", extract_layout_83(word)),
+        0x0D67ACD4 => ("xvshuf.b", extract_layout_83(word)),
+        0x14000630 => ("lu12i.w", extract_layout_33(word)),
+        0x15FFFFE4 => ("lu12i.w", extract_layout_33(word)),
+        0x18001769 => ("pcaddi", extract_layout_33(word)),
+        0x1A000B2A => ("pcalau12i", extract_layout_33(word)),
+        0x1C0004A0 => ("pcaddu12i", extract_layout_33(word)),
+        0x2000DF62 => ("ll.w", extract_layout_40(word)),
+        0x210039D3 => ("sc.w", extract_layout_26(word)),
+        0x28005518 => ("ld.b", extract_layout_38(word)),
+        0x28414247 => ("ld.h", extract_layout_38(word)),
+        0x28817352 => ("ld.w", extract_layout_38(word)),
+        0x29017CE3 => ("st.b", extract_layout_38(word)),
+        0x2941EA19 => ("st.h", extract_layout_38(word)),
+        0x2982BDAD => ("st.w", extract_layout_38(word)),
+        0x2A0259AD => ("ld.bu", extract_layout_38(word)),
+        0x2A431BB2 => ("ld.hu", extract_layout_38(word)),
+        0x2AC05C0A => ("preld", extract_layout_92(word)),
+        0x2B03E9F7 => ("fld.s", extract_layout_16(word)),
+        0x2B439A7E => ("fst.s", extract_layout_16(word)),
+        0x2B81CA36 => ("fld.d", extract_layout_22(word)),
+        0x2BC318FC => ("fst.d", extract_layout_22(word)),
+        0x2CB5B863 => ("xvld", extract_layout_69(word)),
+        0x2CCEBD8E => ("xvst", extract_layout_69(word)),
+        0x2E0004A4 => ("ldl.w", extract_layout_38(word)),
+        0x2E4004A4 => ("ldr.w", extract_layout_38(word)),
+        0x2E8004A4 => ("ldl.d", extract_layout_38(word)),
+        0x2EC004A4 => ("ldr.d", extract_layout_38(word)),
+        0x2F0004A4 => ("stl.w", extract_layout_38(word)),
+        0x2F4004A4 => ("str.w", extract_layout_38(word)),
+        0x2F8004A4 => ("stl.d", extract_layout_38(word)),
+        0x2FC004A4 => ("str.d", extract_layout_38(word)),
+        0x3213DD9C => ("xvldrepl.d", extract_layout_75(word)),
+        0x322A0F4B => ("xvldrepl.w", extract_layout_67(word)),
+        0x324DC620 => ("xvldrepl.h", extract_layout_68(word)),
+        0x329D92B3 => ("xvldrepl.b", extract_layout_69(word)),
+        0x331DE3D6 => ("xvstelm.d", extract_layout_74(word)),
+        0x33219E53 => ("xvstelm.w", extract_layout_73(word)),
+        0x33514028 => ("xvstelm.h", extract_layout_72(word)),
+        0x33AA5C54 => ("xvstelm.b", extract_layout_71(word)),
+        0x38304DE1 => ("fldx.s", extract_layout_17(word)),
+        0x38347DBB => ("fldx.d", extract_layout_23(word)),
+        0x3838587A => ("fstx.s", extract_layout_17(word)),
+        0x383C45E6 => ("fstx.d", extract_layout_23(word)),
+        0x38483937 => ("xvldx", extract_layout_70(word)),
+        0x384C5527 => ("xvstx", extract_layout_70(word)),
+        0x385781CD => ("llacq.w", extract_layout_37(word)),
+        0x385785CD => ("screl.w", extract_layout_25(word)),
         0x38720000 => ("dbar", extract_layout_1(word)),
         0x38728000 => ("ibar", extract_layout_1(word)),
-        0x38743763 => ("fldgt.s", extract_layout_14(word)),
-        0x3874FCBA => ("fldgt.d", extract_layout_20(word)),
-        0x387547B8 => ("fldle.s", extract_layout_14(word)),
-        0x3875D9E3 => ("fldle.d", extract_layout_20(word)),
-        0x387679BF => ("fstgt.s", extract_layout_14(word)),
-        0x3876E96D => ("fstgt.d", extract_layout_20(word)),
-        0x38771DAD => ("fstle.s", extract_layout_14(word)),
-        0x3877B532 => ("fstle.d", extract_layout_20(word)),
-        0x387874C6 => ("ldgt.b", extract_layout_41(word)),
-        0x387887E5 => ("ldgt.h", extract_layout_41(word)),
-        0x3879234F => ("ldgt.w", extract_layout_41(word)),
-        0x3879FF37 => ("ldgt.d", extract_layout_41(word)),
-        0x387A3D89 => ("ldle.b", extract_layout_41(word)),
-        0x387ADD6B => ("ldle.h", extract_layout_41(word)),
-        0x387B0858 => ("ldle.w", extract_layout_41(word)),
-        0x387BC1F4 => ("ldle.d", extract_layout_41(word)),
-        0x387C527B => ("stgt.b", extract_layout_41(word)),
-        0x387C9890 => ("stgt.h", extract_layout_41(word)),
-        0x387D3B9F => ("stgt.w", extract_layout_41(word)),
-        0x387DE2BE => ("stgt.d", extract_layout_41(word)),
-        0x387E408A => ("stle.b", extract_layout_41(word)),
-        0x387ED631 => ("stle.h", extract_layout_41(word)),
-        0x387F7797 => ("stle.w", extract_layout_41(word)),
-        0x387FF719 => ("stle.d", extract_layout_41(word)),
-        0x40006120 => ("beqz", extract_layout_95(word)),
-        0x4400D460 => ("bnez", extract_layout_95(word)),
-        0x48000CC0 => ("bceqz", extract_layout_92(word)),
-        0x480049C0 => ("bcnez", extract_layout_92(word)),
-        0x48006600 => ("jiscr0", extract_layout_90(word)),
-        0x48006700 => ("jiscr1", extract_layout_90(word)),
-        0x4C000481 => ("jirl", extract_layout_38(word)),
+        0x38743763 => ("fldgt.s", extract_layout_17(word)),
+        0x3874FCBA => ("fldgt.d", extract_layout_23(word)),
+        0x387547B8 => ("fldle.s", extract_layout_17(word)),
+        0x3875D9E3 => ("fldle.d", extract_layout_23(word)),
+        0x387679BF => ("fstgt.s", extract_layout_17(word)),
+        0x3876E96D => ("fstgt.d", extract_layout_23(word)),
+        0x38771DAD => ("fstle.s", extract_layout_17(word)),
+        0x3877B532 => ("fstle.d", extract_layout_23(word)),
+        0x387874C6 => ("ldgt.b", extract_layout_44(word)),
+        0x387887E5 => ("ldgt.h", extract_layout_44(word)),
+        0x3879234F => ("ldgt.w", extract_layout_44(word)),
+        0x3879FF37 => ("ldgt.d", extract_layout_44(word)),
+        0x387A3D89 => ("ldle.b", extract_layout_44(word)),
+        0x387ADD6B => ("ldle.h", extract_layout_44(word)),
+        0x387B0858 => ("ldle.w", extract_layout_44(word)),
+        0x387BC1F4 => ("ldle.d", extract_layout_44(word)),
+        0x387C527B => ("stgt.b", extract_layout_44(word)),
+        0x387C9890 => ("stgt.h", extract_layout_44(word)),
+        0x387D3B9F => ("stgt.w", extract_layout_44(word)),
+        0x387DE2BE => ("stgt.d", extract_layout_44(word)),
+        0x387E408A => ("stle.b", extract_layout_44(word)),
+        0x387ED631 => ("stle.h", extract_layout_44(word)),
+        0x387F7797 => ("stle.w", extract_layout_44(word)),
+        0x387FF719 => ("stle.d", extract_layout_44(word)),
+        0x40006120 => ("beqz", extract_layout_98(word)),
+        0x4400D460 => ("bnez", extract_layout_98(word)),
+        0x48000CC0 => ("bceqz", extract_layout_95(word)),
+        0x480049C0 => ("bcnez", extract_layout_95(word)),
+        0x48006600 => ("jiscr0", extract_layout_93(word)),
+        0x48006700 => ("jiscr1", extract_layout_93(word)),
+        0x4C000481 => ("jirl", extract_layout_41(word)),
         0x5000F800 => ("b", extract_layout_0(word)),
         0x5400EC00 => ("bl", extract_layout_0(word)),
-        0x5800B147 => ("beq", extract_layout_94(word)),
-        0x5C008B21 => ("bne", extract_layout_94(word)),
-        0x6000A9FE => ("blt", extract_layout_94(word)),
-        0x6400958F => ("bge", extract_layout_94(word)),
-        0x68000625 => ("bltu", extract_layout_94(word)),
-        0x6C008CD7 => ("bgeu", extract_layout_94(word)),
-        0x72F78C77 => ("vreplvei.b", extract_layout_88(word)),
-        0x72F7C21B => ("vreplvei.h", extract_layout_87(word)),
-        0x72F7EEF2 => ("vreplvei.w", extract_layout_86(word)),
-        0x72F7F58F => ("vreplvei.d", extract_layout_85(word)),
-        0x74004C83 => ("xvseq.b", extract_layout_79(word)),
-        0x740096A0 => ("xvseq.h", extract_layout_79(word)),
-        0x74014E06 => ("xvseq.w", extract_layout_79(word)),
-        0x7401B5A8 => ("xvseq.d", extract_layout_79(word)),
-        0x740277D8 => ("xvsle.b", extract_layout_79(word)),
-        0x7402D1B7 => ("xvsle.h", extract_layout_79(word)),
-        0x740363EA => ("xvsle.w", extract_layout_79(word)),
-        0x7403A34D => ("xvsle.d", extract_layout_79(word)),
-        0x74040B69 => ("xvsle.bu", extract_layout_79(word)),
-        0x7404DB3D => ("xvsle.hu", extract_layout_79(word)),
-        0x74053B30 => ("xvsle.wu", extract_layout_79(word)),
-        0x7405C8C5 => ("xvsle.du", extract_layout_79(word)),
-        0x740637FE => ("xvslt.b", extract_layout_79(word)),
-        0x740682F3 => ("xvslt.h", extract_layout_79(word)),
-        0x74070F57 => ("xvslt.w", extract_layout_79(word)),
-        0x7407FD43 => ("xvslt.d", extract_layout_79(word)),
-        0x740875B4 => ("xvslt.bu", extract_layout_79(word)),
-        0x7408EBAC => ("xvslt.hu", extract_layout_79(word)),
-        0x74097F3A => ("xvslt.wu", extract_layout_79(word)),
-        0x74098E9E => ("xvslt.du", extract_layout_79(word)),
-        0x740A1674 => ("xvadd.b", extract_layout_79(word)),
-        0x740AB8F8 => ("xvadd.h", extract_layout_79(word)),
-        0x740B5433 => ("xvadd.w", extract_layout_79(word)),
-        0x740BB4D3 => ("xvadd.d", extract_layout_79(word)),
-        0x740C438B => ("xvsub.b", extract_layout_79(word)),
-        0x740CE06B => ("xvsub.h", extract_layout_79(word)),
-        0x740D1AEE => ("xvsub.w", extract_layout_79(word)),
-        0x740D9DA5 => ("xvsub.d", extract_layout_79(word)),
-        0x741E13D7 => ("xvaddwev.h.b", extract_layout_79(word)),
-        0x741EFE74 => ("xvaddwev.w.h", extract_layout_79(word)),
-        0x741F6528 => ("xvaddwev.d.w", extract_layout_79(word)),
-        0x741FF6DD => ("xvaddwev.q.d", extract_layout_79(word)),
-        0x7420703D => ("xvsubwev.h.b", extract_layout_79(word)),
-        0x7420FE98 => ("xvsubwev.w.h", extract_layout_79(word)),
-        0x74212C86 => ("xvsubwev.d.w", extract_layout_79(word)),
-        0x7421B7FB => ("xvsubwev.q.d", extract_layout_79(word)),
-        0x742262AE => ("xvaddwod.h.b", extract_layout_79(word)),
-        0x7422DF53 => ("xvaddwod.w.h", extract_layout_79(word)),
-        0x7423512C => ("xvaddwod.d.w", extract_layout_79(word)),
-        0x7423A04B => ("xvaddwod.q.d", extract_layout_79(word)),
-        0x74244523 => ("xvsubwod.h.b", extract_layout_79(word)),
-        0x7424D4AE => ("xvsubwod.w.h", extract_layout_79(word)),
-        0x74250DC8 => ("xvsubwod.d.w", extract_layout_79(word)),
-        0x7425C9F8 => ("xvsubwod.q.d", extract_layout_79(word)),
-        0x742E69BE => ("xvaddwev.h.bu", extract_layout_79(word)),
-        0x742EC3EF => ("xvaddwev.w.hu", extract_layout_79(word)),
-        0x742F5210 => ("xvaddwev.d.wu", extract_layout_79(word)),
-        0x742FCA4A => ("xvaddwev.q.du", extract_layout_79(word)),
-        0x74300A81 => ("xvsubwev.h.bu", extract_layout_79(word)),
-        0x7430B0D3 => ("xvsubwev.w.hu", extract_layout_79(word)),
-        0x74315C3F => ("xvsubwev.d.wu", extract_layout_79(word)),
-        0x7431C79F => ("xvsubwev.q.du", extract_layout_79(word)),
-        0x743224C6 => ("xvaddwod.h.bu", extract_layout_79(word)),
-        0x7432E761 => ("xvaddwod.w.hu", extract_layout_79(word)),
-        0x74332E7A => ("xvaddwod.d.wu", extract_layout_79(word)),
-        0x7433A2D5 => ("xvaddwod.q.du", extract_layout_79(word)),
-        0x7434045B => ("xvsubwod.h.bu", extract_layout_79(word)),
-        0x7434D8F3 => ("xvsubwod.w.hu", extract_layout_79(word)),
-        0x74356B01 => ("xvsubwod.d.wu", extract_layout_79(word)),
-        0x74359F5D => ("xvsubwod.q.du", extract_layout_79(word)),
-        0x743E24E3 => ("xvaddwev.h.bu.b", extract_layout_79(word)),
-        0x743EEE1A => ("xvaddwev.w.hu.h", extract_layout_79(word)),
-        0x743F21A0 => ("xvaddwev.d.wu.w", extract_layout_79(word)),
-        0x743F8D53 => ("xvaddwev.q.du.d", extract_layout_79(word)),
-        0x74406355 => ("xvaddwod.h.bu.b", extract_layout_79(word)),
-        0x7440C0DF => ("xvaddwod.w.hu.h", extract_layout_79(word)),
-        0x74417F8C => ("xvaddwod.d.wu.w", extract_layout_79(word)),
-        0x7441B09D => ("xvaddwod.q.du.d", extract_layout_79(word)),
-        0x74465BDB => ("xvsadd.b", extract_layout_79(word)),
-        0x7446841D => ("xvsadd.h", extract_layout_79(word)),
-        0x74477F96 => ("xvsadd.w", extract_layout_79(word)),
-        0x7447EA45 => ("xvsadd.d", extract_layout_79(word)),
-        0x7448626E => ("xvssub.b", extract_layout_79(word)),
-        0x7448CD0D => ("xvssub.h", extract_layout_79(word)),
-        0x7449737C => ("xvssub.w", extract_layout_79(word)),
-        0x74498A1C => ("xvssub.d", extract_layout_79(word)),
-        0x744A729D => ("xvsadd.bu", extract_layout_79(word)),
-        0x744A9A07 => ("xvsadd.hu", extract_layout_79(word)),
-        0x744B3D42 => ("xvsadd.wu", extract_layout_79(word)),
-        0x744BBB12 => ("xvsadd.du", extract_layout_79(word)),
-        0x744C45AB => ("xvssub.bu", extract_layout_79(word)),
-        0x744CF150 => ("xvssub.hu", extract_layout_79(word)),
-        0x744D3415 => ("xvssub.wu", extract_layout_79(word)),
-        0x744DEF52 => ("xvssub.du", extract_layout_79(word)),
-        0x7454767F => ("xvhaddw.h.b", extract_layout_79(word)),
-        0x7454DE1F => ("xvhaddw.w.h", extract_layout_79(word)),
-        0x7455603E => ("xvhaddw.d.w", extract_layout_79(word)),
-        0x7455C5F0 => ("xvhaddw.q.d", extract_layout_79(word)),
-        0x745640F6 => ("xvhsubw.h.b", extract_layout_79(word)),
-        0x7456BD13 => ("xvhsubw.w.h", extract_layout_79(word)),
-        0x74574EFE => ("xvhsubw.d.w", extract_layout_79(word)),
-        0x7457F1B4 => ("xvhsubw.q.d", extract_layout_79(word)),
-        0x74580A2E => ("xvhaddw.hu.bu", extract_layout_79(word)),
-        0x7458A055 => ("xvhaddw.wu.hu", extract_layout_79(word)),
-        0x74594F06 => ("xvhaddw.du.wu", extract_layout_79(word)),
-        0x7459B58A => ("xvhaddw.qu.du", extract_layout_79(word)),
-        0x745A404A => ("xvhsubw.hu.bu", extract_layout_79(word)),
-        0x745ACB41 => ("xvhsubw.wu.hu", extract_layout_79(word)),
-        0x745B52E5 => ("xvhsubw.du.wu", extract_layout_79(word)),
-        0x745BA09F => ("xvhsubw.qu.du", extract_layout_79(word)),
-        0x745C6F0A => ("xvadda.b", extract_layout_79(word)),
-        0x745CF780 => ("xvadda.h", extract_layout_79(word)),
-        0x745D253F => ("xvadda.w", extract_layout_79(word)),
-        0x745DE42A => ("xvadda.d", extract_layout_79(word)),
-        0x74604436 => ("xvabsd.b", extract_layout_79(word)),
-        0x7460A711 => ("xvabsd.h", extract_layout_79(word)),
-        0x7461753C => ("xvabsd.w", extract_layout_79(word)),
-        0x7461CEFE => ("xvabsd.d", extract_layout_79(word)),
-        0x74623C90 => ("xvabsd.bu", extract_layout_79(word)),
-        0x7462EEED => ("xvabsd.hu", extract_layout_79(word)),
-        0x74633E5F => ("xvabsd.wu", extract_layout_79(word)),
-        0x7463915A => ("xvabsd.du", extract_layout_79(word)),
-        0x746457C5 => ("xvavg.b", extract_layout_79(word)),
-        0x7464D632 => ("xvavg.h", extract_layout_79(word)),
-        0x746552E3 => ("xvavg.w", extract_layout_79(word)),
-        0x7465EC1B => ("xvavg.d", extract_layout_79(word)),
-        0x7466408B => ("xvavg.bu", extract_layout_79(word)),
-        0x7466CC22 => ("xvavg.hu", extract_layout_79(word)),
-        0x74676E9B => ("xvavg.wu", extract_layout_79(word)),
-        0x7467F697 => ("xvavg.du", extract_layout_79(word)),
-        0x74681DFD => ("xvavgr.b", extract_layout_79(word)),
-        0x7468BF40 => ("xvavgr.h", extract_layout_79(word)),
-        0x74690017 => ("xvavgr.w", extract_layout_79(word)),
-        0x746982FD => ("xvavgr.d", extract_layout_79(word)),
-        0x746A6456 => ("xvavgr.bu", extract_layout_79(word)),
-        0x746AD559 => ("xvavgr.hu", extract_layout_79(word)),
-        0x746B0DD1 => ("xvavgr.wu", extract_layout_79(word)),
-        0x746BB562 => ("xvavgr.du", extract_layout_79(word)),
-        0x74703517 => ("xvmax.b", extract_layout_79(word)),
-        0x7470F24D => ("xvmax.h", extract_layout_79(word)),
-        0x7471083A => ("xvmax.w", extract_layout_79(word)),
-        0x7471B622 => ("xvmax.d", extract_layout_79(word)),
-        0x74721F55 => ("xvmin.b", extract_layout_79(word)),
-        0x7472A4BD => ("xvmin.h", extract_layout_79(word)),
-        0x7473531F => ("xvmin.w", extract_layout_79(word)),
-        0x74738B7B => ("xvmin.d", extract_layout_79(word)),
-        0x74742FDD => ("xvmax.bu", extract_layout_79(word)),
-        0x7474EEE4 => ("xvmax.hu", extract_layout_79(word)),
-        0x7475001F => ("xvmax.wu", extract_layout_79(word)),
-        0x7475A6C5 => ("xvmax.du", extract_layout_79(word)),
-        0x74760E0F => ("xvmin.bu", extract_layout_79(word)),
-        0x7476EFE4 => ("xvmin.hu", extract_layout_79(word)),
-        0x747771AF => ("xvmin.wu", extract_layout_79(word)),
-        0x7477947B => ("xvmin.du", extract_layout_79(word)),
-        0x74846CF2 => ("xvmul.b", extract_layout_79(word)),
-        0x7484CAE9 => ("xvmul.h", extract_layout_79(word)),
-        0x74856D15 => ("xvmul.w", extract_layout_79(word)),
-        0x7485A1E0 => ("xvmul.d", extract_layout_79(word)),
-        0x74861104 => ("xvmuh.b", extract_layout_79(word)),
-        0x7486EAE5 => ("xvmuh.h", extract_layout_79(word)),
-        0x7487647C => ("xvmuh.w", extract_layout_79(word)),
-        0x7487A406 => ("xvmuh.d", extract_layout_79(word)),
-        0x7488628F => ("xvmuh.bu", extract_layout_79(word)),
-        0x7488ED9C => ("xvmuh.hu", extract_layout_79(word)),
-        0x748928D9 => ("xvmuh.wu", extract_layout_79(word)),
-        0x7489FD13 => ("xvmuh.du", extract_layout_79(word)),
-        0x749040E2 => ("xvmulwev.h.b", extract_layout_79(word)),
-        0x7490996C => ("xvmulwev.w.h", extract_layout_79(word)),
-        0x74913F10 => ("xvmulwev.d.w", extract_layout_79(word)),
-        0x74919211 => ("xvmulwev.q.d", extract_layout_79(word)),
-        0x74920A50 => ("xvmulwod.h.b", extract_layout_79(word)),
-        0x7492DC5E => ("xvmulwod.w.h", extract_layout_79(word)),
-        0x7493237E => ("xvmulwod.d.w", extract_layout_79(word)),
-        0x7493BEB4 => ("xvmulwod.q.d", extract_layout_79(word)),
-        0x749874F4 => ("xvmulwev.h.bu", extract_layout_79(word)),
-        0x7498C70D => ("xvmulwev.w.hu", extract_layout_79(word)),
-        0x74997B01 => ("xvmulwev.d.wu", extract_layout_79(word)),
-        0x7499EEC1 => ("xvmulwev.q.du", extract_layout_79(word)),
-        0x749A1F53 => ("xvmulwod.h.bu", extract_layout_79(word)),
-        0x749A9A2E => ("xvmulwod.w.hu", extract_layout_79(word)),
-        0x749B52D8 => ("xvmulwod.d.wu", extract_layout_79(word)),
-        0x749B9FFC => ("xvmulwod.q.du", extract_layout_79(word)),
-        0x74A0338D => ("xvmulwev.h.bu.b", extract_layout_79(word)),
-        0x74A09E1B => ("xvmulwev.w.hu.h", extract_layout_79(word)),
-        0x74A144ED => ("xvmulwev.d.wu.w", extract_layout_79(word)),
-        0x74A1BE89 => ("xvmulwev.q.du.d", extract_layout_79(word)),
-        0x74A271F8 => ("xvmulwod.h.bu.b", extract_layout_79(word)),
-        0x74A28518 => ("xvmulwod.w.hu.h", extract_layout_79(word)),
-        0x74A3046A => ("xvmulwod.d.wu.w", extract_layout_79(word)),
-        0x74A389EF => ("xvmulwod.q.du.d", extract_layout_79(word)),
-        0x74A823E5 => ("xvmadd.b", extract_layout_58(word)),
-        0x74A8F004 => ("xvmadd.h", extract_layout_58(word)),
-        0x74A961A2 => ("xvmadd.w", extract_layout_58(word)),
-        0x74A9C913 => ("xvmadd.d", extract_layout_58(word)),
-        0x74AA1E96 => ("xvmsub.b", extract_layout_58(word)),
-        0x74AAB240 => ("xvmsub.h", extract_layout_58(word)),
-        0x74AB76C3 => ("xvmsub.w", extract_layout_58(word)),
-        0x74AB8B4B => ("xvmsub.d", extract_layout_58(word)),
-        0x74AC25F9 => ("xvmaddwev.h.b", extract_layout_58(word)),
-        0x74AC803A => ("xvmaddwev.w.h", extract_layout_58(word)),
-        0x74AD6317 => ("xvmaddwev.d.w", extract_layout_58(word)),
-        0x74ADD927 => ("xvmaddwev.q.d", extract_layout_58(word)),
-        0x74AE4910 => ("xvmaddwod.h.b", extract_layout_58(word)),
-        0x74AEBB0B => ("xvmaddwod.w.h", extract_layout_58(word)),
-        0x74AF3680 => ("xvmaddwod.d.w", extract_layout_58(word)),
-        0x74AFCAEF => ("xvmaddwod.q.d", extract_layout_58(word)),
-        0x74B469B7 => ("xvmaddwev.h.bu", extract_layout_58(word)),
-        0x74B48C6D => ("xvmaddwev.w.hu", extract_layout_58(word)),
-        0x74B5737D => ("xvmaddwev.d.wu", extract_layout_58(word)),
-        0x74B5A95D => ("xvmaddwev.q.du", extract_layout_58(word)),
-        0x74B61EFF => ("xvmaddwod.h.bu", extract_layout_58(word)),
-        0x74B6A21D => ("xvmaddwod.w.hu", extract_layout_58(word)),
-        0x74B72E17 => ("xvmaddwod.d.wu", extract_layout_58(word)),
-        0x74B7CD49 => ("xvmaddwod.q.du", extract_layout_58(word)),
-        0x74BC7F5E => ("xvmaddwev.h.bu.b", extract_layout_58(word)),
-        0x74BCFE26 => ("xvmaddwev.w.hu.h", extract_layout_58(word)),
-        0x74BD0B8A => ("xvmaddwev.d.wu.w", extract_layout_58(word)),
-        0x74BDE290 => ("xvmaddwev.q.du.d", extract_layout_58(word)),
-        0x74BE2C5B => ("xvmaddwod.h.bu.b", extract_layout_58(word)),
-        0x74BECF0C => ("xvmaddwod.w.hu.h", extract_layout_58(word)),
-        0x74BF380B => ("xvmaddwod.d.wu.w", extract_layout_58(word)),
-        0x74BFFE7D => ("xvmaddwod.q.du.d", extract_layout_58(word)),
-        0x74E02329 => ("xvdiv.b", extract_layout_79(word)),
-        0x74E0EC32 => ("xvdiv.h", extract_layout_79(word)),
-        0x74E16F45 => ("xvdiv.w", extract_layout_79(word)),
-        0x74E1B35B => ("xvdiv.d", extract_layout_79(word)),
-        0x74E20068 => ("xvmod.b", extract_layout_79(word)),
-        0x74E2F222 => ("xvmod.h", extract_layout_79(word)),
-        0x74E3350E => ("xvmod.w", extract_layout_79(word)),
-        0x74E3C94B => ("xvmod.d", extract_layout_79(word)),
-        0x74E47AC0 => ("xvdiv.bu", extract_layout_79(word)),
-        0x74E4E6FF => ("xvdiv.hu", extract_layout_79(word)),
-        0x74E51F21 => ("xvdiv.wu", extract_layout_79(word)),
-        0x74E59F27 => ("xvdiv.du", extract_layout_79(word)),
-        0x74E66830 => ("xvmod.bu", extract_layout_79(word)),
-        0x74E681AF => ("xvmod.hu", extract_layout_79(word)),
-        0x74E7526B => ("xvmod.wu", extract_layout_79(word)),
-        0x74E7986E => ("xvmod.du", extract_layout_79(word)),
-        0x74E827A8 => ("xvsll.b", extract_layout_79(word)),
-        0x74E8F795 => ("xvsll.h", extract_layout_79(word)),
-        0x74E92BD1 => ("xvsll.w", extract_layout_79(word)),
-        0x74E9E8D3 => ("xvsll.d", extract_layout_79(word)),
-        0x74EA7714 => ("xvsrl.b", extract_layout_79(word)),
-        0x74EAFE2B => ("xvsrl.h", extract_layout_79(word)),
-        0x74EB2142 => ("xvsrl.w", extract_layout_79(word)),
-        0x74EBEBCD => ("xvsrl.d", extract_layout_79(word)),
-        0x74EC004B => ("xvsra.b", extract_layout_79(word)),
-        0x74EC9B71 => ("xvsra.h", extract_layout_79(word)),
-        0x74ED318D => ("xvsra.w", extract_layout_79(word)),
-        0x74ED85E6 => ("xvsra.d", extract_layout_79(word)),
-        0x74EE78C0 => ("xvrotr.b", extract_layout_79(word)),
-        0x74EEAA33 => ("xvrotr.h", extract_layout_79(word)),
-        0x74EF1C52 => ("xvrotr.w", extract_layout_79(word)),
-        0x74EFAEEB => ("xvrotr.d", extract_layout_79(word)),
-        0x74F01572 => ("xvsrlr.b", extract_layout_79(word)),
-        0x74F0D4BF => ("xvsrlr.h", extract_layout_79(word)),
-        0x74F104A7 => ("xvsrlr.w", extract_layout_79(word)),
-        0x74F19F64 => ("xvsrlr.d", extract_layout_79(word)),
-        0x74F22E49 => ("xvsrar.b", extract_layout_79(word)),
-        0x74F2874F => ("xvsrar.h", extract_layout_79(word)),
-        0x74F33A71 => ("xvsrar.w", extract_layout_79(word)),
-        0x74F399F3 => ("xvsrar.d", extract_layout_79(word)),
-        0x74F495A7 => ("xvsrln.b.h", extract_layout_79(word)),
-        0x74F51646 => ("xvsrln.h.w", extract_layout_79(word)),
-        0x74F5F18C => ("xvsrln.w.d", extract_layout_79(word)),
-        0x74F68DBE => ("xvsran.b.h", extract_layout_79(word)),
-        0x74F71352 => ("xvsran.h.w", extract_layout_79(word)),
-        0x74F7D67B => ("xvsran.w.d", extract_layout_79(word)),
-        0x74F8EB24 => ("xvsrlrn.b.h", extract_layout_79(word)),
-        0x74F904B1 => ("xvsrlrn.h.w", extract_layout_79(word)),
-        0x74F9C43D => ("xvsrlrn.w.d", extract_layout_79(word)),
-        0x74FABE92 => ("xvsrarn.b.h", extract_layout_79(word)),
-        0x74FB102C => ("xvsrarn.h.w", extract_layout_79(word)),
-        0x74FBEA49 => ("xvsrarn.w.d", extract_layout_79(word)),
-        0x74FC9098 => ("xvssrln.b.h", extract_layout_79(word)),
-        0x74FD01E5 => ("xvssrln.h.w", extract_layout_79(word)),
-        0x74FDFB20 => ("xvssrln.w.d", extract_layout_79(word)),
-        0x74FE8491 => ("xvssran.b.h", extract_layout_79(word)),
-        0x74FF379C => ("xvssran.h.w", extract_layout_79(word)),
-        0x74FFFC35 => ("xvssran.w.d", extract_layout_79(word)),
-        0x7500CA88 => ("xvssrlrn.b.h", extract_layout_79(word)),
-        0x75014DA2 => ("xvssrlrn.h.w", extract_layout_79(word)),
-        0x750194F8 => ("xvssrlrn.w.d", extract_layout_79(word)),
-        0x750281A7 => ("xvssrarn.b.h", extract_layout_79(word)),
-        0x75033856 => ("xvssrarn.h.w", extract_layout_79(word)),
-        0x7503C0ED => ("xvssrarn.w.d", extract_layout_79(word)),
-        0x7504E93A => ("xvssrln.bu.h", extract_layout_79(word)),
-        0x75050687 => ("xvssrln.hu.w", extract_layout_79(word)),
-        0x7505D1AF => ("xvssrln.wu.d", extract_layout_79(word)),
-        0x7506E183 => ("xvssran.bu.h", extract_layout_79(word)),
-        0x75070719 => ("xvssran.hu.w", extract_layout_79(word)),
-        0x7507A9DE => ("xvssran.wu.d", extract_layout_79(word)),
-        0x7508CAEF => ("xvssrlrn.bu.h", extract_layout_79(word)),
-        0x750941D6 => ("xvssrlrn.hu.w", extract_layout_79(word)),
-        0x75099794 => ("xvssrlrn.wu.d", extract_layout_79(word)),
-        0x750A8984 => ("xvssrarn.bu.h", extract_layout_79(word)),
-        0x750B0F0F => ("xvssrarn.hu.w", extract_layout_79(word)),
-        0x750BA13E => ("xvssrarn.wu.d", extract_layout_79(word)),
-        0x750C38B8 => ("xvbitclr.b", extract_layout_79(word)),
-        0x750CB53E => ("xvbitclr.h", extract_layout_79(word)),
-        0x750D1C62 => ("xvbitclr.w", extract_layout_79(word)),
-        0x750DE4AE => ("xvbitclr.d", extract_layout_79(word)),
-        0x750E7206 => ("xvbitset.b", extract_layout_79(word)),
-        0x750EFDA5 => ("xvbitset.h", extract_layout_79(word)),
-        0x750F2387 => ("xvbitset.w", extract_layout_79(word)),
-        0x750FB204 => ("xvbitset.d", extract_layout_79(word)),
-        0x75100E90 => ("xvbitrev.b", extract_layout_79(word)),
-        0x7510D070 => ("xvbitrev.h", extract_layout_79(word)),
-        0x75115F58 => ("xvbitrev.w", extract_layout_79(word)),
-        0x7511EC2D => ("xvbitrev.d", extract_layout_79(word)),
-        0x75162055 => ("xvpackev.b", extract_layout_79(word)),
-        0x75169A48 => ("xvpackev.h", extract_layout_79(word)),
-        0x751778C0 => ("xvpackev.w", extract_layout_79(word)),
-        0x75179120 => ("xvpackev.d", extract_layout_79(word)),
-        0x75187FBC => ("xvpackod.b", extract_layout_79(word)),
-        0x7518994E => ("xvpackod.h", extract_layout_79(word)),
-        0x75190AB6 => ("xvpackod.w", extract_layout_79(word)),
-        0x75198932 => ("xvpackod.d", extract_layout_79(word)),
-        0x751A01DD => ("xvilvl.b", extract_layout_79(word)),
-        0x751AD53E => ("xvilvl.h", extract_layout_79(word)),
-        0x751B26D8 => ("xvilvl.w", extract_layout_79(word)),
-        0x751BAA99 => ("xvilvl.d", extract_layout_79(word)),
-        0x751C6AD3 => ("xvilvh.b", extract_layout_79(word)),
-        0x751C9EEA => ("xvilvh.h", extract_layout_79(word)),
-        0x751D7805 => ("xvilvh.w", extract_layout_79(word)),
-        0x751D8858 => ("xvilvh.d", extract_layout_79(word)),
-        0x751E1B76 => ("xvpickev.b", extract_layout_79(word)),
-        0x751E8D6E => ("xvpickev.h", extract_layout_79(word)),
-        0x751F379E => ("xvpickev.w", extract_layout_79(word)),
-        0x751FA701 => ("xvpickev.d", extract_layout_79(word)),
-        0x75203ECE => ("xvpickod.b", extract_layout_79(word)),
-        0x7520B2BF => ("xvpickod.h", extract_layout_79(word)),
-        0x7521781F => ("xvpickod.w", extract_layout_79(word)),
-        0x7521C0AA => ("xvpickod.d", extract_layout_79(word)),
-        0x75222E14 => ("xvreplve.b", extract_layout_78(word)),
-        0x7522E2A0 => ("xvreplve.h", extract_layout_78(word)),
-        0x75234A54 => ("xvreplve.w", extract_layout_78(word)),
-        0x7523DC64 => ("xvreplve.d", extract_layout_78(word)),
-        0x75264EEE => ("xvand.v", extract_layout_79(word)),
-        0x7526D7A6 => ("xvor.v", extract_layout_79(word)),
-        0x75272B4E => ("xvxor.v", extract_layout_79(word)),
-        0x75278EE4 => ("xvnor.v", extract_layout_79(word)),
-        0x75280DE3 => ("xvandn.v", extract_layout_79(word)),
-        0x752897B1 => ("xvorn.v", extract_layout_79(word)),
-        0x752B4A57 => ("xvfrstp.b", extract_layout_58(word)),
-        0x752B9BCD => ("xvfrstp.h", extract_layout_58(word)),
-        0x752D1B84 => ("xvadd.q", extract_layout_79(word)),
-        0x752DFF4D => ("xvsub.q", extract_layout_79(word)),
-        0x752E3701 => ("xvsigncov.b", extract_layout_79(word)),
-        0x752EBAE8 => ("xvsigncov.h", extract_layout_79(word)),
-        0x752F2B23 => ("xvsigncov.w", extract_layout_79(word)),
-        0x752FFE3A => ("xvsigncov.d", extract_layout_79(word)),
-        0x7530BEA6 => ("xvfadd.s", extract_layout_79(word)),
-        0x7531051B => ("xvfadd.d", extract_layout_79(word)),
-        0x75328C16 => ("xvfsub.s", extract_layout_79(word)),
-        0x75333F24 => ("xvfsub.d", extract_layout_79(word)),
-        0x7538F9C9 => ("xvfmul.s", extract_layout_79(word)),
-        0x75394F5C => ("xvfmul.d", extract_layout_79(word)),
-        0x753AB0BD => ("xvfdiv.s", extract_layout_79(word)),
-        0x753B795F => ("xvfdiv.d", extract_layout_79(word)),
-        0x753CA31D => ("xvfmax.s", extract_layout_79(word)),
-        0x753D5F3F => ("xvfmax.d", extract_layout_79(word)),
-        0x753EC0BF => ("xvfmin.s", extract_layout_79(word)),
-        0x753F67CD => ("xvfmin.d", extract_layout_79(word)),
-        0x7540964F => ("xvfmaxa.s", extract_layout_79(word)),
-        0x75417682 => ("xvfmaxa.d", extract_layout_79(word)),
-        0x7542C77D => ("xvfmina.s", extract_layout_79(word)),
-        0x75434A8C => ("xvfmina.d", extract_layout_79(word)),
-        0x75465E29 => ("xvfcvt.h.s", extract_layout_79(word)),
-        0x7546F55B => ("xvfcvt.s.d", extract_layout_79(word)),
-        0x75480F6A => ("xvffint.s.l", extract_layout_79(word)),
-        0x7549F6C7 => ("xvftint.w.d", extract_layout_79(word)),
-        0x754A1EFD => ("xvftintrm.w.d", extract_layout_79(word)),
-        0x754AFF4E => ("xvftintrp.w.d", extract_layout_79(word)),
-        0x754B6D0D => ("xvftintrz.w.d", extract_layout_79(word)),
-        0x754B968D => ("xvftintrne.w.d", extract_layout_79(word)),
-        0x757A871D => ("xvshuf.h", extract_layout_58(word)),
-        0x757B770F => ("xvshuf.w", extract_layout_58(word)),
-        0x757BBE5B => ("xvshuf.d", extract_layout_58(word)),
-        0x757D42F8 => ("xvperm.w", extract_layout_79(word)),
-        0x7680032C => ("xvseqi.b", extract_layout_81(word)),
-        0x7680A889 => ("xvseqi.h", extract_layout_81(word)),
-        0x76815099 => ("xvseqi.w", extract_layout_81(word)),
-        0x76819CEB => ("xvseqi.d", extract_layout_81(word)),
-        0x7682596E => ("xvslei.b", extract_layout_81(word)),
-        0x7682BEC2 => ("xvslei.h", extract_layout_81(word)),
-        0x768331C3 => ("xvslei.w", extract_layout_81(word)),
-        0x7683ABD3 => ("xvslei.d", extract_layout_81(word)),
-        0x76842B51 => ("xvslei.bu", extract_layout_82(word)),
-        0x7684C974 => ("xvslei.hu", extract_layout_82(word)),
-        0x76852BA1 => ("xvslei.wu", extract_layout_82(word)),
-        0x7685E3F9 => ("xvslei.du", extract_layout_82(word)),
-        0x76861B7F => ("xvslti.b", extract_layout_81(word)),
-        0x76869A65 => ("xvslti.h", extract_layout_81(word)),
-        0x76872D14 => ("xvslti.w", extract_layout_81(word)),
-        0x76878A4D => ("xvslti.d", extract_layout_81(word)),
-        0x76880881 => ("xvslti.bu", extract_layout_82(word)),
-        0x7688D0A0 => ("xvslti.hu", extract_layout_82(word)),
-        0x76896320 => ("xvslti.wu", extract_layout_82(word)),
-        0x7689F4AA => ("xvslti.du", extract_layout_82(word)),
-        0x768A0AC1 => ("xvaddi.bu", extract_layout_82(word)),
-        0x768AF543 => ("xvaddi.hu", extract_layout_82(word)),
-        0x768B0D65 => ("xvaddi.wu", extract_layout_82(word)),
-        0x768B9C06 => ("xvaddi.du", extract_layout_82(word)),
-        0x768C0772 => ("xvsubi.bu", extract_layout_82(word)),
-        0x768CCEE6 => ("xvsubi.hu", extract_layout_82(word)),
-        0x768D146D => ("xvsubi.wu", extract_layout_82(word)),
-        0x768DBB9A => ("xvsubi.du", extract_layout_82(word)),
-        0x768E52AE => ("xvbsll.v", extract_layout_82(word)),
-        0x768EF4A4 => ("xvbsrl.v", extract_layout_82(word)),
-        0x769004E6 => ("xvmaxi.b", extract_layout_81(word)),
-        0x7690E558 => ("xvmaxi.h", extract_layout_81(word)),
-        0x76916258 => ("xvmaxi.w", extract_layout_81(word)),
-        0x7691D4B5 => ("xvmaxi.d", extract_layout_81(word)),
-        0x76922636 => ("xvmini.b", extract_layout_81(word)),
-        0x7692C6EC => ("xvmini.h", extract_layout_81(word)),
-        0x76934E21 => ("xvmini.w", extract_layout_81(word)),
-        0x7693AFEA => ("xvmini.d", extract_layout_81(word)),
-        0x7694736C => ("xvmaxi.bu", extract_layout_82(word)),
-        0x7694C099 => ("xvmaxi.hu", extract_layout_82(word)),
-        0x769554FB => ("xvmaxi.wu", extract_layout_82(word)),
-        0x7695A5BF => ("xvmaxi.du", extract_layout_82(word)),
-        0x76961F06 => ("xvmini.bu", extract_layout_82(word)),
-        0x7696F4A8 => ("xvmini.hu", extract_layout_82(word)),
-        0x76974DB1 => ("xvmini.wu", extract_layout_82(word)),
-        0x7697FAF0 => ("xvmini.du", extract_layout_82(word)),
-        0x769A7F98 => ("xvfrstpi.b", extract_layout_59(word)),
-        0x769ACB16 => ("xvfrstpi.h", extract_layout_59(word)),
-        0x769C0189 => ("xvclo.b", extract_layout_73(word)),
-        0x769C05D0 => ("xvclo.h", extract_layout_73(word)),
-        0x769C0A5E => ("xvclo.w", extract_layout_73(word)),
-        0x769C0CBF => ("xvclo.d", extract_layout_73(word)),
-        0x769C10C5 => ("xvclz.b", extract_layout_73(word)),
-        0x769C14E4 => ("xvclz.h", extract_layout_73(word)),
-        0x769C180C => ("xvclz.w", extract_layout_73(word)),
-        0x769C1C01 => ("xvclz.d", extract_layout_73(word)),
-        0x769C2368 => ("xvpcnt.b", extract_layout_73(word)),
-        0x769C248C => ("xvpcnt.h", extract_layout_73(word)),
-        0x769C2AFF => ("xvpcnt.w", extract_layout_73(word)),
-        0x769C2D9A => ("xvpcnt.d", extract_layout_73(word)),
-        0x769C3097 => ("xvneg.b", extract_layout_73(word)),
-        0x769C35C8 => ("xvneg.h", extract_layout_73(word)),
-        0x769C39D7 => ("xvneg.w", extract_layout_73(word)),
-        0x769C3E34 => ("xvneg.d", extract_layout_73(word)),
-        0x769C40AE => ("xvmskltz.b", extract_layout_73(word)),
-        0x769C472B => ("xvmskltz.h", extract_layout_73(word)),
-        0x769C4B6E => ("xvmskltz.w", extract_layout_73(word)),
-        0x769C4EE7 => ("xvmskltz.d", extract_layout_73(word)),
-        0x769C50BE => ("xvmskgez.b", extract_layout_73(word)),
-        0x769C62D6 => ("xvmsknz.b", extract_layout_73(word)),
+        0x5800B147 => ("beq", extract_layout_97(word)),
+        0x5C008B21 => ("bne", extract_layout_97(word)),
+        0x6000A9FE => ("blt", extract_layout_97(word)),
+        0x6400958F => ("bge", extract_layout_97(word)),
+        0x68000625 => ("bltu", extract_layout_97(word)),
+        0x6C008CD7 => ("bgeu", extract_layout_97(word)),
+        0x72F78C77 => ("vreplvei.b", extract_layout_91(word)),
+        0x72F7C21B => ("vreplvei.h", extract_layout_90(word)),
+        0x72F7EEF2 => ("vreplvei.w", extract_layout_89(word)),
+        0x72F7F58F => ("vreplvei.d", extract_layout_88(word)),
+        0x74004C83 => ("xvseq.b", extract_layout_82(word)),
+        0x740096A0 => ("xvseq.h", extract_layout_82(word)),
+        0x74014E06 => ("xvseq.w", extract_layout_82(word)),
+        0x7401B5A8 => ("xvseq.d", extract_layout_82(word)),
+        0x740277D8 => ("xvsle.b", extract_layout_82(word)),
+        0x7402D1B7 => ("xvsle.h", extract_layout_82(word)),
+        0x740363EA => ("xvsle.w", extract_layout_82(word)),
+        0x7403A34D => ("xvsle.d", extract_layout_82(word)),
+        0x74040B69 => ("xvsle.bu", extract_layout_82(word)),
+        0x7404DB3D => ("xvsle.hu", extract_layout_82(word)),
+        0x74053B30 => ("xvsle.wu", extract_layout_82(word)),
+        0x7405C8C5 => ("xvsle.du", extract_layout_82(word)),
+        0x740637FE => ("xvslt.b", extract_layout_82(word)),
+        0x740682F3 => ("xvslt.h", extract_layout_82(word)),
+        0x74070F57 => ("xvslt.w", extract_layout_82(word)),
+        0x7407FD43 => ("xvslt.d", extract_layout_82(word)),
+        0x740875B4 => ("xvslt.bu", extract_layout_82(word)),
+        0x7408EBAC => ("xvslt.hu", extract_layout_82(word)),
+        0x74097F3A => ("xvslt.wu", extract_layout_82(word)),
+        0x74098E9E => ("xvslt.du", extract_layout_82(word)),
+        0x740A1674 => ("xvadd.b", extract_layout_82(word)),
+        0x740AB8F8 => ("xvadd.h", extract_layout_82(word)),
+        0x740B5433 => ("xvadd.w", extract_layout_82(word)),
+        0x740BB4D3 => ("xvadd.d", extract_layout_82(word)),
+        0x740C438B => ("xvsub.b", extract_layout_82(word)),
+        0x740CE06B => ("xvsub.h", extract_layout_82(word)),
+        0x740D1AEE => ("xvsub.w", extract_layout_82(word)),
+        0x740D9DA5 => ("xvsub.d", extract_layout_82(word)),
+        0x741E13D7 => ("xvaddwev.h.b", extract_layout_82(word)),
+        0x741EFE74 => ("xvaddwev.w.h", extract_layout_82(word)),
+        0x741F6528 => ("xvaddwev.d.w", extract_layout_82(word)),
+        0x741FF6DD => ("xvaddwev.q.d", extract_layout_82(word)),
+        0x7420703D => ("xvsubwev.h.b", extract_layout_82(word)),
+        0x7420FE98 => ("xvsubwev.w.h", extract_layout_82(word)),
+        0x74212C86 => ("xvsubwev.d.w", extract_layout_82(word)),
+        0x7421B7FB => ("xvsubwev.q.d", extract_layout_82(word)),
+        0x742262AE => ("xvaddwod.h.b", extract_layout_82(word)),
+        0x7422DF53 => ("xvaddwod.w.h", extract_layout_82(word)),
+        0x7423512C => ("xvaddwod.d.w", extract_layout_82(word)),
+        0x7423A04B => ("xvaddwod.q.d", extract_layout_82(word)),
+        0x74244523 => ("xvsubwod.h.b", extract_layout_82(word)),
+        0x7424D4AE => ("xvsubwod.w.h", extract_layout_82(word)),
+        0x74250DC8 => ("xvsubwod.d.w", extract_layout_82(word)),
+        0x7425C9F8 => ("xvsubwod.q.d", extract_layout_82(word)),
+        0x742E69BE => ("xvaddwev.h.bu", extract_layout_82(word)),
+        0x742EC3EF => ("xvaddwev.w.hu", extract_layout_82(word)),
+        0x742F5210 => ("xvaddwev.d.wu", extract_layout_82(word)),
+        0x742FCA4A => ("xvaddwev.q.du", extract_layout_82(word)),
+        0x74300A81 => ("xvsubwev.h.bu", extract_layout_82(word)),
+        0x7430B0D3 => ("xvsubwev.w.hu", extract_layout_82(word)),
+        0x74315C3F => ("xvsubwev.d.wu", extract_layout_82(word)),
+        0x7431C79F => ("xvsubwev.q.du", extract_layout_82(word)),
+        0x743224C6 => ("xvaddwod.h.bu", extract_layout_82(word)),
+        0x7432E761 => ("xvaddwod.w.hu", extract_layout_82(word)),
+        0x74332E7A => ("xvaddwod.d.wu", extract_layout_82(word)),
+        0x7433A2D5 => ("xvaddwod.q.du", extract_layout_82(word)),
+        0x7434045B => ("xvsubwod.h.bu", extract_layout_82(word)),
+        0x7434D8F3 => ("xvsubwod.w.hu", extract_layout_82(word)),
+        0x74356B01 => ("xvsubwod.d.wu", extract_layout_82(word)),
+        0x74359F5D => ("xvsubwod.q.du", extract_layout_82(word)),
+        0x743E24E3 => ("xvaddwev.h.bu.b", extract_layout_82(word)),
+        0x743EEE1A => ("xvaddwev.w.hu.h", extract_layout_82(word)),
+        0x743F21A0 => ("xvaddwev.d.wu.w", extract_layout_82(word)),
+        0x743F8D53 => ("xvaddwev.q.du.d", extract_layout_82(word)),
+        0x74406355 => ("xvaddwod.h.bu.b", extract_layout_82(word)),
+        0x7440C0DF => ("xvaddwod.w.hu.h", extract_layout_82(word)),
+        0x74417F8C => ("xvaddwod.d.wu.w", extract_layout_82(word)),
+        0x7441B09D => ("xvaddwod.q.du.d", extract_layout_82(word)),
+        0x74465BDB => ("xvsadd.b", extract_layout_82(word)),
+        0x7446841D => ("xvsadd.h", extract_layout_82(word)),
+        0x74477F96 => ("xvsadd.w", extract_layout_82(word)),
+        0x7447EA45 => ("xvsadd.d", extract_layout_82(word)),
+        0x7448626E => ("xvssub.b", extract_layout_82(word)),
+        0x7448CD0D => ("xvssub.h", extract_layout_82(word)),
+        0x7449737C => ("xvssub.w", extract_layout_82(word)),
+        0x74498A1C => ("xvssub.d", extract_layout_82(word)),
+        0x744A729D => ("xvsadd.bu", extract_layout_82(word)),
+        0x744A9A07 => ("xvsadd.hu", extract_layout_82(word)),
+        0x744B3D42 => ("xvsadd.wu", extract_layout_82(word)),
+        0x744BBB12 => ("xvsadd.du", extract_layout_82(word)),
+        0x744C45AB => ("xvssub.bu", extract_layout_82(word)),
+        0x744CF150 => ("xvssub.hu", extract_layout_82(word)),
+        0x744D3415 => ("xvssub.wu", extract_layout_82(word)),
+        0x744DEF52 => ("xvssub.du", extract_layout_82(word)),
+        0x7454767F => ("xvhaddw.h.b", extract_layout_82(word)),
+        0x7454DE1F => ("xvhaddw.w.h", extract_layout_82(word)),
+        0x7455603E => ("xvhaddw.d.w", extract_layout_82(word)),
+        0x7455C5F0 => ("xvhaddw.q.d", extract_layout_82(word)),
+        0x745640F6 => ("xvhsubw.h.b", extract_layout_82(word)),
+        0x7456BD13 => ("xvhsubw.w.h", extract_layout_82(word)),
+        0x74574EFE => ("xvhsubw.d.w", extract_layout_82(word)),
+        0x7457F1B4 => ("xvhsubw.q.d", extract_layout_82(word)),
+        0x74580A2E => ("xvhaddw.hu.bu", extract_layout_82(word)),
+        0x7458A055 => ("xvhaddw.wu.hu", extract_layout_82(word)),
+        0x74594F06 => ("xvhaddw.du.wu", extract_layout_82(word)),
+        0x7459B58A => ("xvhaddw.qu.du", extract_layout_82(word)),
+        0x745A404A => ("xvhsubw.hu.bu", extract_layout_82(word)),
+        0x745ACB41 => ("xvhsubw.wu.hu", extract_layout_82(word)),
+        0x745B52E5 => ("xvhsubw.du.wu", extract_layout_82(word)),
+        0x745BA09F => ("xvhsubw.qu.du", extract_layout_82(word)),
+        0x745C6F0A => ("xvadda.b", extract_layout_82(word)),
+        0x745CF780 => ("xvadda.h", extract_layout_82(word)),
+        0x745D253F => ("xvadda.w", extract_layout_82(word)),
+        0x745DE42A => ("xvadda.d", extract_layout_82(word)),
+        0x74604436 => ("xvabsd.b", extract_layout_82(word)),
+        0x7460A711 => ("xvabsd.h", extract_layout_82(word)),
+        0x7461753C => ("xvabsd.w", extract_layout_82(word)),
+        0x7461CEFE => ("xvabsd.d", extract_layout_82(word)),
+        0x74623C90 => ("xvabsd.bu", extract_layout_82(word)),
+        0x7462EEED => ("xvabsd.hu", extract_layout_82(word)),
+        0x74633E5F => ("xvabsd.wu", extract_layout_82(word)),
+        0x7463915A => ("xvabsd.du", extract_layout_82(word)),
+        0x746457C5 => ("xvavg.b", extract_layout_82(word)),
+        0x7464D632 => ("xvavg.h", extract_layout_82(word)),
+        0x746552E3 => ("xvavg.w", extract_layout_82(word)),
+        0x7465EC1B => ("xvavg.d", extract_layout_82(word)),
+        0x7466408B => ("xvavg.bu", extract_layout_82(word)),
+        0x7466CC22 => ("xvavg.hu", extract_layout_82(word)),
+        0x74676E9B => ("xvavg.wu", extract_layout_82(word)),
+        0x7467F697 => ("xvavg.du", extract_layout_82(word)),
+        0x74681DFD => ("xvavgr.b", extract_layout_82(word)),
+        0x7468BF40 => ("xvavgr.h", extract_layout_82(word)),
+        0x74690017 => ("xvavgr.w", extract_layout_82(word)),
+        0x746982FD => ("xvavgr.d", extract_layout_82(word)),
+        0x746A6456 => ("xvavgr.bu", extract_layout_82(word)),
+        0x746AD559 => ("xvavgr.hu", extract_layout_82(word)),
+        0x746B0DD1 => ("xvavgr.wu", extract_layout_82(word)),
+        0x746BB562 => ("xvavgr.du", extract_layout_82(word)),
+        0x74703517 => ("xvmax.b", extract_layout_82(word)),
+        0x7470F24D => ("xvmax.h", extract_layout_82(word)),
+        0x7471083A => ("xvmax.w", extract_layout_82(word)),
+        0x7471B622 => ("xvmax.d", extract_layout_82(word)),
+        0x74721F55 => ("xvmin.b", extract_layout_82(word)),
+        0x7472A4BD => ("xvmin.h", extract_layout_82(word)),
+        0x7473531F => ("xvmin.w", extract_layout_82(word)),
+        0x74738B7B => ("xvmin.d", extract_layout_82(word)),
+        0x74742FDD => ("xvmax.bu", extract_layout_82(word)),
+        0x7474EEE4 => ("xvmax.hu", extract_layout_82(word)),
+        0x7475001F => ("xvmax.wu", extract_layout_82(word)),
+        0x7475A6C5 => ("xvmax.du", extract_layout_82(word)),
+        0x74760E0F => ("xvmin.bu", extract_layout_82(word)),
+        0x7476EFE4 => ("xvmin.hu", extract_layout_82(word)),
+        0x747771AF => ("xvmin.wu", extract_layout_82(word)),
+        0x7477947B => ("xvmin.du", extract_layout_82(word)),
+        0x74846CF2 => ("xvmul.b", extract_layout_82(word)),
+        0x7484CAE9 => ("xvmul.h", extract_layout_82(word)),
+        0x74856D15 => ("xvmul.w", extract_layout_82(word)),
+        0x7485A1E0 => ("xvmul.d", extract_layout_82(word)),
+        0x74861104 => ("xvmuh.b", extract_layout_82(word)),
+        0x7486EAE5 => ("xvmuh.h", extract_layout_82(word)),
+        0x7487647C => ("xvmuh.w", extract_layout_82(word)),
+        0x7487A406 => ("xvmuh.d", extract_layout_82(word)),
+        0x7488628F => ("xvmuh.bu", extract_layout_82(word)),
+        0x7488ED9C => ("xvmuh.hu", extract_layout_82(word)),
+        0x748928D9 => ("xvmuh.wu", extract_layout_82(word)),
+        0x7489FD13 => ("xvmuh.du", extract_layout_82(word)),
+        0x749040E2 => ("xvmulwev.h.b", extract_layout_82(word)),
+        0x7490996C => ("xvmulwev.w.h", extract_layout_82(word)),
+        0x74913F10 => ("xvmulwev.d.w", extract_layout_82(word)),
+        0x74919211 => ("xvmulwev.q.d", extract_layout_82(word)),
+        0x74920A50 => ("xvmulwod.h.b", extract_layout_82(word)),
+        0x7492DC5E => ("xvmulwod.w.h", extract_layout_82(word)),
+        0x7493237E => ("xvmulwod.d.w", extract_layout_82(word)),
+        0x7493BEB4 => ("xvmulwod.q.d", extract_layout_82(word)),
+        0x749874F4 => ("xvmulwev.h.bu", extract_layout_82(word)),
+        0x7498C70D => ("xvmulwev.w.hu", extract_layout_82(word)),
+        0x74997B01 => ("xvmulwev.d.wu", extract_layout_82(word)),
+        0x7499EEC1 => ("xvmulwev.q.du", extract_layout_82(word)),
+        0x749A1F53 => ("xvmulwod.h.bu", extract_layout_82(word)),
+        0x749A9A2E => ("xvmulwod.w.hu", extract_layout_82(word)),
+        0x749B52D8 => ("xvmulwod.d.wu", extract_layout_82(word)),
+        0x749B9FFC => ("xvmulwod.q.du", extract_layout_82(word)),
+        0x74A0338D => ("xvmulwev.h.bu.b", extract_layout_82(word)),
+        0x74A09E1B => ("xvmulwev.w.hu.h", extract_layout_82(word)),
+        0x74A144ED => ("xvmulwev.d.wu.w", extract_layout_82(word)),
+        0x74A1BE89 => ("xvmulwev.q.du.d", extract_layout_82(word)),
+        0x74A271F8 => ("xvmulwod.h.bu.b", extract_layout_82(word)),
+        0x74A28518 => ("xvmulwod.w.hu.h", extract_layout_82(word)),
+        0x74A3046A => ("xvmulwod.d.wu.w", extract_layout_82(word)),
+        0x74A389EF => ("xvmulwod.q.du.d", extract_layout_82(word)),
+        0x74A823E5 => ("xvmadd.b", extract_layout_61(word)),
+        0x74A8F004 => ("xvmadd.h", extract_layout_61(word)),
+        0x74A961A2 => ("xvmadd.w", extract_layout_61(word)),
+        0x74A9C913 => ("xvmadd.d", extract_layout_61(word)),
+        0x74AA1E96 => ("xvmsub.b", extract_layout_61(word)),
+        0x74AAB240 => ("xvmsub.h", extract_layout_61(word)),
+        0x74AB76C3 => ("xvmsub.w", extract_layout_61(word)),
+        0x74AB8B4B => ("xvmsub.d", extract_layout_61(word)),
+        0x74AC25F9 => ("xvmaddwev.h.b", extract_layout_61(word)),
+        0x74AC803A => ("xvmaddwev.w.h", extract_layout_61(word)),
+        0x74AD6317 => ("xvmaddwev.d.w", extract_layout_61(word)),
+        0x74ADD927 => ("xvmaddwev.q.d", extract_layout_61(word)),
+        0x74AE4910 => ("xvmaddwod.h.b", extract_layout_61(word)),
+        0x74AEBB0B => ("xvmaddwod.w.h", extract_layout_61(word)),
+        0x74AF3680 => ("xvmaddwod.d.w", extract_layout_61(word)),
+        0x74AFCAEF => ("xvmaddwod.q.d", extract_layout_61(word)),
+        0x74B469B7 => ("xvmaddwev.h.bu", extract_layout_61(word)),
+        0x74B48C6D => ("xvmaddwev.w.hu", extract_layout_61(word)),
+        0x74B5737D => ("xvmaddwev.d.wu", extract_layout_61(word)),
+        0x74B5A95D => ("xvmaddwev.q.du", extract_layout_61(word)),
+        0x74B61EFF => ("xvmaddwod.h.bu", extract_layout_61(word)),
+        0x74B6A21D => ("xvmaddwod.w.hu", extract_layout_61(word)),
+        0x74B72E17 => ("xvmaddwod.d.wu", extract_layout_61(word)),
+        0x74B7CD49 => ("xvmaddwod.q.du", extract_layout_61(word)),
+        0x74BC7F5E => ("xvmaddwev.h.bu.b", extract_layout_61(word)),
+        0x74BCFE26 => ("xvmaddwev.w.hu.h", extract_layout_61(word)),
+        0x74BD0B8A => ("xvmaddwev.d.wu.w", extract_layout_61(word)),
+        0x74BDE290 => ("xvmaddwev.q.du.d", extract_layout_61(word)),
+        0x74BE2C5B => ("xvmaddwod.h.bu.b", extract_layout_61(word)),
+        0x74BECF0C => ("xvmaddwod.w.hu.h", extract_layout_61(word)),
+        0x74BF380B => ("xvmaddwod.d.wu.w", extract_layout_61(word)),
+        0x74BFFE7D => ("xvmaddwod.q.du.d", extract_layout_61(word)),
+        0x74E02329 => ("xvdiv.b", extract_layout_82(word)),
+        0x74E0EC32 => ("xvdiv.h", extract_layout_82(word)),
+        0x74E16F45 => ("xvdiv.w", extract_layout_82(word)),
+        0x74E1B35B => ("xvdiv.d", extract_layout_82(word)),
+        0x74E20068 => ("xvmod.b", extract_layout_82(word)),
+        0x74E2F222 => ("xvmod.h", extract_layout_82(word)),
+        0x74E3350E => ("xvmod.w", extract_layout_82(word)),
+        0x74E3C94B => ("xvmod.d", extract_layout_82(word)),
+        0x74E47AC0 => ("xvdiv.bu", extract_layout_82(word)),
+        0x74E4E6FF => ("xvdiv.hu", extract_layout_82(word)),
+        0x74E51F21 => ("xvdiv.wu", extract_layout_82(word)),
+        0x74E59F27 => ("xvdiv.du", extract_layout_82(word)),
+        0x74E66830 => ("xvmod.bu", extract_layout_82(word)),
+        0x74E681AF => ("xvmod.hu", extract_layout_82(word)),
+        0x74E7526B => ("xvmod.wu", extract_layout_82(word)),
+        0x74E7986E => ("xvmod.du", extract_layout_82(word)),
+        0x74E827A8 => ("xvsll.b", extract_layout_82(word)),
+        0x74E8F795 => ("xvsll.h", extract_layout_82(word)),
+        0x74E92BD1 => ("xvsll.w", extract_layout_82(word)),
+        0x74E9E8D3 => ("xvsll.d", extract_layout_82(word)),
+        0x74EA7714 => ("xvsrl.b", extract_layout_82(word)),
+        0x74EAFE2B => ("xvsrl.h", extract_layout_82(word)),
+        0x74EB2142 => ("xvsrl.w", extract_layout_82(word)),
+        0x74EBEBCD => ("xvsrl.d", extract_layout_82(word)),
+        0x74EC004B => ("xvsra.b", extract_layout_82(word)),
+        0x74EC9B71 => ("xvsra.h", extract_layout_82(word)),
+        0x74ED318D => ("xvsra.w", extract_layout_82(word)),
+        0x74ED85E6 => ("xvsra.d", extract_layout_82(word)),
+        0x74EE78C0 => ("xvrotr.b", extract_layout_82(word)),
+        0x74EEAA33 => ("xvrotr.h", extract_layout_82(word)),
+        0x74EF1C52 => ("xvrotr.w", extract_layout_82(word)),
+        0x74EFAEEB => ("xvrotr.d", extract_layout_82(word)),
+        0x74F01572 => ("xvsrlr.b", extract_layout_82(word)),
+        0x74F0D4BF => ("xvsrlr.h", extract_layout_82(word)),
+        0x74F104A7 => ("xvsrlr.w", extract_layout_82(word)),
+        0x74F19F64 => ("xvsrlr.d", extract_layout_82(word)),
+        0x74F22E49 => ("xvsrar.b", extract_layout_82(word)),
+        0x74F2874F => ("xvsrar.h", extract_layout_82(word)),
+        0x74F33A71 => ("xvsrar.w", extract_layout_82(word)),
+        0x74F399F3 => ("xvsrar.d", extract_layout_82(word)),
+        0x74F495A7 => ("xvsrln.b.h", extract_layout_82(word)),
+        0x74F51646 => ("xvsrln.h.w", extract_layout_82(word)),
+        0x74F5F18C => ("xvsrln.w.d", extract_layout_82(word)),
+        0x74F68DBE => ("xvsran.b.h", extract_layout_82(word)),
+        0x74F71352 => ("xvsran.h.w", extract_layout_82(word)),
+        0x74F7D67B => ("xvsran.w.d", extract_layout_82(word)),
+        0x74F8EB24 => ("xvsrlrn.b.h", extract_layout_82(word)),
+        0x74F904B1 => ("xvsrlrn.h.w", extract_layout_82(word)),
+        0x74F9C43D => ("xvsrlrn.w.d", extract_layout_82(word)),
+        0x74FABE92 => ("xvsrarn.b.h", extract_layout_82(word)),
+        0x74FB102C => ("xvsrarn.h.w", extract_layout_82(word)),
+        0x74FBEA49 => ("xvsrarn.w.d", extract_layout_82(word)),
+        0x74FC9098 => ("xvssrln.b.h", extract_layout_82(word)),
+        0x74FD01E5 => ("xvssrln.h.w", extract_layout_82(word)),
+        0x74FDFB20 => ("xvssrln.w.d", extract_layout_82(word)),
+        0x74FE8491 => ("xvssran.b.h", extract_layout_82(word)),
+        0x74FF379C => ("xvssran.h.w", extract_layout_82(word)),
+        0x74FFFC35 => ("xvssran.w.d", extract_layout_82(word)),
+        0x7500CA88 => ("xvssrlrn.b.h", extract_layout_82(word)),
+        0x75014DA2 => ("xvssrlrn.h.w", extract_layout_82(word)),
+        0x750194F8 => ("xvssrlrn.w.d", extract_layout_82(word)),
+        0x750281A7 => ("xvssrarn.b.h", extract_layout_82(word)),
+        0x75033856 => ("xvssrarn.h.w", extract_layout_82(word)),
+        0x7503C0ED => ("xvssrarn.w.d", extract_layout_82(word)),
+        0x7504E93A => ("xvssrln.bu.h", extract_layout_82(word)),
+        0x75050687 => ("xvssrln.hu.w", extract_layout_82(word)),
+        0x7505D1AF => ("xvssrln.wu.d", extract_layout_82(word)),
+        0x7506E183 => ("xvssran.bu.h", extract_layout_82(word)),
+        0x75070719 => ("xvssran.hu.w", extract_layout_82(word)),
+        0x7507A9DE => ("xvssran.wu.d", extract_layout_82(word)),
+        0x7508CAEF => ("xvssrlrn.bu.h", extract_layout_82(word)),
+        0x750941D6 => ("xvssrlrn.hu.w", extract_layout_82(word)),
+        0x75099794 => ("xvssrlrn.wu.d", extract_layout_82(word)),
+        0x750A8984 => ("xvssrarn.bu.h", extract_layout_82(word)),
+        0x750B0F0F => ("xvssrarn.hu.w", extract_layout_82(word)),
+        0x750BA13E => ("xvssrarn.wu.d", extract_layout_82(word)),
+        0x750C38B8 => ("xvbitclr.b", extract_layout_82(word)),
+        0x750CB53E => ("xvbitclr.h", extract_layout_82(word)),
+        0x750D1C62 => ("xvbitclr.w", extract_layout_82(word)),
+        0x750DE4AE => ("xvbitclr.d", extract_layout_82(word)),
+        0x750E7206 => ("xvbitset.b", extract_layout_82(word)),
+        0x750EFDA5 => ("xvbitset.h", extract_layout_82(word)),
+        0x750F2387 => ("xvbitset.w", extract_layout_82(word)),
+        0x750FB204 => ("xvbitset.d", extract_layout_82(word)),
+        0x75100E90 => ("xvbitrev.b", extract_layout_82(word)),
+        0x7510D070 => ("xvbitrev.h", extract_layout_82(word)),
+        0x75115F58 => ("xvbitrev.w", extract_layout_82(word)),
+        0x7511EC2D => ("xvbitrev.d", extract_layout_82(word)),
+        0x75162055 => ("xvpackev.b", extract_layout_82(word)),
+        0x75169A48 => ("xvpackev.h", extract_layout_82(word)),
+        0x751778C0 => ("xvpackev.w", extract_layout_82(word)),
+        0x75179120 => ("xvpackev.d", extract_layout_82(word)),
+        0x75187FBC => ("xvpackod.b", extract_layout_82(word)),
+        0x7518994E => ("xvpackod.h", extract_layout_82(word)),
+        0x75190AB6 => ("xvpackod.w", extract_layout_82(word)),
+        0x75198932 => ("xvpackod.d", extract_layout_82(word)),
+        0x751A01DD => ("xvilvl.b", extract_layout_82(word)),
+        0x751AD53E => ("xvilvl.h", extract_layout_82(word)),
+        0x751B26D8 => ("xvilvl.w", extract_layout_82(word)),
+        0x751BAA99 => ("xvilvl.d", extract_layout_82(word)),
+        0x751C6AD3 => ("xvilvh.b", extract_layout_82(word)),
+        0x751C9EEA => ("xvilvh.h", extract_layout_82(word)),
+        0x751D7805 => ("xvilvh.w", extract_layout_82(word)),
+        0x751D8858 => ("xvilvh.d", extract_layout_82(word)),
+        0x751E1B76 => ("xvpickev.b", extract_layout_82(word)),
+        0x751E8D6E => ("xvpickev.h", extract_layout_82(word)),
+        0x751F379E => ("xvpickev.w", extract_layout_82(word)),
+        0x751FA701 => ("xvpickev.d", extract_layout_82(word)),
+        0x75203ECE => ("xvpickod.b", extract_layout_82(word)),
+        0x7520B2BF => ("xvpickod.h", extract_layout_82(word)),
+        0x7521781F => ("xvpickod.w", extract_layout_82(word)),
+        0x7521C0AA => ("xvpickod.d", extract_layout_82(word)),
+        0x75222E14 => ("xvreplve.b", extract_layout_81(word)),
+        0x7522E2A0 => ("xvreplve.h", extract_layout_81(word)),
+        0x75234A54 => ("xvreplve.w", extract_layout_81(word)),
+        0x7523DC64 => ("xvreplve.d", extract_layout_81(word)),
+        0x75264EEE => ("xvand.v", extract_layout_82(word)),
+        0x7526D7A6 => ("xvor.v", extract_layout_82(word)),
+        0x75272B4E => ("xvxor.v", extract_layout_82(word)),
+        0x75278EE4 => ("xvnor.v", extract_layout_82(word)),
+        0x75280DE3 => ("xvandn.v", extract_layout_82(word)),
+        0x752897B1 => ("xvorn.v", extract_layout_82(word)),
+        0x752B4A57 => ("xvfrstp.b", extract_layout_61(word)),
+        0x752B9BCD => ("xvfrstp.h", extract_layout_61(word)),
+        0x752D1B84 => ("xvadd.q", extract_layout_82(word)),
+        0x752DFF4D => ("xvsub.q", extract_layout_82(word)),
+        0x752E3701 => ("xvsigncov.b", extract_layout_82(word)),
+        0x752EBAE8 => ("xvsigncov.h", extract_layout_82(word)),
+        0x752F2B23 => ("xvsigncov.w", extract_layout_82(word)),
+        0x752FFE3A => ("xvsigncov.d", extract_layout_82(word)),
+        0x7530BEA6 => ("xvfadd.s", extract_layout_82(word)),
+        0x7531051B => ("xvfadd.d", extract_layout_82(word)),
+        0x75328C16 => ("xvfsub.s", extract_layout_82(word)),
+        0x75333F24 => ("xvfsub.d", extract_layout_82(word)),
+        0x7538F9C9 => ("xvfmul.s", extract_layout_82(word)),
+        0x75394F5C => ("xvfmul.d", extract_layout_82(word)),
+        0x753AB0BD => ("xvfdiv.s", extract_layout_82(word)),
+        0x753B795F => ("xvfdiv.d", extract_layout_82(word)),
+        0x753CA31D => ("xvfmax.s", extract_layout_82(word)),
+        0x753D5F3F => ("xvfmax.d", extract_layout_82(word)),
+        0x753EC0BF => ("xvfmin.s", extract_layout_82(word)),
+        0x753F67CD => ("xvfmin.d", extract_layout_82(word)),
+        0x7540964F => ("xvfmaxa.s", extract_layout_82(word)),
+        0x75417682 => ("xvfmaxa.d", extract_layout_82(word)),
+        0x7542C77D => ("xvfmina.s", extract_layout_82(word)),
+        0x75434A8C => ("xvfmina.d", extract_layout_82(word)),
+        0x75465E29 => ("xvfcvt.h.s", extract_layout_82(word)),
+        0x7546F55B => ("xvfcvt.s.d", extract_layout_82(word)),
+        0x75480F6A => ("xvffint.s.l", extract_layout_82(word)),
+        0x7549F6C7 => ("xvftint.w.d", extract_layout_82(word)),
+        0x754A1EFD => ("xvftintrm.w.d", extract_layout_82(word)),
+        0x754AFF4E => ("xvftintrp.w.d", extract_layout_82(word)),
+        0x754B6D0D => ("xvftintrz.w.d", extract_layout_82(word)),
+        0x754B968D => ("xvftintrne.w.d", extract_layout_82(word)),
+        0x757A871D => ("xvshuf.h", extract_layout_61(word)),
+        0x757B770F => ("xvshuf.w", extract_layout_61(word)),
+        0x757BBE5B => ("xvshuf.d", extract_layout_61(word)),
+        0x757D42F8 => ("xvperm.w", extract_layout_82(word)),
+        0x7680032C => ("xvseqi.b", extract_layout_84(word)),
+        0x7680A889 => ("xvseqi.h", extract_layout_84(word)),
+        0x76815099 => ("xvseqi.w", extract_layout_84(word)),
+        0x76819CEB => ("xvseqi.d", extract_layout_84(word)),
+        0x7682596E => ("xvslei.b", extract_layout_84(word)),
+        0x7682BEC2 => ("xvslei.h", extract_layout_84(word)),
+        0x768331C3 => ("xvslei.w", extract_layout_84(word)),
+        0x7683ABD3 => ("xvslei.d", extract_layout_84(word)),
+        0x76842B51 => ("xvslei.bu", extract_layout_85(word)),
+        0x7684C974 => ("xvslei.hu", extract_layout_85(word)),
+        0x76852BA1 => ("xvslei.wu", extract_layout_85(word)),
+        0x7685E3F9 => ("xvslei.du", extract_layout_85(word)),
+        0x76861B7F => ("xvslti.b", extract_layout_84(word)),
+        0x76869A65 => ("xvslti.h", extract_layout_84(word)),
+        0x76872D14 => ("xvslti.w", extract_layout_84(word)),
+        0x76878A4D => ("xvslti.d", extract_layout_84(word)),
+        0x76880881 => ("xvslti.bu", extract_layout_85(word)),
+        0x7688D0A0 => ("xvslti.hu", extract_layout_85(word)),
+        0x76896320 => ("xvslti.wu", extract_layout_85(word)),
+        0x7689F4AA => ("xvslti.du", extract_layout_85(word)),
+        0x768A0AC1 => ("xvaddi.bu", extract_layout_85(word)),
+        0x768AF543 => ("xvaddi.hu", extract_layout_85(word)),
+        0x768B0D65 => ("xvaddi.wu", extract_layout_85(word)),
+        0x768B9C06 => ("xvaddi.du", extract_layout_85(word)),
+        0x768C0772 => ("xvsubi.bu", extract_layout_85(word)),
+        0x768CCEE6 => ("xvsubi.hu", extract_layout_85(word)),
+        0x768D146D => ("xvsubi.wu", extract_layout_85(word)),
+        0x768DBB9A => ("xvsubi.du", extract_layout_85(word)),
+        0x768E52AE => ("xvbsll.v", extract_layout_85(word)),
+        0x768EF4A4 => ("xvbsrl.v", extract_layout_85(word)),
+        0x769004E6 => ("xvmaxi.b", extract_layout_84(word)),
+        0x7690E558 => ("xvmaxi.h", extract_layout_84(word)),
+        0x76916258 => ("xvmaxi.w", extract_layout_84(word)),
+        0x7691D4B5 => ("xvmaxi.d", extract_layout_84(word)),
+        0x76922636 => ("xvmini.b", extract_layout_84(word)),
+        0x7692C6EC => ("xvmini.h", extract_layout_84(word)),
+        0x76934E21 => ("xvmini.w", extract_layout_84(word)),
+        0x7693AFEA => ("xvmini.d", extract_layout_84(word)),
+        0x7694736C => ("xvmaxi.bu", extract_layout_85(word)),
+        0x7694C099 => ("xvmaxi.hu", extract_layout_85(word)),
+        0x769554FB => ("xvmaxi.wu", extract_layout_85(word)),
+        0x7695A5BF => ("xvmaxi.du", extract_layout_85(word)),
+        0x76961F06 => ("xvmini.bu", extract_layout_85(word)),
+        0x7696F4A8 => ("xvmini.hu", extract_layout_85(word)),
+        0x76974DB1 => ("xvmini.wu", extract_layout_85(word)),
+        0x7697FAF0 => ("xvmini.du", extract_layout_85(word)),
+        0x769A7F98 => ("xvfrstpi.b", extract_layout_62(word)),
+        0x769ACB16 => ("xvfrstpi.h", extract_layout_62(word)),
+        0x769C0189 => ("xvclo.b", extract_layout_76(word)),
+        0x769C05D0 => ("xvclo.h", extract_layout_76(word)),
+        0x769C0A5E => ("xvclo.w", extract_layout_76(word)),
+        0x769C0CBF => ("xvclo.d", extract_layout_76(word)),
+        0x769C10C5 => ("xvclz.b", extract_layout_76(word)),
+        0x769C14E4 => ("xvclz.h", extract_layout_76(word)),
+        0x769C180C => ("xvclz.w", extract_layout_76(word)),
+        0x769C1C01 => ("xvclz.d", extract_layout_76(word)),
+        0x769C2368 => ("xvpcnt.b", extract_layout_76(word)),
+        0x769C248C => ("xvpcnt.h", extract_layout_76(word)),
+        0x769C2AFF => ("xvpcnt.w", extract_layout_76(word)),
+        0x769C2D9A => ("xvpcnt.d", extract_layout_76(word)),
+        0x769C3097 => ("xvneg.b", extract_layout_76(word)),
+        0x769C35C8 => ("xvneg.h", extract_layout_76(word)),
+        0x769C39D7 => ("xvneg.w", extract_layout_76(word)),
+        0x769C3E34 => ("xvneg.d", extract_layout_76(word)),
+        0x769C40AE => ("xvmskltz.b", extract_layout_76(word)),
+        0x769C472B => ("xvmskltz.h", extract_layout_76(word)),
+        0x769C4B6E => ("xvmskltz.w", extract_layout_76(word)),
+        0x769C4EE7 => ("xvmskltz.d", extract_layout_76(word)),
+        0x769C50BE => ("xvmskgez.b", extract_layout_76(word)),
+        0x769C62D6 => ("xvmsknz.b", extract_layout_76(word)),
         0x769C9827 => ("xvseteqz.v", extract_layout_5(word)),
         0x769C9DA7 => ("xvsetnez.v", extract_layout_5(word)),
         0x769CA105 => ("xvsetanyeqz.b", extract_layout_5(word)),
@@ -2510,223 +2560,223 @@ pub fn decode_loongarch_word(
         0x769CB485 => ("xvsetallnez.h", extract_layout_5(word)),
         0x769CB8A4 => ("xvsetallnez.w", extract_layout_5(word)),
         0x769CBE87 => ("xvsetallnez.d", extract_layout_5(word)),
-        0x769CC591 => ("xvflogb.s", extract_layout_73(word)),
-        0x769CC83A => ("xvflogb.d", extract_layout_73(word)),
-        0x769CD4E3 => ("xvfclass.s", extract_layout_73(word)),
-        0x769CD956 => ("xvfclass.d", extract_layout_73(word)),
-        0x769CE764 => ("xvfsqrt.s", extract_layout_73(word)),
-        0x769CE85A => ("xvfsqrt.d", extract_layout_73(word)),
-        0x769CF603 => ("xvfrecip.s", extract_layout_73(word)),
-        0x769CFB11 => ("xvfrecip.d", extract_layout_73(word)),
-        0x769D073F => ("xvfrsqrt.s", extract_layout_73(word)),
-        0x769D0ACE => ("xvfrsqrt.d", extract_layout_73(word)),
-        0x769D1603 => ("xvfrecipe.s", extract_layout_73(word)),
-        0x769D1B11 => ("xvfrecipe.d", extract_layout_73(word)),
-        0x769D273F => ("xvfrsqrte.s", extract_layout_73(word)),
-        0x769D2ACE => ("xvfrsqrte.d", extract_layout_73(word)),
-        0x769D3715 => ("xvfrint.s", extract_layout_73(word)),
-        0x769D3A5F => ("xvfrint.d", extract_layout_73(word)),
-        0x769D45BB => ("xvfrintrm.s", extract_layout_73(word)),
-        0x769D4B6E => ("xvfrintrm.d", extract_layout_73(word)),
-        0x769D561A => ("xvfrintrp.s", extract_layout_73(word)),
-        0x769D5B81 => ("xvfrintrp.d", extract_layout_73(word)),
-        0x769D652A => ("xvfrintrz.s", extract_layout_73(word)),
-        0x769D68BD => ("xvfrintrz.d", extract_layout_73(word)),
-        0x769D7633 => ("xvfrintrne.s", extract_layout_73(word)),
-        0x769D7BAC => ("xvfrintrne.d", extract_layout_73(word)),
-        0x769DE9D0 => ("xvfcvtl.s.h", extract_layout_73(word)),
-        0x769DEF29 => ("xvfcvth.s.h", extract_layout_73(word)),
-        0x769DF0B8 => ("xvfcvtl.d.s", extract_layout_73(word)),
-        0x769DF63D => ("xvfcvth.d.s", extract_layout_73(word)),
-        0x769E00A3 => ("xvffint.s.w", extract_layout_73(word)),
-        0x769E0783 => ("xvffint.s.wu", extract_layout_73(word)),
-        0x769E0A65 => ("xvffint.d.l", extract_layout_73(word)),
-        0x769E0FBF => ("xvffint.d.lu", extract_layout_73(word)),
-        0x769E10E2 => ("xvffintl.d.w", extract_layout_73(word)),
-        0x769E1787 => ("xvffinth.d.w", extract_layout_73(word)),
-        0x769E332B => ("xvftint.w.s", extract_layout_73(word)),
-        0x769E36C7 => ("xvftint.l.d", extract_layout_73(word)),
-        0x769E3AE8 => ("xvftintrm.w.s", extract_layout_73(word)),
-        0x769E3E2C => ("xvftintrm.l.d", extract_layout_73(word)),
-        0x769E4032 => ("xvftintrp.w.s", extract_layout_73(word)),
-        0x769E470A => ("xvftintrp.l.d", extract_layout_73(word)),
-        0x769E48AE => ("xvftintrz.w.s", extract_layout_73(word)),
-        0x769E4F41 => ("xvftintrz.l.d", extract_layout_73(word)),
-        0x769E51B4 => ("xvftintrne.w.s", extract_layout_73(word)),
-        0x769E55DE => ("xvftintrne.l.d", extract_layout_73(word)),
-        0x769E58CE => ("xvftint.wu.s", extract_layout_73(word)),
-        0x769E5C42 => ("xvftint.lu.d", extract_layout_73(word)),
-        0x769E726D => ("xvftintrz.wu.s", extract_layout_73(word)),
-        0x769E7478 => ("xvftintrz.lu.d", extract_layout_73(word)),
-        0x769E817F => ("xvftintl.l.s", extract_layout_73(word)),
-        0x769E84AF => ("xvftinth.l.s", extract_layout_73(word)),
-        0x769E89F6 => ("xvftintrml.l.s", extract_layout_73(word)),
-        0x769E8E6A => ("xvftintrmh.l.s", extract_layout_73(word)),
-        0x769E900E => ("xvftintrpl.l.s", extract_layout_73(word)),
-        0x769E9417 => ("xvftintrph.l.s", extract_layout_73(word)),
-        0x769E9BBB => ("xvftintrzl.l.s", extract_layout_73(word)),
-        0x769E9D4E => ("xvftintrzh.l.s", extract_layout_73(word)),
-        0x769EA39F => ("xvftintrnel.l.s", extract_layout_73(word)),
-        0x769EA7B0 => ("xvftintrneh.l.s", extract_layout_73(word)),
-        0x769EE14F => ("xvexth.h.b", extract_layout_73(word)),
-        0x769EE57A => ("xvexth.w.h", extract_layout_73(word)),
-        0x769EEB62 => ("xvexth.d.w", extract_layout_73(word)),
-        0x769EEF36 => ("xvexth.q.d", extract_layout_73(word)),
-        0x769EF3D5 => ("xvexth.hu.bu", extract_layout_73(word)),
-        0x769EF57C => ("xvexth.wu.hu", extract_layout_73(word)),
-        0x769EFB3B => ("xvexth.du.wu", extract_layout_73(word)),
-        0x769EFF90 => ("xvexth.qu.du", extract_layout_73(word)),
-        0x769F0210 => ("xvreplgr2vr.b", extract_layout_63(word)),
-        0x769F06C7 => ("xvreplgr2vr.h", extract_layout_63(word)),
-        0x769F09E4 => ("xvreplgr2vr.w", extract_layout_63(word)),
-        0x769F0F10 => ("xvreplgr2vr.d", extract_layout_63(word)),
-        0x769F127E => ("vext2xv.h.b", extract_layout_73(word)),
-        0x769F14BB => ("vext2xv.w.b", extract_layout_73(word)),
-        0x769F1B39 => ("vext2xv.d.b", extract_layout_73(word)),
-        0x769F1E94 => ("vext2xv.w.h", extract_layout_73(word)),
-        0x769F2268 => ("vext2xv.d.h", extract_layout_73(word)),
-        0x769F2724 => ("vext2xv.d.w", extract_layout_73(word)),
-        0x769F2999 => ("vext2xv.hu.bu", extract_layout_73(word)),
-        0x769F2DBF => ("vext2xv.wu.bu", extract_layout_73(word)),
-        0x769F332C => ("vext2xv.du.bu", extract_layout_73(word)),
-        0x769F3597 => ("vext2xv.wu.hu", extract_layout_73(word)),
-        0x769F38D2 => ("vext2xv.du.hu", extract_layout_73(word)),
-        0x769F3EAA => ("vext2xv.du.wu", extract_layout_73(word)),
-        0x76A02CA1 => ("xvrotri.b", extract_layout_76(word)),
-        0x76A04E21 => ("xvrotri.h", extract_layout_77(word)),
-        0x76A0CEF9 => ("xvrotri.w", extract_layout_82(word)),
-        0x76A19707 => ("xvrotri.d", extract_layout_83(word)),
-        0x76A433DD => ("xvsrlri.b", extract_layout_76(word)),
-        0x76A478D0 => ("xvsrlri.h", extract_layout_77(word)),
-        0x76A4F158 => ("xvsrlri.w", extract_layout_82(word)),
-        0x76A5D294 => ("xvsrlri.d", extract_layout_83(word)),
-        0x76A82F8A => ("xvsrari.b", extract_layout_76(word)),
-        0x76A8783C => ("xvsrari.h", extract_layout_77(word)),
-        0x76A8B0ED => ("xvsrari.w", extract_layout_82(word)),
-        0x76A9213D => ("xvsrari.d", extract_layout_83(word)),
-        0x76EBDFD9 => ("xvinsgr2vr.w", extract_layout_54(word)),
-        0x76EBE6BB => ("xvinsgr2vr.d", extract_layout_53(word)),
-        0x76EFD96E => ("xvpickve2gr.w", extract_layout_50(word)),
-        0x76EFE0C8 => ("xvpickve2gr.d", extract_layout_49(word)),
-        0x76F3D02C => ("xvpickve2gr.wu", extract_layout_50(word)),
-        0x76F3E10A => ("xvpickve2gr.du", extract_layout_49(word)),
-        0x76F78A6A => ("xvrepl128vei.b", extract_layout_77(word)),
-        0x76F7CA66 => ("xvrepl128vei.h", extract_layout_76(word)),
-        0x76F7E5AB => ("xvrepl128vei.w", extract_layout_75(word)),
-        0x76F7F2FF => ("xvrepl128vei.d", extract_layout_74(word)),
-        0x76FFDC26 => ("xvinsve0.w", extract_layout_56(word)),
-        0x76FFE03C => ("xvinsve0.d", extract_layout_55(word)),
-        0x7703C799 => ("xvpickve.w", extract_layout_76(word)),
-        0x7703E02D => ("xvpickve.d", extract_layout_75(word)),
-        0x7707028B => ("xvreplve0.b", extract_layout_73(word)),
-        0x7707834D => ("xvreplve0.h", extract_layout_73(word)),
-        0x7707C188 => ("xvreplve0.w", extract_layout_73(word)),
-        0x7707E094 => ("xvreplve0.d", extract_layout_73(word)),
-        0x7707F291 => ("xvreplve0.q", extract_layout_73(word)),
-        0x77083AAD => ("xvsllwil.h.b", extract_layout_76(word)),
-        0x770843B4 => ("xvsllwil.w.h", extract_layout_77(word)),
-        0x7708E283 => ("xvsllwil.d.w", extract_layout_82(word)),
-        0x7709019D => ("xvextl.q.d", extract_layout_73(word)),
-        0x770C39EF => ("xvsllwil.hu.bu", extract_layout_76(word)),
-        0x770C43B6 => ("xvsllwil.wu.hu", extract_layout_77(word)),
-        0x770CFCA3 => ("xvsllwil.du.wu", extract_layout_82(word)),
-        0x770D029B => ("xvextl.qu.du", extract_layout_73(word)),
-        0x77103F56 => ("xvbitclri.b", extract_layout_76(word)),
-        0x771075C2 => ("xvbitclri.h", extract_layout_77(word)),
-        0x77108043 => ("xvbitclri.w", extract_layout_82(word)),
-        0x77111D8A => ("xvbitclri.d", extract_layout_83(word)),
-        0x7714207A => ("xvbitseti.b", extract_layout_76(word)),
-        0x77146669 => ("xvbitseti.h", extract_layout_77(word)),
-        0x77148A6C => ("xvbitseti.w", extract_layout_82(word)),
-        0x771508F4 => ("xvbitseti.d", extract_layout_83(word)),
-        0x77183567 => ("xvbitrevi.b", extract_layout_76(word)),
-        0x77187CA1 => ("xvbitrevi.h", extract_layout_77(word)),
-        0x7718CAAD => ("xvbitrevi.w", extract_layout_82(word)),
-        0x77192461 => ("xvbitrevi.d", extract_layout_83(word)),
-        0x772428F6 => ("xvsat.b", extract_layout_76(word)),
-        0x77245403 => ("xvsat.h", extract_layout_77(word)),
-        0x77248209 => ("xvsat.w", extract_layout_82(word)),
-        0x77250503 => ("xvsat.d", extract_layout_83(word)),
-        0x772830C6 => ("xvsat.bu", extract_layout_76(word)),
-        0x7728732C => ("xvsat.hu", extract_layout_77(word)),
-        0x77288C34 => ("xvsat.wu", extract_layout_82(word)),
-        0x77291E85 => ("xvsat.du", extract_layout_83(word)),
-        0x772C2759 => ("xvslli.b", extract_layout_76(word)),
-        0x772C7B91 => ("xvslli.h", extract_layout_77(word)),
-        0x772CF7FA => ("xvslli.w", extract_layout_82(word)),
-        0x772DBB8A => ("xvslli.d", extract_layout_83(word)),
-        0x77302C9D => ("xvsrli.b", extract_layout_76(word)),
-        0x773071DC => ("xvsrli.h", extract_layout_77(word)),
-        0x77309E4C => ("xvsrli.w", extract_layout_82(word)),
-        0x7731B880 => ("xvsrli.d", extract_layout_83(word)),
-        0x77342C50 => ("xvsrai.b", extract_layout_76(word)),
-        0x7734706E => ("xvsrai.h", extract_layout_77(word)),
-        0x7734D651 => ("xvsrai.w", extract_layout_82(word)),
-        0x7735128A => ("xvsrai.d", extract_layout_83(word)),
-        0x77404905 => ("xvsrlni.b.h", extract_layout_57(word)),
-        0x7740D087 => ("xvsrlni.h.w", extract_layout_59(word)),
-        0x774145FE => ("xvsrlni.w.d", extract_layout_60(word)),
-        0x77437F8F => ("xvsrlni.d.q", extract_layout_61(word)),
-        0x7744722A => ("xvsrlrni.b.h", extract_layout_57(word)),
-        0x7744B6F6 => ("xvsrlrni.h.w", extract_layout_59(word)),
-        0x7745EAD2 => ("xvsrlrni.w.d", extract_layout_60(word)),
-        0x7746A919 => ("xvsrlrni.d.q", extract_layout_61(word)),
-        0x77486653 => ("xvssrlni.b.h", extract_layout_57(word)),
-        0x77488FBD => ("xvssrlni.h.w", extract_layout_59(word)),
-        0x7749ADE9 => ("xvssrlni.w.d", extract_layout_60(word)),
-        0x774BE568 => ("xvssrlni.d.q", extract_layout_61(word)),
-        0x774C5559 => ("xvssrlni.bu.h", extract_layout_57(word)),
-        0x774CEA49 => ("xvssrlni.hu.w", extract_layout_59(word)),
-        0x774D36D4 => ("xvssrlni.wu.d", extract_layout_60(word)),
-        0x774EAC88 => ("xvssrlni.du.q", extract_layout_61(word)),
-        0x7750635A => ("xvssrlrni.b.h", extract_layout_57(word)),
-        0x7750CC06 => ("xvssrlrni.h.w", extract_layout_59(word)),
-        0x7751DDFC => ("xvssrlrni.w.d", extract_layout_60(word)),
-        0x77530208 => ("xvssrlrni.d.q", extract_layout_61(word)),
-        0x77544F97 => ("xvssrlrni.bu.h", extract_layout_57(word)),
-        0x7754C959 => ("xvssrlrni.hu.w", extract_layout_59(word)),
-        0x77553F90 => ("xvssrlrni.wu.d", extract_layout_60(word)),
-        0x7756B132 => ("xvssrlrni.du.q", extract_layout_61(word)),
-        0x77587EEE => ("xvsrani.b.h", extract_layout_57(word)),
-        0x77589502 => ("xvsrani.h.w", extract_layout_59(word)),
-        0x77593965 => ("xvsrani.w.d", extract_layout_60(word)),
-        0x775BC4F1 => ("xvsrani.d.q", extract_layout_61(word)),
-        0x775C7FF5 => ("xvsrarni.b.h", extract_layout_57(word)),
-        0x775CE6C4 => ("xvsrarni.h.w", extract_layout_59(word)),
-        0x775DA518 => ("xvsrarni.w.d", extract_layout_60(word)),
-        0x775E1CA7 => ("xvsrarni.d.q", extract_layout_61(word)),
-        0x77607ADA => ("xvssrani.b.h", extract_layout_57(word)),
-        0x7760E9D3 => ("xvssrani.h.w", extract_layout_59(word)),
-        0x77616F61 => ("xvssrani.w.d", extract_layout_60(word)),
-        0x7762ED49 => ("xvssrani.d.q", extract_layout_61(word)),
-        0x77646866 => ("xvssrani.bu.h", extract_layout_57(word)),
-        0x77649934 => ("xvssrani.hu.w", extract_layout_59(word)),
-        0x77652178 => ("xvssrani.wu.d", extract_layout_60(word)),
-        0x77663C50 => ("xvssrani.du.q", extract_layout_61(word)),
-        0x77687480 => ("xvssrarni.b.h", extract_layout_57(word)),
-        0x7768A408 => ("xvssrarni.h.w", extract_layout_59(word)),
-        0x7769A8A5 => ("xvssrarni.w.d", extract_layout_60(word)),
-        0x776B4FE8 => ("xvssrarni.d.q", extract_layout_61(word)),
-        0x776C4275 => ("xvssrarni.bu.h", extract_layout_57(word)),
-        0x776C85B6 => ("xvssrarni.hu.w", extract_layout_59(word)),
-        0x776D68B5 => ("xvssrarni.wu.d", extract_layout_60(word)),
-        0x776F79CF => ("xvssrarni.du.q", extract_layout_61(word)),
-        0x77821FDF => ("xvextrins.d", extract_layout_62(word)),
-        0x778662AE => ("xvextrins.w", extract_layout_62(word)),
-        0x778B21A0 => ("xvextrins.h", extract_layout_62(word)),
-        0x778FF2FE => ("xvextrins.b", extract_layout_62(word)),
-        0x7792A395 => ("xvshuf4i.b", extract_layout_84(word)),
-        0x77945872 => ("xvshuf4i.h", extract_layout_84(word)),
-        0x77994B20 => ("xvshuf4i.w", extract_layout_84(word)),
-        0x779D8C98 => ("xvshuf4i.d", extract_layout_62(word)),
-        0x77C5E6AD => ("xvbitseli.b", extract_layout_62(word)),
-        0x77D108EB => ("xvandi.b", extract_layout_84(word)),
-        0x77D7BC46 => ("xvori.b", extract_layout_84(word)),
-        0x77DA551A => ("xvxori.b", extract_layout_84(word)),
-        0x77DF4427 => ("xvnori.b", extract_layout_84(word)),
-        0x77E59587 => ("xvpermi.w", extract_layout_62(word)),
-        0x77EA0CD1 => ("xvpermi.d", extract_layout_84(word)),
-        0x77EEE1EA => ("xvpermi.q", extract_layout_62(word)),
+        0x769CC591 => ("xvflogb.s", extract_layout_76(word)),
+        0x769CC83A => ("xvflogb.d", extract_layout_76(word)),
+        0x769CD4E3 => ("xvfclass.s", extract_layout_76(word)),
+        0x769CD956 => ("xvfclass.d", extract_layout_76(word)),
+        0x769CE764 => ("xvfsqrt.s", extract_layout_76(word)),
+        0x769CE85A => ("xvfsqrt.d", extract_layout_76(word)),
+        0x769CF603 => ("xvfrecip.s", extract_layout_76(word)),
+        0x769CFB11 => ("xvfrecip.d", extract_layout_76(word)),
+        0x769D073F => ("xvfrsqrt.s", extract_layout_76(word)),
+        0x769D0ACE => ("xvfrsqrt.d", extract_layout_76(word)),
+        0x769D1603 => ("xvfrecipe.s", extract_layout_76(word)),
+        0x769D1B11 => ("xvfrecipe.d", extract_layout_76(word)),
+        0x769D273F => ("xvfrsqrte.s", extract_layout_76(word)),
+        0x769D2ACE => ("xvfrsqrte.d", extract_layout_76(word)),
+        0x769D3715 => ("xvfrint.s", extract_layout_76(word)),
+        0x769D3A5F => ("xvfrint.d", extract_layout_76(word)),
+        0x769D45BB => ("xvfrintrm.s", extract_layout_76(word)),
+        0x769D4B6E => ("xvfrintrm.d", extract_layout_76(word)),
+        0x769D561A => ("xvfrintrp.s", extract_layout_76(word)),
+        0x769D5B81 => ("xvfrintrp.d", extract_layout_76(word)),
+        0x769D652A => ("xvfrintrz.s", extract_layout_76(word)),
+        0x769D68BD => ("xvfrintrz.d", extract_layout_76(word)),
+        0x769D7633 => ("xvfrintrne.s", extract_layout_76(word)),
+        0x769D7BAC => ("xvfrintrne.d", extract_layout_76(word)),
+        0x769DE9D0 => ("xvfcvtl.s.h", extract_layout_76(word)),
+        0x769DEF29 => ("xvfcvth.s.h", extract_layout_76(word)),
+        0x769DF0B8 => ("xvfcvtl.d.s", extract_layout_76(word)),
+        0x769DF63D => ("xvfcvth.d.s", extract_layout_76(word)),
+        0x769E00A3 => ("xvffint.s.w", extract_layout_76(word)),
+        0x769E0783 => ("xvffint.s.wu", extract_layout_76(word)),
+        0x769E0A65 => ("xvffint.d.l", extract_layout_76(word)),
+        0x769E0FBF => ("xvffint.d.lu", extract_layout_76(word)),
+        0x769E10E2 => ("xvffintl.d.w", extract_layout_76(word)),
+        0x769E1787 => ("xvffinth.d.w", extract_layout_76(word)),
+        0x769E332B => ("xvftint.w.s", extract_layout_76(word)),
+        0x769E36C7 => ("xvftint.l.d", extract_layout_76(word)),
+        0x769E3AE8 => ("xvftintrm.w.s", extract_layout_76(word)),
+        0x769E3E2C => ("xvftintrm.l.d", extract_layout_76(word)),
+        0x769E4032 => ("xvftintrp.w.s", extract_layout_76(word)),
+        0x769E470A => ("xvftintrp.l.d", extract_layout_76(word)),
+        0x769E48AE => ("xvftintrz.w.s", extract_layout_76(word)),
+        0x769E4F41 => ("xvftintrz.l.d", extract_layout_76(word)),
+        0x769E51B4 => ("xvftintrne.w.s", extract_layout_76(word)),
+        0x769E55DE => ("xvftintrne.l.d", extract_layout_76(word)),
+        0x769E58CE => ("xvftint.wu.s", extract_layout_76(word)),
+        0x769E5C42 => ("xvftint.lu.d", extract_layout_76(word)),
+        0x769E726D => ("xvftintrz.wu.s", extract_layout_76(word)),
+        0x769E7478 => ("xvftintrz.lu.d", extract_layout_76(word)),
+        0x769E817F => ("xvftintl.l.s", extract_layout_76(word)),
+        0x769E84AF => ("xvftinth.l.s", extract_layout_76(word)),
+        0x769E89F6 => ("xvftintrml.l.s", extract_layout_76(word)),
+        0x769E8E6A => ("xvftintrmh.l.s", extract_layout_76(word)),
+        0x769E900E => ("xvftintrpl.l.s", extract_layout_76(word)),
+        0x769E9417 => ("xvftintrph.l.s", extract_layout_76(word)),
+        0x769E9BBB => ("xvftintrzl.l.s", extract_layout_76(word)),
+        0x769E9D4E => ("xvftintrzh.l.s", extract_layout_76(word)),
+        0x769EA39F => ("xvftintrnel.l.s", extract_layout_76(word)),
+        0x769EA7B0 => ("xvftintrneh.l.s", extract_layout_76(word)),
+        0x769EE14F => ("xvexth.h.b", extract_layout_76(word)),
+        0x769EE57A => ("xvexth.w.h", extract_layout_76(word)),
+        0x769EEB62 => ("xvexth.d.w", extract_layout_76(word)),
+        0x769EEF36 => ("xvexth.q.d", extract_layout_76(word)),
+        0x769EF3D5 => ("xvexth.hu.bu", extract_layout_76(word)),
+        0x769EF57C => ("xvexth.wu.hu", extract_layout_76(word)),
+        0x769EFB3B => ("xvexth.du.wu", extract_layout_76(word)),
+        0x769EFF90 => ("xvexth.qu.du", extract_layout_76(word)),
+        0x769F0210 => ("xvreplgr2vr.b", extract_layout_66(word)),
+        0x769F06C7 => ("xvreplgr2vr.h", extract_layout_66(word)),
+        0x769F09E4 => ("xvreplgr2vr.w", extract_layout_66(word)),
+        0x769F0F10 => ("xvreplgr2vr.d", extract_layout_66(word)),
+        0x769F127E => ("vext2xv.h.b", extract_layout_76(word)),
+        0x769F14BB => ("vext2xv.w.b", extract_layout_76(word)),
+        0x769F1B39 => ("vext2xv.d.b", extract_layout_76(word)),
+        0x769F1E94 => ("vext2xv.w.h", extract_layout_76(word)),
+        0x769F2268 => ("vext2xv.d.h", extract_layout_76(word)),
+        0x769F2724 => ("vext2xv.d.w", extract_layout_76(word)),
+        0x769F2999 => ("vext2xv.hu.bu", extract_layout_76(word)),
+        0x769F2DBF => ("vext2xv.wu.bu", extract_layout_76(word)),
+        0x769F332C => ("vext2xv.du.bu", extract_layout_76(word)),
+        0x769F3597 => ("vext2xv.wu.hu", extract_layout_76(word)),
+        0x769F38D2 => ("vext2xv.du.hu", extract_layout_76(word)),
+        0x769F3EAA => ("vext2xv.du.wu", extract_layout_76(word)),
+        0x76A02CA1 => ("xvrotri.b", extract_layout_79(word)),
+        0x76A04E21 => ("xvrotri.h", extract_layout_80(word)),
+        0x76A0CEF9 => ("xvrotri.w", extract_layout_85(word)),
+        0x76A19707 => ("xvrotri.d", extract_layout_86(word)),
+        0x76A433DD => ("xvsrlri.b", extract_layout_79(word)),
+        0x76A478D0 => ("xvsrlri.h", extract_layout_80(word)),
+        0x76A4F158 => ("xvsrlri.w", extract_layout_85(word)),
+        0x76A5D294 => ("xvsrlri.d", extract_layout_86(word)),
+        0x76A82F8A => ("xvsrari.b", extract_layout_79(word)),
+        0x76A8783C => ("xvsrari.h", extract_layout_80(word)),
+        0x76A8B0ED => ("xvsrari.w", extract_layout_85(word)),
+        0x76A9213D => ("xvsrari.d", extract_layout_86(word)),
+        0x76EBDFD9 => ("xvinsgr2vr.w", extract_layout_57(word)),
+        0x76EBE6BB => ("xvinsgr2vr.d", extract_layout_56(word)),
+        0x76EFD96E => ("xvpickve2gr.w", extract_layout_53(word)),
+        0x76EFE0C8 => ("xvpickve2gr.d", extract_layout_52(word)),
+        0x76F3D02C => ("xvpickve2gr.wu", extract_layout_53(word)),
+        0x76F3E10A => ("xvpickve2gr.du", extract_layout_52(word)),
+        0x76F78A6A => ("xvrepl128vei.b", extract_layout_80(word)),
+        0x76F7CA66 => ("xvrepl128vei.h", extract_layout_79(word)),
+        0x76F7E5AB => ("xvrepl128vei.w", extract_layout_78(word)),
+        0x76F7F2FF => ("xvrepl128vei.d", extract_layout_77(word)),
+        0x76FFDC26 => ("xvinsve0.w", extract_layout_59(word)),
+        0x76FFE03C => ("xvinsve0.d", extract_layout_58(word)),
+        0x7703C799 => ("xvpickve.w", extract_layout_79(word)),
+        0x7703E02D => ("xvpickve.d", extract_layout_78(word)),
+        0x7707028B => ("xvreplve0.b", extract_layout_76(word)),
+        0x7707834D => ("xvreplve0.h", extract_layout_76(word)),
+        0x7707C188 => ("xvreplve0.w", extract_layout_76(word)),
+        0x7707E094 => ("xvreplve0.d", extract_layout_76(word)),
+        0x7707F291 => ("xvreplve0.q", extract_layout_76(word)),
+        0x77083AAD => ("xvsllwil.h.b", extract_layout_79(word)),
+        0x770843B4 => ("xvsllwil.w.h", extract_layout_80(word)),
+        0x7708E283 => ("xvsllwil.d.w", extract_layout_85(word)),
+        0x7709019D => ("xvextl.q.d", extract_layout_76(word)),
+        0x770C39EF => ("xvsllwil.hu.bu", extract_layout_79(word)),
+        0x770C43B6 => ("xvsllwil.wu.hu", extract_layout_80(word)),
+        0x770CFCA3 => ("xvsllwil.du.wu", extract_layout_85(word)),
+        0x770D029B => ("xvextl.qu.du", extract_layout_76(word)),
+        0x77103F56 => ("xvbitclri.b", extract_layout_79(word)),
+        0x771075C2 => ("xvbitclri.h", extract_layout_80(word)),
+        0x77108043 => ("xvbitclri.w", extract_layout_85(word)),
+        0x77111D8A => ("xvbitclri.d", extract_layout_86(word)),
+        0x7714207A => ("xvbitseti.b", extract_layout_79(word)),
+        0x77146669 => ("xvbitseti.h", extract_layout_80(word)),
+        0x77148A6C => ("xvbitseti.w", extract_layout_85(word)),
+        0x771508F4 => ("xvbitseti.d", extract_layout_86(word)),
+        0x77183567 => ("xvbitrevi.b", extract_layout_79(word)),
+        0x77187CA1 => ("xvbitrevi.h", extract_layout_80(word)),
+        0x7718CAAD => ("xvbitrevi.w", extract_layout_85(word)),
+        0x77192461 => ("xvbitrevi.d", extract_layout_86(word)),
+        0x772428F6 => ("xvsat.b", extract_layout_79(word)),
+        0x77245403 => ("xvsat.h", extract_layout_80(word)),
+        0x77248209 => ("xvsat.w", extract_layout_85(word)),
+        0x77250503 => ("xvsat.d", extract_layout_86(word)),
+        0x772830C6 => ("xvsat.bu", extract_layout_79(word)),
+        0x7728732C => ("xvsat.hu", extract_layout_80(word)),
+        0x77288C34 => ("xvsat.wu", extract_layout_85(word)),
+        0x77291E85 => ("xvsat.du", extract_layout_86(word)),
+        0x772C2759 => ("xvslli.b", extract_layout_79(word)),
+        0x772C7B91 => ("xvslli.h", extract_layout_80(word)),
+        0x772CF7FA => ("xvslli.w", extract_layout_85(word)),
+        0x772DBB8A => ("xvslli.d", extract_layout_86(word)),
+        0x77302C9D => ("xvsrli.b", extract_layout_79(word)),
+        0x773071DC => ("xvsrli.h", extract_layout_80(word)),
+        0x77309E4C => ("xvsrli.w", extract_layout_85(word)),
+        0x7731B880 => ("xvsrli.d", extract_layout_86(word)),
+        0x77342C50 => ("xvsrai.b", extract_layout_79(word)),
+        0x7734706E => ("xvsrai.h", extract_layout_80(word)),
+        0x7734D651 => ("xvsrai.w", extract_layout_85(word)),
+        0x7735128A => ("xvsrai.d", extract_layout_86(word)),
+        0x77404905 => ("xvsrlni.b.h", extract_layout_60(word)),
+        0x7740D087 => ("xvsrlni.h.w", extract_layout_62(word)),
+        0x774145FE => ("xvsrlni.w.d", extract_layout_63(word)),
+        0x77437F8F => ("xvsrlni.d.q", extract_layout_64(word)),
+        0x7744722A => ("xvsrlrni.b.h", extract_layout_60(word)),
+        0x7744B6F6 => ("xvsrlrni.h.w", extract_layout_62(word)),
+        0x7745EAD2 => ("xvsrlrni.w.d", extract_layout_63(word)),
+        0x7746A919 => ("xvsrlrni.d.q", extract_layout_64(word)),
+        0x77486653 => ("xvssrlni.b.h", extract_layout_60(word)),
+        0x77488FBD => ("xvssrlni.h.w", extract_layout_62(word)),
+        0x7749ADE9 => ("xvssrlni.w.d", extract_layout_63(word)),
+        0x774BE568 => ("xvssrlni.d.q", extract_layout_64(word)),
+        0x774C5559 => ("xvssrlni.bu.h", extract_layout_60(word)),
+        0x774CEA49 => ("xvssrlni.hu.w", extract_layout_62(word)),
+        0x774D36D4 => ("xvssrlni.wu.d", extract_layout_63(word)),
+        0x774EAC88 => ("xvssrlni.du.q", extract_layout_64(word)),
+        0x7750635A => ("xvssrlrni.b.h", extract_layout_60(word)),
+        0x7750CC06 => ("xvssrlrni.h.w", extract_layout_62(word)),
+        0x7751DDFC => ("xvssrlrni.w.d", extract_layout_63(word)),
+        0x77530208 => ("xvssrlrni.d.q", extract_layout_64(word)),
+        0x77544F97 => ("xvssrlrni.bu.h", extract_layout_60(word)),
+        0x7754C959 => ("xvssrlrni.hu.w", extract_layout_62(word)),
+        0x77553F90 => ("xvssrlrni.wu.d", extract_layout_63(word)),
+        0x7756B132 => ("xvssrlrni.du.q", extract_layout_64(word)),
+        0x77587EEE => ("xvsrani.b.h", extract_layout_60(word)),
+        0x77589502 => ("xvsrani.h.w", extract_layout_62(word)),
+        0x77593965 => ("xvsrani.w.d", extract_layout_63(word)),
+        0x775BC4F1 => ("xvsrani.d.q", extract_layout_64(word)),
+        0x775C7FF5 => ("xvsrarni.b.h", extract_layout_60(word)),
+        0x775CE6C4 => ("xvsrarni.h.w", extract_layout_62(word)),
+        0x775DA518 => ("xvsrarni.w.d", extract_layout_63(word)),
+        0x775E1CA7 => ("xvsrarni.d.q", extract_layout_64(word)),
+        0x77607ADA => ("xvssrani.b.h", extract_layout_60(word)),
+        0x7760E9D3 => ("xvssrani.h.w", extract_layout_62(word)),
+        0x77616F61 => ("xvssrani.w.d", extract_layout_63(word)),
+        0x7762ED49 => ("xvssrani.d.q", extract_layout_64(word)),
+        0x77646866 => ("xvssrani.bu.h", extract_layout_60(word)),
+        0x77649934 => ("xvssrani.hu.w", extract_layout_62(word)),
+        0x77652178 => ("xvssrani.wu.d", extract_layout_63(word)),
+        0x77663C50 => ("xvssrani.du.q", extract_layout_64(word)),
+        0x77687480 => ("xvssrarni.b.h", extract_layout_60(word)),
+        0x7768A408 => ("xvssrarni.h.w", extract_layout_62(word)),
+        0x7769A8A5 => ("xvssrarni.w.d", extract_layout_63(word)),
+        0x776B4FE8 => ("xvssrarni.d.q", extract_layout_64(word)),
+        0x776C4275 => ("xvssrarni.bu.h", extract_layout_60(word)),
+        0x776C85B6 => ("xvssrarni.hu.w", extract_layout_62(word)),
+        0x776D68B5 => ("xvssrarni.wu.d", extract_layout_63(word)),
+        0x776F79CF => ("xvssrarni.du.q", extract_layout_64(word)),
+        0x77821FDF => ("xvextrins.d", extract_layout_65(word)),
+        0x778662AE => ("xvextrins.w", extract_layout_65(word)),
+        0x778B21A0 => ("xvextrins.h", extract_layout_65(word)),
+        0x778FF2FE => ("xvextrins.b", extract_layout_65(word)),
+        0x7792A395 => ("xvshuf4i.b", extract_layout_87(word)),
+        0x77945872 => ("xvshuf4i.h", extract_layout_87(word)),
+        0x77994B20 => ("xvshuf4i.w", extract_layout_87(word)),
+        0x779D8C98 => ("xvshuf4i.d", extract_layout_65(word)),
+        0x77C5E6AD => ("xvbitseli.b", extract_layout_65(word)),
+        0x77D108EB => ("xvandi.b", extract_layout_87(word)),
+        0x77D7BC46 => ("xvori.b", extract_layout_87(word)),
+        0x77DA551A => ("xvxori.b", extract_layout_87(word)),
+        0x77DF4427 => ("xvnori.b", extract_layout_87(word)),
+        0x77E59587 => ("xvpermi.w", extract_layout_65(word)),
+        0x77EA0CD1 => ("xvpermi.d", extract_layout_87(word)),
+        0x77EEE1EA => ("xvpermi.q", extract_layout_65(word)),
         _ => {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::InvalidEncoding,

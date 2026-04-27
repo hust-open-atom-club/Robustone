@@ -38,6 +38,29 @@ impl LoongArchDecoder {
         let word = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
         let (mnemonic, operands, size) = crate::decoder_generated::decode_loongarch_word(word)?;
 
+        let mut render_hints = RenderHints::default();
+        match mnemonic {
+            "nop" => {
+                render_hints.capstone_hidden_operands = vec![0, 1, 2];
+            }
+            "move" => {
+                render_hints.capstone_hidden_operands = vec![2];
+            }
+            _ => {}
+        }
+
+        // Capstone renders invtlb as "invtlb imm, Rj, Rk" but the generated decoder
+        // produces operands in the wire order "Rk, Rj, imm".
+        let operands = if mnemonic == "invtlb" && operands.len() == 3 {
+            vec![
+                operands[2].clone(),
+                operands[1].clone(),
+                operands[0].clone(),
+            ]
+        } else {
+            operands
+        };
+
         Ok(DecodedInstruction {
             architecture: ArchitectureId::LoongArch,
             address: addr,
@@ -53,7 +76,7 @@ impl LoongArchDecoder {
             implicit_registers_written: Vec::new(),
             groups: Vec::new(),
             status: DecodeStatus::Success,
-            render_hints: RenderHints::default(),
+            render_hints,
             render: Some(crate::render::render_loongarch_text_parts),
         })
     }
