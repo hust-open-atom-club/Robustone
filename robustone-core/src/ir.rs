@@ -62,6 +62,14 @@ impl RegisterId {
             id,
         }
     }
+
+    /// Create a register identifier for the LoongArch backend.
+    pub const fn loongarch(id: u32) -> Self {
+        Self {
+            architecture: ArchitectureId::LoongArch,
+            id,
+        }
+    }
 }
 
 /// Shared operand representation.
