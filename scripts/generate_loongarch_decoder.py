@@ -44,7 +44,7 @@ while i < len(lines):
 # Parse instruction -> case mapping
 insn_to_case = {}
 for i, line in enumerate(lines):
-    m = re.search(r'// Opcode: ([A-Z_0-9]+)', line)
+    m = re.search(r'// Opcode: ([A-Za-z_0-9]+)', line)
     if m:
         opcode = m.group(1)
         for j in range(i, max(0, i-5), -1):
@@ -56,9 +56,20 @@ for i, line in enumerate(lines):
 def yaml_to_opcode(mnemonic: str) -> str:
     return mnemonic.upper().replace('.', '_')
 
+# Some opcodes in Capstone tables have suffixes not present in YAML mnemonics
+OPCODE_ALIASES = {
+    'fsel': 'FSEL_xS',
+    'movfr2cf': 'MOVFR2CF_xS',
+    'movcf2fr': 'MOVCF2FR_xS',
+}
+
 def get_layout(mnemonic: str) -> Optional[List[Tuple[int, int, Optional[str], Optional[str]]]]:
     opcode = yaml_to_opcode(mnemonic)
     case = insn_to_case.get(opcode)
+    if case is None:
+        alias = OPCODE_ALIASES.get(mnemonic)
+        if alias:
+            case = insn_to_case.get(alias)
     if case is None:
         return None
     return cases.get(case, [])
