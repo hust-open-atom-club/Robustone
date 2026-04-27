@@ -191,7 +191,7 @@ pub enum LoongArchRegister {
 }
 
 impl LoongArchRegister {
-    /// Returns the canonical register name as used by Capstone.
+    /// Returns the canonical register name as used by Capstone (ABI aliases).
     pub fn name(self) -> &'static str {
         match self {
             LoongArchRegister::Invalid => "invalid",
@@ -315,6 +315,137 @@ impl LoongArchRegister {
             LoongArchRegister::Scr3 => "$scr3",
 
             // FCSR names
+            LoongArchRegister::Fcsr0 => "$fcsr0",
+            LoongArchRegister::Fcsr1 => "$fcsr1",
+            LoongArchRegister::Fcsr2 => "$fcsr2",
+            LoongArchRegister::Fcsr3 => "$fcsr3",
+        }
+    }
+
+    /// Returns the raw architectural register name without ABI aliases.
+    pub fn raw_name(self) -> &'static str {
+        match self {
+            LoongArchRegister::Invalid => "invalid",
+
+            // GPR raw names
+            LoongArchRegister::R0 => "$r0",
+            LoongArchRegister::R1 => "$r1",
+            LoongArchRegister::R2 => "$r2",
+            LoongArchRegister::R3 => "$r3",
+            LoongArchRegister::R4 => "$r4",
+            LoongArchRegister::R5 => "$r5",
+            LoongArchRegister::R6 => "$r6",
+            LoongArchRegister::R7 => "$r7",
+            LoongArchRegister::R8 => "$r8",
+            LoongArchRegister::R9 => "$r9",
+            LoongArchRegister::R10 => "$r10",
+            LoongArchRegister::R11 => "$r11",
+            LoongArchRegister::R12 => "$r12",
+            LoongArchRegister::R13 => "$r13",
+            LoongArchRegister::R14 => "$r14",
+            LoongArchRegister::R15 => "$r15",
+            LoongArchRegister::R16 => "$r16",
+            LoongArchRegister::R17 => "$r17",
+            LoongArchRegister::R18 => "$r18",
+            LoongArchRegister::R19 => "$r19",
+            LoongArchRegister::R20 => "$r20",
+            LoongArchRegister::R21 => "$r21",
+            LoongArchRegister::R22 => "$r22",
+            LoongArchRegister::R23 => "$r23",
+            LoongArchRegister::R24 => "$r24",
+            LoongArchRegister::R25 => "$r25",
+            LoongArchRegister::R26 => "$r26",
+            LoongArchRegister::R27 => "$r27",
+            LoongArchRegister::R28 => "$r28",
+            LoongArchRegister::R29 => "$r29",
+            LoongArchRegister::R30 => "$r30",
+            LoongArchRegister::R31 => "$r31",
+
+            // FPR raw names
+            LoongArchRegister::F0 => "$f0",
+            LoongArchRegister::F1 => "$f1",
+            LoongArchRegister::F2 => "$f2",
+            LoongArchRegister::F3 => "$f3",
+            LoongArchRegister::F4 => "$f4",
+            LoongArchRegister::F5 => "$f5",
+            LoongArchRegister::F6 => "$f6",
+            LoongArchRegister::F7 => "$f7",
+            LoongArchRegister::F8 => "$f8",
+            LoongArchRegister::F9 => "$f9",
+            LoongArchRegister::F10 => "$f10",
+            LoongArchRegister::F11 => "$f11",
+            LoongArchRegister::F12 => "$f12",
+            LoongArchRegister::F13 => "$f13",
+            LoongArchRegister::F14 => "$f14",
+            LoongArchRegister::F15 => "$f15",
+            LoongArchRegister::F16 => "$f16",
+            LoongArchRegister::F17 => "$f17",
+            LoongArchRegister::F18 => "$f18",
+            LoongArchRegister::F19 => "$f19",
+            LoongArchRegister::F20 => "$f20",
+            LoongArchRegister::F21 => "$f21",
+            LoongArchRegister::F22 => "$f22",
+            LoongArchRegister::F23 => "$f23",
+            LoongArchRegister::F24 => "$f24",
+            LoongArchRegister::F25 => "$f25",
+            LoongArchRegister::F26 => "$f26",
+            LoongArchRegister::F27 => "$f27",
+            LoongArchRegister::F28 => "$f28",
+            LoongArchRegister::F29 => "$f29",
+            LoongArchRegister::F30 => "$f30",
+            LoongArchRegister::F31 => "$f31",
+
+            // Vector register names (same as canonical)
+            LoongArchRegister::Xr0 => "$xr0",
+            LoongArchRegister::Xr1 => "$xr1",
+            LoongArchRegister::Xr2 => "$xr2",
+            LoongArchRegister::Xr3 => "$xr3",
+            LoongArchRegister::Xr4 => "$xr4",
+            LoongArchRegister::Xr5 => "$xr5",
+            LoongArchRegister::Xr6 => "$xr6",
+            LoongArchRegister::Xr7 => "$xr7",
+            LoongArchRegister::Xr8 => "$xr8",
+            LoongArchRegister::Xr9 => "$xr9",
+            LoongArchRegister::Xr10 => "$xr10",
+            LoongArchRegister::Xr11 => "$xr11",
+            LoongArchRegister::Xr12 => "$xr12",
+            LoongArchRegister::Xr13 => "$xr13",
+            LoongArchRegister::Xr14 => "$xr14",
+            LoongArchRegister::Xr15 => "$xr15",
+            LoongArchRegister::Xr16 => "$xr16",
+            LoongArchRegister::Xr17 => "$xr17",
+            LoongArchRegister::Xr18 => "$xr18",
+            LoongArchRegister::Xr19 => "$xr19",
+            LoongArchRegister::Xr20 => "$xr20",
+            LoongArchRegister::Xr21 => "$xr21",
+            LoongArchRegister::Xr22 => "$xr22",
+            LoongArchRegister::Xr23 => "$xr23",
+            LoongArchRegister::Xr24 => "$xr24",
+            LoongArchRegister::Xr25 => "$xr25",
+            LoongArchRegister::Xr26 => "$xr26",
+            LoongArchRegister::Xr27 => "$xr27",
+            LoongArchRegister::Xr28 => "$xr28",
+            LoongArchRegister::Xr29 => "$xr29",
+            LoongArchRegister::Xr30 => "$xr30",
+            LoongArchRegister::Xr31 => "$xr31",
+
+            // FCC names (same as canonical)
+            LoongArchRegister::Fcc0 => "$fcc0",
+            LoongArchRegister::Fcc1 => "$fcc1",
+            LoongArchRegister::Fcc2 => "$fcc2",
+            LoongArchRegister::Fcc3 => "$fcc3",
+            LoongArchRegister::Fcc4 => "$fcc4",
+            LoongArchRegister::Fcc5 => "$fcc5",
+            LoongArchRegister::Fcc6 => "$fcc6",
+            LoongArchRegister::Fcc7 => "$fcc7",
+
+            // SCR names (same as canonical)
+            LoongArchRegister::Scr0 => "$scr0",
+            LoongArchRegister::Scr1 => "$scr1",
+            LoongArchRegister::Scr2 => "$scr2",
+            LoongArchRegister::Scr3 => "$scr3",
+
+            // FCSR names (same as canonical)
             LoongArchRegister::Fcsr0 => "$fcsr0",
             LoongArchRegister::Fcsr1 => "$fcsr1",
             LoongArchRegister::Fcsr2 => "$fcsr2",
