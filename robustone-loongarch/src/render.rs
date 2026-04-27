@@ -19,6 +19,9 @@ pub fn render_loongarch_text_parts(
     profile: TextRenderProfile,
     alias_regs: bool,
     capstone_aliases: bool,
+    // LoongArch has no compressed instruction encoding, so this flag is
+    // intentionally unused. It is kept in the signature to match the
+    // `RenderFn` type expected by `DecodedInstruction`.
     _compressed_aliases: bool,
     unsigned_immediate: bool,
 ) -> (String, String) {
@@ -68,7 +71,8 @@ pub fn render_loongarch_text_parts(
 
     // Capstone uses $vr for LSX (128-bit) vector registers and $xr for LASX (256-bit).
     // LSX instructions start with 'v' but do not contain "xv"; LASX instructions contain "xv".
-    if mnemonic.starts_with('v') && !mnemonic.contains("xv") {
+    // Only apply the alias when register aliasing is enabled.
+    if alias_regs && mnemonic.starts_with('v') && !mnemonic.contains("xv") {
         operands = operands.replace("$xr", "$vr");
     }
 
@@ -120,13 +124,14 @@ fn format_loongarch_immediate(value: i64, unsigned_immediate: bool) -> String {
     if value == 0 {
         return "0".to_string();
     }
-    let display_value = if unsigned_immediate && value < 0 {
-        // Reinterpret negative value as unsigned
-        value as u64
+    let (display_value, is_negative) = if unsigned_immediate && value < 0 {
+        // Sign-extended negative immediates encode small unsigned constants.
+        // Most LoongArch immediates are ≤16 bits, so mask to 16 bits to
+        // avoid showing misleading 64-bit sign-extension artifacts.
+        ((value as u64) & 0xFFFF, false)
     } else {
-        value.unsigned_abs()
+        (value.unsigned_abs(), value < 0)
     };
-    let is_negative = !unsigned_immediate && value < 0;
     let use_hex = display_value > 9;
     if use_hex {
         if is_negative {
