@@ -63,6 +63,12 @@ def get_layout(mnemonic: str) -> Optional[List[Tuple[int, int, Optional[str], Op
         return None
     return cases.get(case, [])
 
+# Pseudo-instructions that share layouts with base instructions
+PSEUDO_MAP = {
+    'nop': 'andi',
+    'move': 'or',
+}
+
 # Parse all YAML test cases
 word_map = {}
 for yaml_file in glob.glob('third_party/capstone/tests/MC/LoongArch/*.yaml'):
@@ -74,6 +80,8 @@ for yaml_file in glob.glob('third_party/capstone/tests/MC/LoongArch/*.yaml'):
         bytes_arr = case['input']['bytes']
         word = bytes_arr[0] | (bytes_arr[1] << 8) | (bytes_arr[2] << 16) | (bytes_arr[3] << 24)
         layout = get_layout(mnemonic)
+        if layout is None and mnemonic in PSEUDO_MAP:
+            layout = get_layout(PSEUDO_MAP[mnemonic])
         if layout is not None:
             word_map[word] = (mnemonic, tuple(layout))
 
@@ -91,6 +99,7 @@ REG_OFFSETS = {
     'GPR': 0,
     'FPR': 32,
     'FPR32': 32,
+    'FPR64': 32,
     'LSX128': 64,
     'LASX256': 64,
     'CFR': 96,

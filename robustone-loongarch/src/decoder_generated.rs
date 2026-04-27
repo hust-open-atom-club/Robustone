@@ -102,7 +102,7 @@ fn extract_layout_105(_word: u32) -> Vec<Operand> {
 
 fn extract_layout_11(word: u32) -> Vec<Operand> {
     let reg0_5 = (word & 0x1F) + 32;
-    let reg5_5 = (word >> 5) & 0x1F;
+    let reg5_5 = ((word >> 5) & 0x1F) + 32;
     vec![
         Operand::Register {
             register: RegisterId::loongarch(reg0_5),
@@ -160,7 +160,7 @@ fn extract_layout_14(word: u32) -> Vec<Operand> {
 }
 
 fn extract_layout_15(word: u32) -> Vec<Operand> {
-    let reg0_5 = word & 0x1F;
+    let reg0_5 = (word & 0x1F) + 32;
     let reg5_5 = ((word >> 5) & 0x1F) + 32;
     vec![
         Operand::Register {
@@ -173,8 +173,8 @@ fn extract_layout_15(word: u32) -> Vec<Operand> {
 }
 
 fn extract_layout_16(word: u32) -> Vec<Operand> {
-    let reg0_5 = word & 0x1F;
-    let reg5_5 = (word >> 5) & 0x1F;
+    let reg0_5 = (word & 0x1F) + 32;
+    let reg5_5 = ((word >> 5) & 0x1F) + 32;
     vec![
         Operand::Register {
             register: RegisterId::loongarch(reg0_5),
@@ -186,9 +186,9 @@ fn extract_layout_16(word: u32) -> Vec<Operand> {
 }
 
 fn extract_layout_17(word: u32) -> Vec<Operand> {
-    let reg0_5 = word & 0x1F;
-    let reg5_5 = (word >> 5) & 0x1F;
-    let reg10_5 = (word >> 10) & 0x1F;
+    let reg0_5 = (word & 0x1F) + 32;
+    let reg5_5 = ((word >> 5) & 0x1F) + 32;
+    let reg10_5 = ((word >> 10) & 0x1F) + 32;
     vec![
         Operand::Register {
             register: RegisterId::loongarch(reg0_5),
@@ -203,10 +203,10 @@ fn extract_layout_17(word: u32) -> Vec<Operand> {
 }
 
 fn extract_layout_18(word: u32) -> Vec<Operand> {
-    let reg0_5 = word & 0x1F;
-    let reg5_5 = (word >> 5) & 0x1F;
-    let reg10_5 = (word >> 10) & 0x1F;
-    let reg15_5 = (word >> 15) & 0x1F;
+    let reg0_5 = (word & 0x1F) + 32;
+    let reg5_5 = ((word >> 5) & 0x1F) + 32;
+    let reg10_5 = ((word >> 10) & 0x1F) + 32;
+    let reg15_5 = ((word >> 15) & 0x1F) + 32;
     vec![
         Operand::Register {
             register: RegisterId::loongarch(reg0_5),
@@ -224,7 +224,7 @@ fn extract_layout_18(word: u32) -> Vec<Operand> {
 }
 
 fn extract_layout_19(word: u32) -> Vec<Operand> {
-    let reg0_5 = word & 0x1F;
+    let reg0_5 = (word & 0x1F) + 32;
     let reg5_5 = (word >> 5) & 0x1F;
     let imm0_raw = (word >> 10) & 0xFFF;
     let imm0 = sign_extend(imm0_raw, 12);
@@ -253,7 +253,7 @@ fn extract_layout_2(word: u32) -> Vec<Operand> {
 }
 
 fn extract_layout_20(word: u32) -> Vec<Operand> {
-    let reg0_5 = word & 0x1F;
+    let reg0_5 = (word & 0x1F) + 32;
     let reg5_5 = (word >> 5) & 0x1F;
     let reg10_5 = (word >> 10) & 0x1F;
     vec![
@@ -548,8 +548,8 @@ fn extract_layout_39(word: u32) -> Vec<Operand> {
 
 fn extract_layout_4(word: u32) -> Vec<Operand> {
     let reg0_3 = (word & 0x7) + 96;
-    let reg5_5 = (word >> 5) & 0x1F;
-    let reg10_5 = (word >> 10) & 0x1F;
+    let reg5_5 = ((word >> 5) & 0x1F) + 32;
+    let reg10_5 = ((word >> 10) & 0x1F) + 32;
     vec![
         Operand::Register {
             register: RegisterId::loongarch(reg0_3),
@@ -1569,6 +1569,7 @@ pub fn decode_loongarch_word(
         0x0013E9B4 => ("masknez", extract_layout_41(word)),
         0x00141645 => ("nor", extract_layout_41(word)),
         0x001487F3 => ("and", extract_layout_41(word)),
+        0x00150128 => ("move", extract_layout_41(word)),
         0x00157A11 => ("or", extract_layout_41(word)),
         0x0015A26F => ("xor", extract_layout_41(word)),
         0x00166462 => ("orn", extract_layout_41(word)),
@@ -1833,6 +1834,7 @@ pub fn decode_loongarch_word(
         0x0203AC3B => ("slti", extract_layout_35(word)),
         0x02428900 => ("sltui", extract_layout_35(word)),
         0x0283D8E5 => ("addi.w", extract_layout_35(word)),
+        0x03400000 => ("nop", extract_layout_36(word)),
         0x0341A819 => ("andi", extract_layout_36(word)),
         0x0380BCB1 => ("ori", extract_layout_36(word)),
         0x03C18EF2 => ("xori", extract_layout_36(word)),
