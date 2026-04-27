@@ -12,6 +12,7 @@
 ///
 /// # Example
 /// ```
+/// use robustone_loongarch::shared::encoding::bits;
 /// let word = 0b0000_0000_0000_0001_0000_0000_0000_0100u32;
 /// assert_eq!(bits(word, 2, 3), 0b001);
 /// ```
