@@ -63,7 +63,7 @@ check-all: check check-clippy check-pylint check-fmt
 	@echo "All checks passed!"
 
 # Architectures with full decode support for CI parity testing
-PARITY_TEST_ARCHES := riscv32 riscv64 capstone-riscv32-mc capstone-riscv64-mc
+PARITY_TEST_ARCHES := riscv32 riscv64 capstone-riscv32-mc capstone-riscv64-mc capstone-loongarch-mc
 PARITY_TEST_ARGS := $(foreach a,$(PARITY_TEST_ARCHES),--arch $(a)) --loose-match
 
 ensure-capstone:
