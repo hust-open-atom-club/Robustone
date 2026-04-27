@@ -17,12 +17,12 @@ const BRANCH_MNEMONICS: &[&str] = &[
 pub fn render_loongarch_text_parts(
     instruction: &DecodedInstruction,
     profile: TextRenderProfile,
-    _alias_regs: bool,
-    _capstone_aliases: bool,
+    alias_regs: bool,
+    capstone_aliases: bool,
     _compressed_aliases: bool,
-    _unsigned_immediate: bool,
+    unsigned_immediate: bool,
 ) -> (String, String) {
-    let use_capstone_aliases = !matches!(profile, TextRenderProfile::Canonical);
+    let use_capstone_aliases = capstone_aliases && !matches!(profile, TextRenderProfile::Canonical);
 
     let mnemonic = if use_capstone_aliases {
         instruction
@@ -59,15 +59,15 @@ pub fn render_loongarch_text_parts(
                 && i == visible_operands.len() - 1
                 && let Operand::Immediate { value } = operand
             {
-                return format_loongarch_immediate(value + pc);
+                return format_loongarch_immediate(value + pc, unsigned_immediate);
             }
-            format_loongarch_operand(operand)
+            format_loongarch_operand(operand, alias_regs, unsigned_immediate)
         })
         .collect::<Vec<_>>()
         .join(", ");
 
     // Capstone uses $vr for LSX (128-bit) vector registers and $xr for LASX (256-bit).
-    // LASX instructions contain "xv" anywhere in the mnemonic; LSX instructions start with 'v' but do not contain "xv".
+    // LSX instructions start with 'v' but do not contain "xv"; LASX instructions contain "xv".
     if mnemonic.starts_with('v') && !mnemonic.contains("xv") {
         operands = operands.replace("$xr", "$vr");
     }
@@ -75,45 +75,68 @@ pub fn render_loongarch_text_parts(
     (mnemonic, operands)
 }
 
-fn format_loongarch_operand(operand: &Operand) -> String {
+fn format_loongarch_operand(
+    operand: &Operand,
+    alias_regs: bool,
+    unsigned_immediate: bool,
+) -> String {
     match operand {
-        Operand::Register { register } => RegisterManager::instance()
-            .format_raw_id(register.id)
-            .to_string(),
-        Operand::Immediate { value } => format_loongarch_immediate(*value),
+        Operand::Register { register } => {
+            if alias_regs {
+                RegisterManager::instance()
+                    .format_raw_id(register.id)
+                    .to_string()
+            } else {
+                RegisterManager::instance()
+                    .format_raw_id_unaliased(register.id)
+                    .to_string()
+            }
+        }
+        Operand::Immediate { value } => format_loongarch_immediate(*value, unsigned_immediate),
         Operand::Text { value } => value.clone(),
         Operand::Memory {
             base: Some(base),
             displacement,
         } => {
+            let base_name = if alias_regs {
+                RegisterManager::instance().format_raw_id(base.id)
+            } else {
+                RegisterManager::instance().format_raw_id_unaliased(base.id)
+            };
             format!(
                 "{}({})",
-                format_loongarch_immediate(*displacement),
-                RegisterManager::instance().format_raw_id(base.id)
+                format_loongarch_immediate(*displacement, unsigned_immediate),
+                base_name
             )
         }
         Operand::Memory {
             base: None,
             displacement,
-        } => format_loongarch_immediate(*displacement),
+        } => format_loongarch_immediate(*displacement, unsigned_immediate),
     }
 }
 
-fn format_loongarch_immediate(value: i64) -> String {
+fn format_loongarch_immediate(value: i64, unsigned_immediate: bool) -> String {
     if value == 0 {
         return "0".to_string();
     }
-    let abs = value.abs();
-    let use_hex = abs > 9;
-    if use_hex {
-        if value < 0 {
-            format!("-0x{abs:x}")
-        } else {
-            format!("0x{abs:x}")
-        }
-    } else if value < 0 {
-        format!("-{abs}")
+    let display_value = if unsigned_immediate && value < 0 {
+        // Reinterpret negative value as unsigned
+        value as u64
     } else {
-        format!("{abs}")
+        value.unsigned_abs()
+    };
+    let is_negative = !unsigned_immediate && value < 0;
+    let use_hex = display_value > 9;
+    if use_hex {
+        if is_negative {
+            format!("-0x{display_value:x}")
+        } else {
+            format!("0x{display_value:x}")
+        }
+    } else if is_negative {
+        format!("-{display_value}")
+    } else {
+        format!("{display_value}")
     }
 }

@@ -164,6 +164,11 @@ impl RegisterManager {
     pub fn format_raw_id(&self, id: u32) -> &'static str {
         LoongArchRegister::from_id(id).name()
     }
+
+    /// Format a raw register id using raw architectural names (no ABI aliases).
+    pub fn format_raw_id_unaliased(&self, id: u32) -> &'static str {
+        LoongArchRegister::from_id(id).raw_name()
+    }
 }
 
 impl Default for RegisterManager {
