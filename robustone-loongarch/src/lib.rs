@@ -4,10 +4,13 @@
 
 pub mod arch;
 pub mod decoder;
-pub mod decoder_generated;
+pub mod extensions;
+pub mod printer;
 pub mod render;
 pub mod shared;
 pub mod types;
+
+mod decoder_generated;
 
 pub mod architecture {
     pub use robustone_core::architecture::*;
@@ -28,6 +31,8 @@ pub mod utils {
 pub mod loongarch {
     pub use crate::arch;
     pub use crate::decoder;
+    pub use crate::extensions;
+    pub use crate::printer;
     pub use crate::render;
     pub use crate::shared;
     pub use crate::types;
