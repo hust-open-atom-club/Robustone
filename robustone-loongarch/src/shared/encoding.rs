@@ -164,6 +164,6 @@ mod tests {
         let word = 0x5000f800u32;
         // I26 format: imm26 = bits(0,16) | bits(16,10)<<16
         let imm26 = extract_si26(word);
-        assert_eq!(imm26, 0xF800i64 as i64); // raw 26-bit immediate from bits 25:0
+        assert_eq!(imm26, 0xF800_i64); // raw 26-bit immediate from bits 25:0
     }
 }

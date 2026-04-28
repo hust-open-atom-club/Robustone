@@ -246,8 +246,6 @@ mod tests {
 }
 
 #[cfg(test)]
-#[cfg(test)]
-#[cfg(test)]
 mod debug_tests {
     use crate::LoongArchHandler;
     use robustone_core::ArchitectureHandler;
