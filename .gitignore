@@ -14,3 +14,5 @@ fuzz/artifacts/
 fuzz/corpus/
 plan.md
 .codex
+*.pdf
+CLAUDE.md

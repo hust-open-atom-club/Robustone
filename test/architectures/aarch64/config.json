@@ -1,0 +1,10 @@
+{
+  "name": "aarch64",
+  "robustone_arch": "aarch64",
+  "cstool_arch": "aarch64",
+  "cases_file": "test_cases.txt",
+  "robustone_flags": [],
+  "cstool_flags": [],
+  "description": "AArch64 instruction set tests (baseline integer instructions)",
+  "category": "arm"
+}

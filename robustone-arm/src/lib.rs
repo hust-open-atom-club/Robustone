@@ -3,9 +3,13 @@
 //! Provides instruction decoding for ARM AArch64 targets.
 
 pub mod decoder;
+pub mod detail;
+pub mod encoding;
+pub mod families;
 pub mod render;
 
 use decoder::AArch64Decoder;
+use detail::ArmInstructionDetail;
 use robustone_core::{
     Instruction, common::ArchitectureProfile, ir::DecodedInstruction, traits::ArchitectureHandler,
     types::error::DisasmError,
@@ -14,6 +18,7 @@ use robustone_core::{
 /// Architecture handler implementation for ARM AArch64 targets.
 pub struct ArmHandler {
     decoder: AArch64Decoder,
+    detail: bool,
 }
 
 impl ArmHandler {
@@ -21,6 +26,7 @@ impl ArmHandler {
     pub fn new() -> Self {
         Self {
             decoder: AArch64Decoder::new(),
+            detail: false,
         }
     }
 }
@@ -32,7 +38,9 @@ impl Default for ArmHandler {
 }
 
 impl ArchitectureHandler for ArmHandler {
-    fn set_detail(&mut self, _detail: bool) {}
+    fn set_detail(&mut self, detail: bool) {
+        self.detail = detail;
+    }
 
     fn decode_instruction(
         &self,
@@ -72,7 +80,29 @@ impl ArchitectureHandler for ArmHandler {
             true,
             false,
         );
-        let instruction = Instruction::from_decoded(decoded, mnemonic, operands, None);
+
+        let detail = if self.detail {
+            let mut arm_detail = ArmInstructionDetail::new();
+            for register in decoded
+                .registers_read
+                .iter()
+                .chain(decoded.implicit_registers_read.iter())
+            {
+                arm_detail = arm_detail.reads_register(register.id);
+            }
+            for register in decoded
+                .registers_written
+                .iter()
+                .chain(decoded.implicit_registers_written.iter())
+            {
+                arm_detail = arm_detail.writes_register(register.id);
+            }
+            Some(Box::new(arm_detail) as Box<dyn robustone_core::traits::Detail>)
+        } else {
+            None
+        };
+
+        let instruction = Instruction::from_decoded(decoded, mnemonic, operands, detail);
         Ok((instruction, size))
     }
 
@@ -117,7 +147,7 @@ mod tests {
             .unwrap();
         assert_eq!(size, 4);
         assert_eq!(instr.mnemonic, "add");
-        assert_eq!(instr.operands, "x0, x1, 2");
+        assert_eq!(instr.operands, "x0, x1, #2");
     }
 
     #[test]
@@ -129,7 +159,7 @@ mod tests {
             .unwrap();
         assert_eq!(size, 4);
         assert_eq!(instr.mnemonic, "mov");
-        assert_eq!(instr.operands, "x0, 0x1234");
+        assert_eq!(instr.operands, "x0, #0x1234");
     }
 
     #[test]
