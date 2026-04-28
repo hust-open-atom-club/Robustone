@@ -4,9 +4,9 @@ use robustone_core::ir::{ArchitectureId, RegisterId};
 use robustone_core::types::error::DisasmError;
 
 use crate::{
-    Access, ArchitectureBackend, DecodeProfile, EncodingPattern, FeatureSet, FormatSpec,
-    ImmediateKind, ImmediateTransform, InstructionGroup, InstructionRead, InstructionSpec, ModeSet,
-    OperandSpec, RenderPolicy, field,
+    Access, ArchitectureBackend, DecodeProfile, FeatureSet, FormatSpec, ImmediateKind,
+    ImmediateTransform, InstructionGroup, InstructionRead, InstructionSpec, ModeSet, RenderPolicy,
+    field,
 };
 
 // ============================================================================
@@ -55,112 +55,72 @@ pub enum MockRegisterClass {
 }
 
 // ============================================================================
-// Mock format specs
+// Mock format specs (using format_specs! macro)
 // ============================================================================
 
-pub static MOCK_FORMAT_R: FormatSpec<MockField> = FormatSpec {
-    name: "R",
-    fields: &[
-        field("rd", 0, 5, MockField::Rd),
-        field("rs1", 5, 5, MockField::Rs1),
-        field("rs2", 10, 5, MockField::Rs2),
-    ],
-};
-
-pub static MOCK_FORMAT_I: FormatSpec<MockField> = FormatSpec {
-    name: "I",
-    fields: &[
-        field("rd", 0, 5, MockField::Rd),
-        field("rs1", 5, 5, MockField::Rs1),
-        field("imm12", 10, 12, MockField::Imm12),
-    ],
-};
+crate::format_specs! {
+    format MOCK_FORMAT_R[MockField] {
+        rd: field("rd", 0, 5, MockField::Rd),
+        rs1: field("rs1", 5, 5, MockField::Rs1),
+        rs2: field("rs2", 10, 5, MockField::Rs2),
+    }
+    format MOCK_FORMAT_I[MockField] {
+        rd: field("rd", 0, 5, MockField::Rd),
+        rs1: field("rs1", 5, 5, MockField::Rs1),
+        imm12: field("imm12", 10, 12, MockField::Imm12),
+    }
+}
 
 // ============================================================================
-// Mock instruction specs
+// Mock instruction specs (using isa_specs! macro)
 // ============================================================================
 
-pub static MOCK_SPECS: &[InstructionSpec<MockBackend>] = &[
-    // add: mask=0xFF00_0000, value=0x0100_0000
-    InstructionSpec {
-        mnemonic: "add",
-        opcode_id: "ADD",
-        pattern: EncodingPattern::new(0xFF00_0000, 0x0100_0000),
-        format: &MOCK_FORMAT_R,
-        operands: &[
-            OperandSpec::Register {
-                class: MockRegisterClass::Gpr,
-                field: MockField::Rd,
-                access: Access::Write,
-            },
-            OperandSpec::Register {
-                class: MockRegisterClass::Gpr,
-                field: MockField::Rs1,
-                access: Access::Read,
-            },
-            OperandSpec::Register {
-                class: MockRegisterClass::Gpr,
-                field: MockField::Rs2,
-                access: Access::Read,
-            },
-        ],
-        features: MockFeature::BASE,
-        modes: ModeSet::All,
-        groups: &[InstructionGroup::Integer, InstructionGroup::Arithmetic],
-        manual_ref: None,
-    },
-    // addi: mask=0xFF00_0000, value=0x0200_0000
-    InstructionSpec {
-        mnemonic: "addi",
-        opcode_id: "ADDI",
-        pattern: EncodingPattern::new(0xFF00_0000, 0x0200_0000),
-        format: &MOCK_FORMAT_I,
-        operands: &[
-            OperandSpec::Register {
-                class: MockRegisterClass::Gpr,
-                field: MockField::Rd,
-                access: Access::Write,
-            },
-            OperandSpec::Register {
-                class: MockRegisterClass::Gpr,
-                field: MockField::Rs1,
-                access: Access::Read,
-            },
-            OperandSpec::Immediate {
-                field: MockField::Imm12,
-                transform: ImmediateTransform::SignExtend { bits: 12 },
-                kind: ImmediateKind::Absolute,
-            },
-        ],
-        features: MockFeature::BASE,
-        modes: ModeSet::All,
-        groups: &[InstructionGroup::Integer, InstructionGroup::Arithmetic],
-        manual_ref: None,
-    },
-    // ext_op: mask=0xFF00_0000, value=0x0300_0000 (requires EXT feature)
-    InstructionSpec {
-        mnemonic: "ext_op",
-        opcode_id: "EXT_OP",
-        pattern: EncodingPattern::new(0xFF00_0000, 0x0300_0000),
-        format: &MOCK_FORMAT_R,
-        operands: &[
-            OperandSpec::Register {
-                class: MockRegisterClass::Gpr,
-                field: MockField::Rd,
-                access: Access::Write,
-            },
-            OperandSpec::Register {
-                class: MockRegisterClass::Gpr,
-                field: MockField::Rs1,
-                access: Access::Read,
-            },
-        ],
-        features: MockFeature::EXT,
-        modes: ModeSet::All,
-        groups: &[InstructionGroup::Integer],
-        manual_ref: None,
-    },
-];
+crate::isa_specs! {
+    backend = MockBackend;
+    spec ADD {
+        mnemonic = "add";
+        opcode_id = "ADD";
+        pattern = crate::mask_value!(0xFF00_0000, 0x0100_0000);
+        format = &MOCK_FORMAT_R;
+        operands = &[
+            crate::reg!(MockRegisterClass::Gpr, MockField::Rd, Access::Write),
+            crate::reg!(MockRegisterClass::Gpr, MockField::Rs1, Access::Read),
+            crate::reg!(MockRegisterClass::Gpr, MockField::Rs2, Access::Read),
+        ];
+        features = MockFeature::BASE;
+        modes = ModeSet::All;
+        groups = &[InstructionGroup::Integer, InstructionGroup::Arithmetic];
+    }
+    spec ADDI {
+        mnemonic = "addi";
+        opcode_id = "ADDI";
+        pattern = crate::mask_value!(0xFF00_0000, 0x0200_0000);
+        format = &MOCK_FORMAT_I;
+        operands = &[
+            crate::reg!(MockRegisterClass::Gpr, MockField::Rd, Access::Write),
+            crate::reg!(MockRegisterClass::Gpr, MockField::Rs1, Access::Read),
+            crate::imm!(MockField::Imm12, ImmediateTransform::SignExtend { bits: 12 }, ImmediateKind::Absolute),
+        ];
+        features = MockFeature::BASE;
+        modes = ModeSet::All;
+        groups = &[InstructionGroup::Integer, InstructionGroup::Arithmetic];
+    }
+    spec EXT_OP {
+        mnemonic = "ext_op";
+        opcode_id = "EXT_OP";
+        pattern = crate::mask_value!(0xFF00_0000, 0x0300_0000);
+        format = &MOCK_FORMAT_R;
+        operands = &[
+            crate::reg!(MockRegisterClass::Gpr, MockField::Rd, Access::Write),
+            crate::reg!(MockRegisterClass::Gpr, MockField::Rs1, Access::Read),
+        ];
+        features = MockFeature::EXT;
+        modes = ModeSet::All;
+        groups = &[InstructionGroup::Integer];
+    }
+}
+
+pub static MOCK_SPECS: &[InstructionSpec<MockBackend>] = &[ADD, ADDI, EXT_OP];
 
 // ============================================================================
 // Mock backend impl

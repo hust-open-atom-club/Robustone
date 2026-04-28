@@ -144,6 +144,14 @@ pub struct InstructionSpec<B: ArchitectureBackend + 'static> {
     pub manual_ref: Option<&'static str>,
 }
 
+impl<B: ArchitectureBackend + 'static> Clone for InstructionSpec<B> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<B: ArchitectureBackend + 'static> Copy for InstructionSpec<B> {}
+
 /// Mask/value pattern for matching an instruction word.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EncodingPattern<W> {
@@ -505,6 +513,114 @@ pub fn validate_no_overlaps<B: ArchitectureBackend>(
         }
     }
     Ok(())
+}
+
+// ============================================================================
+// Declarative spec macros
+// ============================================================================
+
+/// Define one or more static `FormatSpec` instances.
+///
+/// Example:
+/// ```ignore
+/// format_specs! {
+///     format MOCK_FORMAT_R[MockField] {
+///         rd: field("rd", 0, 5, MockField::Rd),
+///         rs1: field("rs1", 5, 5, MockField::Rs1),
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! format_specs {
+    (
+        $(format $name:ident[$field_ty:ty] {
+            $($field_name:ident: $field_expr:expr),* $(,)?
+        })*
+    ) => {
+        $(pub static $name: $crate::FormatSpec<$field_ty> = $crate::FormatSpec {
+            name: stringify!($name),
+            fields: &[$($field_expr),*],
+        };)*
+    };
+}
+
+/// Define one or more static `InstructionSpec` instances.
+///
+/// Example:
+/// ```ignore
+/// isa_specs! {
+///     backend = MockBackend;
+///     spec ADD {
+///         mnemonic = "add";
+///         opcode_id = "ADD";
+///         pattern = mask_value(0xFF00_0000, 0x0100_0000);
+///         format = &MOCK_FORMAT_R;
+///         operands = &[reg!(MockRegisterClass::Gpr, MockField::Rd, Access::Write), ...];
+///         features = MockFeature::BASE;
+///         modes = ModeSet::All;
+///         groups = &[InstructionGroup::Integer, InstructionGroup::Arithmetic];
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! isa_specs {
+    (
+        backend = $backend:ty;
+        $(spec $name:ident {
+            mnemonic = $mnemonic:expr;
+            opcode_id = $opcode_id:expr;
+            pattern = $pattern:expr;
+            format = $format:expr;
+            operands = $operands:expr;
+            features = $features:expr;
+            modes = $modes:expr;
+            groups = $groups:expr;
+        })*
+    ) => {
+        $(pub static $name: $crate::InstructionSpec<$backend> = $crate::InstructionSpec {
+            mnemonic: $mnemonic,
+            opcode_id: $opcode_id,
+            pattern: $pattern,
+            format: $format,
+            operands: $operands,
+            features: $features,
+            modes: $modes,
+            groups: $groups,
+            manual_ref: None,
+        };)*
+    };
+}
+
+/// Helper to construct a register operand spec.
+#[macro_export]
+macro_rules! reg {
+    ($class:expr, $field:expr, $access:expr) => {
+        $crate::OperandSpec::Register {
+            class: $class,
+            field: $field,
+            access: $access,
+        }
+    };
+}
+
+/// Helper to construct an immediate operand spec.
+#[macro_export]
+macro_rules! imm {
+    ($field:expr, $transform:expr, $kind:expr) => {
+        $crate::OperandSpec::Immediate {
+            field: $field,
+            transform: $transform,
+            kind: $kind,
+        }
+    };
+}
+
+/// Helper to construct an `EncodingPattern` from mask and value.
+#[macro_export]
+macro_rules! mask_value {
+    ($mask:expr, $value:expr) => {
+        $crate::EncodingPattern::new($mask, $value)
+    };
 }
 
 // ============================================================================
