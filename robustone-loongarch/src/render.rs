@@ -204,3 +204,22 @@ fn format_loongarch_immediate(value: i64, unsigned_immediate: bool, imm_mask: u6
         format!("{display_value}")
     }
 }
+
+use robustone_core::render::RenderOptions;
+use robustone_core::renderer::Renderer;
+
+/// LoongArch-specific instruction renderer.
+pub struct LoongArchRenderer;
+
+impl Renderer for LoongArchRenderer {
+    fn render(&self, instruction: &DecodedInstruction, options: RenderOptions) -> (String, String) {
+        render_loongarch_text_parts(
+            instruction,
+            options.text_profile,
+            options.alias_regs,
+            options.capstone_aliases,
+            options.compressed_aliases,
+            options.unsigned_immediate,
+        )
+    }
+}

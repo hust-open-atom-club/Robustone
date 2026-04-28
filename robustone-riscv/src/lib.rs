@@ -156,6 +156,10 @@ impl ArchitectureHandler for RiscVHandler {
         self.detail = detail;
     }
 
+    fn renderer(&self) -> Option<&dyn robustone_core::renderer::Renderer> {
+        Some(&crate::render::RiscVRenderer)
+    }
+
     fn decode_instruction(
         &self,
         bytes: &[u8],

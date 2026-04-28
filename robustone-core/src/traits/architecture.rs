@@ -5,6 +5,7 @@
 
 use crate::common::ArchitectureProfile;
 use crate::ir::DecodedInstruction;
+use crate::renderer::Renderer;
 use crate::types::error::DisasmError;
 use crate::types::instruction::Instruction;
 
@@ -173,6 +174,15 @@ pub trait ArchitectureHandler: Sync {
     /// `true` if this handler can disassemble for the given architecture,
     /// `false` otherwise.
     fn supports(&self, arch_name: &str) -> bool;
+
+    /// Return an architecture-specific renderer, if available.
+    ///
+    /// When `None`, the generic fallback renderer in `robustone-core` is
+    /// used. Backends that need Capstone-compatible aliases, custom operand
+    /// formatting, or hidden operands should return a concrete renderer here.
+    fn renderer(&self) -> Option<&dyn Renderer> {
+        None
+    }
 
     /// Controls whether the handler should produce detailed instruction
     /// metadata (registers read/written, groups, etc.) during disassembly.

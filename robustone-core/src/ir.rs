@@ -34,19 +34,6 @@ pub enum TextRenderProfile {
     VerboseDebug,
 }
 
-/// Function signature for architecture-specific instruction text rendering.
-/// Per-architecture crates provide an implementation and attach it to
-/// `DecodedInstruction::render` so that `robustone-core` remains free of
-/// architecture-specific formatting code.
-pub type RenderFn = fn(
-    instruction: &DecodedInstruction,
-    profile: TextRenderProfile,
-    alias_regs: bool,
-    capstone_aliases: bool,
-    compressed_aliases: bool,
-    unsigned_immediate: bool,
-) -> (String, String);
-
 /// Shared register identifier.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct RegisterId {
@@ -124,11 +111,6 @@ pub struct DecodedInstruction {
     pub status: DecodeStatus,
     #[serde(default)]
     pub render_hints: RenderHints,
-    /// Optional architecture-specific renderer. Set by architecture crates
-    /// (e.g. `robustone-riscv`) so that text rendering can happen outside
-    /// `robustone-core`.
-    #[serde(skip)]
-    pub render: Option<RenderFn>,
 }
 
 impl DecodedInstruction {
@@ -175,22 +157,12 @@ impl DecodedInstruction {
 
     pub fn render_text_parts_with_options(
         &self,
-        profile: TextRenderProfile,
-        alias_regs: bool,
-        capstone_aliases: bool,
-        compressed_aliases: bool,
-        unsigned_immediate: bool,
+        _profile: TextRenderProfile,
+        _alias_regs: bool,
+        _capstone_aliases: bool,
+        _compressed_aliases: bool,
+        _unsigned_immediate: bool,
     ) -> (String, String) {
-        if let Some(render) = self.render {
-            return render(
-                self,
-                profile,
-                alias_regs,
-                capstone_aliases,
-                compressed_aliases,
-                unsigned_immediate,
-            );
-        }
         // Generic fallback for architectures without a custom renderer.
         let operands = self
             .operands
@@ -269,7 +241,6 @@ mod tests {
             groups: Vec::new(),
             status: DecodeStatus::Success,
             render_hints: RenderHints::default(),
-            render: None,
         }
     }
 

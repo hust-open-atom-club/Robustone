@@ -54,7 +54,6 @@ pub(crate) fn build_decoded_instruction(
         groups: Vec::new(),
         status: DecodeStatus::Success,
         render_hints: RenderHints::default(),
-        render: Some(crate::render::render_loongarch_text_parts),
     }
 }
 

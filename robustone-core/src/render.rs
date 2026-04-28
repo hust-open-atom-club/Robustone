@@ -1,4 +1,5 @@
 use crate::ir::{DecodedInstruction, TextRenderProfile};
+use crate::renderer::Renderer;
 use crate::types::instruction::Instruction;
 use serde::Serialize;
 
@@ -26,8 +27,12 @@ pub struct RenderedInstruction {
 }
 
 impl RenderedInstruction {
-    pub fn from_instruction(instruction: &Instruction, options: RenderOptions) -> Self {
-        let (mnemonic, operands) = render_instruction_text(instruction, options);
+    pub fn from_instruction(
+        instruction: &Instruction,
+        renderer: Option<&dyn Renderer>,
+        options: RenderOptions,
+    ) -> Self {
+        let (mnemonic, operands) = render_instruction_text(instruction, renderer, options);
         let kind = if mnemonic == ".byte" {
             "data".to_string()
         } else {
@@ -73,19 +78,11 @@ pub struct RenderedDisassembly {
 
 pub fn render_instruction_text(
     instruction: &Instruction,
+    renderer: Option<&dyn Renderer>,
     options: RenderOptions,
 ) -> (String, String) {
-    if let Some(decoded) = &instruction.decoded {
-        let alias_regs = options.capstone_aliases
-            && (options.alias_regs
-                || !matches!(options.text_profile, TextRenderProfile::Canonical));
-        return decoded.render_text_parts_with_options(
-            options.text_profile,
-            alias_regs,
-            options.capstone_aliases,
-            options.compressed_aliases,
-            options.unsigned_immediate,
-        );
+    if let (Some(renderer), Some(decoded)) = (renderer, &instruction.decoded) {
+        return renderer.render(decoded, options);
     }
 
     instruction.rendered_text_parts(options.text_profile)
@@ -97,11 +94,12 @@ pub fn render_disassembly(
     bytes_processed: usize,
     errors: Vec<RenderedIssue>,
     instructions: &[Instruction],
+    renderer: Option<&dyn Renderer>,
     options: RenderOptions,
 ) -> RenderedDisassembly {
     let instructions = instructions
         .iter()
-        .map(|instruction| RenderedInstruction::from_instruction(instruction, options))
+        .map(|instruction| RenderedInstruction::from_instruction(instruction, renderer, options))
         .collect();
 
     RenderedDisassembly {

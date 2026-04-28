@@ -34,6 +34,10 @@ impl Default for ArmHandler {
 impl ArchitectureHandler for ArmHandler {
     fn set_detail(&mut self, _detail: bool) {}
 
+    fn renderer(&self) -> Option<&dyn robustone_core::renderer::Renderer> {
+        Some(&crate::render::AArch64Renderer)
+    }
+
     fn decode_instruction(
         &self,
         bytes: &[u8],

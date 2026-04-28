@@ -49,6 +49,7 @@ pub mod common;
 pub mod decode_config;
 pub mod ir;
 pub mod render;
+pub mod renderer;
 pub mod traits;
 pub mod types;
 pub mod utils;
@@ -348,6 +349,21 @@ impl ArchitectureDispatcher {
         Err(DisasmError::UnsupportedArchitecture(
             profile.architecture.as_str().to_string(),
         ))
+    }
+
+    /// Returns the renderer for a given architecture, if available.
+    ///
+    /// Falls back to the generic renderer if the handler does not provide
+    /// a dedicated one.
+    pub fn get_renderer(&self, arch: &str) -> &dyn crate::renderer::Renderer {
+        for handler in &self.handlers {
+            if handler.supports(arch) {
+                return handler
+                    .renderer()
+                    .unwrap_or(&crate::renderer::GenericRenderer);
+            }
+        }
+        &crate::renderer::GenericRenderer
     }
 
     /// Returns a list of all registered architecture names.

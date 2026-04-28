@@ -49,3 +49,22 @@ fn aarch64_register_name(id: u32) -> String {
         _ => format!("r{id}"),
     }
 }
+
+use robustone_core::render::RenderOptions;
+use robustone_core::renderer::Renderer;
+
+/// AArch64-specific instruction renderer.
+pub struct AArch64Renderer;
+
+impl Renderer for AArch64Renderer {
+    fn render(&self, instruction: &DecodedInstruction, options: RenderOptions) -> (String, String) {
+        render_aarch64_text_parts(
+            instruction,
+            options.text_profile,
+            options.alias_regs,
+            options.capstone_aliases,
+            options.compressed_aliases,
+            options.unsigned_immediate,
+        )
+    }
+}

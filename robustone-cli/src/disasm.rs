@@ -365,6 +365,14 @@ impl DisassemblyEngine {
         Ok(result)
     }
 
+    /// Format a disassembly result using the architecture-specific renderer.
+    pub fn format_result(&self, result: &DisassemblyResult, config: OutputConfig) -> String {
+        let dispatcher = self.dispatcher.borrow();
+        let renderer = dispatcher.get_renderer(&result.architecture);
+        let formatter = DisassemblyFormatter::with_renderer(config, renderer);
+        formatter.format(result)
+    }
+
     /// Disassemble a single instruction at the given address using typed config.
     pub fn disassemble_single_with_config(
         &self,
@@ -395,14 +403,29 @@ impl DisassemblyEngine {
 }
 
 /// Formatter for disassembly output with multiple display modes.
-pub struct DisassemblyFormatter {
+pub struct DisassemblyFormatter<'a> {
     output_config: OutputConfig,
+    renderer: Option<&'a dyn robustone_core::renderer::Renderer>,
 }
 
-impl DisassemblyFormatter {
+impl<'a> DisassemblyFormatter<'a> {
     /// Create a new formatter with the given output configuration.
     pub fn new(output_config: OutputConfig) -> Self {
-        Self { output_config }
+        Self {
+            output_config,
+            renderer: None,
+        }
+    }
+
+    /// Create a new formatter with an explicit renderer.
+    pub fn with_renderer(
+        output_config: OutputConfig,
+        renderer: &'a dyn robustone_core::renderer::Renderer,
+    ) -> Self {
+        Self {
+            output_config,
+            renderer: Some(renderer),
+        }
     }
 
     /// Format the disassembly result for display.
@@ -449,6 +472,7 @@ impl DisassemblyFormatter {
             result.bytes_processed,
             errors,
             &result.instructions,
+            self.renderer,
             self.render_options(),
         ))
         .expect("JSON serialization should not fail")
@@ -555,7 +579,7 @@ impl DisassemblyFormatter {
     }
 
     fn render_instruction_text(&self, instr: &Instruction) -> (String, String) {
-        render_instruction_text(instr, self.render_options())
+        render_instruction_text(instr, self.renderer, self.render_options())
     }
 
     fn render_options(&self) -> RenderOptions {
@@ -704,7 +728,6 @@ mod tests {
                 capstone_mnemonic: Some("li".to_string()),
                 capstone_hidden_operands: vec![1],
             },
-            render: Some(robustone_riscv::render::render_riscv_text_parts),
         };
         let instruction =
             Instruction::from_decoded(decoded, "legacy".to_string(), "legacy".to_string(), None);
@@ -715,7 +738,8 @@ mod tests {
             bytes_processed: 4,
             errors: Vec::new(),
         };
-        let formatter = DisassemblyFormatter::new(OutputConfig::minimal());
+        let renderer = robustone_riscv::render::RiscVRenderer;
+        let formatter = DisassemblyFormatter::with_renderer(OutputConfig::minimal(), &renderer);
         let output = formatter.format(&result);
 
         assert!(output.contains("li\t"));
@@ -917,8 +941,7 @@ mod tests {
             skip_data: false,
         };
         let result = engine.disassemble(&config).unwrap();
-        let formatter = DisassemblyFormatter::new(OutputConfig::minimal());
-        let output = formatter.format(&result);
+        let output = engine.format_result(&result, OutputConfig::minimal());
 
         assert!(output.contains("subw\ts0, s0, s1"));
     }
@@ -940,8 +963,8 @@ mod tests {
             skip_data: false,
         };
         let result = engine.disassemble(&config).unwrap();
-        let formatter = DisassemblyFormatter::new(OutputConfig::canonical_json());
-        let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
+        let output = engine.format_result(&result, OutputConfig::canonical_json());
+        let parsed: Value = serde_json::from_str(&output).unwrap();
 
         assert_eq!(parsed["instructions"][0]["mnemonic"], "c.addiw");
         assert_eq!(parsed["instructions"][0]["decoded"]["mnemonic"], "c.addiw");
@@ -965,8 +988,8 @@ mod tests {
             skip_data: false,
         };
         let result = engine.disassemble(&config).unwrap();
-        let formatter = DisassemblyFormatter::new(OutputConfig::canonical_json());
-        let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
+        let output = engine.format_result(&result, OutputConfig::canonical_json());
+        let parsed: Value = serde_json::from_str(&output).unwrap();
 
         assert_eq!(parsed["instructions"][0]["mnemonic"], "addi");
         assert_eq!(parsed["instructions"][0]["kind"], "instruction");
@@ -990,9 +1013,11 @@ mod tests {
             skip_data: false,
         };
         let result = engine.disassemble(&config).unwrap();
-        let formatter =
-            DisassemblyFormatter::new(OutputConfig::from_display_options(&config.display_options));
-        let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
+        let output = engine.format_result(
+            &result,
+            OutputConfig::from_display_options(&config.display_options),
+        );
+        let parsed: Value = serde_json::from_str(&output).unwrap();
 
         assert_eq!(parsed["instructions"][0]["operands"], "sp, sp, 0xfffffff0");
     }
@@ -1150,20 +1175,22 @@ mod tests {
         };
         let result = engine.disassemble(&config).unwrap();
 
-        let text_formatter = DisassemblyFormatter::new(OutputConfig {
-            text_profile: robustone_core::ir::TextRenderProfile::Canonical,
-            alias_regs: false,
-            capstone_aliases: false,
-            compressed_aliases: false,
-            unsigned_immediate: false,
-            show_hex: false,
-            show_detail_sections: false,
-            json: false,
-        });
-        let json_formatter = DisassemblyFormatter::new(OutputConfig::canonical_json());
+        let text_output = engine.format_result(
+            &result,
+            OutputConfig {
+                text_profile: robustone_core::ir::TextRenderProfile::Canonical,
+                alias_regs: false,
+                capstone_aliases: false,
+                compressed_aliases: false,
+                unsigned_immediate: false,
+                show_hex: false,
+                show_detail_sections: false,
+                json: false,
+            },
+        );
+        let json_output = engine.format_result(&result, OutputConfig::canonical_json());
 
-        let text_output = text_formatter.format(&result);
-        let parsed: Value = serde_json::from_str(&json_formatter.format(&result)).unwrap();
+        let parsed: Value = serde_json::from_str(&json_output).unwrap();
 
         assert!(text_output.contains("addi\tx1, x0, 1"));
         assert_eq!(parsed["instructions"][0]["mnemonic"], "addi");

@@ -77,6 +77,10 @@ impl ArchitectureHandler for LoongArchHandler {
         self.detail = detail;
     }
 
+    fn renderer(&self) -> Option<&dyn robustone_core::renderer::Renderer> {
+        Some(&crate::render::LoongArchRenderer)
+    }
+
     fn decode_instruction(
         &self,
         bytes: &[u8],

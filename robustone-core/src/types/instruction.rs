@@ -118,13 +118,13 @@ impl Instruction {
         self.mnemonic == "unknown"
     }
 
-    /// Return text rendered from the shared IR when available, otherwise fall
-    /// back to the legacy compatibility fields.
-    pub fn rendered_text_parts(&self, profile: TextRenderProfile) -> (String, String) {
-        self.decoded
-            .as_ref()
-            .map(|decoded| decoded.render_text_parts(profile))
-            .unwrap_or_else(|| (self.mnemonic.clone(), self.operands.clone()))
+    /// Return text rendered from the shared IR when a renderer is available,
+    /// otherwise fall back to the pre-rendered mnemonic and operands fields.
+    pub fn rendered_text_parts(&self, _profile: TextRenderProfile) -> (String, String) {
+        // When no external renderer is provided, prefer the pre-rendered text
+        // that the backend stored during disassembly. This avoids the generic
+        // fallback renderer producing architecture-unaware output.
+        (self.mnemonic.clone(), self.operands.clone())
     }
 
     pub fn assembly_line(&self) -> String {
@@ -201,14 +201,14 @@ mod tests {
                 capstone_mnemonic: Some("li".to_string()),
                 capstone_hidden_operands: vec![1],
             },
-            render: None,
         };
         let instruction =
             Instruction::from_decoded(decoded, "legacy".to_string(), "legacy".to_string(), None);
 
         let (mnemonic, operands) = instruction.rendered_text_parts(TextRenderProfile::Capstone);
-        // With generic renderer (render: None), decoded IR falls back to generic formatting
-        assert_eq!(mnemonic, "addi");
-        assert_eq!(operands, "riscv:1, riscv:0, 1");
+        // Without an external renderer, rendered_text_parts falls back to the
+        // pre-rendered mnemonic and operands fields.
+        assert_eq!(mnemonic, "legacy");
+        assert_eq!(operands, "legacy");
     }
 }

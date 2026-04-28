@@ -2,7 +2,7 @@ use crate::arch::{Architecture, ArchitectureSpec};
 use crate::capabilities::{render_capabilities_json, render_capabilities_text};
 use crate::command::{Cli, render_help_text};
 use crate::config::{DisasmConfig, OutputConfig};
-use crate::disasm::{DisassemblyFormatter, process_input};
+use crate::disasm::{DisassemblyEngine, DisassemblyFormatter, process_input};
 use clap::Parser;
 use robustone_core::all_architecture_capabilities;
 use serde_json::Value;
@@ -107,8 +107,8 @@ fn test_noalias_modifier_disables_riscv_alias_rendering() {
     let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
     let config = DisasmConfig::config_from_cli(&cli).expect("configuration should be valid");
     let result = process_input(&config).expect("disassembly should succeed");
-    let formatter = DisassemblyFormatter::new(config.output_config());
-    let output = formatter.format(&result);
+    let engine = DisassemblyEngine::new(config.arch_name());
+    let output = engine.format_result(&result, config.output_config());
 
     assert!(output.contains("addi\tx1, x0, 1"));
     assert!(!output.contains("li\tra"));
@@ -186,10 +186,11 @@ fn test_config_accepts_output_flags() {
     let unsigned_config =
         DisasmConfig::config_from_cli(&unsigned_cli).expect("configuration should be valid");
     let result = process_input(&unsigned_config).expect("disassembly should succeed");
-    let formatter = DisassemblyFormatter::new(OutputConfig::from_display_options(
-        &unsigned_config.display_options,
-    ));
-    let output = formatter.format(&result);
+    let engine = DisassemblyEngine::new(unsigned_config.arch_name());
+    let output = engine.format_result(
+        &result,
+        OutputConfig::from_display_options(&unsigned_config.display_options),
+    );
 
     assert!(output.contains("0xfffffff0"));
 }

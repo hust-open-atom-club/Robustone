@@ -5,6 +5,8 @@
 //! that architecture-specific formatting lives in the architecture crate.
 
 use robustone_core::ir::{DecodedInstruction, Operand, TextRenderProfile};
+use robustone_core::render::RenderOptions;
+use robustone_core::renderer::Renderer;
 
 /// Render a RISC-V decoded instruction into mnemonic and operand text.
 pub fn render_riscv_text_parts(
@@ -393,5 +395,26 @@ fn csr_name_lookup(csr: u16) -> Option<&'static str> {
         0xc81 => Some("timeh"),
         0xc82 => Some("instreth"),
         _ => None,
+    }
+}
+
+/// RISC-V-specific instruction renderer.
+pub struct RiscVRenderer;
+
+impl Renderer for RiscVRenderer {
+    fn render(&self, instruction: &DecodedInstruction, options: RenderOptions) -> (String, String) {
+        // Match the legacy behavior where register aliases are enabled for
+        // Capstone profile unless explicitly disabled via capstone_aliases.
+        let alias_regs = options.capstone_aliases
+            && (options.alias_regs
+                || !matches!(options.text_profile, TextRenderProfile::Canonical));
+        render_riscv_text_parts(
+            instruction,
+            options.text_profile,
+            alias_regs,
+            options.capstone_aliases,
+            options.compressed_aliases,
+            options.unsigned_immediate,
+        )
     }
 }

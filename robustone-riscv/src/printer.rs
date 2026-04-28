@@ -678,7 +678,6 @@ mod tests {
                 capstone_mnemonic: Some("li".to_string()),
                 capstone_hidden_operands: vec![1],
             },
-            render: Some(crate::render::render_riscv_text_parts),
         };
 
         let (mnemonic, operands) = printer.render_ir_parts(&decoded);
@@ -753,7 +752,6 @@ mod tests {
                 capstone_mnemonic: None,
                 capstone_hidden_operands: Vec::new(),
             },
-            render: Some(crate::render::render_riscv_text_parts),
         };
         let instruction = Instruction::from_decoded(
             decoded,

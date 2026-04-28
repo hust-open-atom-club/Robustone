@@ -44,6 +44,10 @@ impl Default for X86Handler {
 impl ArchitectureHandler for X86Handler {
     fn set_detail(&mut self, _detail: bool) {}
 
+    fn renderer(&self) -> Option<&dyn robustone_core::renderer::Renderer> {
+        Some(&crate::render::X86Renderer)
+    }
+
     fn decode_instruction(
         &self,
         bytes: &[u8],

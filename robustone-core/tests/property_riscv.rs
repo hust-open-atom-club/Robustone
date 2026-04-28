@@ -156,7 +156,6 @@ prop_compose! {
                 capstone_mnemonic,
                 capstone_hidden_operands,
             },
-            render: None,
         }
     }
 }
@@ -305,9 +304,9 @@ proptest! {
     ) {
         let instruction = Instruction::from_decoded(decoded, "legacy".to_string(), "legacy".to_string(), None);
         let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
-            let _ = render_instruction_text(&instruction, render_options(TextRenderProfile::Capstone));
-            let _ = render_instruction_text(&instruction, render_options(TextRenderProfile::Canonical));
-            let _ = render_instruction_text(&instruction, render_options(TextRenderProfile::VerboseDebug));
+            let _ = render_instruction_text(&instruction, None, render_options(TextRenderProfile::Capstone));
+            let _ = render_instruction_text(&instruction, None, render_options(TextRenderProfile::Canonical));
+            let _ = render_instruction_text(&instruction, None, render_options(TextRenderProfile::VerboseDebug));
         }));
 
         prop_assert!(result.is_ok());

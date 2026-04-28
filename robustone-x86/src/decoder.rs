@@ -117,7 +117,6 @@ impl X86Decoder {
             groups: Vec::new(),
             status: DecodeStatus::Success,
             render_hints: RenderHints::default(),
-            render: Some(crate::render::render_x86_text_parts),
         })
     }
 }

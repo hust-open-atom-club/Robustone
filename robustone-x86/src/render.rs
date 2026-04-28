@@ -64,3 +64,22 @@ fn x86_register_name(id: u32) -> String {
     }
     .to_string()
 }
+
+use robustone_core::render::RenderOptions;
+use robustone_core::renderer::Renderer;
+
+/// x86-specific instruction renderer.
+pub struct X86Renderer;
+
+impl Renderer for X86Renderer {
+    fn render(&self, instruction: &DecodedInstruction, options: RenderOptions) -> (String, String) {
+        render_x86_text_parts(
+            instruction,
+            options.text_profile,
+            options.alias_regs,
+            options.capstone_aliases,
+            options.compressed_aliases,
+            options.unsigned_immediate,
+        )
+    }
+}
