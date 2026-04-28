@@ -295,6 +295,10 @@ impl DisassemblyEngine {
         let detail = config.display_options.detailed || config.display_options.real_detail;
         self.dispatcher.borrow_mut().set_detail(detail);
 
+        let decode_config = config
+            .decode_config()
+            .map_err(|e| DisasmError::Configuration(e.to_string()))?;
+
         let mut result =
             DisassemblyResult::new(config.start_address, config.arch_name().to_string());
         let mut offset = 0;
@@ -310,9 +314,11 @@ impl DisassemblyEngine {
                     .borrow()
                     .disassemble_with_profile(slice, profile, current_address)
             } else {
-                self.dispatcher
-                    .borrow()
-                    .disassemble_bytes(slice, arch_name, current_address)
+                self.dispatcher.borrow().disassemble_bytes_with_config(
+                    slice,
+                    &decode_config,
+                    current_address,
+                )
             };
 
             match disassembly {
@@ -367,7 +373,23 @@ impl DisassemblyEngine {
         Ok(result)
     }
 
+    /// Disassemble a single instruction at the given address using typed config.
+    pub fn disassemble_single_with_config(
+        &self,
+        bytes: &[u8],
+        config: &robustone_core::DecodeConfig,
+        address: u64,
+    ) -> Result<(Instruction, usize), DisasmError> {
+        self.dispatcher
+            .borrow()
+            .disassemble_bytes_with_config(bytes, config, address)
+    }
+
     /// Disassemble a single instruction at the given address.
+    #[deprecated(
+        since = "0.0.1",
+        note = "Use disassemble_single_with_config() which accepts DecodeConfig"
+    )]
     pub fn disassemble_single(
         &self,
         bytes: &[u8],

@@ -6,6 +6,7 @@ use crate::utils::parse_hex_to_bytes;
 
 use robustone_core::ir::TextRenderProfile;
 use robustone_core::lookup_architecture_capability;
+use robustone_core::parse_decode_config;
 
 /// High-level disassembly configuration that unifies all options.
 #[derive(Debug, Clone)]
@@ -64,6 +65,17 @@ impl DisasmConfig {
     /// Get the architecture name as a string.
     pub fn arch_name(&self) -> &str {
         self.arch_spec.arch.name()
+    }
+
+    /// Build a strongly-typed `DecodeConfig` from the parsed CLI input.
+    ///
+    /// This is the canonical entry point for the typed decode pipeline.
+    /// It re-uses the validated arch/mode string and converts it once at the
+    /// CLI/core boundary.
+    pub fn decode_config(
+        &self,
+    ) -> std::result::Result<robustone_core::DecodeConfig, robustone_core::DecodeConfigError> {
+        parse_decode_config(self.arch_name())
     }
 
     /// Check if detailed output is enabled.

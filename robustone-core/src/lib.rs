@@ -46,6 +46,7 @@
 
 pub mod architecture;
 pub mod common;
+pub mod decode_config;
 pub mod ir;
 pub mod render;
 pub mod traits;
@@ -63,6 +64,9 @@ pub mod prelude {
         canonical_architecture_name, is_address_aligned, lookup_architecture_capability,
     };
     pub use crate::common::ArchitectureProfile;
+    pub use crate::decode_config::{
+        Arch, DecodeConfig, DecodeConfigError, DetailLevel, FeatureSet, Mode, parse_decode_config,
+    };
     pub use crate::ir::{ArchitectureId, DecodeStatus, DecodedInstruction, Operand, RegisterId};
     pub use crate::render::{
         RenderOptions, RenderedDisassembly, RenderedInstruction, RenderedIssue, render_disassembly,
@@ -76,6 +80,9 @@ pub mod prelude {
 pub use architecture::{
     ArchitectureCapability, all_architecture_capabilities, canonical_architecture_name,
     lookup_architecture_capability,
+};
+pub use decode_config::{
+    Arch, DecodeConfig, DecodeConfigError, DetailLevel, FeatureSet, Mode, parse_decode_config,
 };
 pub use ir::DecodedInstruction;
 pub use render::{
@@ -263,6 +270,48 @@ impl ArchitectureDispatcher {
         }
 
         Err(DisasmError::UnsupportedArchitecture(arch.to_string()))
+    }
+
+    /// Decode bytes using a strongly-typed `DecodeConfig`.
+    ///
+    /// This is the preferred entry point for new code. The old
+    /// `decode_instruction(&self, bytes, arch: &str, address)` is retained as
+    /// a deprecated compatibility shim.
+    pub fn decode_instruction_with_config(
+        &self,
+        bytes: &[u8],
+        config: &crate::decode_config::DecodeConfig,
+        address: u64,
+    ) -> Result<(DecodedInstruction, usize), DisasmError> {
+        config
+            .validate()
+            .map_err(|e| DisasmError::Configuration(e.to_string()))?;
+        let arch_name = config.mode_name();
+        for handler in &self.handlers {
+            if handler.supports(arch_name) {
+                return handler.decode_instruction(bytes, arch_name, address);
+            }
+        }
+        Err(DisasmError::UnsupportedArchitecture(arch_name.to_string()))
+    }
+
+    /// Disassemble bytes using a strongly-typed `DecodeConfig`.
+    pub fn disassemble_bytes_with_config(
+        &self,
+        bytes: &[u8],
+        config: &crate::decode_config::DecodeConfig,
+        address: u64,
+    ) -> Result<(Instruction, usize), DisasmError> {
+        config
+            .validate()
+            .map_err(|e| DisasmError::Configuration(e.to_string()))?;
+        let arch_name = config.mode_name();
+        for handler in &self.handlers {
+            if handler.supports(arch_name) {
+                return handler.disassemble(bytes, arch_name, address);
+            }
+        }
+        Err(DisasmError::UnsupportedArchitecture(arch_name.to_string()))
     }
 
     /// Decode bytes using an explicit architecture profile.
