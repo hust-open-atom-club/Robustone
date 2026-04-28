@@ -461,10 +461,50 @@ impl<M: Copy + Eq + 'static> ModeSet<M> {
     }
 }
 
-impl<W: Copy + Eq + core::fmt::Debug + 'static> EncodingPattern<W> {
+impl<W: Copy + Eq + core::fmt::Debug + Into<u64> + 'static> EncodingPattern<W> {
     pub const fn new(mask: W, value: W) -> Self {
         Self { mask, value }
     }
+
+    /// Check whether this pattern overlaps with another.
+    ///
+    /// Two patterns overlap if there exists at least one word that matches both.
+    pub fn overlaps(&self, other: &Self) -> bool {
+        let self_mask: u64 = self.mask.into();
+        let self_value: u64 = self.value.into();
+        let other_mask: u64 = other.mask.into();
+        let other_value: u64 = other.value.into();
+        let common_mask = self_mask & other_mask;
+        ((self_value ^ other_value) & common_mask) == 0
+    }
+}
+
+/// Validate that no patterns in the spec table overlap.
+///
+/// Returns `Ok(())` if all patterns are disjoint. Otherwise returns an error
+/// describing the first overlap found.
+///
+/// This should be called in debug builds or tests.
+pub fn validate_no_overlaps<B: ArchitectureBackend>(
+    specs: &[InstructionSpec<B>],
+) -> Result<(), String> {
+    for i in 0..specs.len() {
+        for j in (i + 1)..specs.len() {
+            if specs[i].pattern.overlaps(&specs[j].pattern) {
+                return Err(format!(
+                    "pattern overlap detected between '{}' (mask={:?}, value={:?}) \
+                     and '{}' (mask={:?}, value={:?})",
+                    specs[i].mnemonic,
+                    specs[i].pattern.mask,
+                    specs[i].pattern.value,
+                    specs[j].mnemonic,
+                    specs[j].pattern.mask,
+                    specs[j].pattern.value,
+                ));
+            }
+        }
+    }
+    Ok(())
 }
 
 // ============================================================================
@@ -541,5 +581,51 @@ mod tests {
             "got {}",
             err.stable_kind()
         );
+    }
+
+    #[test]
+    fn mock_specs_have_no_overlaps() {
+        assert!(validate_no_overlaps(mock::MOCK_SPECS).is_ok());
+    }
+
+    #[test]
+    fn validate_no_overlaps_detects_conflict() {
+        use crate::{EncodingPattern, FormatSpec, InstructionSpec, ModeSet};
+
+        let overlapping_specs: &[InstructionSpec<MockBackend>] = &[
+            InstructionSpec {
+                mnemonic: "inst_a",
+                opcode_id: "INST_A",
+                pattern: EncodingPattern::new(0xFF00_0000, 0x0100_0000),
+                format: &FormatSpec {
+                    name: "R",
+                    fields: &[],
+                },
+                operands: &[],
+                features: mock::MockFeature::BASE,
+                modes: ModeSet::All,
+                groups: &[],
+                manual_ref: None,
+            },
+            InstructionSpec {
+                mnemonic: "inst_b",
+                opcode_id: "INST_B",
+                pattern: EncodingPattern::new(0x0F00_0000, 0x0100_0000),
+                format: &FormatSpec {
+                    name: "R",
+                    fields: &[],
+                },
+                operands: &[],
+                features: mock::MockFeature::BASE,
+                modes: ModeSet::All,
+                groups: &[],
+                manual_ref: None,
+            },
+        ];
+        let result = validate_no_overlaps(overlapping_specs);
+        assert!(result.is_err());
+        let msg = result.unwrap_err();
+        assert!(msg.contains("inst_a"));
+        assert!(msg.contains("inst_b"));
     }
 }
