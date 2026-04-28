@@ -87,11 +87,7 @@ fn format_aarch64_operand(
         Operand::Text { value } => value.clone(),
         Operand::Memory { base, displacement } => {
             if let Some(base) = base {
-                format!(
-                    "[{}, #{}]",
-                    aarch64_register_name(base.id),
-                    displacement
-                )
+                format!("[{}, #{}]", aarch64_register_name(base.id), displacement)
             } else {
                 format!("[#{displacement}]")
             }

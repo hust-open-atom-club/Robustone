@@ -60,11 +60,12 @@ pub fn decode_data_processing_immediate(
             let imms = (word >> 10) & 0x3F;
             let _n = (word >> 22) & 1;
 
-            let imm_value = decode_bitmask_imm(_n, immr, imms).ok_or_else(|| DisasmError::DecodeFailure {
-                kind: DecodeErrorKind::InvalidEncoding,
-                architecture: Some("aarch64".to_string()),
-                detail: "invalid bitmask immediate encoding".to_string(),
-            })?;
+            let imm_value =
+                decode_bitmask_imm(_n, immr, imms).ok_or_else(|| DisasmError::DecodeFailure {
+                    kind: DecodeErrorKind::InvalidEncoding,
+                    architecture: Some("aarch64".to_string()),
+                    detail: "invalid bitmask immediate encoding".to_string(),
+                })?;
 
             let mut ops = vec![Operand::Register {
                 register: aarch64_reg(rd),
@@ -80,7 +81,9 @@ pub fn decode_data_processing_immediate(
                 "orr"
             };
 
-            ops.push(Operand::Immediate { value: imm_value as i64 });
+            ops.push(Operand::Immediate {
+                value: imm_value as i64,
+            });
             return Ok((mnemonic, ops));
         }
     }
