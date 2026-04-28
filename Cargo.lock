@@ -753,8 +753,10 @@ dependencies = [
 name = "robustone-loongarch"
 version = "0.1.0"
 dependencies = [
+ "bitflags",
  "inventory",
  "robustone-core",
+ "robustone-isa",
 ]
 
 [[package]]

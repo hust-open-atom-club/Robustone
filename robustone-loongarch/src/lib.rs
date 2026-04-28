@@ -3,6 +3,7 @@
 //! Provides instruction decoding for LoongArch LA64 targets.
 
 pub mod arch;
+pub mod backend;
 pub mod decoder;
 pub mod extensions;
 pub mod printer;
