@@ -142,3 +142,8 @@ mod tests {
         assert_eq!(instr.operands, "eax, 0x12345678");
     }
 }
+
+// Register the x86 handler with the global inventory.
+inventory::submit! {
+    robustone_core::traits::HandlerFactory::new(|| Box::new(X86Handler::new()))
+}

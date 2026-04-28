@@ -5,4 +5,5 @@ edition = "2024"
 description = "x86/x64 architecture support for Robustone"
 
 [dependencies]
+inventory = "0.3.24"
 robustone-core = { path = "../robustone-core" }

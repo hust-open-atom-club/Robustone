@@ -64,6 +64,21 @@ use crate::types::instruction::Instruction;
 ///     }
 /// }
 /// ```
+/// A factory function that produces a boxed architecture handler.
+///
+/// Used with `inventory` for automatic handler registration.
+pub struct HandlerFactory {
+    pub factory: fn() -> Box<dyn ArchitectureHandler>,
+}
+
+impl HandlerFactory {
+    pub const fn new(factory: fn() -> Box<dyn ArchitectureHandler>) -> Self {
+        Self { factory }
+    }
+}
+
+inventory::collect!(HandlerFactory);
+
 pub trait ArchitectureHandler: Sync {
     /// Decodes a single instruction into the shared IR.
     fn decode_instruction(

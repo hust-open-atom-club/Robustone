@@ -142,3 +142,8 @@ mod tests {
         assert_eq!(instr.mnemonic, "ret");
     }
 }
+
+// Register the ARM handler with the global inventory.
+inventory::submit! {
+    robustone_core::traits::HandlerFactory::new(|| Box::new(ArmHandler::new()))
+}

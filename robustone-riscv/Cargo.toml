@@ -8,3 +8,4 @@ description = "RISC-V architecture support for Robustone"
 robustone-core = { path = "../robustone-core" }
 bitflags = "2.10.0"
 hex = "0.4"
+inventory = "0.3.24"

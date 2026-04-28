@@ -336,3 +336,8 @@ mod tests {
         assert_eq!(detail.registers_written(), &[1]);
     }
 }
+
+// Register the RISC-V handler with the global inventory.
+inventory::submit! {
+    robustone_core::traits::HandlerFactory::new(|| Box::new(RiscVHandler::new()))
+}

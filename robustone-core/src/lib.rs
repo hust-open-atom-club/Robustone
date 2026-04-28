@@ -428,8 +428,14 @@ impl ArchitectureDispatcher {
 }
 
 impl Default for ArchitectureDispatcher {
+    /// Creates a dispatcher pre-populated with all handlers registered via
+    /// `inventory::submit!` in the backend crates.
     fn default() -> Self {
-        Self::new()
+        let mut dispatcher = Self::new();
+        for factory in inventory::iter::<crate::traits::HandlerFactory> {
+            dispatcher.register((factory.factory)());
+        }
+        dispatcher
     }
 }
 

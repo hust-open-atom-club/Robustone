@@ -5,4 +5,5 @@ edition = "2024"
 description = "LoongArch LA64 architecture support for Robustone"
 
 [dependencies]
+inventory = "0.3.24"
 robustone-core = { path = "../robustone-core" }

@@ -386,6 +386,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "inventory"
+version = "0.3.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4f0c30c76f2f4ccee3fe55a2435f691ca00c0e4bd87abe4f4a851b1d4dac39b"
+dependencies = [
+ "rustversion",
+]
+
+[[package]]
 name = "is-terminal"
 version = "0.4.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -696,6 +705,7 @@ dependencies = [
 name = "robustone-arm"
 version = "0.1.0"
 dependencies = [
+ "inventory",
  "robustone-core",
 ]
 
@@ -723,6 +733,7 @@ dependencies = [
  "bitflags",
  "criterion",
  "hex",
+ "inventory",
  "proptest",
  "robustone",
  "serde",
@@ -734,6 +745,7 @@ dependencies = [
 name = "robustone-loongarch"
 version = "0.1.0"
 dependencies = [
+ "inventory",
  "robustone-core",
 ]
 
@@ -743,6 +755,7 @@ version = "0.1.0"
 dependencies = [
  "bitflags",
  "hex",
+ "inventory",
  "robustone-core",
 ]
 
@@ -750,6 +763,7 @@ dependencies = [
 name = "robustone-x86"
 version = "0.1.0"
 dependencies = [
+ "inventory",
  "robustone-core",
 ]
 

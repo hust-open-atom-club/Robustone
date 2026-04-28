@@ -269,3 +269,8 @@ mod debug_tests {
         }
     }
 }
+
+// Register the LoongArch handler with the global inventory.
+inventory::submit! {
+    robustone_core::traits::HandlerFactory::new(|| Box::new(LoongArchHandler::new()))
+}
