@@ -131,7 +131,8 @@ impl RiscVDecoder {
         }
     }
 
-    /// Decode a 32-bit standard instruction using extension modules.
+    /// Decode a 32-bit standard instruction using the pattern table first,
+    /// then falling back to extension-dispatched match trees.
     fn decode_standard_instruction(
         &self,
         bytes: &[u8],
@@ -141,6 +142,11 @@ impl RiscVDecoder {
             | ((bytes[1] as u32) << 8)
             | ((bytes[2] as u32) << 16)
             | ((bytes[3] as u32) << 24);
+
+        // Phase 1: table-driven decode for base integer instructions.
+        if let Some(result) = crate::patterns::try_decode_from_patterns(instruction, self.xlen) {
+            return result.map_err(|error| self.normalize_extension_error(error));
+        }
 
         let fields = bits::extract_fields(instruction);
         let i_fields = bits::extract_i_type(instruction);
@@ -170,7 +176,7 @@ impl RiscVDecoder {
             return Err(error);
         }
 
-        // Try each enabled extension in order
+        // Phase 2: extension-dispatched decode for M, A, F, D, and custom extensions.
         for extension in &self.extension_handlers {
             if !extension.is_enabled(&self.extensions) {
                 continue;
@@ -184,7 +190,7 @@ impl RiscVDecoder {
             }
         }
 
-        // No extension could decode this instruction
+        // No pattern or extension could decode this instruction
         self.decode_unknown_instruction(instruction)
     }
 

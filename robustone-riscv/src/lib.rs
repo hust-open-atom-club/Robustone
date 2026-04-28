@@ -12,6 +12,7 @@
 pub mod arch;
 pub mod decoder;
 pub mod extensions;
+pub mod patterns;
 pub mod printer;
 pub mod render;
 pub mod shared;
