@@ -13,6 +13,12 @@ const BRANCH_MNEMONICS: &[&str] = &[
     "b", "bl", "beq", "bne", "blt", "bge", "bltu", "bgeu", "beqz", "bnez", "bceqz", "bcnez",
 ];
 
+/// Control-flow mnemonics whose last immediate operand is PC-relative.
+/// `jirl` is excluded because its offset is added to `rj`, not to the PC.
+const PC_RELATIVE_MNEMONICS: &[&str] = &[
+    "b", "bl", "beq", "bne", "blt", "bge", "bltu", "bgeu", "beqz", "bnez", "bceqz", "bcnez",
+];
+
 /// Return the expected raw bit-mask for the immediate field of `mnemonic`.
 ///
 /// This is used when `unsigned_immediate` is enabled so that sign-extended
@@ -27,8 +33,8 @@ fn immediate_mask_for_mnemonic(mnemonic: &str) -> u64 {
         m if m.starts_with("pcaddi") => 0xFFFFF,
         m if m.starts_with("pcaddu12i") => 0xFFFFF,
         m if m.starts_with("pcalau12i") => 0xFFFFF,
-        // 16-bit branch offsets
-        m if BRANCH_MNEMONICS.contains(&m) && m != "b" && m != "bl" => 0xFFFF,
+        // 16-bit branch / jirl offsets
+        m if BRANCH_MNEMONICS.contains(&m) && m != "b" && m != "bl" || m == "jirl" => 0xFFFF,
         // 14-bit
         "ll.w" | "llacq.w" | "sc.w" | "screl.w" => 0x3FFF,
         m if m.starts_with("ldl.")
@@ -107,7 +113,7 @@ pub fn render_loongarch_text_parts(
         .filter(|(index, _)| !hidden_operands.contains(index))
         .collect::<Vec<_>>();
 
-    let is_branch = BRANCH_MNEMONICS.contains(&mnemonic.as_str());
+    let is_pc_relative = PC_RELATIVE_MNEMONICS.contains(&mnemonic.as_str());
     let pc = instruction.address as i64;
     let imm_mask = immediate_mask_for_mnemonic(&mnemonic);
 
@@ -115,8 +121,8 @@ pub fn render_loongarch_text_parts(
         .iter()
         .enumerate()
         .map(|(i, (_, operand))| {
-            // For branch instructions, Capstone adds the PC to the last immediate operand
-            if is_branch
+            // For PC-relative instructions, Capstone adds the PC to the last immediate operand
+            if is_pc_relative
                 && i == visible_operands.len() - 1
                 && let Operand::Immediate { value } = operand
             {
