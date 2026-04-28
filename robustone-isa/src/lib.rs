@@ -396,22 +396,18 @@ pub fn decode_one<B: ArchitectureBackend>(
 fn lower_operand<B: ArchitectureBackend>(
     word: B::Word,
     spec: &OperandSpec<B>,
-    _profile: &DecodeProfile<B>,
+    profile: &DecodeProfile<B>,
     format: &FormatSpec<B::Field>,
 ) -> Operand {
     match spec {
         OperandSpec::Register {
-            class: _,
+            class,
             field,
             access: _,
         } => {
             let raw = B::extract_field(word, format, *field);
-            Operand::Register {
-                register: RegisterId {
-                    architecture: B::architecture_id(),
-                    id: raw,
-                },
-            }
+            let reg = B::lower_register(*class, raw, profile);
+            Operand::Register { register: reg }
         }
         OperandSpec::Immediate {
             field,

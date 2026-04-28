@@ -48,8 +48,9 @@ use robustone_core::{
     ir::{DecodedInstruction, TextRenderProfile},
     traits::ArchitectureHandler,
     traits::instruction::Detail,
-    types::error::DisasmError,
+    types::error::{DecodeErrorKind, DisasmError},
 };
+use robustone_isa::{AliasPolicy, DecodeProfile, FeatureSet, RenderDialect, decode_one};
 
 /// Architecture handler implementation for LoongArch LA64 targets.
 pub struct LoongArchHandler {
@@ -91,9 +92,34 @@ impl ArchitectureHandler for LoongArchHandler {
         if !self.supports(arch_name) {
             return Err(DisasmError::UnsupportedArchitecture(arch_name.to_string()));
         }
-        let decoded = self.decoder.decode(bytes, arch_name, addr)?;
-        let size = decoded.size;
-        Ok((decoded, size))
+
+        // Shadow path: try the new ArchitectureBackend first.
+        let profile = DecodeProfile {
+            mode: backend::LoongArchMode::LA64,
+            features: backend::LoongArchFeature::all_supported_for_tests(),
+            render_dialect: RenderDialect::Assembler,
+            alias_policy: AliasPolicy::PreferPseudo,
+        };
+        match decode_one::<backend::LoongArchBackend>(bytes, addr, &profile) {
+            Ok(decoded) => {
+                let size = decoded.size;
+                Ok((decoded, size))
+            }
+            Err(e) => {
+                // Fallback to legacy decoder for instructions not yet in the new spec table.
+                if let DisasmError::DecodeFailure {
+                    kind: DecodeErrorKind::InvalidEncoding,
+                    ..
+                } = &e
+                {
+                    let decoded = self.decoder.decode(bytes, arch_name, addr)?;
+                    let size = decoded.size;
+                    Ok((decoded, size))
+                } else {
+                    Err(e)
+                }
+            }
+        }
     }
 
     fn decode_instruction_with_profile(
