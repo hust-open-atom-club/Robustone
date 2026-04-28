@@ -65,6 +65,9 @@ ARCH_MODE_MAP: Dict[Tuple[str, frozenset], str] = {
         "CS_ARCH_RISCV",
         frozenset({"CS_MODE_RISCV64", "CS_MODE_RISCV_V", "CS_MODE_RISCV_F"}),
     ): "riscv64",
+    # LoongArch
+    ("CS_ARCH_LOONGARCH", frozenset({"CS_MODE_LOONGARCH64"})): "loongarch64",
+    ("CS_ARCH_LOONGARCH", frozenset({"CS_MODE_LOONGARCH32"})): "loongarch32",
 }
 
 # Capstone options that affect cstool CLI flags.
@@ -226,10 +229,16 @@ def _bytes_to_hex(byte_list: List[int]) -> str:
 
 def _resolve_arch(options: List[str]) -> Optional[str]:
     """Map Capstone arch+mode options to a Robustone architecture name."""
-    # We only handle RISC-V for now.
-    arch = "CS_ARCH_RISCV"
-    mode_set = frozenset(opt for opt in options if opt in MODE_OPTIONS)
-    return ARCH_MODE_MAP.get((arch, mode_set))
+    arch = None
+    mode_set = set()
+    for opt in options:
+        if opt.startswith("CS_ARCH_"):
+            arch = opt
+        elif opt in MODE_OPTIONS:
+            mode_set.add(opt)
+    if arch is None:
+        return None
+    return ARCH_MODE_MAP.get((arch, frozenset(mode_set)))
 
 
 def _build_cstool_flags(options: List[str]) -> List[str]:
