@@ -1,0 +1,16 @@
+# AArch64 baseline integer instructions verified with cstool
+# Format: <hex_bytes>  # <cstool output>
+# Generated via: third_party/capstone/cstool/cstool aarch64 <hex_bytes>
+
+1F2003D5  # nop
+00040091  # add	x0, x0, #1
+000080D2  # mov	x0, #0
+C0035FD6  # ret
+00000094  # bl	0
+00000014  # b	0
+00001FD6  # br	x0
+0000008A  # and	x0, x0, x0
+000000CA  # eor	x0, x0, x0
+0000008B  # add	x0, x0, x0
+000000CB  # sub	x0, x0, x0
+00009F9A  # csel	x0, x0, zr, eq
