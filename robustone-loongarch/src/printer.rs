@@ -66,6 +66,10 @@ impl LoongArchPrinter {
 
     pub fn with_profile(mut self, profile: LoongArchTextProfile) -> Self {
         self.profile = profile;
+        if profile == LoongArchTextProfile::Canonical {
+            self.alias_regs = false;
+            self.capstone_aliases = false;
+        }
         self
     }
 

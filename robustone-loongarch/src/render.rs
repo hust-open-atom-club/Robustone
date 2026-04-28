@@ -13,6 +13,63 @@ const BRANCH_MNEMONICS: &[&str] = &[
     "b", "bl", "beq", "bne", "blt", "bge", "bltu", "bgeu", "beqz", "bnez", "bceqz", "bcnez",
 ];
 
+/// Return the expected raw bit-mask for the immediate field of `mnemonic`.
+///
+/// This is used when `unsigned_immediate` is enabled so that sign-extended
+/// negative constants are truncated back to their original encoded width
+/// instead of being rendered as full 64-bit values.
+fn immediate_mask_for_mnemonic(mnemonic: &str) -> u64 {
+    match mnemonic {
+        // 28-bit PC-relative offsets
+        "b" | "bl" => 0xFFFFFFF,
+        // 20-bit
+        m if m.starts_with("lu12i") => 0xFFFFF,
+        m if m.starts_with("pcaddi") => 0xFFFFF,
+        m if m.starts_with("pcaddu12i") => 0xFFFFF,
+        m if m.starts_with("pcalau12i") => 0xFFFFF,
+        // 16-bit branch offsets
+        m if BRANCH_MNEMONICS.contains(&m) && m != "b" && m != "bl" => 0xFFFF,
+        // 14-bit
+        "ll.w" | "llacq.w" | "sc.w" | "screl.w" => 0x3FFF,
+        m if m.starts_with("ldl.")
+            || m.starts_with("ldr.")
+            || m.starts_with("stl.")
+            || m.starts_with("str.") =>
+        {
+            0x3FFF
+        }
+        // 5-bit unsigned shift / vector immediates
+        m if m.starts_with("slli")
+            || m.starts_with("srli")
+            || m.starts_with("srai")
+            || m.starts_with("rotri")
+            || m.starts_with("rcri")
+            || m.starts_with("xvmaxi")
+            || m.starts_with("xvmini")
+            || m.starts_with("xvseqi")
+            || m.starts_with("xvslei")
+            || m.starts_with("xvslli")
+            || m.starts_with("xvsrli")
+            || m.starts_with("xvsrai")
+            || m.starts_with("xvrotri")
+            || m.starts_with("xvstelm")
+            || m.starts_with("xvfrstpi") =>
+        {
+            0x1F
+        }
+        // 4-bit
+        m if m.ends_with("replvei.b") => 0xF,
+        // 3-bit
+        m if m.ends_with("replvei.h") => 0x7,
+        // 2-bit
+        m if m.ends_with("replvei.w") => 0x3,
+        // 1-bit
+        m if m.ends_with("replvei.d") => 0x1,
+        // 12-bit (default for the vast majority of LoongArch instructions)
+        _ => 0xFFF,
+    }
+}
+
 /// Render a LoongArch decoded instruction into mnemonic and operand text.
 pub fn render_loongarch_text_parts(
     instruction: &DecodedInstruction,
@@ -52,6 +109,7 @@ pub fn render_loongarch_text_parts(
 
     let is_branch = BRANCH_MNEMONICS.contains(&mnemonic.as_str());
     let pc = instruction.address as i64;
+    let imm_mask = immediate_mask_for_mnemonic(&mnemonic);
 
     let mut operands = visible_operands
         .iter()
@@ -62,9 +120,9 @@ pub fn render_loongarch_text_parts(
                 && i == visible_operands.len() - 1
                 && let Operand::Immediate { value } = operand
             {
-                return format_loongarch_immediate(value + pc, unsigned_immediate);
+                return format_loongarch_immediate(value + pc, unsigned_immediate, imm_mask);
             }
-            format_loongarch_operand(operand, alias_regs, unsigned_immediate)
+            format_loongarch_operand(operand, alias_regs, unsigned_immediate, imm_mask)
         })
         .collect::<Vec<_>>()
         .join(", ");
@@ -83,6 +141,7 @@ fn format_loongarch_operand(
     operand: &Operand,
     alias_regs: bool,
     unsigned_immediate: bool,
+    imm_mask: u64,
 ) -> String {
     match operand {
         Operand::Register { register } => {
@@ -96,7 +155,9 @@ fn format_loongarch_operand(
                     .to_string()
             }
         }
-        Operand::Immediate { value } => format_loongarch_immediate(*value, unsigned_immediate),
+        Operand::Immediate { value } => {
+            format_loongarch_immediate(*value, unsigned_immediate, imm_mask)
+        }
         Operand::Text { value } => value.clone(),
         Operand::Memory {
             base: Some(base),
@@ -109,26 +170,25 @@ fn format_loongarch_operand(
             };
             format!(
                 "{}({})",
-                format_loongarch_immediate(*displacement, unsigned_immediate),
+                format_loongarch_immediate(*displacement, unsigned_immediate, imm_mask),
                 base_name
             )
         }
         Operand::Memory {
             base: None,
             displacement,
-        } => format_loongarch_immediate(*displacement, unsigned_immediate),
+        } => format_loongarch_immediate(*displacement, unsigned_immediate, imm_mask),
     }
 }
 
-fn format_loongarch_immediate(value: i64, unsigned_immediate: bool) -> String {
+fn format_loongarch_immediate(value: i64, unsigned_immediate: bool, imm_mask: u64) -> String {
     if value == 0 {
         return "0".to_string();
     }
     let (display_value, is_negative) = if unsigned_immediate && value < 0 {
-        // Sign-extended negative immediates encode small unsigned constants.
-        // Most LoongArch immediates are ≤16 bits, so mask to 16 bits to
-        // avoid showing misleading 64-bit sign-extension artifacts.
-        ((value as u64) & 0xFFFF, false)
+        // Truncate the sign-extended value back to its original encoded width
+        // so that e.g. a 12-bit -1 renders as 0xfff instead of 0xffffffffffffffff.
+        ((value as u64) & imm_mask, false)
     } else {
         (value.unsigned_abs(), value < 0)
     };
