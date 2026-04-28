@@ -1,0 +1,839 @@
+#!/usr/bin/env python3
+"""
+Generate a Rust decoder for LoongArch from Capstone YAML test data.
+
+Strategy:
+1. Extract all (word, mnemonic, asm_text) tuples from YAML files
+2. Build an exact-match lookup table for all unique instruction words
+3. Generate operand extraction based on instruction format
+"""
+
+import yaml
+from pathlib import Path
+from collections import defaultdict
+from typing import Dict, List, Tuple, Set
+
+
+def parse_operands(asm_text: str) -> Tuple[str, List[str]]:
+    parts = asm_text.split(None, 1)
+    mnemonic = parts[0]
+    if len(parts) == 1:
+        return mnemonic, []
+    rest = parts[1]
+    operands = [op.strip() for op in rest.split(',')]
+    return mnemonic, operands
+
+
+def operand_type(op: str) -> str:
+    op = op.strip()
+    if op.startswith('$'):
+        if op.startswith('$xr'):
+            return 'XR'
+        elif op == '$fp':
+            return 'GR'
+        elif op.startswith('$fcsr'):
+            return 'FCSR'
+        elif op.startswith('$f') and not op.startswith('$fcc'):
+            return 'FR'
+        elif op.startswith('$fcc'):
+            return 'FCC'
+        elif op.startswith('$scr'):
+            return 'SCR'
+        else:
+            return 'GR'
+    else:
+        try:
+            if op.startswith('0x') or op.startswith('0X'):
+                int(op, 16)
+            else:
+                int(op)
+            return 'IMM'
+        except ValueError:
+            return 'OTHER'
+
+
+def classify_instruction(mnemonic: str, op_types: Tuple[str, ...], word: int) -> str:
+    """Classify instruction into a format based on operand types and opcode."""
+    major = (word >> 26) & 0x3F
+
+    # Branch/jump instructions by major opcode
+    if major in (0x14, 0x15):
+        if op_types == ('IMM',):
+            return "I26"
+    if major == 0x13:
+        if op_types == ('GR', 'GR', 'IMM'):
+            return "JIRL"
+    if major in (0x10, 0x11):
+        if op_types == ('GR', 'IMM'):
+            return "1RI21"
+    if major == 0x12:
+        if op_types == ('FCC', 'IMM'):
+            return "BCEQZ"
+        if op_types == ('GR', 'IMM'):
+            return "BEQZ"
+        if op_types == ('IMM',):
+            return "I21"
+    if major in range(0x16, 0x1C):
+        if op_types == ('GR', 'GR', 'IMM'):
+            return "B"
+
+    # Vector major opcode
+    if major == 0x1D:
+        if op_types == ('XR', 'XR', 'XR'):
+            return "V3R"
+        if op_types == ('XR', 'XR', 'IMM'):
+            if any(mnemonic.endswith(s) for s in ('.bu', '.hu', '.wu', '.du')):
+                return "V2RI5"
+            if any(mnemonic.startswith(p) for p in ('xvbitclri', 'xvbitseti', 'xvbitrevi', 'vbitclri', 'vbitseti', 'vbitrevi')):
+                if mnemonic.endswith('.b'):
+                    return "V2RI3"
+                if mnemonic.endswith('.h'):
+                    return "V2RI4"
+                if mnemonic.endswith('.w'):
+                    return "V2RI5"
+                if mnemonic.endswith('.d'):
+                    return "V2RI6"
+            return "V2RI8"
+        if op_types == ('XR', 'XR'):
+            return "V2R"
+        if op_types == ('XR',):
+            return "V1R"
+        if op_types == ('FCC', 'XR'):
+            return "FCC_V1R"
+        if op_types == ('GR', 'XR', 'IMM'):
+            if any(mnemonic.endswith(s) for s in ('.bu', '.hu', '.wu', '.du')):
+                return "GR_V2RI5"
+            return "GR_V2RI8"
+        if op_types == ('XR', 'XR', 'GR'):
+            return "V2R_GR"
+        if op_types == ('XR', 'GR'):
+            return "V1R_GR"
+        if op_types == ('XR', 'FR'):
+            return "V1R_FR"
+        if op_types == ('XR', 'XR', 'OTHER'):
+            if any(mnemonic.endswith(s) for s in ('.bu', '.hu', '.wu', '.du')):
+                return "V2RI5"
+            return "V2RI8"
+        if op_types == ('XR', 'GR', 'OTHER'):
+            return "V1R_GR"
+        if op_types == ('XR', 'GR', 'IMM', 'IMM'):
+            if any(mnemonic.endswith(s) for s in ('.bu', '.hu', '.wu', '.du')):
+                return "GR_V2RI5"
+            return "GR_V2RI8"
+
+    # Floating point major opcode 0x03
+    if major == 0x03:
+        if op_types == ('FCC', 'FR', 'FR'):
+            return "F3R_FCC"
+        if op_types == ('XR', 'XR', 'XR'):
+            return "V3R"
+        if op_types == ('XR', 'XR', 'XR', 'XR'):
+            return "V4R"
+        if op_types == ('FR', 'FR', 'FR', 'FCC'):
+            return "F4R_FCC"
+
+    # FMADD major opcode 0x02
+    if major == 0x02:
+        if op_types == ('FR', 'FR', 'FR', 'FR'):
+            return "F4R"
+        if op_types == ('XR', 'XR', 'XR', 'XR'):
+            return "V4R"
+
+    # Load/store major opcodes 0x0A, 0x0B, 0x0C
+    if major in (0x0A, 0x0B, 0x0C):
+        # Floating-point loads/stores
+        if mnemonic in ('fld.s', 'fld.d', 'fst.s', 'fst.d'):
+            return "F_MEM"
+        # Floating-point indexed/conditional loads/stores in 0x0B
+        if mnemonic.startswith(('fldx.', 'fstx.', 'fldgt.', 'fldle.', 'fstgt.', 'fstle.')):
+            return "F2R_MEM"
+        if op_types in (('GR', 'GR', 'IMM'), ('FR', 'GR', 'IMM'), ('XR', 'GR', 'IMM')):
+            return "MEM"
+        if op_types == ('IMM', 'GR', 'IMM'):
+            return "MEM"
+        if op_types == ('XR', 'GR', 'OTHER'):
+            return "MEM"
+        if op_types == ('XR', 'GR', 'IMM', 'IMM'):
+            return "MEM"
+        if op_types == ('XR', 'GR', 'OTHER', 'IMM'):
+            return "MEM"
+
+    # Atomic/Barrier major opcode 0x0E
+    if major == 0x0E:
+        if op_types == ('GR', 'GR', 'GR'):
+            return "3R"
+        if op_types == ('FR', 'GR', 'GR'):
+            return "F2R_MEM"
+        if op_types == ('GR', 'GR'):
+            return "2R"
+        if op_types == ('IMM',):
+            if mnemonic in ('dbar', 'ibar'):
+                return "BARRIER_IMM"
+            return "BARRIER"
+        if op_types == ('FR', 'GR', 'FR'):
+            return "F2R_MEM"
+        if op_types == ('XR', 'GR', 'GR'):
+            return "V2R_MEM"
+
+    # LL/SC major opcode 0x08
+    if major == 0x08:
+        if op_types == ('GR', 'GR', 'IMM'):
+            return "MEM14"
+
+    # Major opcode 0x01 (system/CSR)
+    if major == 0x01:
+        if op_types == ('GR', 'GR'):
+            return "2R_SYS"
+        if op_types == ('GR', 'IMM'):
+            return "1RI20_SYS"
+        if op_types == ('GR', 'GR', 'IMM'):
+            return "3R_SYS"
+        if op_types == ('IMM',):
+            if mnemonic == 'idle':
+                return "BARRIER_IMM"
+            return "BARRIER_SYS"
+        if op_types == ('IMM', 'GR', 'IMM'):
+            return "3R_SYS"
+        if op_types == ('IMM', 'GR', 'GR'):
+            return "3R_SYS"
+
+    # Major opcode 0x05, 0x06, 0x07 (PC-relative)
+    if major in (0x05, 0x06, 0x07):
+        if op_types == ('GR', 'IMM'):
+            return "1RI20"
+
+    # ARM-compatible instructions (immediate is hardcoded to 1)
+    if mnemonic.startswith('arm') or mnemonic == 'setarmj':
+        if op_types == ('GR', 'GR', 'IMM'):
+            if mnemonic == 'armmove':
+                return "ARM_2RI_STD"
+            return "ARM_2RI"
+        if op_types == ('GR', 'IMM', 'IMM'):
+            return "ARM_1RI_2IMM"
+        if op_types == ('GR', 'IMM'):
+            if mnemonic in ('armmfflag', 'armmtflag', 'setarmj'):
+                return "ARM_1RI_STD"
+            return "ARM_1RI"
+        if op_types == ('FR', 'IMM'):
+            return "ARM_1RI_F"
+
+    # Shift/rotate immediate instructions with varying width immediates
+    if op_types == ('GR', 'GR', 'IMM'):
+        if mnemonic in ('slli.w', 'srli.w', 'srai.w', 'addu12i.w', 'addu12i.d'):
+            return "2RI5"
+        if mnemonic in ('slli.d', 'srli.d', 'srai.d'):
+            return "2RI6"
+        if mnemonic in ('rotri.b', 'rcri.b'):
+            return "2RI3"
+        if mnemonic in ('rotri.h', 'rcri.h'):
+            return "2RI4"
+        if mnemonic in ('rotri.w', 'rcri.w'):
+            return "2RI5"
+        if mnemonic in ('rotri.d', 'rcri.d'):
+            return "2RI6"
+
+    # Default classifications
+    if op_types == ('GR', 'GR', 'GR'):
+        return "3R"
+    if op_types == ('GR', 'GR', 'IMM'):
+        return "2RI12"
+    if op_types == ('GR', 'IMM'):
+        return "1RI20"
+    if op_types == ('GR', 'GR'):
+        return "2R"
+    if op_types == ('GR',):
+        return "1R"
+    if op_types == ():
+        return "BARRIER"
+    if op_types == ('IMM',):
+        if mnemonic in ('syscall', 'break'):
+            return "BARRIER_IMM"
+        return "I26"
+    if op_types == ('FCSR', 'GR'):
+        return "MOVGR2FCSR"
+    if op_types == ('GR', 'FCSR'):
+        return "MOVFCSR2GR"
+    if op_types == ('FR', 'GR'):
+        return "FR_GR"
+    if op_types == ('GR', 'FR'):
+        return "GR_FR"
+    if op_types == ('FCC', 'FR'):
+        return "FCC_FR"
+    if op_types == ('FR', 'FCC'):
+        return "FR_FCC"
+    if op_types == ('SCR', 'GR'):
+        return "MOVGR2SCR"
+    if op_types == ('GR', 'SCR'):
+        return "MOVSCR2GR"
+    if op_types == ('FR', 'FR', 'FR'):
+        return "F3R"
+    if op_types == ('FR', 'FR', 'IMM'):
+        return "F2RI8"
+    if op_types == ('FR', 'FR'):
+        return "F2R"
+    if op_types == ('FR',):
+        return "F1R"
+    if op_types == ('GR', 'GR', 'GR', 'IMM'):
+        if mnemonic == 'alsl.w':
+            return "ALS_L"
+        if mnemonic == 'bytepick.w':
+            return "BYTEPICK"
+        return "4R"
+    if op_types == ('GR', 'GR', 'IMM', 'IMM'):
+        if mnemonic in ('bstrins.w', 'bstrins.d'):
+            return "BSTRINS"
+        if mnemonic in ('bstrpick.w', 'bstrpick.d'):
+            return "BSTRPICK"
+        return "2RI12"
+    if op_types == ('GR', 'IMM', 'IMM'):
+        return "2RI12"
+    if op_types == ('GR', 'GR', 'IMM', 'IMM'):
+        return "2RI12"
+    if op_types == ('GR', 'FR'):
+        return "2R"
+    if op_types == ('FR', 'GR'):
+        return "2R"
+    if op_types == ('FCC', 'FR'):
+        return "2R"
+    if op_types == ('FR', 'FCC'):
+        return "2R"
+    if op_types == ('FCC', 'GR'):
+        return "2R"
+    if op_types == ('GR', 'FCC'):
+        return "2R"
+    if op_types == ('SCR', 'GR'):
+        return "2R"
+    if op_types == ('GR', 'SCR'):
+        return "2R"
+
+    return "UNKNOWN"
+
+
+def generate_rust_code(word_to_data: Dict[int, Tuple[str, str, List[str]]]) -> str:
+    """Generate Rust decoder with exact match on instruction word."""
+    lines = []
+    lines.append("// Auto-generated LoongArch decoder")
+    lines.append("// DO NOT EDIT MANUALLY")
+    lines.append("")
+    lines.append("use robustone_core::ir::{Operand, RegisterId, ArchitectureId};")
+    lines.append("use robustone_core::types::error::DisasmError;")
+    lines.append("")
+    lines.append("fn sign_extend(value: u32, bit_width: u8) -> i64 {")
+    lines.append("    let mask = 1u32 << (bit_width - 1);")
+    lines.append("    if value & mask != 0 {")
+    lines.append("        let sign_extended = value | (!((1u32 << bit_width) - 1));")
+    lines.append("        sign_extended as i32 as i64")
+    lines.append("    } else {")
+    lines.append("        value as i64")
+    lines.append("    }")
+    lines.append("}")
+    lines.append("")
+    lines.append("pub fn decode_loongarch_word(word: u32) -> Result<(&'static str, Vec<Operand>, usize), DisasmError> {")
+    lines.append("    match word {")
+
+    for word in sorted(word_to_data.keys()):
+        mnemonic, fmt, operands = word_to_data[word]
+        safe_mnemonic = mnemonic.replace('.', '_').replace('-', '_')
+        lines.append(f"        0x{word:08X} => decode_{safe_mnemonic}(word),")
+
+    lines.append("        _ => Err(DisasmError::DecodeFailure {")
+    lines.append("            architecture: Some(\"loongarch64\".to_string()),")
+    lines.append("            kind: robustone_core::types::error::DecodeErrorKind::InvalidEncoding,")
+    lines.append("            detail: format!(\"unknown instruction word: 0x{:08X}\", word),")
+    lines.append("        }),")
+    lines.append("    }")
+    lines.append("}")
+    lines.append("")
+
+    # Generate per-mnemonic decoder functions
+    generated = set()
+    for word in sorted(word_to_data.keys()):
+        mnemonic, fmt, operands = word_to_data[word]
+        safe_mnemonic = mnemonic.replace('.', '_').replace('-', '_')
+        if safe_mnemonic in generated:
+            continue
+        generated.add(safe_mnemonic)
+
+        lines.append(f"fn decode_{safe_mnemonic}(_word: u32) -> Result<(&'static str, Vec<Operand>, usize), DisasmError> {{")
+        lines.append(f"    Ok((\"{mnemonic}\", extract_{fmt}(_word), 4))")
+        lines.append("}")
+        lines.append("")
+
+    # Generate extraction functions
+    extraction_funcs = {
+        "3R": """fn extract_3R(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    let rk = (word >> 10) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Register { register: RegisterId::loongarch(rk) }]
+}""",
+        "4R": """fn extract_4R(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    let rk = (word >> 10) & 0x1F;
+    let ra = (word >> 15) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Register { register: RegisterId::loongarch(rk) }, Operand::Register { register: RegisterId::loongarch(ra) }]
+}""",
+        "2RI3": """fn extract_2RI3(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    let imm = (word >> 10) & 0x7;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Immediate { value: imm as i64 }]
+}""",
+        "2RI4": """fn extract_2RI4(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    let imm = (word >> 10) & 0xF;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Immediate { value: imm as i64 }]
+}""",
+        "2RI5": """fn extract_2RI5(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    let imm = (word >> 10) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Immediate { value: imm as i64 }]
+}""",
+        "2RI6": """fn extract_2RI6(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    let imm = (word >> 10) & 0x3F;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Immediate { value: imm as i64 }]
+}""",
+        "2RI12": """fn extract_2RI12(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    let imm = sign_extend((word >> 10) & 0xFFF, 12);
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Immediate { value: imm }]
+}""",
+
+
+
+        "2R": """fn extract_2R(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(rj) }]
+}""",
+        "FR_GR": """fn extract_FR_GR(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(rd + 32) }, Operand::Register { register: RegisterId::loongarch(rj) }]
+}""",
+        "GR_FR": """fn extract_GR_FR(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(rj + 32) }]
+}""",
+        "FCC_FR": """fn extract_FCC_FR(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(rd + 96) }, Operand::Register { register: RegisterId::loongarch(rj + 32) }]
+}""",
+        "FR_FCC": """fn extract_FR_FCC(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(rd + 32) }, Operand::Register { register: RegisterId::loongarch(rj + 96) }]
+}""",
+        "MOVGR2FCSR": """fn extract_MOVGR2FCSR(word: u32) -> Vec<Operand> {
+    let fcsr = word & 0x3;
+    let rj = (word >> 5) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(fcsr + 108) }, Operand::Register { register: RegisterId::loongarch(rj) }]
+}""",
+        "MOVFCSR2GR": """fn extract_MOVFCSR2GR(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let fcsr = (word >> 5) & 0x3;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(fcsr + 108) }]
+}""",
+        "MOVGR2SCR": """fn extract_MOVGR2SCR(word: u32) -> Vec<Operand> {
+    let scr = word & 0x3;
+    let rj = (word >> 5) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(scr + 104) }, Operand::Register { register: RegisterId::loongarch(rj) }]
+}""",
+        "MOVSCR2GR": """fn extract_MOVSCR2GR(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let scr = (word >> 5) & 0x3;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(scr + 104) }]
+}""",
+        "1RI20": """fn extract_1RI20(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let imm = sign_extend((word >> 5) & 0xFFFFF, 20);
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Immediate { value: imm }]
+}""",
+
+        "BEQZ": """fn extract_BEQZ(word: u32) -> Vec<Operand> {
+    let rj = (word >> 5) & 0x1F;
+    let imm_raw = ((word & 0x1F) << 16) | ((word >> 10) & 0xFFFF);
+    let imm = sign_extend(imm_raw, 21) << 2;
+    vec![Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Immediate { value: imm }]
+}""",
+        "BCEQZ": """fn extract_BCEQZ(word: u32) -> Vec<Operand> {
+    let cj = (word >> 5) & 0x7;
+    let imm_raw = ((word & 0x1F) << 16) | ((word >> 10) & 0xFFFF);
+    let imm = sign_extend(imm_raw, 21) << 2;
+    vec![Operand::Register { register: RegisterId::loongarch(cj + 96) }, Operand::Immediate { value: imm }]
+}""",
+
+        "1RI21": """fn extract_1RI21(word: u32) -> Vec<Operand> {
+    let rj = (word >> 5) & 0x1F;
+    let imm_raw = ((word & 0x1F) << 16) | ((word >> 10) & 0xFFFF);
+    let imm = sign_extend(imm_raw, 21) << 2;
+    vec![Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Immediate { value: imm }]
+}""",
+
+
+
+        "I26": """fn extract_I26(word: u32) -> Vec<Operand> {
+    let imm_raw = ((word & 0x3FF) << 16) | ((word >> 10) & 0xFFFF);
+    let imm = sign_extend(imm_raw, 26) << 2;
+    vec![Operand::Immediate { value: imm }]
+}""",
+
+
+
+        "I21": """fn extract_I21(word: u32) -> Vec<Operand> {
+    let imm_raw = ((word & 0x1F) << 16) | ((word >> 10) & 0xFFFF);
+    let imm = sign_extend(imm_raw, 21) << 2;
+    vec![Operand::Immediate { value: imm }]
+}""",
+
+
+
+        "B": """fn extract_B(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    let imm = sign_extend((word >> 10) & 0xFFFF, 16) << 2;
+    vec![Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Immediate { value: imm }]
+}""",
+
+
+
+        "JIRL": """fn extract_JIRL(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    let imm = sign_extend((word >> 10) & 0xFFFF, 16) << 2;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Immediate { value: imm }]
+}""",
+
+
+        "BARRIER": """fn extract_BARRIER(_word: u32) -> Vec<Operand> {
+    vec![]
+}""",
+        "BARRIER_IMM": """fn extract_BARRIER_IMM(word: u32) -> Vec<Operand> {
+    let imm = word & 0x7FFF;
+    vec![Operand::Immediate { value: imm as i64 }]
+}""",
+        "BARRIER_SYS": """fn extract_BARRIER_SYS(_word: u32) -> Vec<Operand> {
+    vec![]
+}""",
+        "ARM_2RI": """fn extract_ARM_2RI(word: u32) -> Vec<Operand> {
+    let rd = (word >> 5) & 0x1F;
+    let rj = (word >> 10) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Immediate { value: 1 }]
+}""",
+        "ARM_2RI_STD": """fn extract_ARM_2RI_STD(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Immediate { value: 1 }]
+}""",
+        "ARM_1RI": """fn extract_ARM_1RI(word: u32) -> Vec<Operand> {
+    let rd = (word >> 5) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Immediate { value: 1 }]
+}""",
+        "ARM_1RI_STD": """fn extract_ARM_1RI_STD(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Immediate { value: 1 }]
+}""",
+        "ARM_1RI_F": """fn extract_ARM_1RI_F(word: u32) -> Vec<Operand> {
+    let fd = word & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(fd + 32) }, Operand::Immediate { value: 1 }]
+}""",
+        "ARM_1RI_2IMM": """fn extract_ARM_1RI_2IMM(word: u32) -> Vec<Operand> {
+    let rd = (word >> 5) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Immediate { value: 1 }, Operand::Immediate { value: 1 }]
+}""",
+        "ALS_L": """fn extract_ALS_L(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    let rk = (word >> 10) & 0x1F;
+    let sa2 = ((word >> 15) & 0x3) + 1;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Register { register: RegisterId::loongarch(rk) }, Operand::Immediate { value: sa2 as i64 }]
+}""",
+        "BYTEPICK": """fn extract_BYTEPICK(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    let rk = (word >> 10) & 0x1F;
+    let sa2 = (word >> 15) & 0x3;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Register { register: RegisterId::loongarch(rk) }, Operand::Immediate { value: sa2 as i64 }]
+}""",
+        "BSTRINS": """fn extract_BSTRINS(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    let lsbw = (word >> 10) & 0x1F;
+    let msbw = (word >> 16) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Immediate { value: msbw as i64 }, Operand::Immediate { value: lsbw as i64 }]
+}""",
+        "BSTRPICK": """fn extract_BSTRPICK(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    let lsbw = (word >> 10) & 0x1F;
+    let msbw = (word >> 16) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Immediate { value: msbw as i64 }, Operand::Immediate { value: lsbw as i64 }]
+}""",
+
+
+        "1R": """fn extract_1R(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }]
+}""",
+        "F3R": """fn extract_F3R(word: u32) -> Vec<Operand> {
+    let fd = word & 0x1F;
+    let fj = (word >> 5) & 0x1F;
+    let fk = (word >> 10) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(fd + 32) }, Operand::Register { register: RegisterId::loongarch(fj + 32) }, Operand::Register { register: RegisterId::loongarch(fk + 32) }]
+}""",
+        "F3R_FCC": """fn extract_F3R_FCC(word: u32) -> Vec<Operand> {
+    let fd = word & 0x1F;
+    let fj = (word >> 5) & 0x1F;
+    let fk = (word >> 10) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(fd + 96) }, Operand::Register { register: RegisterId::loongarch(fj + 32) }, Operand::Register { register: RegisterId::loongarch(fk + 32) }]
+}""",
+        "F2RI8": """fn extract_F2RI8(word: u32) -> Vec<Operand> {
+    let fd = word & 0x1F;
+    let fj = (word >> 5) & 0x1F;
+    let imm = ((word >> 10) & 0xFF) as u8;
+    vec![Operand::Register { register: RegisterId::loongarch(fd + 32) }, Operand::Register { register: RegisterId::loongarch(fj + 32) }, Operand::Immediate { value: imm as i64 }]
+}""",
+        "F2R": """fn extract_F2R(word: u32) -> Vec<Operand> {
+    let fd = word & 0x1F;
+    let fj = (word >> 5) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(fd + 32) }, Operand::Register { register: RegisterId::loongarch(fj + 32) }]
+}""",
+        "F1R": """fn extract_F1R(word: u32) -> Vec<Operand> {
+    let fd = word & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(fd + 32) }]
+}""",
+        "F2R_MEM": """fn extract_F2R_MEM(word: u32) -> Vec<Operand> {
+    let fd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    let rk = (word >> 10) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(fd + 32) }, Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Register { register: RegisterId::loongarch(rk) }]
+}""",
+        "F4R": """fn extract_F4R(word: u32) -> Vec<Operand> {
+    let fd = word & 0x1F;
+    let fj = (word >> 5) & 0x1F;
+    let fk = (word >> 10) & 0x1F;
+    let fa = (word >> 15) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(fd + 32) }, Operand::Register { register: RegisterId::loongarch(fj + 32) }, Operand::Register { register: RegisterId::loongarch(fk + 32) }, Operand::Register { register: RegisterId::loongarch(fa + 32) }]
+}""",
+        "F4R_FCC": """fn extract_F4R_FCC(word: u32) -> Vec<Operand> {
+    let fd = word & 0x1F;
+    let fj = (word >> 5) & 0x1F;
+    let fk = (word >> 10) & 0x1F;
+    let fa = (word >> 15) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(fd + 32) }, Operand::Register { register: RegisterId::loongarch(fj + 32) }, Operand::Register { register: RegisterId::loongarch(fk + 32) }, Operand::Register { register: RegisterId::loongarch(fa + 96) }]
+}""",
+        "V3R": """fn extract_V3R(word: u32) -> Vec<Operand> {
+    let xd = word & 0x1F;
+    let xj = (word >> 5) & 0x1F;
+    let xk = (word >> 10) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(xd + 64) }, Operand::Register { register: RegisterId::loongarch(xj + 64) }, Operand::Register { register: RegisterId::loongarch(xk + 64) }]
+}""",
+        "V4R": """fn extract_V4R(word: u32) -> Vec<Operand> {
+    let xd = word & 0x1F;
+    let xj = (word >> 5) & 0x1F;
+    let xk = (word >> 10) & 0x1F;
+    let xa = (word >> 15) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(xd + 64) }, Operand::Register { register: RegisterId::loongarch(xj + 64) }, Operand::Register { register: RegisterId::loongarch(xk + 64) }, Operand::Register { register: RegisterId::loongarch(xa + 64) }]
+}""",
+        "V2RI3": """fn extract_V2RI3(word: u32) -> Vec<Operand> {
+    let xd = word & 0x1F;
+    let xj = (word >> 5) & 0x1F;
+    let imm = (word >> 10) & 0x7;
+    vec![Operand::Register { register: RegisterId::loongarch(xd + 64) }, Operand::Register { register: RegisterId::loongarch(xj + 64) }, Operand::Immediate { value: imm as i64 }]
+}""",
+        "V2RI4": """fn extract_V2RI4(word: u32) -> Vec<Operand> {
+    let xd = word & 0x1F;
+    let xj = (word >> 5) & 0x1F;
+    let imm = (word >> 10) & 0xF;
+    vec![Operand::Register { register: RegisterId::loongarch(xd + 64) }, Operand::Register { register: RegisterId::loongarch(xj + 64) }, Operand::Immediate { value: imm as i64 }]
+}""",
+        "V2RI5": """fn extract_V2RI5(word: u32) -> Vec<Operand> {
+    let xd = word & 0x1F;
+    let xj = (word >> 5) & 0x1F;
+    let imm = (word >> 10) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(xd + 64) }, Operand::Register { register: RegisterId::loongarch(xj + 64) }, Operand::Immediate { value: imm as i64 }]
+}""",
+        "V2RI6": """fn extract_V2RI6(word: u32) -> Vec<Operand> {
+    let xd = word & 0x1F;
+    let xj = (word >> 5) & 0x1F;
+    let imm = (word >> 10) & 0x3F;
+    vec![Operand::Register { register: RegisterId::loongarch(xd + 64) }, Operand::Register { register: RegisterId::loongarch(xj + 64) }, Operand::Immediate { value: imm as i64 }]
+}""",
+        "V2RI8": """fn extract_V2RI8(word: u32) -> Vec<Operand> {
+    let xd = word & 0x1F;
+    let xj = (word >> 5) & 0x1F;
+    let imm = ((word >> 10) & 0xFF) as u8;
+    vec![Operand::Register { register: RegisterId::loongarch(xd + 64) }, Operand::Register { register: RegisterId::loongarch(xj + 64) }, Operand::Immediate { value: imm as i64 }]
+}""",
+
+        "V2RI5": """fn extract_V2RI5(word: u32) -> Vec<Operand> {
+    let xd = word & 0x1F;
+    let xj = (word >> 5) & 0x1F;
+    let imm = (word >> 10) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(xd + 64) }, Operand::Register { register: RegisterId::loongarch(xj + 64) }, Operand::Immediate { value: imm as i64 }]
+}""",
+
+        "V2R": """fn extract_V2R(word: u32) -> Vec<Operand> {
+    let xd = word & 0x1F;
+    let xj = (word >> 5) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(xd + 64) }, Operand::Register { register: RegisterId::loongarch(xj + 64) }]
+}""",
+        "V1R": """fn extract_V1R(word: u32) -> Vec<Operand> {
+    let xd = word & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(xd + 64) }]
+}""",
+        "FCC_V1R": """fn extract_FCC_V1R(word: u32) -> Vec<Operand> {
+    let xd = word & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(xd + 96) }]
+}""",
+        "GR_V2RI8": """fn extract_GR_V2RI8(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let xj = (word >> 5) & 0x1F;
+    let imm = ((word >> 10) & 0xFF) as u8;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(xj + 64) }, Operand::Immediate { value: imm as i64 }]
+}""",
+        "GR_V2RI5": """fn extract_GR_V2RI5(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let xj = (word >> 5) & 0x1F;
+    let imm = (word >> 10) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(xj + 64) }, Operand::Immediate { value: imm as i64 }]
+}""",
+
+        "V2R_GR": """fn extract_V2R_GR(word: u32) -> Vec<Operand> {
+    let xd = word & 0x1F;
+    let xj = (word >> 5) & 0x1F;
+    let rd = (word >> 10) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(xd + 64) }, Operand::Register { register: RegisterId::loongarch(xj + 64) }, Operand::Register { register: RegisterId::loongarch(rd) }]
+}""",
+        "V1R_GR": """fn extract_V1R_GR(word: u32) -> Vec<Operand> {
+    let xd = word & 0x1F;
+    let rd = (word >> 5) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(xd + 64) }, Operand::Register { register: RegisterId::loongarch(rd) }]
+}""",
+        "V1R_FR": """fn extract_V1R_FR(word: u32) -> Vec<Operand> {
+    let xd = word & 0x1F;
+    let fd = (word >> 5) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(xd + 64) }, Operand::Register { register: RegisterId::loongarch(fd + 32) }]
+}""",
+        "MEM": """fn extract_MEM(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    let imm = sign_extend((word >> 10) & 0xFFF, 12);
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Immediate { value: imm }]
+}""",
+        "F_MEM": """fn extract_F_MEM(word: u32) -> Vec<Operand> {
+    let fd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    let imm = sign_extend((word >> 10) & 0xFFF, 12);
+    vec![Operand::Register { register: RegisterId::loongarch(fd + 32) }, Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Immediate { value: imm }]
+}""",
+        "MEM14": """fn extract_MEM14(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    let imm = sign_extend((word >> 10) & 0x3FFF, 14) << 2;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Immediate { value: imm }]
+}""",
+
+
+        "2R_SYS": """fn extract_2R_SYS(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(rj) }]
+}""",
+        "1RI20_SYS": """fn extract_1RI20_SYS(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let imm = sign_extend((word >> 5) & 0xFFFFF, 20);
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Immediate { value: imm }]
+}""",
+
+        "3R_SYS": """fn extract_3R_SYS(word: u32) -> Vec<Operand> {
+    let rd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    let imm = (word >> 10) & 0x7FFF;
+    vec![Operand::Register { register: RegisterId::loongarch(rd) }, Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Immediate { value: imm as i64 }]
+}""",
+        "V2R_MEM": """fn extract_V2R_MEM(word: u32) -> Vec<Operand> {
+    let xd = word & 0x1F;
+    let rj = (word >> 5) & 0x1F;
+    let rk = (word >> 10) & 0x1F;
+    vec![Operand::Register { register: RegisterId::loongarch(xd + 64) }, Operand::Register { register: RegisterId::loongarch(rj) }, Operand::Register { register: RegisterId::loongarch(rk) }]
+}""",
+    }
+
+    used_fmts = set()
+    for word in word_to_data:
+        mnemonic, fmt, operands = word_to_data[word]
+        used_fmts.add(fmt)
+
+    for fmt in sorted(used_fmts):
+        if fmt in extraction_funcs:
+            lines.append(extraction_funcs[fmt])
+            lines.append("")
+        elif fmt == "UNKNOWN":
+            lines.append("""fn extract_UNKNOWN(_word: u32) -> Vec<Operand> {
+    vec![]
+}""")
+            lines.append("")
+        else:
+            lines.append(f"""fn extract_{fmt}(word: u32) -> Vec<Operand> {{
+    // TODO: implement {fmt} extraction
+    vec![]
+}}""")
+            lines.append("")
+
+    return "\n".join(lines)
+
+
+def generate_decoder():
+    yaml_dir = Path('third_party/capstone/tests/MC/LoongArch')
+    word_to_data: Dict[int, Tuple[str, str, List[str]]] = {}
+
+    for yaml_file in sorted(yaml_dir.rglob('*.yaml')):
+        try:
+            with yaml_file.open('r', encoding='utf-8') as fh:
+                data = yaml.safe_load(fh)
+        except yaml.YAMLError:
+            continue
+        if not isinstance(data, dict):
+            continue
+        for test_case in data.get('test_cases', []):
+            inp = test_case.get('input', {})
+            expected = test_case.get('expected', {})
+            insns = expected.get('insns', [])
+            if not insns:
+                continue
+            byte_list = inp.get('bytes', [])
+            if len(byte_list) != 4:
+                continue
+            word = int.from_bytes(byte_list, byteorder='little')
+            asm_text = insns[0].get('asm_text', '')
+            mnemonic, operands = parse_operands(asm_text)
+            op_types = tuple(operand_type(op) for op in operands)
+            fmt = classify_instruction(mnemonic, op_types, word)
+
+            if word in word_to_data:
+                existing = word_to_data[word]
+                if existing[0] != mnemonic:
+                    print(f"WARNING: word 0x{word:08X} maps to both {existing[0]} and {mnemonic}")
+            else:
+                word_to_data[word] = (mnemonic, fmt, operands)
+
+    print(f"Total unique words: {len(word_to_data)}")
+
+    rust_code = generate_rust_code(word_to_data)
+
+    output_path = Path('robustone-loongarch/src/decoder_generated.rs')
+    output_path.write_text(rust_code)
+    print(f"Generated {output_path}")
+
+
+if __name__ == "__main__":
+    generate_decoder()
