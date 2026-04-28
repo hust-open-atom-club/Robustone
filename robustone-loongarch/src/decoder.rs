@@ -7,10 +7,12 @@ use robustone_core::{
     types::error::{DecodeErrorKind, DisasmError},
 };
 
-use crate::extensions::create_families;
+use crate::extensions::{InstructionFamily, create_families};
 
 /// LoongArch decoder.
-pub struct LoongArchDecoder;
+pub struct LoongArchDecoder {
+    families: Vec<Box<dyn InstructionFamily>>,
+}
 
 impl Default for LoongArchDecoder {
     fn default() -> Self {
@@ -20,7 +22,9 @@ impl Default for LoongArchDecoder {
 
 impl LoongArchDecoder {
     pub fn new() -> Self {
-        Self
+        Self {
+            families: create_families(),
+        }
     }
 
     pub fn decode(
@@ -38,12 +42,10 @@ impl LoongArchDecoder {
         }
 
         let word = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
-        let families = create_families();
-        for family in &families {
+        for family in &self.families {
             if let Some(result) = family.try_decode(word, addr) {
                 let mut decoded = result?;
                 decoded.raw_bytes = bytes[..decoded.size].to_vec();
-                decoded.render = Some(crate::render::render_loongarch_text_parts);
                 return Ok(decoded);
             }
         }
