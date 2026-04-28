@@ -8,6 +8,16 @@ use robustone_core::ir::{DecodedInstruction, Operand, TextRenderProfile};
 
 use crate::shared::registers::RegisterManager;
 
+/// Helper: format a raw register id with or without ABI aliases.
+fn format_register(id: u32, alias_regs: bool) -> String {
+    let mgr = RegisterManager::instance();
+    if alias_regs {
+        mgr.format_raw_id(id).to_string()
+    } else {
+        mgr.format_raw_id_unaliased(id).to_string()
+    }
+}
+
 /// Branch instructions that Capstone renders as absolute addresses.
 const BRANCH_MNEMONICS: &[&str] = &[
     "b", "bl", "beq", "bne", "blt", "bge", "bltu", "bgeu", "beqz", "bnez", "bceqz", "bcnez",
@@ -150,17 +160,7 @@ fn format_loongarch_operand(
     imm_mask: u64,
 ) -> String {
     match operand {
-        Operand::Register { register } => {
-            if alias_regs {
-                RegisterManager::instance()
-                    .format_raw_id(register.id)
-                    .to_string()
-            } else {
-                RegisterManager::instance()
-                    .format_raw_id_unaliased(register.id)
-                    .to_string()
-            }
-        }
+        Operand::Register { register } => format_register(register.id, alias_regs),
         Operand::Immediate { value } => {
             format_loongarch_immediate(*value, unsigned_immediate, imm_mask)
         }
@@ -168,18 +168,11 @@ fn format_loongarch_operand(
         Operand::Memory {
             base: Some(base),
             displacement,
-        } => {
-            let base_name = if alias_regs {
-                RegisterManager::instance().format_raw_id(base.id)
-            } else {
-                RegisterManager::instance().format_raw_id_unaliased(base.id)
-            };
-            format!(
-                "{}({})",
-                format_loongarch_immediate(*displacement, unsigned_immediate, imm_mask),
-                base_name
-            )
-        }
+        } => format!(
+            "{}({})",
+            format_loongarch_immediate(*displacement, unsigned_immediate, imm_mask),
+            format_register(base.id, alias_regs)
+        ),
         Operand::Memory {
             base: None,
             displacement,
