@@ -1,0 +1,16 @@
+[package]
+name = "robustone-capstone-compat"
+version = "0.1.0"
+edition = "2024"
+authors = ["The Robustone Authors"]
+license = "BSD-3-Clause"
+repository = "https://github.com/robustone/robustone"
+
+[dependencies]
+robustone-core = { path = "../robustone-core" }
+robustone-loongarch = { path = "../robustone-loongarch" }
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+
+[dev-dependencies]
+walkdir = "2.5"
