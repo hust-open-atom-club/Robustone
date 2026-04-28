@@ -19,13 +19,14 @@ fn support_matrix_tracks_architecture_capabilities() {
         .iter()
         .map(|capability| {
             format!(
-                "| `{}` | `{}` | {} | {} | {} | {} |",
+                "| `{}` | `{}` | {} | {} | {} | {} | {} |",
                 capability.canonical_name,
                 capability.category,
                 yes_no(capability.parse_supported),
                 yes_no(capability.decode_supported),
                 yes_no(capability.detail_supported),
                 yes_no(capability.json_supported),
+                capability.stability.as_str(),
             )
         })
         .collect();

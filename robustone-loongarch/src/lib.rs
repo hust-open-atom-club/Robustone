@@ -159,7 +159,7 @@ impl ArchitectureHandler for LoongArchHandler {
     }
 
     fn supports(&self, arch_name: &str) -> bool {
-        matches!(arch_name, "loongarch" | "loongarch64" | "loongarch32")
+        matches!(arch_name, "loongarch" | "loongarch64")
     }
 }
 
@@ -173,7 +173,7 @@ mod tests {
         let handler = LoongArchHandler::new();
         assert_eq!(handler.name(), "loongarch");
         assert!(handler.supports("loongarch64"));
-        assert!(handler.supports("loongarch32"));
+        assert!(!handler.supports("loongarch32"));
         assert!(!handler.supports("riscv64"));
     }
 

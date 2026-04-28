@@ -90,7 +90,7 @@ impl ArchitectureHandler for ArmHandler {
     }
 
     fn supports(&self, arch_name: &str) -> bool {
-        matches!(arch_name, "arm" | "aarch64" | "arm64" | "aarch64be")
+        matches!(arch_name, "arm" | "aarch64" | "arm64")
     }
 }
 
