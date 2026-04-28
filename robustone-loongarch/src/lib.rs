@@ -10,7 +10,7 @@ pub mod render;
 pub mod shared;
 pub mod types;
 
-mod decoder_generated;
+mod patterns;
 
 pub mod architecture {
     pub use robustone_core::architecture::*;

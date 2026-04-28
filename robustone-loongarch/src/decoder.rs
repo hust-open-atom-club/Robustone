@@ -1,18 +1,14 @@
 //! LoongArch LA64 decoder for Robustone.
 //!
-//! Delegates to instruction families defined in `extensions/`.
+//! Uses a spec-driven mask/value pattern table derived from Capstone decoder trees.
 
 use robustone_core::{
-    ir::DecodedInstruction,
+    ir::{ArchitectureId, DecodedInstruction, Operand},
     types::error::{DecodeErrorKind, DisasmError},
 };
 
-use crate::extensions::{InstructionFamily, create_families};
-
 /// LoongArch decoder.
-pub struct LoongArchDecoder {
-    families: Vec<Box<dyn InstructionFamily>>,
-}
+pub struct LoongArchDecoder;
 
 impl Default for LoongArchDecoder {
     fn default() -> Self {
@@ -22,9 +18,7 @@ impl Default for LoongArchDecoder {
 
 impl LoongArchDecoder {
     pub fn new() -> Self {
-        Self {
-            families: create_families(),
-        }
+        Self
     }
 
     pub fn decode(
@@ -42,18 +36,50 @@ impl LoongArchDecoder {
         }
 
         let word = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
-        for family in &self.families {
-            if let Some(result) = family.try_decode(word, addr) {
-                let mut decoded = result?;
+        match crate::patterns::try_decode_from_patterns(word, addr) {
+            Some(Ok(mut decoded)) => {
                 decoded.raw_bytes = bytes[..decoded.size].to_vec();
-                return Ok(decoded);
-            }
-        }
 
-        Err(DisasmError::DecodeFailure {
-            kind: DecodeErrorKind::InvalidEncoding,
-            architecture: Some("loongarch64".to_string()),
-            detail: format!("unrecognized LoongArch encoding 0x{word:08x}"),
-        })
+                // Capstone aliases: treat certain instruction+operand combos
+                // as pseudo-instructions.
+                match decoded.mnemonic.as_str() {
+                    "andi" if decoded.operands.len() == 3 => {
+                        if let (
+                            Operand::Register { register: rd },
+                            Operand::Register { register: rj },
+                            Operand::Immediate { value: 0 },
+                        ) = (
+                            &decoded.operands[0],
+                            &decoded.operands[1],
+                            &decoded.operands[2],
+                        ) && rd.architecture == ArchitectureId::LoongArch
+                            && rd.id == 0
+                            && rj.id == 0
+                        {
+                            decoded.mnemonic = "nop".to_string();
+                            decoded.operands.clear();
+                        }
+                    }
+                    "or" if decoded.operands.len() == 3 => {
+                        if let Operand::Register { register: rk } = &decoded.operands[2]
+                            && rk.architecture == ArchitectureId::LoongArch
+                            && rk.id == 0
+                        {
+                            decoded.mnemonic = "move".to_string();
+                            decoded.operands.pop();
+                        }
+                    }
+                    _ => {}
+                }
+
+                Ok(decoded)
+            }
+            Some(Err(e)) => Err(e),
+            None => Err(DisasmError::DecodeFailure {
+                kind: DecodeErrorKind::InvalidEncoding,
+                architecture: Some("loongarch64".to_string()),
+                detail: format!("unrecognized LoongArch encoding 0x{word:08x}"),
+            }),
+        }
     }
 }
