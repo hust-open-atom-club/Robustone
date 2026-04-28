@@ -1,0 +1,11 @@
+[package]
+name = "robustone-isa"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+robustone-core = { path = "../robustone-core" }
+bitflags = "2"
+
+[dev-dependencies]
+robustone-core = { path = "../robustone-core" }
