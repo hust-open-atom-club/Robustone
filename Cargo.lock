@@ -758,6 +758,16 @@ version = "0.1.0"
 dependencies = [
  "bitflags",
  "robustone-core",
+ "robustone-isa-macros",
+]
+
+[[package]]
+name = "robustone-isa-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

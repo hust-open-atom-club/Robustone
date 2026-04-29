@@ -5,6 +5,7 @@ members = [
     "robustone-cli",
     "robustone-core",
     "robustone-isa",
+    "robustone-isa-macros",
     "robustone-loongarch",
     "robustone-riscv",
     "robustone-arm",

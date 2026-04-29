@@ -9,6 +9,46 @@ use robustone_core::ir::{ArchitectureId, DecodedInstruction, Operand, RegisterId
 use robustone_core::types::error::{DecodeErrorKind, DisasmError};
 
 // ============================================================================
+// Generic decoder type
+// ============================================================================
+
+/// Architecture-specific decoder produced by the shared framework.
+///
+/// Architecture crates re-export this as their public decoder type:
+/// ```ignore
+/// pub type LoongArchDecoder = robustone_isa::Decoder<LoongArchBackend>;
+/// ```
+#[derive(Debug, Clone, Copy)]
+pub struct Decoder<B: ArchitectureBackend> {
+    _phantom: core::marker::PhantomData<B>,
+}
+
+impl<B: ArchitectureBackend> Decoder<B> {
+    /// Create a new decoder instance.
+    pub const fn new() -> Self {
+        Self {
+            _phantom: core::marker::PhantomData,
+        }
+    }
+
+    /// Decode a single instruction.
+    pub fn decode(
+        &self,
+        bytes: &[u8],
+        addr: u64,
+        profile: &DecodeProfile<B>,
+    ) -> Result<DecodedInstruction, DisasmError> {
+        decode_one::<B>(bytes, addr, profile)
+    }
+}
+
+impl<B: ArchitectureBackend> Default for Decoder<B> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// ============================================================================
 // Core trait
 // ============================================================================
 

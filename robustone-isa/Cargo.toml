@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 robustone-core = { path = "../robustone-core" }
+robustone-isa-macros = { path = "../robustone-isa-macros" }
 bitflags = "2"
 
 [dev-dependencies]
