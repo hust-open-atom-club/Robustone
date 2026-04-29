@@ -199,10 +199,53 @@ fn walk_dir(dir: &Path) -> Vec<fs::DirEntry> {
 
 fn check_spec(args: &[String]) -> ExitCode {
     if args.contains(&"--all".to_string()) {
-        println!(
-            "check-spec --all: placeholder – full overlap/opcode uniqueness checks not yet implemented"
-        );
-        ExitCode::SUCCESS
+        let arch_crates = [
+            "robustone-loongarch",
+            "robustone-riscv",
+            "robustone-arm",
+            "robustone-x86",
+        ];
+        let mut failed = false;
+        for crate_name in &arch_crates {
+            let test_name = "test_specs_full_validation";
+            let output = std::process::Command::new("cargo")
+                .args([
+                    "test",
+                    "-p",
+                    crate_name,
+                    "--test",
+                    "spec_validation",
+                    test_name,
+                ])
+                .output();
+            match output {
+                Ok(out) if out.status.success() => {
+                    println!("check-spec: {} OK", crate_name);
+                }
+                Ok(out) => {
+                    let stderr = String::from_utf8_lossy(&out.stderr);
+                    if stderr.contains("no test target named") {
+                        println!(
+                            "check-spec: {} SKIPPED (no spec_validation test)",
+                            crate_name
+                        );
+                    } else {
+                        eprintln!("check-spec: {} FAILED\n{}", crate_name, stderr);
+                        failed = true;
+                    }
+                }
+                Err(e) => {
+                    eprintln!("check-spec: {} error: {}", crate_name, e);
+                    failed = true;
+                }
+            }
+        }
+        if failed {
+            ExitCode::FAILURE
+        } else {
+            println!("check-spec --all: OK");
+            ExitCode::SUCCESS
+        }
     } else {
         eprintln!("Usage: cargo xtask check-spec --all");
         ExitCode::FAILURE

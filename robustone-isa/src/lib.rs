@@ -561,6 +561,41 @@ pub fn validate_no_overlaps<B: ArchitectureBackend>(
     Ok(())
 }
 
+/// Validate a spec table for overlap, opcode_id uniqueness, and manual_ref presence.
+pub fn check_spec_table<B: ArchitectureBackend>(
+    specs: &[InstructionSpec<B>],
+) -> Result<(), String> {
+    // 1. Check for overlaps
+    validate_no_overlaps(specs)?;
+
+    // 2. Check opcode_id uniqueness
+    let mut seen = std::collections::HashMap::new();
+    for spec in specs {
+        if let Some(prev) = seen.insert(spec.opcode_id, spec.mnemonic) {
+            return Err(format!(
+                "duplicate opcode_id '{}' used by '{}' and '{}'",
+                spec.opcode_id, prev, spec.mnemonic
+            ));
+        }
+    }
+
+    // 3. Check manual_ref presence (report count, not fail)
+    let missing_manual: Vec<_> = specs
+        .iter()
+        .filter(|s| s.manual_ref.is_none())
+        .map(|s| s.mnemonic)
+        .collect();
+    if !missing_manual.is_empty() {
+        eprintln!(
+            "check-spec warning: {} specs missing manual_ref: {:?}",
+            missing_manual.len(),
+            missing_manual
+        );
+    }
+
+    Ok(())
+}
+
 // ============================================================================
 // Declarative spec macros
 // ============================================================================
