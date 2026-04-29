@@ -160,6 +160,16 @@ robustone_isa::format_specs! {
         rj: field("rj", 5, 5, LoongArchField::Rj),
         ui6: field("ui6", 10, 6, LoongArchField::Ui6),
     }
+    format FMT_R2I3[LoongArchField] {
+        rd: field("rd", 0, 5, LoongArchField::Rd),
+        rj: field("rj", 5, 5, LoongArchField::Rj),
+        ui3: field("ui3", 10, 3, LoongArchField::Ui5),
+    }
+    format FMT_R2I4[LoongArchField] {
+        rd: field("rd", 0, 5, LoongArchField::Rd),
+        rj: field("rj", 5, 5, LoongArchField::Rj),
+        ui4: field("ui4", 10, 4, LoongArchField::Ui5),
+    }
     format FMT_1RI20[LoongArchField] {
         rd: field("rd", 0, 5, LoongArchField::Rd),
         si20: field("si20", 5, 20, LoongArchField::Si20),
@@ -347,6 +357,111 @@ shift_imm5_insn!(SRLI_W, "srli.w", "SRLI_W", 0xFFFF_8000, 0x0044_8000);
 shift_imm6_insn!(SRLI_D, "srli.d", "SRLI_D", 0xFFFF_0000, 0x0045_0000);
 shift_imm5_insn!(SRAI_W, "srai.w", "SRAI_W", 0xFFFF_8000, 0x0048_8000);
 shift_imm6_insn!(SRAI_D, "srai.d", "SRAI_D", 0xFFFF_0000, 0x0049_0000);
+
+// Rotate immediate (R2I3 / R2I4 / R2I5 / R2I6)
+macro_rules! rot_imm_insn {
+    ($name:ident, $mnemonic:expr, $opcode_id:expr, $mask:expr, $value:expr, $format:expr, $field:expr) => {
+        loongarch_insn!(
+            $name,
+            $mnemonic,
+            $opcode_id,
+            $mask,
+            $value,
+            $format,
+            &[
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rd,
+                    Access::Write
+                ),
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rj,
+                    Access::Read
+                ),
+                robustone_isa::imm!(
+                    $field,
+                    ImmediateTransform::ZeroExtend { bits: 6 },
+                    ImmediateKind::Unsigned
+                ),
+            ],
+            &[InstructionGroup::Integer, InstructionGroup::Shift]
+        );
+    };
+}
+
+rot_imm_insn!(
+    ROTRI_B,
+    "rotri.b",
+    "ROTRI_B",
+    0xFFFF_E000,
+    0x004C_2000,
+    &FMT_R2I3,
+    LoongArchField::Ui5
+);
+rot_imm_insn!(
+    ROTRI_H,
+    "rotri.h",
+    "ROTRI_H",
+    0xFFFF_C000,
+    0x004C_4000,
+    &FMT_R2I4,
+    LoongArchField::Ui5
+);
+rot_imm_insn!(
+    ROTRI_W,
+    "rotri.w",
+    "ROTRI_W",
+    0xFFFF_8000,
+    0x004C_8000,
+    &FMT_R2I5,
+    LoongArchField::Ui5
+);
+rot_imm_insn!(
+    ROTRI_D,
+    "rotri.d",
+    "ROTRI_D",
+    0xFFFF_0000,
+    0x004D_0000,
+    &FMT_R2I6,
+    LoongArchField::Ui6
+);
+rot_imm_insn!(
+    RCRI_B,
+    "rcri.b",
+    "RCRI_B",
+    0xFFFF_E000,
+    0x0050_2000,
+    &FMT_R2I3,
+    LoongArchField::Ui5
+);
+rot_imm_insn!(
+    RCRI_H,
+    "rcri.h",
+    "RCRI_H",
+    0xFFFF_C000,
+    0x0050_4000,
+    &FMT_R2I4,
+    LoongArchField::Ui5
+);
+rot_imm_insn!(
+    RCRI_W,
+    "rcri.w",
+    "RCRI_W",
+    0xFFFF_8000,
+    0x0050_8000,
+    &FMT_R2I5,
+    LoongArchField::Ui5
+);
+rot_imm_insn!(
+    RCRI_D,
+    "rcri.d",
+    "RCRI_D",
+    0xFFFF_0000,
+    0x0051_0000,
+    &FMT_R2I6,
+    LoongArchField::Ui6
+);
 
 // ALU instructions (R3)
 r3_insn!(ADD_W, "add.w", "ADD_W", 0xFFFF_8000, 0x0010_0000);
@@ -1106,7 +1221,8 @@ pub static LOONGARCH_BASE_SPECS: &[InstructionSpec<LoongArchBackend>] = &[
     ALSL_W, ALSL_WU, ALSL_D, BYTEPICK_W, BYTEPICK_D, MUL_W, MULH_W, MULH_WU, MUL_D, MULH_D,
     MULH_DU, MULW_D_W, MULW_D_WU, DIV_W, MOD_W, DIV_WU, MOD_WU, DIV_D, MOD_D, DIV_DU,
     MOD_DU, // Shift immediate
-    SLLI_W, SLLI_D, SRLI_W, SRLI_D, SRAI_W, SRAI_D, // Shift (R3)
+    SLLI_W, SLLI_D, SRLI_W, SRLI_D, SRAI_W, SRAI_D, ROTRI_B, ROTRI_H, ROTRI_W, ROTRI_D, RCRI_B,
+    RCRI_H, RCRI_W, RCRI_D, // Shift (R3)
     SLL_W, SRL_W, SRA_W, SLL_D, SRL_D, SRA_D, ROTR_B, ROTR_H, ROTR_W, ROTR_D, ADC_B, ADC_H, ADC_W,
     ADC_D, SBC_B, SBC_H, SBC_W, SBC_D, RCR_B, RCR_H, RCR_W, RCR_D, // Immediate ALU
     ADDI_W, ADDI_D, ADDU16I_D, SLTI, SLTUI, ANDI, ORI, XORI, ADDU12I_W,
