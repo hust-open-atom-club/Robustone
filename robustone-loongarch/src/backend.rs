@@ -126,6 +126,16 @@ robustone_isa::format_specs! {
     format FMT_R1[LoongArchField] {
         rd: field("rd", 0, 5, LoongArchField::Rd),
     }
+    format FMT_BJ[LoongArchField] {
+        si16: field("si16", 10, 16, LoongArchField::Si16),
+    }
+    format FMT_R1I16_BJ[LoongArchField] {
+        rj: field("rj", 5, 5, LoongArchField::Rj),
+        si16: field("si16", 10, 16, LoongArchField::Si16),
+    }
+    format FMT_I15[LoongArchField] {
+        code: field("code", 0, 15, LoongArchField::Code),
+    }
 }
 
 // ============================================================================
@@ -133,7 +143,7 @@ robustone_isa::format_specs! {
 // ============================================================================
 
 macro_rules! loongarch_insn {
-    ($name:ident, $mnemonic:expr, $opcode_id:expr, $mask:expr, $value:expr, $fmt:expr, $operands:expr) => {
+    ($name:ident, $mnemonic:expr, $opcode_id:expr, $mask:expr, $value:expr, $fmt:expr, $operands:expr, $groups:expr) => {
         robustone_isa::isa_specs! {
             backend = LoongArchBackend;
             spec $name {
@@ -144,7 +154,7 @@ macro_rules! loongarch_insn {
                 operands = $operands;
                 features = LoongArchFeature::BASE;
                 modes = ModeSet::All;
-                groups = &[InstructionGroup::Integer, InstructionGroup::Arithmetic];
+                groups = $groups;
             }
         }
     };
@@ -175,7 +185,8 @@ macro_rules! r3_insn {
                     LoongArchField::Rk,
                     Access::Read
                 ),
-            ]
+            ],
+            &[InstructionGroup::Integer, InstructionGroup::Arithmetic]
         );
     };
 }
@@ -205,11 +216,21 @@ macro_rules! r2i12_insn {
                     ImmediateTransform::SignExtend { bits: 12 },
                     ImmediateKind::Absolute
                 ),
-            ]
+            ],
+            &[InstructionGroup::Integer, InstructionGroup::Arithmetic]
         );
     };
 }
 
+// Shift instructions (R3)
+r3_insn!(SLL_W, "sll.w", "SLL_W", 0xFFFF_8000, 0x0017_0000);
+r3_insn!(SRL_W, "srl.w", "SRL_W", 0xFFFF_8000, 0x0017_8000);
+r3_insn!(SRA_W, "sra.w", "SRA_W", 0xFFFF_8000, 0x0018_0000);
+r3_insn!(SLL_D, "sll.d", "SLL_D", 0xFFFF_8000, 0x0018_8000);
+r3_insn!(SRL_D, "srl.d", "SRL_D", 0xFFFF_8000, 0x0019_0000);
+r3_insn!(SRA_D, "sra.d", "SRA_D", 0xFFFF_8000, 0x0019_8000);
+
+// ALU instructions (R3)
 r3_insn!(ADD_W, "add.w", "ADD_W", 0xFFFF_8000, 0x0010_0000);
 r3_insn!(ADD_D, "add.d", "ADD_D", 0xFFFF_8000, 0x0010_8000);
 r3_insn!(SUB_W, "sub.w", "SUB_W", 0xFFFF_8000, 0x0011_0000);
@@ -221,15 +242,407 @@ r3_insn!(OR, "or", "OR", 0xFFFF_8000, 0x0015_0000);
 r3_insn!(XOR, "xor", "XOR", 0xFFFF_8000, 0x0015_8000);
 r3_insn!(NOR, "nor", "NOR", 0xFFFF_8000, 0x0016_0000);
 
+// Immediate ALU (R2I12)
 r2i12_insn!(ADDI_W, "addi.w", "ADDI_W", 0xFFC0_0000, 0x0280_0000);
 r2i12_insn!(ADDI_D, "addi.d", "ADDI_D", 0xFFC0_0000, 0x02C0_0000);
+
+// Branch compare (R2I16) — operand order: rj, rd, offset
+macro_rules! branch_r2i16_insn {
+    ($name:ident, $mnemonic:expr, $opcode_id:expr, $mask:expr, $value:expr) => {
+        loongarch_insn!(
+            $name,
+            $mnemonic,
+            $opcode_id,
+            $mask,
+            $value,
+            &FMT_R2I16,
+            &[
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rj,
+                    Access::Read
+                ),
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rd,
+                    Access::Read
+                ),
+                robustone_isa::imm!(
+                    LoongArchField::Si16,
+                    ImmediateTransform::SignExtendThenShift { bits: 16, shift: 2 },
+                    ImmediateKind::PcRelative
+                ),
+            ],
+            &[InstructionGroup::Integer, InstructionGroup::Branch]
+        );
+    };
+}
+
+branch_r2i16_insn!(BEQ, "beq", "BEQ", 0xFC00_0000, 0x5800_0000);
+branch_r2i16_insn!(BNE, "bne", "BNE", 0xFC00_0000, 0x5C00_0000);
+branch_r2i16_insn!(BLT, "blt", "BLT", 0xFC00_0000, 0x6000_0000);
+branch_r2i16_insn!(BGE, "bge", "BGE", 0xFC00_0000, 0x6400_0000);
+branch_r2i16_insn!(BLTU, "bltu", "BLTU", 0xFC00_0000, 0x6800_0000);
+branch_r2i16_insn!(BGEU, "bgeu", "BGEU", 0xFC00_0000, 0x6C00_0000);
+
+// JIRL (R2I16) — operand order: rd, rj, offset
+loongarch_insn!(
+    JIRL,
+    "jirl",
+    "JIRL",
+    0xFC00_0000,
+    0x4C00_0000,
+    &FMT_R2I16,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::imm!(
+            LoongArchField::Si16,
+            ImmediateTransform::SignExtendThenShift { bits: 16, shift: 2 },
+            ImmediateKind::PcRelative
+        ),
+    ],
+    &[InstructionGroup::Integer, InstructionGroup::Branch]
+);
+
+// B / BL (FMT_BJ) — operand: 16-bit immediate at bits 10..25, shifted left by 2
+loongarch_insn!(
+    B,
+    "b",
+    "B",
+    0xFC00_0000,
+    0x5000_0000,
+    &FMT_BJ,
+    &[robustone_isa::imm!(
+        LoongArchField::Si16,
+        ImmediateTransform::SignExtendThenShift { bits: 16, shift: 2 },
+        ImmediateKind::PcRelative
+    ),],
+    &[InstructionGroup::Integer, InstructionGroup::Branch]
+);
+loongarch_insn!(
+    BL,
+    "bl",
+    "BL",
+    0xFC00_0000,
+    0x5400_0000,
+    &FMT_BJ,
+    &[robustone_isa::imm!(
+        LoongArchField::Si16,
+        ImmediateTransform::SignExtendThenShift { bits: 16, shift: 2 },
+        ImmediateKind::PcRelative
+    ),],
+    &[InstructionGroup::Integer, InstructionGroup::Branch]
+);
+
+// BEQZ / BNEZ (FMT_R1I16_BJ) — operand order: rj, offset
+loongarch_insn!(
+    BEQZ,
+    "beqz",
+    "BEQZ",
+    0xFC00_0000,
+    0x4000_0000,
+    &FMT_R1I16_BJ,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::imm!(
+            LoongArchField::Si16,
+            ImmediateTransform::SignExtendThenShift { bits: 16, shift: 2 },
+            ImmediateKind::PcRelative
+        ),
+    ],
+    &[InstructionGroup::Integer, InstructionGroup::Branch]
+);
+loongarch_insn!(
+    BNEZ,
+    "bnez",
+    "BNEZ",
+    0xFC00_0000,
+    0x4400_0000,
+    &FMT_R1I16_BJ,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::imm!(
+            LoongArchField::Si16,
+            ImmediateTransform::SignExtendThenShift { bits: 16, shift: 2 },
+            ImmediateKind::PcRelative
+        ),
+    ],
+    &[InstructionGroup::Integer, InstructionGroup::Branch]
+);
+
+// Memory load / store (R2I12)
+macro_rules! load_r2i12_insn {
+    ($name:ident, $mnemonic:expr, $opcode_id:expr, $mask:expr, $value:expr) => {
+        loongarch_insn!(
+            $name,
+            $mnemonic,
+            $opcode_id,
+            $mask,
+            $value,
+            &FMT_R2I12,
+            &[
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rd,
+                    Access::Write
+                ),
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rj,
+                    Access::Read
+                ),
+                robustone_isa::imm!(
+                    LoongArchField::Si12,
+                    ImmediateTransform::SignExtend { bits: 12 },
+                    ImmediateKind::Absolute
+                ),
+            ],
+            &[InstructionGroup::Integer, InstructionGroup::Memory]
+        );
+    };
+}
+macro_rules! store_r2i12_insn {
+    ($name:ident, $mnemonic:expr, $opcode_id:expr, $mask:expr, $value:expr) => {
+        loongarch_insn!(
+            $name,
+            $mnemonic,
+            $opcode_id,
+            $mask,
+            $value,
+            &FMT_R2I12,
+            &[
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rd,
+                    Access::Read
+                ),
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rj,
+                    Access::Read
+                ),
+                robustone_isa::imm!(
+                    LoongArchField::Si12,
+                    ImmediateTransform::SignExtend { bits: 12 },
+                    ImmediateKind::Absolute
+                ),
+            ],
+            &[InstructionGroup::Integer, InstructionGroup::Memory]
+        );
+    };
+}
+
+load_r2i12_insn!(LD_B, "ld.b", "LD_B", 0xFFC0_0000, 0x2800_0000);
+load_r2i12_insn!(LD_H, "ld.h", "LD_H", 0xFFC0_0000, 0x2840_0000);
+load_r2i12_insn!(LD_W, "ld.w", "LD_W", 0xFFC0_0000, 0x2880_0000);
+load_r2i12_insn!(LD_D, "ld.d", "LD_D", 0xFFC0_0000, 0x28C0_0000);
+
+store_r2i12_insn!(ST_B, "st.b", "ST_B", 0xFFC0_0000, 0x2900_0000);
+store_r2i12_insn!(ST_H, "st.h", "ST_H", 0xFFC0_0000, 0x2940_0000);
+store_r2i12_insn!(ST_W, "st.w", "ST_W", 0xFFC0_0000, 0x2980_0000);
+store_r2i12_insn!(ST_D, "st.d", "ST_D", 0xFFC0_0000, 0x29C0_0000);
+
+// Memory indexed (R3) — operand order: rd, rj, rk
+macro_rules! ldx_r3_insn {
+    ($name:ident, $mnemonic:expr, $opcode_id:expr, $mask:expr, $value:expr) => {
+        loongarch_insn!(
+            $name,
+            $mnemonic,
+            $opcode_id,
+            $mask,
+            $value,
+            &FMT_R3,
+            &[
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rd,
+                    Access::Write
+                ),
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rj,
+                    Access::Read
+                ),
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rk,
+                    Access::Read
+                ),
+            ],
+            &[InstructionGroup::Integer, InstructionGroup::Memory]
+        );
+    };
+}
+macro_rules! stx_r3_insn {
+    ($name:ident, $mnemonic:expr, $opcode_id:expr, $mask:expr, $value:expr) => {
+        loongarch_insn!(
+            $name,
+            $mnemonic,
+            $opcode_id,
+            $mask,
+            $value,
+            &FMT_R3,
+            &[
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rd,
+                    Access::Read
+                ),
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rj,
+                    Access::Read
+                ),
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rk,
+                    Access::Read
+                ),
+            ],
+            &[InstructionGroup::Integer, InstructionGroup::Memory]
+        );
+    };
+}
+
+ldx_r3_insn!(LDX_B, "ldx.b", "LDX_B", 0xFFFF_8000, 0x3800_0000);
+ldx_r3_insn!(LDX_H, "ldx.h", "LDX_H", 0xFFFF_8000, 0x3808_0000);
+ldx_r3_insn!(LDX_W, "ldx.w", "LDX_W", 0xFFFF_8000, 0x3810_0000);
+ldx_r3_insn!(LDX_D, "ldx.d", "LDX_D", 0xFFFF_8000, 0x3818_0000);
+
+stx_r3_insn!(STX_B, "stx.b", "STX_B", 0xFFFF_8000, 0x3820_0000);
+stx_r3_insn!(STX_H, "stx.h", "STX_H", 0xFFFF_8000, 0x3828_0000);
+stx_r3_insn!(STX_W, "stx.w", "STX_W", 0xFFFF_8000, 0x3830_0000);
+stx_r3_insn!(STX_D, "stx.d", "STX_D", 0xFFFF_8000, 0x3838_0000);
+
+// Atomic LL / SC (R2I14)
+macro_rules! atomic_r2i14_insn {
+    ($name:ident, $mnemonic:expr, $opcode_id:expr, $mask:expr, $value:expr) => {
+        loongarch_insn!(
+            $name,
+            $mnemonic,
+            $opcode_id,
+            $mask,
+            $value,
+            &FMT_R2I14,
+            &[
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rd,
+                    Access::Write
+                ),
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rj,
+                    Access::Read
+                ),
+                robustone_isa::imm!(
+                    LoongArchField::Si14,
+                    ImmediateTransform::SignExtendThenShift { bits: 14, shift: 2 },
+                    ImmediateKind::Absolute
+                ),
+            ],
+            &[InstructionGroup::Integer, InstructionGroup::Atomic]
+        );
+    };
+}
+
+atomic_r2i14_insn!(LL_W, "ll.w", "LL_W", 0xFF00_0000, 0x2000_0000);
+atomic_r2i14_insn!(SC_W, "sc.w", "SC_W", 0xFF00_0000, 0x2100_0000);
+
+// Atomic RMW (R3) — operand order: rd, rk, rj (matching Capstonen atomic layout)
+macro_rules! atomic_r3_insn {
+    ($name:ident, $mnemonic:expr, $opcode_id:expr, $mask:expr, $value:expr) => {
+        loongarch_insn!(
+            $name,
+            $mnemonic,
+            $opcode_id,
+            $mask,
+            $value,
+            &FMT_R3,
+            &[
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rd,
+                    Access::Write
+                ),
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rk,
+                    Access::Read
+                ),
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rj,
+                    Access::Read
+                ),
+            ],
+            &[InstructionGroup::Integer, InstructionGroup::Atomic]
+        );
+    };
+}
+
+atomic_r3_insn!(AMSWAP_W, "amswap.w", "AMSWAP_W", 0xFFFF_8000, 0x3860_0000);
+atomic_r3_insn!(AMADD_W, "amadd.w", "AMADD_W", 0xFFFF_8000, 0x3868_0000);
+atomic_r3_insn!(AMAND_W, "amand.w", "AMAND_W", 0xFFFF_8000, 0x3870_0000);
+atomic_r3_insn!(AMOR_W, "amor.w", "AMOR_W", 0xFFFF_8000, 0x3878_0000);
+atomic_r3_insn!(AMXOR_W, "amxor.w", "AMXOR_W", 0xFFFF_8000, 0x3880_0000);
+atomic_r3_insn!(AMMAX_W, "ammax.w", "AMMAX_W", 0xFFFF_8000, 0x3888_0000);
+atomic_r3_insn!(AMMIN_W, "ammin.w", "AMMIN_W", 0xFFFF_8000, 0x3890_0000);
+
+// Barrier / system (FMT_I15)
+macro_rules! barrier_insn {
+    ($name:ident, $mnemonic:expr, $opcode_id:expr, $mask:expr, $value:expr) => {
+        loongarch_insn!(
+            $name,
+            $mnemonic,
+            $opcode_id,
+            $mask,
+            $value,
+            &FMT_I15,
+            &[robustone_isa::imm!(
+                LoongArchField::Code,
+                ImmediateTransform::ZeroExtend { bits: 15 },
+                ImmediateKind::Unsigned
+            ),],
+            &[InstructionGroup::Integer, InstructionGroup::Barrier]
+        );
+    };
+}
+
+barrier_insn!(DBAR, "dbar", "DBAR", 0xFFFF_8000, 0x3872_0000);
+barrier_insn!(IBAR, "ibar", "IBAR", 0xFFFF_8000, 0x3872_8000);
+barrier_insn!(SYSCALL, "syscall", "SYSCALL", 0xFFFF_8000, 0x002B_0000);
+barrier_insn!(BREAK, "break", "BREAK", 0xFFFF_8000, 0x002A_0000);
 
 // ============================================================================
 // Spec table
 // ============================================================================
 
 pub static LOONGARCH_BASE_SPECS: &[InstructionSpec<LoongArchBackend>] = &[
-    ADD_W, ADD_D, SUB_W, SUB_D, SLT, SLTU, AND, OR, XOR, NOR, ADDI_W, ADDI_D,
+    ADD_W, ADD_D, SUB_W, SUB_D, SLT, SLTU, AND, OR, XOR, NOR, ADDI_W, ADDI_D, // Shift
+    SLL_W, SRL_W, SRA_W, SLL_D, SRL_D, SRA_D, // Branch
+    BEQ, BNE, BLT, BGE, BLTU, BGEU, B, BL, JIRL, BEQZ, BNEZ, // Memory
+    LD_B, LD_H, LD_W, LD_D, ST_B, ST_H, ST_W, ST_D, LDX_B, LDX_H, LDX_W, LDX_D, STX_B, STX_H,
+    STX_W, STX_D, // Atomic
+    LL_W, SC_W, AMSWAP_W, AMADD_W, AMAND_W, AMOR_W, AMXOR_W, AMMAX_W, AMMIN_W, // Barrier
+    DBAR, IBAR, SYSCALL, BREAK,
 ];
 
 // ============================================================================

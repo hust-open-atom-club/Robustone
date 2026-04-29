@@ -38,7 +38,7 @@ pub fn run_test_case(dispatcher: &ArchitectureDispatcher, case: &TestCase) -> Re
 
     let bytes = &case.input.bytes;
     let (instruction, _size) = dispatcher
-        .disassemble_bytes(bytes, arch_name, 0x1000)
+        .disassemble_bytes(bytes, arch_name, 0x0)
         .map_err(|e| format!("disassembly error: {:?}", e))?;
 
     let expected = case
