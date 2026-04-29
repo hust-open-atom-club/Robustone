@@ -332,6 +332,66 @@ r3_insn!(OR, "or", "OR", 0xFFFF_8000, 0x0015_0000);
 r3_insn!(XOR, "xor", "XOR", 0xFFFF_8000, 0x0015_8000);
 r3_insn!(NOR, "nor", "NOR", 0xFFFF_8000, 0x0016_0000);
 
+// Bit manipulation / extend (R2)
+macro_rules! r2_insn {
+    ($name:ident, $mnemonic:expr, $opcode_id:expr, $mask:expr, $value:expr) => {
+        loongarch_insn!(
+            $name,
+            $mnemonic,
+            $opcode_id,
+            $mask,
+            $value,
+            &FMT_R2,
+            &[
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rd,
+                    Access::Write
+                ),
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rj,
+                    Access::Read
+                ),
+            ],
+            &[InstructionGroup::Integer, InstructionGroup::BitManipulation]
+        );
+    };
+}
+
+r2_insn!(CLO_W, "clo.w", "CLO_W", 0xFFFF_FC00, 0x0000_1000);
+r2_insn!(CLZ_W, "clz.w", "CLZ_W", 0xFFFF_FC00, 0x0000_1400);
+r2_insn!(CTO_W, "cto.w", "CTO_W", 0xFFFF_FC00, 0x0000_1800);
+r2_insn!(CTZ_W, "ctz.w", "CTZ_W", 0xFFFF_FC00, 0x0000_1C00);
+r2_insn!(CLO_D, "clo.d", "CLO_D", 0xFFFF_FC00, 0x0000_2000);
+r2_insn!(CLZ_D, "clz.d", "CLZ_D", 0xFFFF_FC00, 0x0000_2400);
+r2_insn!(CTO_D, "cto.d", "CTO_D", 0xFFFF_FC00, 0x0000_2800);
+r2_insn!(CTZ_D, "ctz.d", "CTZ_D", 0xFFFF_FC00, 0x0000_2C00);
+r2_insn!(REVB_2H, "revb.2h", "REVB_2H", 0xFFFF_FC00, 0x0000_3000);
+r2_insn!(REVB_4H, "revb.4h", "REVB_4H", 0xFFFF_FC00, 0x0000_3400);
+r2_insn!(REVB_2W, "revb.2w", "REVB_2W", 0xFFFF_FC00, 0x0000_3800);
+r2_insn!(REVB_D, "revb.d", "REVB_D", 0xFFFF_FC00, 0x0000_3C00);
+r2_insn!(REVH_2W, "revh.2w", "REVH_2W", 0xFFFF_FC00, 0x0000_4000);
+r2_insn!(REVH_D, "revh.d", "REVH_D", 0xFFFF_FC00, 0x0000_4400);
+r2_insn!(
+    BITREV_4B,
+    "bitrev.4b",
+    "BITREV_4B",
+    0xFFFF_FC00,
+    0x0000_4800
+);
+r2_insn!(
+    BITREV_8B,
+    "bitrev.8b",
+    "BITREV_8B",
+    0xFFFF_FC00,
+    0x0000_4C00
+);
+r2_insn!(BITREV_W, "bitrev.w", "BITREV_W", 0xFFFF_FC00, 0x0000_5000);
+r2_insn!(BITREV_D, "bitrev.d", "BITREV_D", 0xFFFF_FC00, 0x0000_5400);
+r2_insn!(EXT_W_H, "ext.w.h", "EXT_W_H", 0xFFFF_FC00, 0x0000_5800);
+r2_insn!(EXT_W_B, "ext.w.b", "EXT_W_B", 0xFFFF_FC00, 0x0000_5C00);
+
 // Multiply / Divide / Modulo (R3)
 r3_insn!(MUL_W, "mul.w", "MUL_W", 0xFFFF_8000, 0x001C_0000);
 r3_insn!(MULH_W, "mulh.w", "MULH_W", 0xFFFF_8000, 0x001C_8000);
@@ -872,7 +932,10 @@ upper_imm_insn!(
 
 pub static LOONGARCH_BASE_SPECS: &[InstructionSpec<LoongArchBackend>] = &[
     // ALU (R3)
-    ADD_W, ADD_D, SUB_W, SUB_D, SLT, SLTU, AND, OR, XOR, NOR, // Multiply / Divide
+    ADD_W, ADD_D, SUB_W, SUB_D, SLT, SLTU, AND, OR, XOR, NOR, // Bit manipulation
+    CLO_W, CLZ_W, CTO_W, CTZ_W, CLO_D, CLZ_D, CTO_D, CTZ_D, REVB_2H, REVB_4H, REVB_2W, REVB_D,
+    REVH_2W, REVH_D, BITREV_4B, BITREV_8B, BITREV_W, BITREV_D, EXT_W_H, EXT_W_B,
+    // Multiply / Divide
     MUL_W, MULH_W, MULH_WU, MUL_D, MULH_D, MULH_DU, DIV_W, MOD_W, DIV_WU, MOD_WU, DIV_D, MOD_D,
     DIV_DU, MOD_DU, // Shift immediate
     SLLI_W, SLLI_D, SRLI_W, SRLI_D, SRAI_W, SRAI_D, // Shift (R3)
