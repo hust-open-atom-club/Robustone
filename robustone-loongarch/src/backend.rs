@@ -454,6 +454,14 @@ r3_insn!(MULH_WU, "mulh.wu", "MULH_WU", 0xFFFF_8000, 0x001D_0000);
 r3_insn!(MUL_D, "mul.d", "MUL_D", 0xFFFF_8000, 0x001D_8000);
 r3_insn!(MULH_D, "mulh.d", "MULH_D", 0xFFFF_8000, 0x001E_0000);
 r3_insn!(MULH_DU, "mulh.du", "MULH_DU", 0xFFFF_8000, 0x001E_8000);
+r3_insn!(MULW_D_W, "mulw.d.w", "MULW_D_W", 0xFFFF_8000, 0x001F_0000);
+r3_insn!(
+    MULW_D_WU,
+    "mulw.d.wu",
+    "MULW_D_WU",
+    0xFFFF_8000,
+    0x001F_8000
+);
 r3_insn!(DIV_W, "div.w", "DIV_W", 0xFFFF_8000, 0x0020_0000);
 r3_insn!(MOD_W, "mod.w", "MOD_W", 0xFFFF_8000, 0x0020_8000);
 r3_insn!(DIV_WU, "div.wu", "DIV_WU", 0xFFFF_8000, 0x0021_0000);
@@ -992,8 +1000,8 @@ pub static LOONGARCH_BASE_SPECS: &[InstructionSpec<LoongArchBackend>] = &[
     CLO_W, CLZ_W, CTO_W, CTZ_W, CLO_D, CLZ_D, CTO_D, CTZ_D, REVB_2H, REVB_4H, REVB_2W, REVB_D,
     REVH_2W, REVH_D, BITREV_4B, BITREV_8B, BITREV_W, BITREV_D, EXT_W_H, EXT_W_B,
     // Multiply / Divide
-    ALSL_W, ALSL_WU, ALSL_D, MUL_W, MULH_W, MULH_WU, MUL_D, MULH_D, MULH_DU, DIV_W, MOD_W, DIV_WU,
-    MOD_WU, DIV_D, MOD_D, DIV_DU, MOD_DU, // Shift immediate
+    ALSL_W, ALSL_WU, ALSL_D, MUL_W, MULH_W, MULH_WU, MUL_D, MULH_D, MULH_DU, MULW_D_W, MULW_D_WU,
+    DIV_W, MOD_W, DIV_WU, MOD_WU, DIV_D, MOD_D, DIV_DU, MOD_DU, // Shift immediate
     SLLI_W, SLLI_D, SRLI_W, SRLI_D, SRAI_W, SRAI_D, // Shift (R3)
     SLL_W, SRL_W, SRA_W, SLL_D, SRL_D, SRA_D, ROTR_B, ROTR_H, ROTR_W, ROTR_D, // Immediate ALU
     ADDI_W, ADDI_D, SLTI, SLTUI, ANDI, ORI, XORI, ADDU12I_W, ADDU12I_D, // Upper immediate
