@@ -54,6 +54,7 @@ pub enum LoongArchField {
     Rj,
     Rk,
     Ra,
+    Cd,
     I8,
     Si12,
     Ui12,
@@ -112,6 +113,11 @@ robustone_isa::format_specs! {
         rj: field("rj", 5, 5, LoongArchField::Rj),
         rk: field("rk", 10, 5, LoongArchField::Rk),
         ra: field("ra", 15, 5, LoongArchField::Ra),
+    }
+    format FMT_FCMP[LoongArchField] {
+        cd: field("cd", 0, 3, LoongArchField::Cd),
+        fj: field("fj", 5, 5, LoongArchField::Rj),
+        fk: field("fk", 10, 5, LoongArchField::Rk),
     }
     format FMT_R2I8[LoongArchField] {
         rd: field("rd", 0, 5, LoongArchField::Rd),
@@ -2827,6 +2833,1194 @@ loongarch_insn!(
         robustone_isa::reg!(
             LoongArchRegisterClass::Fpr,
             LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_CAF_D,
+    "fcmp.caf.d",
+    "FCMP_CAF_D",
+    0xFFFF8018,
+    0x0C200000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_CAF_S,
+    "fcmp.caf.s",
+    "FCMP_CAF_S",
+    0xFFFF8018,
+    0x0C100000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_CEQ_D,
+    "fcmp.ceq.d",
+    "FCMP_CEQ_D",
+    0xFFFF8018,
+    0x0C220000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_CEQ_S,
+    "fcmp.ceq.s",
+    "FCMP_CEQ_S",
+    0xFFFF8018,
+    0x0C120000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_CLE_D,
+    "fcmp.cle.d",
+    "FCMP_CLE_D",
+    0xFFFF8018,
+    0x0C230000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_CLE_S,
+    "fcmp.cle.s",
+    "FCMP_CLE_S",
+    0xFFFF8018,
+    0x0C130000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_CLT_D,
+    "fcmp.clt.d",
+    "FCMP_CLT_D",
+    0xFFFF8018,
+    0x0C210000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_CLT_S,
+    "fcmp.clt.s",
+    "FCMP_CLT_S",
+    0xFFFF8018,
+    0x0C110000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_CNE_D,
+    "fcmp.cne.d",
+    "FCMP_CNE_D",
+    0xFFFF8018,
+    0x0C280000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_CNE_S,
+    "fcmp.cne.s",
+    "FCMP_CNE_S",
+    0xFFFF8018,
+    0x0C180000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_COR_D,
+    "fcmp.cor.d",
+    "FCMP_COR_D",
+    0xFFFF8018,
+    0x0C2A0000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_COR_S,
+    "fcmp.cor.s",
+    "FCMP_COR_S",
+    0xFFFF8018,
+    0x0C1A0000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_CUEQ_D,
+    "fcmp.cueq.d",
+    "FCMP_CUEQ_D",
+    0xFFFF8018,
+    0x0C260000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_CUEQ_S,
+    "fcmp.cueq.s",
+    "FCMP_CUEQ_S",
+    0xFFFF8018,
+    0x0C160000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_CULE_D,
+    "fcmp.cule.d",
+    "FCMP_CULE_D",
+    0xFFFF8018,
+    0x0C270000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_CULE_S,
+    "fcmp.cule.s",
+    "FCMP_CULE_S",
+    0xFFFF8018,
+    0x0C170000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_CULT_D,
+    "fcmp.cult.d",
+    "FCMP_CULT_D",
+    0xFFFF8018,
+    0x0C250000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_CULT_S,
+    "fcmp.cult.s",
+    "FCMP_CULT_S",
+    0xFFFF8018,
+    0x0C150000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_CUN_D,
+    "fcmp.cun.d",
+    "FCMP_CUN_D",
+    0xFFFF8018,
+    0x0C240000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_CUN_S,
+    "fcmp.cun.s",
+    "FCMP_CUN_S",
+    0xFFFF8018,
+    0x0C140000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_CUNE_D,
+    "fcmp.cune.d",
+    "FCMP_CUNE_D",
+    0xFFFF8018,
+    0x0C2C0000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_CUNE_S,
+    "fcmp.cune.s",
+    "FCMP_CUNE_S",
+    0xFFFF8018,
+    0x0C1C0000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SAF_D,
+    "fcmp.saf.d",
+    "FCMP_SAF_D",
+    0xFFFF8018,
+    0x0C208000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SAF_S,
+    "fcmp.saf.s",
+    "FCMP_SAF_S",
+    0xFFFF8018,
+    0x0C108000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SEQ_D,
+    "fcmp.seq.d",
+    "FCMP_SEQ_D",
+    0xFFFF8018,
+    0x0C228000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SEQ_S,
+    "fcmp.seq.s",
+    "FCMP_SEQ_S",
+    0xFFFF8018,
+    0x0C128000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SLE_D,
+    "fcmp.sle.d",
+    "FCMP_SLE_D",
+    0xFFFF8018,
+    0x0C238000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SLE_S,
+    "fcmp.sle.s",
+    "FCMP_SLE_S",
+    0xFFFF8018,
+    0x0C138000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SLT_D,
+    "fcmp.slt.d",
+    "FCMP_SLT_D",
+    0xFFFF8018,
+    0x0C218000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SLT_S,
+    "fcmp.slt.s",
+    "FCMP_SLT_S",
+    0xFFFF8018,
+    0x0C118000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SNE_D,
+    "fcmp.sne.d",
+    "FCMP_SNE_D",
+    0xFFFF8018,
+    0x0C288000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SNE_S,
+    "fcmp.sne.s",
+    "FCMP_SNE_S",
+    0xFFFF8018,
+    0x0C188000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SOR_D,
+    "fcmp.sor.d",
+    "FCMP_SOR_D",
+    0xFFFF8018,
+    0x0C2A8000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SOR_S,
+    "fcmp.sor.s",
+    "FCMP_SOR_S",
+    0xFFFF8018,
+    0x0C1A8000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SUEQ_D,
+    "fcmp.sueq.d",
+    "FCMP_SUEQ_D",
+    0xFFFF8018,
+    0x0C268000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SUEQ_S,
+    "fcmp.sueq.s",
+    "FCMP_SUEQ_S",
+    0xFFFF8018,
+    0x0C168000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SULE_D,
+    "fcmp.sule.d",
+    "FCMP_SULE_D",
+    0xFFFF8018,
+    0x0C278000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SULE_S,
+    "fcmp.sule.s",
+    "FCMP_SULE_S",
+    0xFFFF8018,
+    0x0C178000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SULT_D,
+    "fcmp.sult.d",
+    "FCMP_SULT_D",
+    0xFFFF8018,
+    0x0C258000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SULT_S,
+    "fcmp.sult.s",
+    "FCMP_SULT_S",
+    0xFFFF8018,
+    0x0C158000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SUN_D,
+    "fcmp.sun.d",
+    "FCMP_SUN_D",
+    0xFFFF8018,
+    0x0C248000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SUN_S,
+    "fcmp.sun.s",
+    "FCMP_SUN_S",
+    0xFFFF8018,
+    0x0C148000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SUNE_D,
+    "fcmp.sune.d",
+    "FCMP_SUNE_D",
+    0xFFFF8018,
+    0x0C2C8000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCMP_SUNE_S,
+    "fcmp.sune.s",
+    "FCMP_SUNE_S",
+    0xFFFF8018,
+    0x0C1C8000,
+    &FMT_FCMP,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fcc,
+            LoongArchField::Cd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
             Access::Read
         ),
     ],
