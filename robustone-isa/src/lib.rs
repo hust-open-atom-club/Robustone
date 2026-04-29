@@ -254,6 +254,7 @@ pub enum ImmediateTransform {
     SignExtend { bits: u8 },
     SignExtendThenShift { bits: u8, shift: u8 },
     ZeroExtend { bits: u8 },
+    AddConst { value: i64 },
 }
 
 /// Semantic kind of an immediate operand.
@@ -449,6 +450,7 @@ fn apply_transform(raw: u32, transform: ImmediateTransform) -> i64 {
             ((extended as i32) << shift) as i64
         }
         ImmediateTransform::ZeroExtend { bits: _ } => raw as i64,
+        ImmediateTransform::AddConst { value } => raw as i64 + value,
     }
 }
 

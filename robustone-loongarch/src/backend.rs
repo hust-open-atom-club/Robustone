@@ -91,6 +91,12 @@ robustone_isa::format_specs! {
         rj: field("rj", 5, 5, LoongArchField::Rj),
         rk: field("rk", 10, 5, LoongArchField::Rk),
     }
+    format FMT_R3I2[LoongArchField] {
+        rd: field("rd", 0, 5, LoongArchField::Rd),
+        rj: field("rj", 5, 5, LoongArchField::Rj),
+        rk: field("rk", 10, 5, LoongArchField::Rk),
+        sa2: field("sa2", 15, 2, LoongArchField::Ui5),
+    }
     format FMT_R4[LoongArchField] {
         rd: field("rd", 0, 5, LoongArchField::Rd),
         rj: field("rj", 5, 5, LoongArchField::Rj),
@@ -395,6 +401,47 @@ r2_insn!(EXT_W_H, "ext.w.h", "EXT_W_H", 0xFFFF_FC00, 0x0000_5800);
 r2_insn!(EXT_W_B, "ext.w.b", "EXT_W_B", 0xFFFF_FC00, 0x0000_5C00);
 
 // Multiply / Divide / Modulo (R3)
+// ALSL (R3I2)
+macro_rules! alsl_insn {
+    ($name:ident, $mnemonic:expr, $opcode_id:expr, $mask:expr, $value:expr) => {
+        loongarch_insn!(
+            $name,
+            $mnemonic,
+            $opcode_id,
+            $mask,
+            $value,
+            &FMT_R3I2,
+            &[
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rd,
+                    Access::Write
+                ),
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rj,
+                    Access::Read
+                ),
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rk,
+                    Access::Read
+                ),
+                robustone_isa::imm!(
+                    LoongArchField::Ui5,
+                    ImmediateTransform::AddConst { value: 1 },
+                    ImmediateKind::Unsigned
+                ),
+            ],
+            &[InstructionGroup::Integer, InstructionGroup::Shift]
+        );
+    };
+}
+
+alsl_insn!(ALSL_W, "alsl.w", "ALSL_W", 0xFFFE_0000, 0x0004_0000);
+alsl_insn!(ALSL_WU, "alsl.wu", "ALSL_WU", 0xFFFE_0000, 0x0006_0000);
+alsl_insn!(ALSL_D, "alsl.d", "ALSL_D", 0xFFFE_0000, 0x002C_0000);
+
 r3_insn!(MUL_W, "mul.w", "MUL_W", 0xFFFF_8000, 0x001C_0000);
 r3_insn!(MULH_W, "mulh.w", "MULH_W", 0xFFFF_8000, 0x001C_8000);
 r3_insn!(MULH_WU, "mulh.wu", "MULH_WU", 0xFFFF_8000, 0x001D_0000);
@@ -938,8 +985,8 @@ pub static LOONGARCH_BASE_SPECS: &[InstructionSpec<LoongArchBackend>] = &[
     CLO_W, CLZ_W, CTO_W, CTZ_W, CLO_D, CLZ_D, CTO_D, CTZ_D, REVB_2H, REVB_4H, REVB_2W, REVB_D,
     REVH_2W, REVH_D, BITREV_4B, BITREV_8B, BITREV_W, BITREV_D, EXT_W_H, EXT_W_B,
     // Multiply / Divide
-    MUL_W, MULH_W, MULH_WU, MUL_D, MULH_D, MULH_DU, DIV_W, MOD_W, DIV_WU, MOD_WU, DIV_D, MOD_D,
-    DIV_DU, MOD_DU, // Shift immediate
+    ALSL_W, ALSL_WU, ALSL_D, MUL_W, MULH_W, MULH_WU, MUL_D, MULH_D, MULH_DU, DIV_W, MOD_W, DIV_WU,
+    MOD_WU, DIV_D, MOD_D, DIV_DU, MOD_DU, // Shift immediate
     SLLI_W, SLLI_D, SRLI_W, SRLI_D, SRAI_W, SRAI_D, // Shift (R3)
     SLL_W, SRL_W, SRA_W, SLL_D, SRL_D, SRA_D, // Immediate ALU
     ADDI_W, ADDI_D, SLTI, SLTUI, ANDI, ORI, XORI, ADDU12I_W, ADDU12I_D, // Upper immediate
