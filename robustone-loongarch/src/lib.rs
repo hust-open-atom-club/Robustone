@@ -138,6 +138,62 @@ impl ArchitectureHandler for LoongArchHandler {
                     decoded.mnemonic = "move".to_string();
                     decoded.operands.pop();
                 }
+
+                // Capstone v6 drops duplicated destination register for CSR ops.
+                if (decoded.mnemonic == "csrwr" || decoded.mnemonic == "gcsrwr")
+                    && decoded.operands.len() == 3
+                    && let (
+                        Operand::Register { register: r0 },
+                        Operand::Register { register: r1 },
+                        _,
+                    ) = (
+                        &decoded.operands[0],
+                        &decoded.operands[1],
+                        &decoded.operands[2],
+                    )
+                    && r0.id == r1.id
+                {
+                    decoded.operands.remove(1);
+                }
+                if (decoded.mnemonic == "csrxchg" || decoded.mnemonic == "gcsrxchg")
+                    && decoded.operands.len() == 4
+                    && let (
+                        Operand::Register { register: r0 },
+                        Operand::Register { register: r1 },
+                        _,
+                        _,
+                    ) = (
+                        &decoded.operands[0],
+                        &decoded.operands[1],
+                        &decoded.operands[2],
+                        &decoded.operands[3],
+                    )
+                    && r0.id == r1.id
+                {
+                    decoded.operands.remove(1);
+                }
+
+                // Capstone v6 reorders invtlb operands to imm, rj, rk.
+                // The legacy decoder emits rk, rj, imm; the backend path already
+                // emits the correct order, so only swap when the first operand
+                // is a register (rk) rather than an immediate.
+                if decoded.mnemonic == "invtlb"
+                    && decoded.operands.len() == 3
+                    && matches!(decoded.operands[0], Operand::Register { .. })
+                {
+                    let imm = decoded.operands.pop().unwrap();
+                    let rj = decoded.operands.pop().unwrap();
+                    let rk = decoded.operands.pop().unwrap();
+                    decoded.operands.push(imm);
+                    decoded.operands.push(rj);
+                    decoded.operands.push(rk);
+                }
+
+                // Capstone v6 drops the .xs suffix from certain float instructions.
+                if let Some(base) = decoded.mnemonic.strip_suffix(".xs") {
+                    decoded.mnemonic = base.to_string();
+                }
+
                 Ok((decoded, size))
             }
             Err(e) => {

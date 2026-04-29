@@ -120,6 +120,20 @@ robustone_isa::format_specs! {
         fj: field("fj", 5, 5, LoongArchField::Rj),
         fk: field("fk", 10, 5, LoongArchField::Rk),
     }
+    format FMT_CSR[LoongArchField] {
+        rd: field("rd", 0, 5, LoongArchField::Rd),
+        csr: field("csr", 10, 14, LoongArchField::Si14),
+    }
+    format FMT_CSRXCHG[LoongArchField] {
+        rd: field("rd", 0, 5, LoongArchField::Rd),
+        rj: field("rj", 5, 5, LoongArchField::Rj),
+        csr: field("csr", 10, 14, LoongArchField::Si14),
+    }
+    format FMT_INVTLB[LoongArchField] {
+        imm: field("imm", 0, 5, LoongArchField::Ui5),
+        rj: field("rj", 5, 5, LoongArchField::Rj),
+        rk: field("rk", 10, 5, LoongArchField::Rk),
+    }
     format FMT_R2I8[LoongArchField] {
         rd: field("rd", 0, 5, LoongArchField::Rd),
         rj: field("rj", 5, 5, LoongArchField::Rj),
@@ -5309,6 +5323,175 @@ loongarch_insn!(
         robustone_isa::reg!(
             LoongArchRegisterClass::Gpr,
             LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
+);
+
+loongarch_insn!(
+    CSRRD,
+    "csrrd",
+    "CSRRD",
+    0xFF0003E0,
+    0x04000000,
+    &FMT_CSR,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::imm!(
+            LoongArchField::Si14,
+            ImmediateTransform::None,
+            ImmediateKind::Unsigned
+        ),
+    ],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
+);
+
+loongarch_insn!(
+    CSRWR,
+    "csrwr",
+    "CSRWR",
+    0xFF0003E0,
+    0x04000020,
+    &FMT_CSR,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rd,
+            Access::Read
+        ),
+        robustone_isa::imm!(
+            LoongArchField::Si14,
+            ImmediateTransform::None,
+            ImmediateKind::Unsigned
+        ),
+    ],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
+);
+
+loongarch_insn!(
+    CSRXCHG,
+    "csrxchg",
+    "CSRXCHG",
+    0xFF000000,
+    0x04000000,
+    &FMT_CSRXCHG,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rd,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::imm!(
+            LoongArchField::Si14,
+            ImmediateTransform::None,
+            ImmediateKind::Unsigned
+        ),
+    ],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
+);
+
+loongarch_insn!(
+    GCSRRD,
+    "gcsrrd",
+    "GCSRRD",
+    0xFF0003E0,
+    0x05000000,
+    &FMT_CSR,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::imm!(
+            LoongArchField::Si14,
+            ImmediateTransform::None,
+            ImmediateKind::Unsigned
+        ),
+    ],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
+);
+
+loongarch_insn!(
+    GCSRWR,
+    "gcsrwr",
+    "GCSRWR",
+    0xFF0003E0,
+    0x05000020,
+    &FMT_CSR,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rd,
+            Access::Read
+        ),
+        robustone_isa::imm!(
+            LoongArchField::Si14,
+            ImmediateTransform::None,
+            ImmediateKind::Unsigned
+        ),
+    ],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
+);
+
+loongarch_insn!(
+    GCSRXCHG,
+    "gcsrxchg",
+    "GCSRXCHG",
+    0xFF000000,
+    0x05000000,
+    &FMT_CSRXCHG,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rd,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::imm!(
+            LoongArchField::Si14,
+            ImmediateTransform::None,
+            ImmediateKind::Unsigned
+        ),
+    ],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
+);
+
+loongarch_insn!(
+    INVTLB,
+    "invtlb",
+    "INVTLB",
+    0xFFFF8000,
+    0x06498000,
+    &FMT_INVTLB,
+    &[
+        robustone_isa::imm!(
+            LoongArchField::Ui5,
+            ImmediateTransform::None,
+            ImmediateKind::Unsigned
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rk,
             Access::Read
         ),
     ],
