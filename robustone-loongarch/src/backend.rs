@@ -97,6 +97,12 @@ robustone_isa::format_specs! {
         rk: field("rk", 10, 5, LoongArchField::Rk),
         sa2: field("sa2", 15, 2, LoongArchField::Ui5),
     }
+    format FMT_R3I3[LoongArchField] {
+        rd: field("rd", 0, 5, LoongArchField::Rd),
+        rj: field("rj", 5, 5, LoongArchField::Rj),
+        rk: field("rk", 10, 5, LoongArchField::Rk),
+        ui3: field("ui3", 15, 3, LoongArchField::Ui5),
+    }
     format FMT_R4[LoongArchField] {
         rd: field("rd", 0, 5, LoongArchField::Rd),
         rj: field("rj", 5, 5, LoongArchField::Rj),
@@ -461,6 +467,60 @@ macro_rules! alsl_insn {
 alsl_insn!(ALSL_W, "alsl.w", "ALSL_W", 0xFFFE_0000, 0x0004_0000);
 alsl_insn!(ALSL_WU, "alsl.wu", "ALSL_WU", 0xFFFE_0000, 0x0006_0000);
 alsl_insn!(ALSL_D, "alsl.d", "ALSL_D", 0xFFFE_0000, 0x002C_0000);
+
+// Bytepick (R3I2 / R3I3)
+macro_rules! bytepick_insn {
+    ($name:ident, $mnemonic:expr, $opcode_id:expr, $mask:expr, $value:expr, $format:expr) => {
+        loongarch_insn!(
+            $name,
+            $mnemonic,
+            $opcode_id,
+            $mask,
+            $value,
+            $format,
+            &[
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rd,
+                    Access::Write
+                ),
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rj,
+                    Access::Read
+                ),
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rk,
+                    Access::Read
+                ),
+                robustone_isa::imm!(
+                    LoongArchField::Ui5,
+                    ImmediateTransform::None,
+                    ImmediateKind::Unsigned
+                ),
+            ],
+            &[InstructionGroup::Integer, InstructionGroup::BitManipulation]
+        );
+    };
+}
+
+bytepick_insn!(
+    BYTEPICK_W,
+    "bytepick.w",
+    "BYTEPICK_W",
+    0xFFFE_0000,
+    0x0008_0000,
+    &FMT_R3I2
+);
+bytepick_insn!(
+    BYTEPICK_D,
+    "bytepick.d",
+    "BYTEPICK_D",
+    0xFFFC_0000,
+    0x000C_0000,
+    &FMT_R3I3
+);
 
 r3_insn!(MUL_W, "mul.w", "MUL_W", 0xFFFF_8000, 0x001C_0000);
 r3_insn!(MULH_W, "mulh.w", "MULH_W", 0xFFFF_8000, 0x001C_8000);
@@ -1014,8 +1074,9 @@ pub static LOONGARCH_BASE_SPECS: &[InstructionSpec<LoongArchBackend>] = &[
     CLO_W, CLZ_W, CTO_W, CTZ_W, CLO_D, CLZ_D, CTO_D, CTZ_D, REVB_2H, REVB_4H, REVB_2W, REVB_D,
     REVH_2W, REVH_D, BITREV_4B, BITREV_8B, BITREV_W, BITREV_D, EXT_W_H, EXT_W_B, ASRTLE_D,
     ASRTGT_D, // Multiply / Divide
-    ALSL_W, ALSL_WU, ALSL_D, MUL_W, MULH_W, MULH_WU, MUL_D, MULH_D, MULH_DU, MULW_D_W, MULW_D_WU,
-    DIV_W, MOD_W, DIV_WU, MOD_WU, DIV_D, MOD_D, DIV_DU, MOD_DU, // Shift immediate
+    ALSL_W, ALSL_WU, ALSL_D, BYTEPICK_W, BYTEPICK_D, MUL_W, MULH_W, MULH_WU, MUL_D, MULH_D,
+    MULH_DU, MULW_D_W, MULW_D_WU, DIV_W, MOD_W, DIV_WU, MOD_WU, DIV_D, MOD_D, DIV_DU,
+    MOD_DU, // Shift immediate
     SLLI_W, SLLI_D, SRLI_W, SRLI_D, SRAI_W, SRAI_D, // Shift (R3)
     SLL_W, SRL_W, SRA_W, SLL_D, SRL_D, SRA_D, ROTR_B, ROTR_H, ROTR_W, ROTR_D, ADC_B, ADC_H, ADC_W,
     ADC_D, SBC_B, SBC_H, SBC_W, SBC_D, RCR_B, RCR_H, RCR_W, RCR_D, // Immediate ALU
