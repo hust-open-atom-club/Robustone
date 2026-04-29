@@ -1196,14 +1196,14 @@ macro_rules! stx_r3_insn {
 }
 
 ldx_r3_insn!(LDX_B, "ldx.b", "LDX_B", 0xFFFF_8000, 0x3800_0000);
-ldx_r3_insn!(LDX_H, "ldx.h", "LDX_H", 0xFFFF_8000, 0x3808_0000);
-ldx_r3_insn!(LDX_W, "ldx.w", "LDX_W", 0xFFFF_8000, 0x3810_0000);
-ldx_r3_insn!(LDX_D, "ldx.d", "LDX_D", 0xFFFF_8000, 0x3818_0000);
+ldx_r3_insn!(LDX_H, "ldx.h", "LDX_H", 0xFFFF_8000, 0x3804_0000);
+ldx_r3_insn!(LDX_W, "ldx.w", "LDX_W", 0xFFFF_8000, 0x3808_0000);
+ldx_r3_insn!(LDX_D, "ldx.d", "LDX_D", 0xFFFF_8000, 0x380C_0000);
 
-stx_r3_insn!(STX_B, "stx.b", "STX_B", 0xFFFF_8000, 0x3820_0000);
-stx_r3_insn!(STX_H, "stx.h", "STX_H", 0xFFFF_8000, 0x3828_0000);
-stx_r3_insn!(STX_W, "stx.w", "STX_W", 0xFFFF_8000, 0x3830_0000);
-stx_r3_insn!(STX_D, "stx.d", "STX_D", 0xFFFF_8000, 0x3838_0000);
+stx_r3_insn!(STX_B, "stx.b", "STX_B", 0xFFFF_8000, 0x3810_0000);
+stx_r3_insn!(STX_H, "stx.h", "STX_H", 0xFFFF_8000, 0x3814_0000);
+stx_r3_insn!(STX_W, "stx.w", "STX_W", 0xFFFF_8000, 0x3818_0000);
+stx_r3_insn!(STX_D, "stx.d", "STX_D", 0xFFFF_8000, 0x381C_0000);
 
 // Atomic LL / SC (R2I14)
 macro_rules! atomic_r2i14_insn {

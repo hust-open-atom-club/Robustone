@@ -191,6 +191,62 @@ mod tests {
     }
 
     #[test]
+    fn test_f_move_yaml() {
+        let path = std::path::Path::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../third_party/capstone/tests/MC/LoongArch/f-move.s.yaml"
+        ));
+        let (pass, fail, known_diff, unsupported) = run_yaml_file(path);
+        eprintln!(
+            "f-move.s.yaml summary: {} pass, {} fail, {} known_diff, {} unsupported",
+            pass, fail, known_diff, unsupported
+        );
+        assert_eq!(fail, 0, "unexpected mismatches");
+    }
+
+    #[test]
+    fn test_f_memory_yaml() {
+        let path = std::path::Path::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../third_party/capstone/tests/MC/LoongArch/f-memory.s.yaml"
+        ));
+        let (pass, fail, known_diff, unsupported) = run_yaml_file(path);
+        eprintln!(
+            "f-memory.s.yaml summary: {} pass, {} fail, {} known_diff, {} unsupported",
+            pass, fail, known_diff, unsupported
+        );
+        assert_eq!(fail, 0, "unexpected mismatches");
+    }
+
+    #[test]
+    fn test_d_move_yaml() {
+        let path = std::path::Path::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../third_party/capstone/tests/MC/LoongArch/d-move.s.yaml"
+        ));
+        let (pass, fail, known_diff, unsupported) = run_yaml_file(path);
+        eprintln!(
+            "d-move.s.yaml summary: {} pass, {} fail, {} known_diff, {} unsupported",
+            pass, fail, known_diff, unsupported
+        );
+        assert_eq!(fail, 0, "unexpected mismatches");
+    }
+
+    #[test]
+    fn test_lvz_yaml() {
+        let path = std::path::Path::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../third_party/capstone/tests/MC/LoongArch/lvz.s.yaml"
+        ));
+        let (pass, fail, known_diff, unsupported) = run_yaml_file(path);
+        eprintln!(
+            "lvz.s.yaml summary: {} pass, {} fail, {} known_diff, {} unsupported",
+            pass, fail, known_diff, unsupported
+        );
+        assert_eq!(fail, 0, "unexpected mismatches");
+    }
+
+    #[test]
     fn test_misc_yaml() {
         let path = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),

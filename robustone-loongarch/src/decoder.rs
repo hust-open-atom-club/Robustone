@@ -103,6 +103,40 @@ impl LoongArchDecoder {
                             decoded.operands.remove(1);
                         }
                     }
+                    "gcsrwr" if decoded.operands.len() == 3 => {
+                        if let (
+                            Operand::Register { register: r0 },
+                            Operand::Register { register: r1 },
+                            _,
+                        ) = (
+                            &decoded.operands[0],
+                            &decoded.operands[1],
+                            &decoded.operands[2],
+                        ) && r0.architecture == ArchitectureId::LoongArch
+                            && r1.architecture == ArchitectureId::LoongArch
+                            && r0.id == r1.id
+                        {
+                            decoded.operands.remove(1);
+                        }
+                    }
+                    "gcsrxchg" if decoded.operands.len() == 4 => {
+                        if let (
+                            Operand::Register { register: r0 },
+                            Operand::Register { register: r1 },
+                            _,
+                            _,
+                        ) = (
+                            &decoded.operands[0],
+                            &decoded.operands[1],
+                            &decoded.operands[2],
+                            &decoded.operands[3],
+                        ) && r0.architecture == ArchitectureId::LoongArch
+                            && r1.architecture == ArchitectureId::LoongArch
+                            && r0.id == r1.id
+                        {
+                            decoded.operands.remove(1);
+                        }
+                    }
                     "invtlb" if decoded.operands.len() == 3 => {
                         // Capstone v6 renders as imm, rj, rk instead of rk, rj, imm
                         let imm = decoded.operands.pop().unwrap();
@@ -113,6 +147,11 @@ impl LoongArchDecoder {
                         decoded.operands.push(rk);
                     }
                     _ => {}
+                }
+
+                // Capstone v6 drops the .xs suffix from certain float instructions
+                if let Some(base) = decoded.mnemonic.strip_suffix(".xs") {
+                    decoded.mnemonic = base.to_string();
                 }
 
                 Ok(decoded)
