@@ -292,7 +292,7 @@ pub fn decode_from_pattern(
         operands,
     );
 
-    // Apply Capstone-compatible aliases based on operand values.
+    // Apply reference-compatible aliases based on operand values.
     match pattern.mnemonic {
         "addi" => {
             if let [_, Operand::Register { register: rs1 }, _] = decoded.operands.as_slice()

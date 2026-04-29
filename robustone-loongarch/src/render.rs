@@ -1,6 +1,6 @@
 //! LoongArch instruction text rendering.
 //!
-//! Provides Capstone-compatible and canonical text rendering for LoongArch
+//! Provides reference-compatible and canonical text rendering for LoongArch
 //! decoded instructions. This module was extracted from robustone-core so
 //! that architecture-specific formatting lives in the architecture crate.
 
@@ -18,7 +18,7 @@ fn format_register(id: u32, alias_regs: bool) -> String {
     }
 }
 
-/// Branch instructions that Capstone renders as absolute addresses.
+/// Branch instructions that Upstream renders as absolute addresses.
 const BRANCH_MNEMONICS: &[&str] = &[
     "b", "bl", "beq", "bne", "blt", "bge", "bltu", "bgeu", "beqz", "bnez", "bceqz", "bcnez",
 ];
@@ -131,7 +131,7 @@ pub fn render_loongarch_text_parts(
         .iter()
         .enumerate()
         .map(|(i, (_, operand))| {
-            // For PC-relative instructions, Capstone adds the PC to the last immediate operand
+            // For PC-relative instructions, the decoder adds the PC to the last immediate operand
             if is_pc_relative
                 && i == visible_operands.len() - 1
                 && let Operand::Immediate { value } = operand
@@ -143,7 +143,7 @@ pub fn render_loongarch_text_parts(
         .collect::<Vec<_>>()
         .join(", ");
 
-    // Capstone uses $vr for LSX (128-bit) vector registers and $xr for LASX (256-bit).
+    // The reference decoder uses $vr for LSX (128-bit) vector registers and $xr for LASX (256-bit).
     // LSX instructions start with 'v' but do not contain "xv"; LASX instructions contain "xv".
     // Only apply the alias when register aliasing is enabled.
     if alias_regs && mnemonic.starts_with('v') && !mnemonic.contains("xv") {

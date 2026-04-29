@@ -1071,7 +1071,7 @@ atomic_r2i14_insn!(SC_W, "sc.w", "SC_W", 0xFF00_0000, 0x2100_0000);
 r2_insn!(LLACQ_W, "llacq.w", "LLACQ_W", 0xFFFF_FC00, 0x3857_8000);
 r2_insn!(SCREL_W, "screl.w", "SCREL_W", 0xFFFF_FC00, 0x3857_8400);
 
-// Atomic RMW (R3) — operand order: rd, rk, rj (matching Capstonen atomic layout)
+// Atomic RMW (R3) — operand order: rd, rk, rj (matching upstream atomic layout)
 macro_rules! atomic_r3_insn {
     ($name:ident, $mnemonic:expr, $opcode_id:expr, $mask:expr, $value:expr) => {
         loongarch_insn!(

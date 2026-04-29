@@ -1,6 +1,6 @@
 //! RISC-V instruction text rendering.
 //!
-//! Provides Capstone-compatible and canonical text rendering for RISC-V
+//! Provides reference-compatible and canonical text rendering for RISC-V
 //! decoded instructions. This module was extracted from robustone-core so
 //! that architecture-specific formatting lives in the architecture crate.
 

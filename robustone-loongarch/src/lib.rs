@@ -128,7 +128,7 @@ impl ArchitectureHandler for LoongArchHandler {
             decoded.operands.pop();
         }
 
-        // Capstone v6 drops duplicated destination register for CSR ops.
+        // Upstream decoder drops duplicated destination register for CSR ops.
         if (decoded.mnemonic == "csrwr" || decoded.mnemonic == "gcsrwr")
             && decoded.operands.len() == 3
             && let (Operand::Register { register: r0 }, Operand::Register { register: r1 }, _) = (
@@ -153,7 +153,7 @@ impl ArchitectureHandler for LoongArchHandler {
             decoded.operands.remove(1);
         }
 
-        // Capstone v6 reorders invtlb operands to imm, rj, rk.
+        // Upstream decoder reorders invtlb operands to imm, rj, rk.
         if decoded.mnemonic == "invtlb"
             && decoded.operands.len() == 3
             && matches!(decoded.operands[0], Operand::Register { .. })
@@ -166,12 +166,12 @@ impl ArchitectureHandler for LoongArchHandler {
             decoded.operands.push(rk);
         }
 
-        // Capstone v6 drops the .xs suffix from certain float instructions.
+        // Upstream decoder drops the .xs suffix from certain float instructions.
         if let Some(base) = decoded.mnemonic.strip_suffix(".xs") {
             decoded.mnemonic = base.to_string();
         }
 
-        // Capstone v6 omits duplicated destination register for certain
+        // Upstream decoder omits duplicated destination register for certain
         // vector instructions (e.g. xvpermi.w, xvsrarni, xvinsve0, xvshuf).
         if decoded.mnemonic.starts_with("xv")
             && decoded.operands.len() == 4

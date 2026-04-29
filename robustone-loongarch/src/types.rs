@@ -191,7 +191,7 @@ pub enum LoongArchRegister {
 }
 
 impl LoongArchRegister {
-    /// Returns the canonical register name as used by Capstone (ABI aliases).
+    /// Returns the canonical register name as used by the reference decoder (ABI aliases).
     pub fn name(self) -> &'static str {
         match self {
             LoongArchRegister::Invalid => "invalid",
@@ -230,7 +230,7 @@ impl LoongArchRegister {
             LoongArchRegister::R30 => "$s7",
             LoongArchRegister::R31 => "$s8",
 
-            // FPR names (Capstone aliases)
+            // FPR names (upstream aliases)
             LoongArchRegister::F0 => "$fa0",
             LoongArchRegister::F1 => "$fa1",
             LoongArchRegister::F2 => "$fa2",
@@ -618,5 +618,5 @@ pub enum LoongArchInstructionFormat {
 }
 
 /// Threshold for formatting immediates in hex vs decimal.
-/// Matches Capstone's default behavior (values > 9 use hex).
+/// Matches the reference decoder default behavior (values > 9 use hex).
 pub const HEX_THRESHOLD: i64 = 9;

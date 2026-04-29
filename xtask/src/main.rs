@@ -154,7 +154,6 @@ fn check_forbidden_strings(
                 for (line_no, line) in content.lines().enumerate() {
                     let lower = line.to_lowercase();
                     if lower.contains(word)
-                        && !line.trim_start().starts_with("//")
                         && !lower.contains("textrenderprofile")
                         && !lower.contains("capstone_aliases")
                         && !lower.contains("capstone_hidden")
@@ -269,6 +268,16 @@ pub use arch::{{{}Backend, {}Decoder}};
 
     let pascal = to_pascal_case(name);
     let upper = pascal.to_uppercase();
+    let (arch_id, register_ctor) = match name.to_lowercase().as_str() {
+        "riscv" => ("Riscv", "riscv"),
+        "arm" => ("Arm", "arm"),
+        "x86" => ("X86", "x86"),
+        "loongarch" => ("LoongArch", "loongarch"),
+        _ => {
+            eprintln!("Error: unsupported architecture '{}'", name);
+            return ExitCode::FAILURE;
+        }
+    };
     let arch_rs = format!(
         r#"use robustone_isa::{{
     Access, ArchitectureBackend, DecodeProfile, FeatureSet, FormatSpec, ImmediateKind,
@@ -340,7 +349,7 @@ impl ArchitectureBackend for {pascal}Backend {{
     type RegisterClass = {pascal}RegisterClass;
 
     fn architecture_id() -> ArchitectureId {{
-        ArchitectureId::Riscv
+        ArchitectureId::{arch_id}
     }}
 
     fn read_instruction(bytes: &[u8]) -> Result<InstructionRead<Self::Word>, DisasmError> {{
@@ -367,7 +376,7 @@ impl ArchitectureBackend for {pascal}Backend {{
         raw: u32,
         _profile: &DecodeProfile<Self>,
     ) -> RegisterId {{
-        RegisterId::riscv(raw)
+        RegisterId::{register_ctor}(raw)
     }}
 
     fn render_policy(_profile: &DecodeProfile<Self>) -> RenderPolicy<Self> {{

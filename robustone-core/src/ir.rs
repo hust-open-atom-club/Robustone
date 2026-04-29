@@ -57,6 +57,22 @@ impl RegisterId {
             id,
         }
     }
+
+    /// Create a register identifier for the ARM backend.
+    pub const fn arm(id: u32) -> Self {
+        Self {
+            architecture: ArchitectureId::Arm,
+            id,
+        }
+    }
+
+    /// Create a register identifier for the x86 backend.
+    pub const fn x86(id: u32) -> Self {
+        Self {
+            architecture: ArchitectureId::X86,
+            id,
+        }
+    }
 }
 
 /// Shared operand representation.
