@@ -330,7 +330,9 @@ r3_insn!(SLTU, "sltu", "SLTU", 0xFFFF_8000, 0x0012_8000);
 r3_insn!(AND, "and", "AND", 0xFFFF_8000, 0x0014_8000);
 r3_insn!(OR, "or", "OR", 0xFFFF_8000, 0x0015_0000);
 r3_insn!(XOR, "xor", "XOR", 0xFFFF_8000, 0x0015_8000);
-r3_insn!(NOR, "nor", "NOR", 0xFFFF_8000, 0x0016_0000);
+r3_insn!(NOR, "nor", "NOR", 0xFFFF_8000, 0x0014_0000);
+r3_insn!(ORN, "orn", "ORN", 0xFFFF_8000, 0x0016_0000);
+r3_insn!(ANDN, "andn", "ANDN", 0xFFFF_8000, 0x0016_8000);
 
 // Bit manipulation / extend (R2)
 macro_rules! r2_insn {
@@ -932,7 +934,7 @@ upper_imm_insn!(
 
 pub static LOONGARCH_BASE_SPECS: &[InstructionSpec<LoongArchBackend>] = &[
     // ALU (R3)
-    ADD_W, ADD_D, SUB_W, SUB_D, SLT, SLTU, AND, OR, XOR, NOR, // Bit manipulation
+    ADD_W, ADD_D, SUB_W, SUB_D, SLT, SLTU, AND, OR, XOR, NOR, ORN, ANDN, // Bit manipulation
     CLO_W, CLZ_W, CTO_W, CTZ_W, CLO_D, CLZ_D, CTO_D, CTZ_D, REVB_2H, REVB_4H, REVB_2W, REVB_D,
     REVH_2W, REVH_D, BITREV_4B, BITREV_8B, BITREV_W, BITREV_D, EXT_W_H, EXT_W_B,
     // Multiply / Divide
