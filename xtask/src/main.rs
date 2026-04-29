@@ -244,6 +244,7 @@ edition = "2024"
 robustone-core = {{ path = "../robustone-core" }}
 robustone-isa = {{ path = "../robustone-isa" }}
 robustone-isa-macros = {{ path = "../robustone-isa-macros" }}
+bitflags = "2"
 "#,
         crate_name
     );
@@ -259,19 +260,75 @@ pub mod formats;
 pub mod specs;
 pub mod render;
 
-pub use arch::{{{}Backend, {}Decoder, {}Profile}};
+pub use arch::{{{}Backend, {}Decoder}};
 "#,
-        to_pascal_case(name),
         to_pascal_case(name),
         to_pascal_case(name)
     );
     fs::write(crate_dir.join("src/lib.rs"), lib_rs).unwrap();
 
     let pascal = to_pascal_case(name);
+    let upper = pascal.to_uppercase();
     let arch_rs = format!(
-        r#"use robustone_isa::ArchitectureBackend;
+        r#"use robustone_isa::{{
+    Access, ArchitectureBackend, DecodeProfile, FeatureSet, FormatSpec, ImmediateKind,
+    ImmediateTransform, InstructionGroup, InstructionRead, InstructionSpec, ModeSet, RenderPolicy,
+    field,
+}};
 use robustone_core::ir::{{ArchitectureId, RegisterId}};
-use robustone_core::types::error::DisasmError;
+use robustone_core::types::error::{{DecodeErrorKind, DisasmError}};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum {pascal}Mode {{
+    Base,
+}}
+
+bitflags::bitflags! {{
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct {pascal}Feature: u8 {{
+        const BASE = 1 << 0;
+    }}
+}}
+
+impl FeatureSet for {pascal}Feature {{
+    fn empty() -> Self {{ Self::empty() }}
+    fn all_supported_for_tests() -> Self {{ Self::BASE }}
+    fn contains(self, required: Self) -> bool {{ self.0 & required.0 == required.0 }}
+}}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum {pascal}Field {{
+    Rd,
+    Rs1,
+}}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum {pascal}RegisterClass {{
+    Gpr,
+}}
+
+robustone_isa::format_specs! {{
+    format R[{pascal}Field] {{
+        rd: field("rd", 0, 5, {pascal}Field::Rd),
+        rs1: field("rs1", 5, 5, {pascal}Field::Rs1),
+    }}
+}}
+
+robustone_isa::isa_specs! {{
+    backend = {pascal}Backend;
+    spec NOP {{
+        mnemonic = "nop";
+        opcode_id = "NOP";
+        pattern = robustone_isa::mask_value!(0xFFFF_FFFF, 0x0000_0000);
+        format = &R;
+        operands = &[];
+        features = {pascal}Feature::BASE;
+        modes = ModeSet::All;
+        groups = &[];
+    }}
+}}
+
+pub static {upper}_SPECS: &[InstructionSpec<{pascal}Backend>] = &[NOP];
 
 pub struct {pascal}Backend;
 
@@ -283,72 +340,59 @@ impl ArchitectureBackend for {pascal}Backend {{
     type RegisterClass = {pascal}RegisterClass;
 
     fn architecture_id() -> ArchitectureId {{
-        // TODO: add to ArchitectureId enum
         ArchitectureId::Riscv
     }}
 
-    fn read_instruction(_bytes: &[u8]) -> Result<robustone_isa::InstructionRead<Self::Word>, DisasmError> {{
-        compile_error!("TODO: implement read_instruction")
+    fn read_instruction(bytes: &[u8]) -> Result<InstructionRead<Self::Word>, DisasmError> {{
+        if bytes.len() < 4 {{
+            return Err(DisasmError::decode_failure(
+                DecodeErrorKind::NeedMoreBytes,
+                Some("mock".to_string()),
+                "need 4 bytes",
+            ));
+        }}
+        let word = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+        Ok(InstructionRead {{ raw: word, length: 4 }})
     }}
 
     fn lookup(
-        _word: Self::Word,
-        _profile: &robustone_isa::DecodeProfile<Self>,
-    ) -> Option<&'static robustone_isa::InstructionSpec<Self>> {{
-        compile_error!("TODO: implement lookup")
+        word: Self::Word,
+        _profile: &DecodeProfile<Self>,
+    ) -> Option<&'static InstructionSpec<Self>> {{
+        {upper}_SPECS.iter().find(|spec| (word & spec.pattern.mask) == spec.pattern.value)
     }}
 
     fn lower_register(
         _class: Self::RegisterClass,
-        _raw: u32,
-        _profile: &robustone_isa::DecodeProfile<Self>,
+        raw: u32,
+        _profile: &DecodeProfile<Self>,
     ) -> RegisterId {{
-        compile_error!("TODO: implement lower_register")
+        RegisterId::riscv(raw)
     }}
 
-    fn render_policy(_profile: &robustone_isa::DecodeProfile<Self>) -> robustone_isa::RenderPolicy<Self> {{
-        compile_error!("TODO: implement render_policy")
+    fn render_policy(_profile: &DecodeProfile<Self>) -> RenderPolicy<Self> {{
+        RenderPolicy::new(robustone_isa::RenderDialect::Canonical, robustone_isa::AliasPolicy::None)
     }}
 
     fn extract_field(
-        _word: Self::Word,
-        _format: &robustone_isa::FormatSpec<Self::Field>,
-        _field: Self::Field,
+        word: Self::Word,
+        format: &FormatSpec<Self::Field>,
+        field: Self::Field,
     ) -> u32 {{
-        compile_error!("TODO: implement extract_field")
+        for f in format.fields {{
+            if f.field_type == field {{
+                let mask = ((1u64 << f.length) - 1) as u32;
+                return (word >> f.start) & mask;
+            }}
+        }}
+        0
     }}
-}}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum {pascal}Mode {{
-    // TODO
-}}
-
-bitflags::bitflags! {{
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct {pascal}Feature: u8 {{
-        const BASE = 1 << 0;
-    }}
-}}
-
-impl robustone_isa::FeatureSet for {pascal}Feature {{
-    fn empty() -> Self {{ Self::empty() }}
-    fn all_supported_for_tests() -> Self {{ Self::BASE }}
-    fn contains(self, required: Self) -> bool {{ self.0 & required.0 == required.0 }}
-}}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum {pascal}Field {{
-    // TODO
-}}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum {pascal}RegisterClass {{
-    // TODO
 }}
 
 pub type {pascal}Decoder = robustone_isa::Decoder<{pascal}Backend>;
-"#
+"#,
+        pascal = pascal,
+        upper = upper
     );
     fs::write(crate_dir.join("src/arch.rs"), arch_rs).unwrap();
 

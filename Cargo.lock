@@ -714,6 +714,7 @@ name = "robustone-capstone-compat"
 version = "0.1.0"
 dependencies = [
  "robustone-core",
+ "robustone-isa",
  "robustone-loongarch",
  "serde",
  "serde_yaml",

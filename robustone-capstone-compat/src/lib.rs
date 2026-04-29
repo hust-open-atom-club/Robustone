@@ -3,7 +3,9 @@
 //! Parses Capstone's YAML test files and drives Robustone's decoders
 //! against them, producing pass / fail / xfail reports.
 
+pub mod adapter;
 pub mod harness;
+pub mod xfail;
 pub mod yaml;
 
 #[cfg(test)]

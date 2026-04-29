@@ -8,6 +8,7 @@ repository = "https://github.com/robustone/robustone"
 
 [dependencies]
 robustone-core = { path = "../robustone-core" }
+robustone-isa = { path = "../robustone-isa" }
 robustone-loongarch = { path = "../robustone-loongarch" }
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
