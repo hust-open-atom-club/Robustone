@@ -151,6 +151,7 @@ robustone_isa::format_specs! {
     format FMT_R1[LoongArchField] {
         rd: field("rd", 0, 5, LoongArchField::Rd),
     }
+    format FMT_NONE[LoongArchField] {}
     format FMT_BJ[LoongArchField] {
         si16: field("si16", 10, 16, LoongArchField::Si16),
     }
@@ -5057,6 +5058,261 @@ loongarch_insn!(
         ),
     ],
     &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+barrier_insn!(IDLE, "idle", "IDLE", 0xFFFF8000, 0x06488000);
+
+loongarch_insn!(
+    TLBCLR,
+    "tlbclr",
+    "TLBCLR",
+    0xFFFFFFFF,
+    0x06482000,
+    &FMT_NONE,
+    &[],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
+);
+
+loongarch_insn!(
+    TLBFLUSH,
+    "tlbflush",
+    "TLBFLUSH",
+    0xFFFFFFFF,
+    0x06482400,
+    &FMT_NONE,
+    &[],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
+);
+
+loongarch_insn!(
+    TLBSRCH,
+    "tlbsrch",
+    "TLBSRCH",
+    0xFFFFFFFF,
+    0x06482800,
+    &FMT_NONE,
+    &[],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
+);
+
+loongarch_insn!(
+    TLBRD,
+    "tlbrd",
+    "TLBRD",
+    0xFFFFFFFF,
+    0x06482C00,
+    &FMT_NONE,
+    &[],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
+);
+
+loongarch_insn!(
+    TLBWR,
+    "tlbwr",
+    "TLBWR",
+    0xFFFFFFFF,
+    0x06483000,
+    &FMT_NONE,
+    &[],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
+);
+
+loongarch_insn!(
+    TLBFILL,
+    "tlbfill",
+    "TLBFILL",
+    0xFFFFFFFF,
+    0x06483400,
+    &FMT_NONE,
+    &[],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
+);
+
+loongarch_insn!(
+    ERTN,
+    "ertn",
+    "ERTN",
+    0xFFFFFFFF,
+    0x06483800,
+    &FMT_NONE,
+    &[],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
+);
+
+loongarch_insn!(
+    IOCSRRD_B,
+    "iocsrrd.b",
+    "IOCSRRD_B",
+    0xFFFFFC00,
+    0x06480000,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
+);
+
+loongarch_insn!(
+    IOCSRRD_H,
+    "iocsrrd.h",
+    "IOCSRRD_H",
+    0xFFFFFC00,
+    0x06480400,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
+);
+
+loongarch_insn!(
+    IOCSRRD_W,
+    "iocsrrd.w",
+    "IOCSRRD_W",
+    0xFFFFFC00,
+    0x06480800,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
+);
+
+loongarch_insn!(
+    IOCSRRD_D,
+    "iocsrrd.d",
+    "IOCSRRD_D",
+    0xFFFFFC00,
+    0x06480C00,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
+);
+
+loongarch_insn!(
+    IOCSRWR_B,
+    "iocsrwr.b",
+    "IOCSRWR_B",
+    0xFFFFFC00,
+    0x06481000,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rd,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
+);
+
+loongarch_insn!(
+    IOCSRWR_H,
+    "iocsrwr.h",
+    "IOCSRWR_H",
+    0xFFFFFC00,
+    0x06481400,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rd,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
+);
+
+loongarch_insn!(
+    IOCSRWR_W,
+    "iocsrwr.w",
+    "IOCSRWR_W",
+    0xFFFFFC00,
+    0x06481800,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rd,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
+);
+
+loongarch_insn!(
+    IOCSRWR_D,
+    "iocsrwr.d",
+    "IOCSRWR_D",
+    0xFFFFFC00,
+    0x06481C00,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rd,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Privileged, InstructionGroup::System]
 );
 
 upper_imm_insn!(LU12I_W, "lu12i.w", "LU12I_W", 0xFE00_0000, 0x1400_0000);
