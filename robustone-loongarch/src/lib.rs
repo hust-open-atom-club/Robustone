@@ -121,6 +121,23 @@ impl ArchitectureHandler for LoongArchHandler {
                     decoded.mnemonic = "nop".to_string();
                     decoded.operands.clear();
                 }
+                // Alias: or $rd, $rj, $zero => move $rd, $rj
+                if decoded.mnemonic == "or"
+                    && decoded.operands.len() == 3
+                    && let (
+                        Operand::Register { register: _rd },
+                        Operand::Register { register: _rj },
+                        Operand::Register { register: rk },
+                    ) = (
+                        &decoded.operands[0],
+                        &decoded.operands[1],
+                        &decoded.operands[2],
+                    )
+                    && rk.id == 0
+                {
+                    decoded.mnemonic = "move".to_string();
+                    decoded.operands.pop();
+                }
                 Ok((decoded, size))
             }
             Err(e) => {

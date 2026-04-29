@@ -351,6 +351,8 @@ r3_insn!(MOD_DU, "mod.du", "MOD_DU", 0xFFFF_8000, 0x0023_8000);
 // Immediate ALU (R2I12)
 r2i12_insn!(ADDI_W, "addi.w", "ADDI_W", 0xFFC0_0000, 0x0280_0000);
 r2i12_insn!(ADDI_D, "addi.d", "ADDI_D", 0xFFC0_0000, 0x02C0_0000);
+r2i12_insn!(SLTI, "slti", "SLTI", 0xFFC0_0000, 0x0200_0000);
+r2i12_insn!(SLTUI, "sltui", "SLTUI", 0xFFC0_0000, 0x0240_0000);
 
 // Logical immediate (R2I12_U)
 macro_rules! logical_imm_insn {
@@ -875,7 +877,7 @@ pub static LOONGARCH_BASE_SPECS: &[InstructionSpec<LoongArchBackend>] = &[
     DIV_DU, MOD_DU, // Shift immediate
     SLLI_W, SLLI_D, SRLI_W, SRLI_D, SRAI_W, SRAI_D, // Shift (R3)
     SLL_W, SRL_W, SRA_W, SLL_D, SRL_D, SRA_D, // Immediate ALU
-    ADDI_W, ADDI_D, ANDI, ORI, XORI, ADDU12I_W, ADDU12I_D, // Upper immediate
+    ADDI_W, ADDI_D, SLTI, SLTUI, ANDI, ORI, XORI, ADDU12I_W, ADDU12I_D, // Upper immediate
     LU12I_W, PCADDI, PCALAU12I, PCADDU12I, // Branch
     BEQ, BNE, BLT, BGE, BLTU, BGEU, B, BL, JIRL, BEQZ, BNEZ, // Memory
     LD_B, LD_H, LD_W, LD_D, ST_B, ST_H, ST_W, ST_D, LDX_B, LDX_H, LDX_W, LDX_D, STX_B, STX_H,

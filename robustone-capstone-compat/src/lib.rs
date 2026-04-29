@@ -147,4 +147,84 @@ mod tests {
         );
         assert_eq!(fail, 0, "unexpected mismatches");
     }
+
+    #[test]
+    fn test_pseudos_yaml() {
+        let path = std::path::Path::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../third_party/capstone/tests/MC/LoongArch/pseudos.s.yaml"
+        ));
+        let (pass, fail, known_diff, unsupported) = run_yaml_file(path);
+        eprintln!(
+            "pseudos.s.yaml summary: {} pass, {} fail, {} known_diff, {} unsupported",
+            pass, fail, known_diff, unsupported
+        );
+        assert_eq!(fail, 0, "unexpected mismatches");
+    }
+}
+
+#[cfg(test)]
+mod bulk_tests {
+    use super::harness;
+    use robustone_core::ArchitectureDispatcher;
+    use robustone_loongarch::LoongArchHandler;
+
+    fn loongarch_dispatcher() -> ArchitectureDispatcher {
+        let mut dispatcher = ArchitectureDispatcher::new();
+        dispatcher.register(Box::new(LoongArchHandler::new()));
+        dispatcher
+    }
+
+    #[test]
+    #[ignore]
+    fn bulk_run_all_loongarch_yaml() {
+        let dispatcher = loongarch_dispatcher();
+        let dir = std::path::Path::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../third_party/capstone/tests/MC/LoongArch"
+        ));
+        let results = harness::run_yaml_dir(&dispatcher, dir).unwrap();
+
+        let mut total_pass = 0usize;
+        let mut total_fail = 0usize;
+        let mut total_known = 0usize;
+        let mut total_unsupported = 0usize;
+
+        use std::collections::HashMap;
+        let mut per_file: HashMap<String, (usize, usize, usize, usize)> = HashMap::new();
+        for (file, _idx, res) in &results {
+            let file = file.file_name().unwrap().to_str().unwrap();
+            let entry = per_file.entry(file.to_string()).or_insert((0, 0, 0, 0));
+            match res {
+                Ok(()) => entry.0 += 1,
+                Err(msg) if msg.contains("unsupported arch/options") => entry.3 += 1,
+                Err(msg) if msg.contains("nor") && msg.contains("orn") => entry.2 += 1,
+                Err(msg) if msg.contains("screl") => entry.2 += 1,
+                Err(msg) => {
+                    entry.1 += 1;
+                    if entry.1 <= 3 {
+                        eprintln!("{}: {}", file, msg);
+                    }
+                }
+            }
+        }
+
+        for (file, (pass, fail, known, unsupported)) in &per_file {
+            total_pass += pass;
+            total_fail += fail;
+            total_known += known;
+            total_unsupported += unsupported;
+            if *fail > 0 {
+                eprintln!(
+                    "{}: {} pass, {} fail, {} known, {} unsupported",
+                    file, pass, fail, known, unsupported
+                );
+            }
+        }
+
+        eprintln!(
+            "TOTAL: {} pass, {} fail, {} known, {} unsupported",
+            total_pass, total_fail, total_known, total_unsupported
+        );
+    }
 }
