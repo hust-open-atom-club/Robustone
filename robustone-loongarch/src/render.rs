@@ -91,26 +91,26 @@ pub fn render_loongarch_text_parts(
     instruction: &DecodedInstruction,
     profile: TextRenderProfile,
     alias_regs: bool,
-    capstone_aliases: bool,
+    compat_aliases: bool,
     // LoongArch has no compressed instruction encoding, so this flag is
     // intentionally unused. It is kept in the signature to match the
     // `RenderFn` type expected by `DecodedInstruction`.
     _compressed_aliases: bool,
     unsigned_immediate: bool,
 ) -> (String, String) {
-    let use_capstone_aliases = capstone_aliases && !matches!(profile, TextRenderProfile::Canonical);
+    let use_compat_aliases = compat_aliases && !matches!(profile, TextRenderProfile::Canonical);
 
-    let mnemonic = if use_capstone_aliases {
+    let mnemonic = if use_compat_aliases {
         instruction
             .render_hints
-            .capstone_mnemonic
+            .compat_mnemonic
             .clone()
             .unwrap_or_else(|| instruction.mnemonic.clone())
     } else {
         instruction.mnemonic.clone()
     };
 
-    let hidden_operands = if use_capstone_aliases {
+    let hidden_operands = if use_compat_aliases {
         instruction.render_hints.compat_hidden_operands.as_slice()
     } else {
         &[][..]
@@ -217,7 +217,7 @@ impl Renderer for LoongArchRenderer {
             instruction,
             options.text_profile,
             options.alias_regs,
-            options.capstone_aliases,
+            options.compat_aliases,
             options.compressed_aliases,
             options.unsigned_immediate,
         )

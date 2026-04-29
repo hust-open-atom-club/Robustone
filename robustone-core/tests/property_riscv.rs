@@ -81,7 +81,7 @@ fn render_options(profile: TextRenderProfile) -> RenderOptions {
     RenderOptions {
         text_profile: profile,
         alias_regs: false,
-        capstone_aliases: !matches!(profile, TextRenderProfile::Canonical),
+        compat_aliases: !matches!(profile, TextRenderProfile::Canonical),
         compressed_aliases: !matches!(profile, TextRenderProfile::Canonical),
         unsigned_immediate: false,
     }
@@ -116,7 +116,7 @@ prop_compose! {
             ]),
             0..3,
         ),
-        capstone_mnemonic in prop::option::of(prop::sample::select(vec![
+        compat_mnemonic in prop::option::of(prop::sample::select(vec![
             "li".to_string(),
             "beqz".to_string(),
             "j".to_string(),
@@ -153,7 +153,7 @@ prop_compose! {
             groups,
             status,
             render_hints: RenderHints {
-                capstone_mnemonic,
+                compat_mnemonic,
                 compat_hidden_operands,
             },
         }

@@ -198,7 +198,7 @@ mod tests {
             groups: vec!["arithmetic".to_string()],
             status: DecodeStatus::Success,
             render_hints: RenderHints {
-                capstone_mnemonic: Some("li".to_string()),
+                compat_mnemonic: Some("li".to_string()),
                 compat_hidden_operands: vec![1],
             },
         };

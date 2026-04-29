@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! LoongArch LA64 disassembly module for Robustone.
 //!
 //! Provides instruction decoding for LoongArch LA64 targets using the

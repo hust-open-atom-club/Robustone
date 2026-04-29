@@ -96,7 +96,7 @@ fn build_instruction(data: &[u8]) -> Instruction {
             _ => DecodeStatus::Unimplemented,
         },
         render_hints: RenderHints {
-            capstone_mnemonic: if next_byte(data, &mut cursor) & 1 == 0 {
+            compat_mnemonic: if next_byte(data, &mut cursor) & 1 == 0 {
                 Some("li".to_string())
             } else {
                 None

@@ -54,7 +54,7 @@ fn assert_case(case: GoldenCase) {
     assert_eq!(size, bytes.len());
     assert_eq!(decoded.mnemonic, case.expected_ir.mnemonic);
     assert_eq!(
-        decoded.render_hints.capstone_mnemonic.as_deref(),
+        decoded.render_hints.compat_mnemonic.as_deref(),
         case.expected_ir.render_hint_mnemonic.as_deref()
     );
     assert_eq!(

@@ -527,7 +527,7 @@ impl<'a> DisassemblyFormatter<'a> {
         };
 
         let mut detail_lines = Vec::new();
-        let detail_alias_regs = self.output_config.capstone_aliases
+        let detail_alias_regs = self.output_config.compat_aliases
             && (self.output_config.alias_regs
                 || !matches!(
                     self.output_config.text_profile,
@@ -586,7 +586,7 @@ impl<'a> DisassemblyFormatter<'a> {
         RenderOptions {
             text_profile: self.output_config.text_profile,
             alias_regs: self.output_config.alias_regs,
-            capstone_aliases: self.output_config.capstone_aliases,
+            compat_aliases: self.output_config.compat_aliases,
             compressed_aliases: self.output_config.compressed_aliases,
             unsigned_immediate: self.output_config.unsigned_immediate,
         }
@@ -684,7 +684,7 @@ mod tests {
         let formatter = DisassemblyFormatter::new(OutputConfig {
             text_profile: robustone_core::ir::TextRenderProfile::Compat,
             alias_regs: false,
-            capstone_aliases: true,
+            compat_aliases: true,
             compressed_aliases: true,
             unsigned_immediate: false,
             show_hex: false,
@@ -725,7 +725,7 @@ mod tests {
             groups: vec!["arithmetic".to_string()],
             status: DecodeStatus::Success,
             render_hints: RenderHints {
-                capstone_mnemonic: Some("li".to_string()),
+                compat_mnemonic: Some("li".to_string()),
                 compat_hidden_operands: vec![1],
             },
         };
@@ -767,7 +767,7 @@ mod tests {
         let formatter = DisassemblyFormatter::new(OutputConfig {
             text_profile: robustone_core::ir::TextRenderProfile::Compat,
             alias_regs: false,
-            capstone_aliases: true,
+            compat_aliases: true,
             compressed_aliases: true,
             unsigned_immediate: false,
             show_hex: false,
@@ -805,7 +805,7 @@ mod tests {
         let formatter = DisassemblyFormatter::new(OutputConfig {
             text_profile: robustone_core::ir::TextRenderProfile::Compat,
             alias_regs: false,
-            capstone_aliases: true,
+            compat_aliases: true,
             compressed_aliases: true,
             unsigned_immediate: false,
             show_hex: false,
@@ -841,7 +841,7 @@ mod tests {
         let formatter = DisassemblyFormatter::new(OutputConfig {
             text_profile: robustone_core::ir::TextRenderProfile::Compat,
             alias_regs: false,
-            capstone_aliases: true,
+            compat_aliases: true,
             compressed_aliases: true,
             unsigned_immediate: false,
             show_hex: false,
@@ -904,7 +904,7 @@ mod tests {
         let formatter = DisassemblyFormatter::new(OutputConfig {
             text_profile: robustone_core::ir::TextRenderProfile::Compat,
             alias_regs: false,
-            capstone_aliases: true,
+            compat_aliases: true,
             compressed_aliases: true,
             unsigned_immediate: false,
             show_hex: false,
@@ -1180,7 +1180,7 @@ mod tests {
             OutputConfig {
                 text_profile: robustone_core::ir::TextRenderProfile::Canonical,
                 alias_regs: false,
-                capstone_aliases: false,
+                compat_aliases: false,
                 compressed_aliases: false,
                 unsigned_immediate: false,
                 show_hex: false,

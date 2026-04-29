@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Proc-macro crate for the Robustone ISA backend framework.
 //!
 //! Provides declarative macros that architecture crates use to define

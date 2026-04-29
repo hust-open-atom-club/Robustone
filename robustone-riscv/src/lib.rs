@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! RISC-V disassembly module.
 //!
 //! Provides instruction decoding for RISC-V, including:

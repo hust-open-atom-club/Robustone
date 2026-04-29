@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! ISA-level decode framework shared across architecture backends.
 //!
 //! This crate provides the `ArchitectureBackend` trait and the generic

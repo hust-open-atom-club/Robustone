@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! ARM (AArch64) disassembly module for Robustone.
 //!
 //! Provides instruction decoding for ARM AArch64 targets.

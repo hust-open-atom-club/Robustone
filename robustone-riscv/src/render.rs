@@ -13,29 +13,29 @@ pub fn render_riscv_text_parts(
     instruction: &DecodedInstruction,
     profile: TextRenderProfile,
     alias_regs: bool,
-    capstone_aliases: bool,
+    compat_aliases: bool,
     compressed_aliases: bool,
     unsigned_immediate: bool,
 ) -> (String, String) {
-    let use_capstone_aliases =
-        capstone_aliases && (compressed_aliases || !instruction.mnemonic.starts_with("c."));
+    let use_compat_aliases =
+        compat_aliases && (compressed_aliases || !instruction.mnemonic.starts_with("c."));
 
-    let mnemonic = if matches!(profile, TextRenderProfile::Canonical) || !use_capstone_aliases {
+    let mnemonic = if matches!(profile, TextRenderProfile::Canonical) || !use_compat_aliases {
         instruction.mnemonic.clone()
     } else {
         instruction
             .render_hints
-            .capstone_mnemonic
+            .compat_mnemonic
             .clone()
             .unwrap_or_else(|| instruction.mnemonic.clone())
     };
 
-    let hidden_operands =
-        if matches!(profile, TextRenderProfile::Canonical) || !use_capstone_aliases {
-            &[][..]
-        } else {
-            instruction.render_hints.compat_hidden_operands.as_slice()
-        };
+    let hidden_operands = if matches!(profile, TextRenderProfile::Canonical) || !use_compat_aliases
+    {
+        &[][..]
+    } else {
+        instruction.render_hints.compat_hidden_operands.as_slice()
+    };
 
     let visible_operands = instruction
         .operands
@@ -404,15 +404,15 @@ pub struct RiscVRenderer;
 impl Renderer for RiscVRenderer {
     fn render(&self, instruction: &DecodedInstruction, options: RenderOptions) -> (String, String) {
         // Match the legacy behavior where register aliases are enabled for
-        // Capstone profile unless explicitly disabled via capstone_aliases.
-        let alias_regs = options.capstone_aliases
+        // Capstone profile unless explicitly disabled via compat_aliases.
+        let alias_regs = options.compat_aliases
             && (options.alias_regs
                 || !matches!(options.text_profile, TextRenderProfile::Canonical));
         render_riscv_text_parts(
             instruction,
             options.text_profile,
             alias_regs,
-            options.capstone_aliases,
+            options.compat_aliases,
             options.compressed_aliases,
             options.unsigned_immediate,
         )

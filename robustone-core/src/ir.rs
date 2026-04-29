@@ -98,7 +98,7 @@ pub enum Operand {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
 pub struct RenderHints {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub capstone_mnemonic: Option<String>,
+    pub compat_mnemonic: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub compat_hidden_operands: Vec<usize>,
 }
@@ -146,10 +146,10 @@ impl DecodedInstruction {
     /// Set a decoder-facing alias mnemonic and optional hidden operands.
     pub fn with_capstone_alias(
         mut self,
-        capstone_mnemonic: impl Into<String>,
+        compat_mnemonic: impl Into<String>,
         hidden_operands: Vec<usize>,
     ) -> Self {
-        self.render_hints.capstone_mnemonic = Some(capstone_mnemonic.into());
+        self.render_hints.compat_mnemonic = Some(compat_mnemonic.into());
         self.render_hints.compat_hidden_operands = hidden_operands;
         self
     }
@@ -322,7 +322,7 @@ mod tests {
     }
 
     #[test]
-    fn render_hints_capstone_mnemonic_is_ignored_by_generic_renderer() {
+    fn render_hints_compat_mnemonic_is_ignored_by_generic_renderer() {
         let mut instruction = sample_instruction(
             "addi",
             vec![
@@ -332,7 +332,7 @@ mod tests {
                 Operand::Immediate { value: 1 },
             ],
         );
-        instruction.render_hints.capstone_mnemonic = Some("li".to_string());
+        instruction.render_hints.compat_mnemonic = Some("li".to_string());
         let (mnemonic, _) = instruction.render_capstone_text_parts();
         // Generic renderer does not apply capstone mnemonic aliases
         assert_eq!(mnemonic, "addi");

@@ -7,7 +7,7 @@ pub fn render_aarch64_text_parts(
     instruction: &DecodedInstruction,
     _profile: TextRenderProfile,
     _alias_regs: bool,
-    _capstone_aliases: bool,
+    _compat_aliases: bool,
     _compressed_aliases: bool,
     _unsigned_immediate: bool,
 ) -> (String, String) {
@@ -62,7 +62,7 @@ impl Renderer for AArch64Renderer {
             instruction,
             options.text_profile,
             options.alias_regs,
-            options.capstone_aliases,
+            options.compat_aliases,
             options.compressed_aliases,
             options.unsigned_immediate,
         )

@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Robustone – Core disassembly engine with multi-architecture support.
 //!
 //! This crate provides a flexible, extensible disassembly framework inspired by
@@ -496,10 +498,7 @@ mod tests {
 
         assert_eq!(size, 4);
         assert_eq!(decoded.mnemonic, "addi");
-        assert_eq!(
-            decoded.render_hints.capstone_mnemonic.as_deref(),
-            Some("li")
-        );
+        assert_eq!(decoded.render_hints.compat_mnemonic.as_deref(), Some("li"));
         assert_eq!(decoded.render_hints.compat_hidden_operands, vec![1]);
     }
 

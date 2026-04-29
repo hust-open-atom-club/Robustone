@@ -8,7 +8,7 @@ use serde::Serialize;
 pub struct RenderOptions {
     pub text_profile: TextRenderProfile,
     pub alias_regs: bool,
-    pub capstone_aliases: bool,
+    pub compat_aliases: bool,
     pub compressed_aliases: bool,
     pub unsigned_immediate: bool,
 }

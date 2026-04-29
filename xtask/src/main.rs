@@ -153,9 +153,9 @@ fn check_forbidden_strings(
                     let lower = line.to_lowercase();
                     if lower.contains(word)
                         && !lower.contains("textrenderprofile")
-                        && !lower.contains("capstone_aliases")
+                        && !lower.contains("compat_aliases")
                         && !lower.contains("capstone_hidden")
-                        && !lower.contains("capstone_mnemonic")
+                        && !lower.contains("compat_mnemonic")
                         && !lower.contains("render_hints")
                         && !lower.contains("with_capstone_alias")
                         && !lower.contains("textprofile")

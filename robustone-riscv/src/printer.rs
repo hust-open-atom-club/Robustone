@@ -157,7 +157,7 @@ impl RiscVPrinter {
         let mnemonic = match self.profile {
             RiscVTextProfile::Compat | RiscVTextProfile::VerboseDebug if use_compat_aliases => ir
                 .render_hints
-                .capstone_mnemonic
+                .compat_mnemonic
                 .clone()
                 .unwrap_or_else(|| ir.mnemonic.clone()),
             _ => ir.mnemonic.clone(),
@@ -674,7 +674,7 @@ mod tests {
             groups: vec!["arithmetic".to_string()],
             status: DecodeStatus::Success,
             render_hints: RenderHints {
-                capstone_mnemonic: Some("li".to_string()),
+                compat_mnemonic: Some("li".to_string()),
                 compat_hidden_operands: vec![1],
             },
         };
@@ -748,7 +748,7 @@ mod tests {
             groups: vec!["arithmetic".to_string()],
             status: DecodeStatus::Success,
             render_hints: RenderHints {
-                capstone_mnemonic: None,
+                compat_mnemonic: None,
                 compat_hidden_operands: Vec::new(),
             },
         };

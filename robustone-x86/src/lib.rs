@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! x86/x64 disassembly module for Robustone.
 //!
 //! Provides instruction decoding for x86 and x86-64 targets.
