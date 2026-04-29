@@ -599,12 +599,12 @@ macro_rules! atomic_r3_insn {
 }
 
 atomic_r3_insn!(AMSWAP_W, "amswap.w", "AMSWAP_W", 0xFFFF_8000, 0x3860_0000);
-atomic_r3_insn!(AMADD_W, "amadd.w", "AMADD_W", 0xFFFF_8000, 0x3868_0000);
-atomic_r3_insn!(AMAND_W, "amand.w", "AMAND_W", 0xFFFF_8000, 0x3870_0000);
-atomic_r3_insn!(AMOR_W, "amor.w", "AMOR_W", 0xFFFF_8000, 0x3878_0000);
-atomic_r3_insn!(AMXOR_W, "amxor.w", "AMXOR_W", 0xFFFF_8000, 0x3880_0000);
-atomic_r3_insn!(AMMAX_W, "ammax.w", "AMMAX_W", 0xFFFF_8000, 0x3888_0000);
-atomic_r3_insn!(AMMIN_W, "ammin.w", "AMMIN_W", 0xFFFF_8000, 0x3890_0000);
+atomic_r3_insn!(AMADD_W, "amadd.w", "AMADD_W", 0xFFFF_8000, 0x3861_0000);
+atomic_r3_insn!(AMAND_W, "amand.w", "AMAND_W", 0xFFFF_8000, 0x3862_0000);
+atomic_r3_insn!(AMOR_W, "amor.w", "AMOR_W", 0xFFFF_8000, 0x3863_0000);
+atomic_r3_insn!(AMXOR_W, "amxor.w", "AMXOR_W", 0xFFFF_8000, 0x3864_0000);
+atomic_r3_insn!(AMMAX_W, "ammax.w", "AMMAX_W", 0xFFFF_8000, 0x3865_0000);
+atomic_r3_insn!(AMMIN_W, "ammin.w", "AMMIN_W", 0xFFFF_8000, 0x3866_0000);
 
 // Barrier / system (FMT_I15)
 macro_rules! barrier_insn {
