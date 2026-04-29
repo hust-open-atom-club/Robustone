@@ -256,6 +256,10 @@ r3_insn!(SRA_W, "sra.w", "SRA_W", 0xFFFF_8000, 0x0018_0000);
 r3_insn!(SLL_D, "sll.d", "SLL_D", 0xFFFF_8000, 0x0018_8000);
 r3_insn!(SRL_D, "srl.d", "SRL_D", 0xFFFF_8000, 0x0019_0000);
 r3_insn!(SRA_D, "sra.d", "SRA_D", 0xFFFF_8000, 0x0019_8000);
+r3_insn!(ROTR_B, "rotr.b", "ROTR_B", 0xFFFF_8000, 0x001A_0000);
+r3_insn!(ROTR_H, "rotr.h", "ROTR_H", 0xFFFF_8000, 0x001A_8000);
+r3_insn!(ROTR_W, "rotr.w", "ROTR_W", 0xFFFF_8000, 0x001B_0000);
+r3_insn!(ROTR_D, "rotr.d", "ROTR_D", 0xFFFF_8000, 0x001B_8000);
 
 // Shift immediate (R2I5 / R2I6)
 macro_rules! shift_imm5_insn {
@@ -333,6 +337,8 @@ r3_insn!(SUB_W, "sub.w", "SUB_W", 0xFFFF_8000, 0x0011_0000);
 r3_insn!(SUB_D, "sub.d", "SUB_D", 0xFFFF_8000, 0x0011_8000);
 r3_insn!(SLT, "slt", "SLT", 0xFFFF_8000, 0x0012_0000);
 r3_insn!(SLTU, "sltu", "SLTU", 0xFFFF_8000, 0x0012_8000);
+r3_insn!(MASKEQZ, "maskeqz", "MASKEQZ", 0xFFFF_8000, 0x0013_0000);
+r3_insn!(MASKNEZ, "masknez", "MASKNEZ", 0xFFFF_8000, 0x0013_8000);
 r3_insn!(AND, "and", "AND", 0xFFFF_8000, 0x0014_8000);
 r3_insn!(OR, "or", "OR", 0xFFFF_8000, 0x0015_0000);
 r3_insn!(XOR, "xor", "XOR", 0xFFFF_8000, 0x0015_8000);
@@ -981,14 +987,15 @@ upper_imm_insn!(
 
 pub static LOONGARCH_BASE_SPECS: &[InstructionSpec<LoongArchBackend>] = &[
     // ALU (R3)
-    ADD_W, ADD_D, SUB_W, SUB_D, SLT, SLTU, AND, OR, XOR, NOR, ORN, ANDN, // Bit manipulation
+    ADD_W, ADD_D, SUB_W, SUB_D, SLT, SLTU, MASKEQZ, MASKNEZ, AND, OR, XOR, NOR, ORN, ANDN,
+    // Bit manipulation
     CLO_W, CLZ_W, CTO_W, CTZ_W, CLO_D, CLZ_D, CTO_D, CTZ_D, REVB_2H, REVB_4H, REVB_2W, REVB_D,
     REVH_2W, REVH_D, BITREV_4B, BITREV_8B, BITREV_W, BITREV_D, EXT_W_H, EXT_W_B,
     // Multiply / Divide
     ALSL_W, ALSL_WU, ALSL_D, MUL_W, MULH_W, MULH_WU, MUL_D, MULH_D, MULH_DU, DIV_W, MOD_W, DIV_WU,
     MOD_WU, DIV_D, MOD_D, DIV_DU, MOD_DU, // Shift immediate
     SLLI_W, SLLI_D, SRLI_W, SRLI_D, SRAI_W, SRAI_D, // Shift (R3)
-    SLL_W, SRL_W, SRA_W, SLL_D, SRL_D, SRA_D, // Immediate ALU
+    SLL_W, SRL_W, SRA_W, SLL_D, SRL_D, SRA_D, ROTR_B, ROTR_H, ROTR_W, ROTR_D, // Immediate ALU
     ADDI_W, ADDI_D, SLTI, SLTUI, ANDI, ORI, XORI, ADDU12I_W, ADDU12I_D, // Upper immediate
     LU12I_W, PCADDI, PCALAU12I, PCADDU12I, // Branch
     BEQ, BNE, BLT, BGE, BLTU, BGEU, B, BL, JIRL, BEQZ, BNEZ, // Memory
