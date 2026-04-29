@@ -45,7 +45,7 @@ use arch::LoongArchInstructionDetail;
 use decoder::LoongArchDecoder;
 use robustone_core::{
     common::ArchitectureProfile,
-    ir::{DecodedInstruction, TextRenderProfile},
+    ir::{DecodedInstruction, Operand, TextRenderProfile},
     traits::ArchitectureHandler,
     traits::instruction::Detail,
     types::error::{DecodeErrorKind, DisasmError},
@@ -101,8 +101,26 @@ impl ArchitectureHandler for LoongArchHandler {
             alias_policy: AliasPolicy::PreferPseudo,
         };
         match decode_one::<backend::LoongArchBackend>(bytes, addr, &profile) {
-            Ok(decoded) => {
+            Ok(mut decoded) => {
                 let size = decoded.size;
+                // Alias: andi $zero, $zero, 0 => nop
+                if decoded.mnemonic == "andi"
+                    && decoded.operands.len() == 3
+                    && let (
+                        Operand::Register { register: rd },
+                        Operand::Register { register: rj },
+                        Operand::Immediate { value: 0 },
+                    ) = (
+                        &decoded.operands[0],
+                        &decoded.operands[1],
+                        &decoded.operands[2],
+                    )
+                    && rd.id == 0
+                    && rj.id == 0
+                {
+                    decoded.mnemonic = "nop".to_string();
+                    decoded.operands.clear();
+                }
                 Ok((decoded, size))
             }
             Err(e) => {

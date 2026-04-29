@@ -61,6 +61,8 @@ pub enum LoongArchField {
     Si16,
     Si20,
     Si21,
+    Ui5,
+    Ui6,
     I26Lo,
     I26Hi,
     Code,
@@ -135,6 +137,25 @@ robustone_isa::format_specs! {
     }
     format FMT_I15[LoongArchField] {
         code: field("code", 0, 15, LoongArchField::Code),
+    }
+    format FMT_R2I5[LoongArchField] {
+        rd: field("rd", 0, 5, LoongArchField::Rd),
+        rj: field("rj", 5, 5, LoongArchField::Rj),
+        ui5: field("ui5", 10, 5, LoongArchField::Ui5),
+    }
+    format FMT_R2I6[LoongArchField] {
+        rd: field("rd", 0, 5, LoongArchField::Rd),
+        rj: field("rj", 5, 5, LoongArchField::Rj),
+        ui6: field("ui6", 10, 6, LoongArchField::Ui6),
+    }
+    format FMT_1RI20[LoongArchField] {
+        rd: field("rd", 0, 5, LoongArchField::Rd),
+        si20: field("si20", 5, 20, LoongArchField::Si20),
+    }
+    format FMT_R2I12_U[LoongArchField] {
+        rd: field("rd", 0, 5, LoongArchField::Rd),
+        rj: field("rj", 5, 5, LoongArchField::Rj),
+        ui12: field("ui12", 10, 12, LoongArchField::Ui12),
     }
 }
 
@@ -230,6 +251,75 @@ r3_insn!(SLL_D, "sll.d", "SLL_D", 0xFFFF_8000, 0x0018_8000);
 r3_insn!(SRL_D, "srl.d", "SRL_D", 0xFFFF_8000, 0x0019_0000);
 r3_insn!(SRA_D, "sra.d", "SRA_D", 0xFFFF_8000, 0x0019_8000);
 
+// Shift immediate (R2I5 / R2I6)
+macro_rules! shift_imm5_insn {
+    ($name:ident, $mnemonic:expr, $opcode_id:expr, $mask:expr, $value:expr) => {
+        loongarch_insn!(
+            $name,
+            $mnemonic,
+            $opcode_id,
+            $mask,
+            $value,
+            &FMT_R2I5,
+            &[
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rd,
+                    Access::Write
+                ),
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rj,
+                    Access::Read
+                ),
+                robustone_isa::imm!(
+                    LoongArchField::Ui5,
+                    ImmediateTransform::ZeroExtend { bits: 5 },
+                    ImmediateKind::Unsigned
+                ),
+            ],
+            &[InstructionGroup::Integer, InstructionGroup::Shift]
+        );
+    };
+}
+macro_rules! shift_imm6_insn {
+    ($name:ident, $mnemonic:expr, $opcode_id:expr, $mask:expr, $value:expr) => {
+        loongarch_insn!(
+            $name,
+            $mnemonic,
+            $opcode_id,
+            $mask,
+            $value,
+            &FMT_R2I6,
+            &[
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rd,
+                    Access::Write
+                ),
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rj,
+                    Access::Read
+                ),
+                robustone_isa::imm!(
+                    LoongArchField::Ui6,
+                    ImmediateTransform::ZeroExtend { bits: 6 },
+                    ImmediateKind::Unsigned
+                ),
+            ],
+            &[InstructionGroup::Integer, InstructionGroup::Shift]
+        );
+    };
+}
+
+shift_imm5_insn!(SLLI_W, "slli.w", "SLLI_W", 0xFFFF_8000, 0x0040_8000);
+shift_imm6_insn!(SLLI_D, "slli.d", "SLLI_D", 0xFFFF_0000, 0x0041_0000);
+shift_imm5_insn!(SRLI_W, "srli.w", "SRLI_W", 0xFFFF_8000, 0x0044_8000);
+shift_imm6_insn!(SRLI_D, "srli.d", "SRLI_D", 0xFFFF_0000, 0x0045_0000);
+shift_imm5_insn!(SRAI_W, "srai.w", "SRAI_W", 0xFFFF_8000, 0x0048_8000);
+shift_imm6_insn!(SRAI_D, "srai.d", "SRAI_D", 0xFFFF_0000, 0x0049_0000);
+
 // ALU instructions (R3)
 r3_insn!(ADD_W, "add.w", "ADD_W", 0xFFFF_8000, 0x0010_0000);
 r3_insn!(ADD_D, "add.d", "ADD_D", 0xFFFF_8000, 0x0010_8000);
@@ -242,9 +332,108 @@ r3_insn!(OR, "or", "OR", 0xFFFF_8000, 0x0015_0000);
 r3_insn!(XOR, "xor", "XOR", 0xFFFF_8000, 0x0015_8000);
 r3_insn!(NOR, "nor", "NOR", 0xFFFF_8000, 0x0016_0000);
 
+// Multiply / Divide / Modulo (R3)
+r3_insn!(MUL_W, "mul.w", "MUL_W", 0xFFFF_8000, 0x001C_0000);
+r3_insn!(MULH_W, "mulh.w", "MULH_W", 0xFFFF_8000, 0x001C_8000);
+r3_insn!(MULH_WU, "mulh.wu", "MULH_WU", 0xFFFF_8000, 0x001D_0000);
+r3_insn!(MUL_D, "mul.d", "MUL_D", 0xFFFF_8000, 0x001D_8000);
+r3_insn!(MULH_D, "mulh.d", "MULH_D", 0xFFFF_8000, 0x001E_0000);
+r3_insn!(MULH_DU, "mulh.du", "MULH_DU", 0xFFFF_8000, 0x001E_8000);
+r3_insn!(DIV_W, "div.w", "DIV_W", 0xFFFF_8000, 0x0020_0000);
+r3_insn!(MOD_W, "mod.w", "MOD_W", 0xFFFF_8000, 0x0020_8000);
+r3_insn!(DIV_WU, "div.wu", "DIV_WU", 0xFFFF_8000, 0x0021_0000);
+r3_insn!(MOD_WU, "mod.wu", "MOD_WU", 0xFFFF_8000, 0x0021_8000);
+r3_insn!(DIV_D, "div.d", "DIV_D", 0xFFFF_8000, 0x0022_0000);
+r3_insn!(MOD_D, "mod.d", "MOD_D", 0xFFFF_8000, 0x0022_8000);
+r3_insn!(DIV_DU, "div.du", "DIV_DU", 0xFFFF_8000, 0x0023_0000);
+r3_insn!(MOD_DU, "mod.du", "MOD_DU", 0xFFFF_8000, 0x0023_8000);
+
 // Immediate ALU (R2I12)
 r2i12_insn!(ADDI_W, "addi.w", "ADDI_W", 0xFFC0_0000, 0x0280_0000);
 r2i12_insn!(ADDI_D, "addi.d", "ADDI_D", 0xFFC0_0000, 0x02C0_0000);
+
+// Logical immediate (R2I12_U)
+macro_rules! logical_imm_insn {
+    ($name:ident, $mnemonic:expr, $opcode_id:expr, $mask:expr, $value:expr) => {
+        loongarch_insn!(
+            $name,
+            $mnemonic,
+            $opcode_id,
+            $mask,
+            $value,
+            &FMT_R2I12_U,
+            &[
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rd,
+                    Access::Write
+                ),
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rj,
+                    Access::Read
+                ),
+                robustone_isa::imm!(
+                    LoongArchField::Ui12,
+                    ImmediateTransform::ZeroExtend { bits: 12 },
+                    ImmediateKind::Unsigned
+                ),
+            ],
+            &[InstructionGroup::Integer, InstructionGroup::Logical]
+        );
+    };
+}
+
+logical_imm_insn!(ANDI, "andi", "ANDI", 0xFFC0_0000, 0x0340_0000);
+logical_imm_insn!(ORI, "ori", "ORI", 0xFFC0_0000, 0x0380_0000);
+logical_imm_insn!(XORI, "xori", "XORI", 0xFFC0_0000, 0x03C0_0000);
+
+// addu12i (R2I5)
+macro_rules! addu12i_insn {
+    ($name:ident, $mnemonic:expr, $opcode_id:expr, $mask:expr, $value:expr) => {
+        loongarch_insn!(
+            $name,
+            $mnemonic,
+            $opcode_id,
+            $mask,
+            $value,
+            &FMT_R2I5,
+            &[
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rd,
+                    Access::Write
+                ),
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rj,
+                    Access::Read
+                ),
+                robustone_isa::imm!(
+                    LoongArchField::Ui5,
+                    ImmediateTransform::SignExtend { bits: 5 },
+                    ImmediateKind::Absolute
+                ),
+            ],
+            &[InstructionGroup::Integer, InstructionGroup::Arithmetic]
+        );
+    };
+}
+
+addu12i_insn!(
+    ADDU12I_W,
+    "addu12i.w",
+    "ADDU12I_W",
+    0xFFFF_8000,
+    0x0029_0000
+);
+addu12i_insn!(
+    ADDU12I_D,
+    "addu12i.d",
+    "ADDU12I_D",
+    0xFFFF_8000,
+    0x0029_8000
+);
 
 // Branch compare (R2I16) — operand order: rj, rd, offset
 macro_rules! branch_r2i16_insn {
@@ -631,13 +820,63 @@ barrier_insn!(IBAR, "ibar", "IBAR", 0xFFFF_8000, 0x3872_8000);
 barrier_insn!(SYSCALL, "syscall", "SYSCALL", 0xFFFF_8000, 0x002B_0000);
 barrier_insn!(BREAK, "break", "BREAK", 0xFFFF_8000, 0x002A_0000);
 
+// Upper immediate (1RI20)
+macro_rules! upper_imm_insn {
+    ($name:ident, $mnemonic:expr, $opcode_id:expr, $mask:expr, $value:expr) => {
+        loongarch_insn!(
+            $name,
+            $mnemonic,
+            $opcode_id,
+            $mask,
+            $value,
+            &FMT_1RI20,
+            &[
+                robustone_isa::reg!(
+                    LoongArchRegisterClass::Gpr,
+                    LoongArchField::Rd,
+                    Access::Write
+                ),
+                robustone_isa::imm!(
+                    LoongArchField::Si20,
+                    ImmediateTransform::SignExtend { bits: 20 },
+                    ImmediateKind::Absolute
+                ),
+            ],
+            &[InstructionGroup::Integer, InstructionGroup::Arithmetic]
+        );
+    };
+}
+
+upper_imm_insn!(LU12I_W, "lu12i.w", "LU12I_W", 0xFE00_0000, 0x1400_0000);
+upper_imm_insn!(PCADDI, "pcaddi", "PCADDI", 0xFE00_0000, 0x1800_0000);
+upper_imm_insn!(
+    PCALAU12I,
+    "pcalau12i",
+    "PCALAU12I",
+    0xFE00_0000,
+    0x1A00_0000
+);
+upper_imm_insn!(
+    PCADDU12I,
+    "pcaddu12i",
+    "PCADDU12I",
+    0xFE00_0000,
+    0x1C00_0000
+);
+
 // ============================================================================
 // Spec table
 // ============================================================================
 
 pub static LOONGARCH_BASE_SPECS: &[InstructionSpec<LoongArchBackend>] = &[
-    ADD_W, ADD_D, SUB_W, SUB_D, SLT, SLTU, AND, OR, XOR, NOR, ADDI_W, ADDI_D, // Shift
-    SLL_W, SRL_W, SRA_W, SLL_D, SRL_D, SRA_D, // Branch
+    // ALU (R3)
+    ADD_W, ADD_D, SUB_W, SUB_D, SLT, SLTU, AND, OR, XOR, NOR, // Multiply / Divide
+    MUL_W, MULH_W, MULH_WU, MUL_D, MULH_D, MULH_DU, DIV_W, MOD_W, DIV_WU, MOD_WU, DIV_D, MOD_D,
+    DIV_DU, MOD_DU, // Shift immediate
+    SLLI_W, SLLI_D, SRLI_W, SRLI_D, SRAI_W, SRAI_D, // Shift (R3)
+    SLL_W, SRL_W, SRA_W, SLL_D, SRL_D, SRA_D, // Immediate ALU
+    ADDI_W, ADDI_D, ANDI, ORI, XORI, ADDU12I_W, ADDU12I_D, // Upper immediate
+    LU12I_W, PCADDI, PCALAU12I, PCADDU12I, // Branch
     BEQ, BNE, BLT, BGE, BLTU, BGEU, B, BL, JIRL, BEQZ, BNEZ, // Memory
     LD_B, LD_H, LD_W, LD_D, ST_B, ST_H, ST_W, ST_D, LDX_B, LDX_H, LDX_W, LDX_D, STX_B, STX_H,
     STX_W, STX_D, // Atomic

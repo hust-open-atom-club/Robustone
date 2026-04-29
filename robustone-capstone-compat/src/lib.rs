@@ -133,4 +133,18 @@ mod tests {
         );
         assert_eq!(fail, 0, "unexpected mismatches");
     }
+
+    #[test]
+    fn test_base_yaml() {
+        let path = std::path::Path::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../third_party/capstone/tests/MC/LoongArch/base.s.yaml"
+        ));
+        let (pass, fail, known_diff, unsupported) = run_yaml_file(path);
+        eprintln!(
+            "base.s.yaml summary: {} pass, {} fail, {} known_diff, {} unsupported",
+            pass, fail, known_diff, unsupported
+        );
+        assert_eq!(fail, 0, "unexpected mismatches");
+    }
 }
