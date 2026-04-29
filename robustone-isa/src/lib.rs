@@ -182,6 +182,7 @@ pub struct InstructionSpec<B: ArchitectureBackend + 'static> {
     pub modes: ModeSet<B::Mode>,
     pub groups: &'static [InstructionGroup],
     pub manual_ref: Option<&'static str>,
+    pub priority: u16,
 }
 
 impl<B: ArchitectureBackend + 'static> Clone for InstructionSpec<B> {
@@ -537,6 +538,11 @@ pub fn validate_no_overlaps<B: ArchitectureBackend>(
     for i in 0..specs.len() {
         for j in (i + 1)..specs.len() {
             if specs[i].pattern.overlaps(&specs[j].pattern) {
+                // Overlaps with different priorities are allowed: the higher-priority
+                // (more specific) spec is tried first by lookup.
+                if specs[i].priority != specs[j].priority {
+                    continue;
+                }
                 return Err(format!(
                     "pattern overlap detected between '{}' (mask={:?}, value={:?}) \
                      and '{}' (mask={:?}, value={:?})",
@@ -626,6 +632,7 @@ macro_rules! isa_specs {
             modes: $modes,
             groups: $groups,
             manual_ref: Some($manual),
+            priority: 0,
         };)*
     };
     (
@@ -651,6 +658,34 @@ macro_rules! isa_specs {
             modes: $modes,
             groups: $groups,
             manual_ref: None,
+            priority: 0,
+        };)*
+    };
+    (
+        backend = $backend:ty;
+        $(spec $name:ident {
+            mnemonic = $mnemonic:expr;
+            opcode_id = $opcode_id:expr;
+            pattern = $pattern:expr;
+            format = $format:expr;
+            operands = $operands:expr;
+            features = $features:expr;
+            modes = $modes:expr;
+            groups = $groups:expr;
+            priority = $priority:expr;
+        })*
+    ) => {
+        $(pub static $name: $crate::InstructionSpec<$backend> = $crate::InstructionSpec {
+            mnemonic: $mnemonic,
+            opcode_id: $opcode_id,
+            pattern: $pattern,
+            format: $format,
+            operands: $operands,
+            features: $features,
+            modes: $modes,
+            groups: $groups,
+            manual_ref: None,
+            priority: $priority,
         };)*
     };
 }
@@ -786,6 +821,7 @@ mod tests {
                 modes: ModeSet::All,
                 groups: &[],
                 manual_ref: None,
+                priority: 0,
             },
             InstructionSpec {
                 mnemonic: "inst_b",
@@ -800,6 +836,7 @@ mod tests {
                 modes: ModeSet::All,
                 groups: &[],
                 manual_ref: None,
+                priority: 0,
             },
         ];
         let result = validate_no_overlaps(overlapping_specs);

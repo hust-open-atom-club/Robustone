@@ -10,8 +10,6 @@ pub mod render;
 pub mod shared;
 pub mod types;
 
-mod patterns;
-
 pub mod architecture {
     pub use robustone_core::architecture::*;
 }
@@ -44,7 +42,7 @@ use robustone_core::{
     ir::{DecodedInstruction, Operand, TextRenderProfile},
     traits::ArchitectureHandler,
     traits::instruction::Detail,
-    types::error::{DecodeErrorKind, DisasmError},
+    types::error::DisasmError,
 };
 use robustone_isa::{AliasPolicy, DecodeProfile, FeatureSet, RenderDialect, decode_one};
 
@@ -91,30 +89,7 @@ impl ArchitectureHandler for LoongArchHandler {
             render_dialect: RenderDialect::Assembler,
             alias_policy: AliasPolicy::PreferPseudo,
         };
-        let mut decoded = match decode_one::<backend::LoongArchBackend>(bytes, addr, &profile) {
-            Ok(d) => d,
-            Err(DisasmError::DecodeFailure {
-                kind: DecodeErrorKind::InvalidEncoding,
-                ..
-            }) => {
-                // Fallback to legacy pattern table for instructions not yet in the spec framework.
-                match crate::patterns::try_decode_from_patterns(
-                    u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]),
-                    addr,
-                ) {
-                    Some(Ok(d)) => d,
-                    Some(Err(e)) => return Err(e),
-                    None => {
-                        return Err(DisasmError::decode_failure(
-                            DecodeErrorKind::InvalidEncoding,
-                            Some("loongarch".to_string()),
-                            "unrecognized LoongArch encoding",
-                        ));
-                    }
-                }
-            }
-            Err(e) => return Err(e),
-        };
+        let mut decoded = decode_one::<backend::LoongArchBackend>(bytes, addr, &profile)?;
         let size = decoded.size;
 
         // Alias: andi $zero, $zero, 0 => nop
