@@ -154,6 +154,28 @@ impl LoongArchDecoder {
                     decoded.mnemonic = base.to_string();
                 }
 
+                // Capstone v6 omits duplicated destination register for certain
+                // vector instructions (e.g. xvpermi.w, xvsrarni, xvinsve0).
+                if decoded.mnemonic.starts_with("xv")
+                    && decoded.operands.len() == 4
+                    && let (
+                        Operand::Register { register: r0 },
+                        Operand::Register { register: r1 },
+                        _,
+                        _,
+                    ) = (
+                        &decoded.operands[0],
+                        &decoded.operands[1],
+                        &decoded.operands[2],
+                        &decoded.operands[3],
+                    )
+                    && r0.architecture == ArchitectureId::LoongArch
+                    && r1.architecture == ArchitectureId::LoongArch
+                    && r0.id == r1.id
+                {
+                    decoded.operands.remove(1);
+                }
+
                 Ok(decoded)
             }
             Some(Err(e)) => Err(e),

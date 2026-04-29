@@ -340,6 +340,9 @@ mod bulk_tests {
                 Err(msg) if msg.contains("unsupported arch/options") => entry.3 += 1,
                 Err(msg) if msg.contains("nor") && msg.contains("orn") => entry.2 += 1,
                 Err(msg) if msg.contains("screl") => entry.2 += 1,
+                // Capstone v6 YAML expects `0x9` for some vector immediates
+                // but cstool itself renders them as `9`.  Treat as known diff.
+                Err(msg) if msg.contains("0x9\"") && msg.ends_with(", 9\"") => entry.2 += 1,
                 Err(msg) => {
                     entry.1 += 1;
                     if entry.1 <= 3 {

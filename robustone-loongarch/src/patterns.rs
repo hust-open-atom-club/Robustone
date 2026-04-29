@@ -2,9 +2,7 @@
 //!
 //! This file is auto-generated from Capstone's spec-driven decoder tree.
 //! It replaces the exact-word match with proper mask/value patterns.
-
-#![allow(clippy::all)]
-#![allow(unused_mut, unused_variables, dead_code)]
+#![allow(clippy::all, dead_code, unused_mut, unused_variables)]
 
 use robustone_core::{
     ir::{ArchitectureId, DecodeStatus, DecodedInstruction, Operand, RegisterId, RenderHints},
@@ -11435,7 +11433,7 @@ pub const LOONGARCH_PATTERNS: &[LoongArchPattern] = &[
     LoongArchPattern {
         mask: 0xFFFF8000,
         value: 0x74A88000,
-        mnemonic: "xvmadd.w",
+        mnemonic: "xvmadd.h",
         layout: 130,
     },
     LoongArchPattern {
@@ -11489,7 +11487,7 @@ pub const LOONGARCH_PATTERNS: &[LoongArchPattern] = &[
     LoongArchPattern {
         mask: 0xFFFF8000,
         value: 0x74AD0000,
-        mnemonic: "xvmaddwod.h.b",
+        mnemonic: "xvmaddwev.d.w",
         layout: 130,
     },
     LoongArchPattern {
@@ -11543,7 +11541,7 @@ pub const LOONGARCH_PATTERNS: &[LoongArchPattern] = &[
     LoongArchPattern {
         mask: 0xFFFF8000,
         value: 0x74B58000,
-        mnemonic: "xvmaddwod.d.wu",
+        mnemonic: "xvmaddwev.q.du",
         layout: 130,
     },
     LoongArchPattern {
@@ -12317,43 +12315,43 @@ pub const LOONGARCH_PATTERNS: &[LoongArchPattern] = &[
     LoongArchPattern {
         mask: 0xFFFF8000,
         value: 0x75260000,
-        mnemonic: "xvandn.v",
+        mnemonic: "xvand.v",
         layout: 64,
     },
     LoongArchPattern {
         mask: 0xFFFF8000,
         value: 0x75268000,
-        mnemonic: "xvorn.v",
+        mnemonic: "xvor.v",
         layout: 64,
     },
     LoongArchPattern {
         mask: 0xFFFF8000,
         value: 0x75270000,
-        mnemonic: "xvfrstp.b",
+        mnemonic: "xvxor.v",
         layout: 64,
     },
     LoongArchPattern {
         mask: 0xFFFF8000,
         value: 0x75278000,
-        mnemonic: "xvfrstp.h",
+        mnemonic: "xvnor.v",
         layout: 64,
     },
     LoongArchPattern {
         mask: 0xFFFF8000,
         value: 0x75280000,
-        mnemonic: "xvadd.q",
+        mnemonic: "xvandn.v",
         layout: 64,
     },
     LoongArchPattern {
         mask: 0xFFFF8000,
         value: 0x75288000,
-        mnemonic: "xvsub.q",
+        mnemonic: "xvorn.v",
         layout: 64,
     },
     LoongArchPattern {
         mask: 0xFFFF8000,
         value: 0x752B0000,
-        mnemonic: "xvsigncov.b",
+        mnemonic: "xvfrstp.b",
         layout: 130,
     },
     LoongArchPattern {
@@ -12599,7 +12597,7 @@ pub const LOONGARCH_PATTERNS: &[LoongArchPattern] = &[
     LoongArchPattern {
         mask: 0xFFFF8000,
         value: 0x76828000,
-        mnemonic: "xvslei.wu",
+        mnemonic: "xvslei.h",
         layout: 132,
     },
     LoongArchPattern {
@@ -12653,7 +12651,7 @@ pub const LOONGARCH_PATTERNS: &[LoongArchPattern] = &[
     LoongArchPattern {
         mask: 0xFFFF8000,
         value: 0x76870000,
-        mnemonic: "xvaddi.bu",
+        mnemonic: "xvslti.w",
         layout: 132,
     },
     LoongArchPattern {
@@ -12761,7 +12759,7 @@ pub const LOONGARCH_PATTERNS: &[LoongArchPattern] = &[
     LoongArchPattern {
         mask: 0xFFFF8000,
         value: 0x76910000,
-        mnemonic: "xvmaxi.wu",
+        mnemonic: "xvmaxi.w",
         layout: 132,
     },
     LoongArchPattern {
@@ -12869,7 +12867,7 @@ pub const LOONGARCH_PATTERNS: &[LoongArchPattern] = &[
     LoongArchPattern {
         mask: 0xFFFFFC00,
         value: 0x769C0800,
-        mnemonic: "xvneg.h",
+        mnemonic: "xvclo.w",
         layout: 135,
     },
     LoongArchPattern {
@@ -12965,7 +12963,7 @@ pub const LOONGARCH_PATTERNS: &[LoongArchPattern] = &[
     LoongArchPattern {
         mask: 0xFFFFFC00,
         value: 0x769C4800,
-        mnemonic: "xvsetanyeqz.w",
+        mnemonic: "xvmskltz.w",
         layout: 135,
     },
     LoongArchPattern {
@@ -13001,7 +12999,7 @@ pub const LOONGARCH_PATTERNS: &[LoongArchPattern] = &[
     LoongArchPattern {
         mask: 0xFFFFFC18,
         value: 0x769CA000,
-        mnemonic: "xvflogb.s",
+        mnemonic: "xvsetanyeqz.b",
         layout: 136,
     },
     LoongArchPattern {
@@ -13079,7 +13077,7 @@ pub const LOONGARCH_PATTERNS: &[LoongArchPattern] = &[
     LoongArchPattern {
         mask: 0xFFFFFC00,
         value: 0x769CE800,
-        mnemonic: "xvfrintrp.d",
+        mnemonic: "xvfsqrt.d",
         layout: 135,
     },
     LoongArchPattern {
@@ -13181,7 +13179,7 @@ pub const LOONGARCH_PATTERNS: &[LoongArchPattern] = &[
     LoongArchPattern {
         mask: 0xFFFFFC00,
         value: 0x769D7400,
-        mnemonic: "xvftintrm.l.d",
+        mnemonic: "xvfrintrne.s",
         layout: 135,
     },
     LoongArchPattern {
@@ -13241,7 +13239,7 @@ pub const LOONGARCH_PATTERNS: &[LoongArchPattern] = &[
     LoongArchPattern {
         mask: 0xFFFFFC00,
         value: 0x769E1000,
-        mnemonic: "xvftinth.l.s",
+        mnemonic: "xvffintl.d.w",
         layout: 135,
     },
     LoongArchPattern {
@@ -13295,7 +13293,7 @@ pub const LOONGARCH_PATTERNS: &[LoongArchPattern] = &[
     LoongArchPattern {
         mask: 0xFFFFFC00,
         value: 0x769E4C00,
-        mnemonic: "xvexth.w.h",
+        mnemonic: "xvftintrz.l.d",
         layout: 135,
     },
     LoongArchPattern {
@@ -13349,7 +13347,7 @@ pub const LOONGARCH_PATTERNS: &[LoongArchPattern] = &[
     LoongArchPattern {
         mask: 0xFFFFFC00,
         value: 0x769E8800,
-        mnemonic: "xvreplgr2vr.d",
+        mnemonic: "xvftintrml.l.s",
         layout: 135,
     },
     LoongArchPattern {
@@ -13403,7 +13401,7 @@ pub const LOONGARCH_PATTERNS: &[LoongArchPattern] = &[
     LoongArchPattern {
         mask: 0xFFFFFC00,
         value: 0x769EE400,
-        mnemonic: "vext2xv.wu.hu",
+        mnemonic: "xvexth.w.h",
         layout: 135,
     },
     LoongArchPattern {
@@ -13799,7 +13797,7 @@ pub const LOONGARCH_PATTERNS: &[LoongArchPattern] = &[
     LoongArchPattern {
         mask: 0xFFFF0000,
         value: 0x77110000,
-        mnemonic: "xvsat.hu",
+        mnemonic: "xvbitclri.d",
         layout: 140,
     },
     LoongArchPattern {
@@ -13907,7 +13905,7 @@ pub const LOONGARCH_PATTERNS: &[LoongArchPattern] = &[
     LoongArchPattern {
         mask: 0xFFFFC000,
         value: 0x772C4000,
-        mnemonic: "xvsrlrni.h.w",
+        mnemonic: "xvslli.h",
         layout: 139,
     },
     LoongArchPattern {
@@ -13961,7 +13959,7 @@ pub const LOONGARCH_PATTERNS: &[LoongArchPattern] = &[
     LoongArchPattern {
         mask: 0xFFFF8000,
         value: 0x77348000,
-        mnemonic: "xvssrlni.du.q",
+        mnemonic: "xvsrai.w",
         layout: 133,
     },
     LoongArchPattern {
@@ -14069,7 +14067,7 @@ pub const LOONGARCH_PATTERNS: &[LoongArchPattern] = &[
     LoongArchPattern {
         mask: 0xFFFFC000,
         value: 0x77504000,
-        mnemonic: "xvssrani.d.q",
+        mnemonic: "xvssrlrni.b.h",
         layout: 149,
     },
     LoongArchPattern {

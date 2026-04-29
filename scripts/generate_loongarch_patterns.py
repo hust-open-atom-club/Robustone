@@ -27,32 +27,34 @@ def parse_decoder_table(content):
                 break
     return content[start:end]
 
+def _uleb128_bytes(operands, start_idx):
+    idx = start_idx
+    while idx < len(operands):
+        b = int(operands[idx])
+        idx += 1
+        if (b & 0x80) == 0:
+            break
+    return idx - start_idx
+
 def calc_op_size(op, operands):
     if op == 'MCD_OPC_ExtractField':
         return 1 + len(operands)
     elif op == 'MCD_OPC_FilterValue':
-        val = int(operands[0])
-        val_bytes = 1 if val < 128 else 2
+        val_bytes = _uleb128_bytes(operands, 0)
         return 1 + val_bytes + 3
     elif op == 'MCD_OPC_CheckField':
-        val = int(operands[2])
-        val_bytes = 1 if val < 128 else 2
+        val_bytes = _uleb128_bytes(operands, 2)
         return 1 + 1 + 1 + val_bytes + 3
     elif op == 'MCD_OPC_CheckPredicate':
-        val = int(operands[0])
-        val_bytes = 1 if val < 128 else 2
+        val_bytes = _uleb128_bytes(operands, 0)
         return 1 + val_bytes + 3
     elif op == 'MCD_OPC_Decode':
-        val1 = int(operands[0])
-        val1_bytes = 1 if val1 < 128 else 2
-        val2 = int(operands[1])
-        val2_bytes = 1 if val2 < 128 else 2
+        val1_bytes = _uleb128_bytes(operands, 0)
+        val2_bytes = _uleb128_bytes(operands, val1_bytes)
         return 1 + val1_bytes + val2_bytes
     elif op == 'MCD_OPC_TryDecode':
-        val1 = int(operands[0])
-        val1_bytes = 1 if val1 < 128 else 2
-        val2 = int(operands[1])
-        val2_bytes = 1 if val2 < 128 else 2
+        val1_bytes = _uleb128_bytes(operands, 0)
+        val2_bytes = _uleb128_bytes(operands, val1_bytes)
         return 1 + val1_bytes + val2_bytes + 3
     elif op == 'MCD_OPC_SoftFail':
         return 1 + 1 + 1
@@ -345,9 +347,10 @@ def generate_patterns_rs(results, cases):
     out.append("//!")
     out.append("//! This file is auto-generated from Capstone's spec-driven decoder tree.")
     out.append("//! It replaces the exact-word match with proper mask/value patterns.")
+    out.append("#![allow(clippy::all, dead_code, unused_mut, unused_variables)]")
     out.append("")
     out.append("use robustone_core::{")
-    out.append("    ir::{DecodedInstruction, Operand, RegisterId, RenderHints},")
+    out.append("    ir::{ArchitectureId, DecodeStatus, DecodedInstruction, Operand, RegisterId, RenderHints},")
     out.append("    types::error::{DecodeErrorKind, DisasmError},")
     out.append("};")
     out.append("")
@@ -400,7 +403,7 @@ def generate_patterns_rs(results, cases):
     out.append("    };")
     out.append("")
     out.append("    Ok(DecodedInstruction {")
-    out.append("        architecture: robustone_core::types::ArchitectureId::LoongArch,")
+    out.append("        architecture: ArchitectureId::LoongArch,")
     out.append("        address: addr,")
     out.append("        mode: \"LA64\".to_string(),")
     out.append("        mnemonic: pattern.mnemonic.to_string(),")
@@ -413,7 +416,7 @@ def generate_patterns_rs(results, cases):
     out.append("        implicit_registers_read: Vec::new(),")
     out.append("        implicit_registers_written: Vec::new(),")
     out.append("        groups: Vec::new(),")
-    out.append("        status: robustone_core::types::DecodeStatus::Success,")
+    out.append("        status: DecodeStatus::Success,")
     out.append("        render_hints: RenderHints::default(),")
     out.append("    })")
     out.append("}")
