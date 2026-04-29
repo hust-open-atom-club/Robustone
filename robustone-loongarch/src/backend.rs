@@ -1332,6 +1332,60 @@ macro_rules! upper_imm_insn {
     };
 }
 
+// Float arithmetic (3-register)
+loongarch_insn!(
+    FADD_S,
+    "fadd.s",
+    "FADD_S",
+    0xFFFF_8000,
+    0x0100_8000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+loongarch_insn!(
+    FADD_D,
+    "fadd.d",
+    "FADD_D",
+    0xFFFF_8000,
+    0x0101_0000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
 upper_imm_insn!(LU12I_W, "lu12i.w", "LU12I_W", 0xFE00_0000, 0x1400_0000);
 upper_imm_insn!(PCADDI, "pcaddi", "PCADDI", 0xFE00_0000, 0x1800_0000);
 upper_imm_insn!(
