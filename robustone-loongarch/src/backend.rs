@@ -260,6 +260,18 @@ r3_insn!(ROTR_B, "rotr.b", "ROTR_B", 0xFFFF_8000, 0x001A_0000);
 r3_insn!(ROTR_H, "rotr.h", "ROTR_H", 0xFFFF_8000, 0x001A_8000);
 r3_insn!(ROTR_W, "rotr.w", "ROTR_W", 0xFFFF_8000, 0x001B_0000);
 r3_insn!(ROTR_D, "rotr.d", "ROTR_D", 0xFFFF_8000, 0x001B_8000);
+r3_insn!(ADC_B, "adc.b", "ADC_B", 0xFFFF_8000, 0x0030_0000);
+r3_insn!(ADC_H, "adc.h", "ADC_H", 0xFFFF_8000, 0x0030_8000);
+r3_insn!(ADC_W, "adc.w", "ADC_W", 0xFFFF_8000, 0x0031_0000);
+r3_insn!(ADC_D, "adc.d", "ADC_D", 0xFFFF_8000, 0x0031_8000);
+r3_insn!(SBC_B, "sbc.b", "SBC_B", 0xFFFF_8000, 0x0032_0000);
+r3_insn!(SBC_H, "sbc.h", "SBC_H", 0xFFFF_8000, 0x0032_8000);
+r3_insn!(SBC_W, "sbc.w", "SBC_W", 0xFFFF_8000, 0x0033_0000);
+r3_insn!(SBC_D, "sbc.d", "SBC_D", 0xFFFF_8000, 0x0033_8000);
+r3_insn!(RCR_B, "rcr.b", "RCR_B", 0xFFFF_8000, 0x0034_0000);
+r3_insn!(RCR_H, "rcr.h", "RCR_H", 0xFFFF_8000, 0x0034_8000);
+r3_insn!(RCR_W, "rcr.w", "RCR_W", 0xFFFF_8000, 0x0035_0000);
+r3_insn!(RCR_D, "rcr.d", "RCR_D", 0xFFFF_8000, 0x0035_8000);
 
 // Shift immediate (R2I5 / R2I6)
 macro_rules! shift_imm5_insn {
@@ -1005,7 +1017,8 @@ pub static LOONGARCH_BASE_SPECS: &[InstructionSpec<LoongArchBackend>] = &[
     ALSL_W, ALSL_WU, ALSL_D, MUL_W, MULH_W, MULH_WU, MUL_D, MULH_D, MULH_DU, MULW_D_W, MULW_D_WU,
     DIV_W, MOD_W, DIV_WU, MOD_WU, DIV_D, MOD_D, DIV_DU, MOD_DU, // Shift immediate
     SLLI_W, SLLI_D, SRLI_W, SRLI_D, SRAI_W, SRAI_D, // Shift (R3)
-    SLL_W, SRL_W, SRA_W, SLL_D, SRL_D, SRA_D, ROTR_B, ROTR_H, ROTR_W, ROTR_D, // Immediate ALU
+    SLL_W, SRL_W, SRA_W, SLL_D, SRL_D, SRA_D, ROTR_B, ROTR_H, ROTR_W, ROTR_D, ADC_B, ADC_H, ADC_W,
+    ADC_D, SBC_B, SBC_H, SBC_W, SBC_D, RCR_B, RCR_H, RCR_W, RCR_D, // Immediate ALU
     ADDI_W, ADDI_D, SLTI, SLTUI, ANDI, ORI, XORI, ADDU12I_W, ADDU12I_D, // Upper immediate
     LU12I_W, PCADDI, PCALAU12I, PCADDU12I, // Branch
     BEQ, BNE, BLT, BGE, BLTU, BGEU, B, BL, JIRL, BEQZ, BNEZ, // Memory
