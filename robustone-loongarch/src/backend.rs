@@ -1590,50 +1590,6 @@ loongarch_insn!(
 );
 
 loongarch_insn!(
-    FFINT_D_L,
-    "ffint.d.l",
-    "FFINT_D_L",
-    0xFFFFFC00,
-    0x011D2800,
-    &FMT_R2,
-    &[
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rd,
-            Access::Write
-        ),
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rj,
-            Access::Read
-        ),
-    ],
-    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
-);
-
-loongarch_insn!(
-    FFINT_S_W,
-    "ffint.s.w",
-    "FFINT_S_W",
-    0xFFFFFC00,
-    0x011D1000,
-    &FMT_R2,
-    &[
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rd,
-            Access::Write
-        ),
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rj,
-            Access::Read
-        ),
-    ],
-    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
-);
-
-loongarch_insn!(
     FLOGB_D,
     "flogb.d",
     "FLOGB_D",
@@ -2613,226 +2569,6 @@ loongarch_insn!(
         robustone_isa::reg!(
             LoongArchRegisterClass::Fpr,
             LoongArchField::Rk,
-            Access::Read
-        ),
-    ],
-    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
-);
-
-loongarch_insn!(
-    FTINT_L_D,
-    "ftint.l.d",
-    "FTINT_L_D",
-    0xFFFFFC00,
-    0x011B2800,
-    &FMT_R2,
-    &[
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rd,
-            Access::Write
-        ),
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rj,
-            Access::Read
-        ),
-    ],
-    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
-);
-
-loongarch_insn!(
-    FTINT_W_S,
-    "ftint.w.s",
-    "FTINT_W_S",
-    0xFFFFFC00,
-    0x011B0400,
-    &FMT_R2,
-    &[
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rd,
-            Access::Write
-        ),
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rj,
-            Access::Read
-        ),
-    ],
-    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
-);
-
-loongarch_insn!(
-    FTINTRM_L_D,
-    "ftintrm.l.d",
-    "FTINTRM_L_D",
-    0xFFFFFC00,
-    0x011A2800,
-    &FMT_R2,
-    &[
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rd,
-            Access::Write
-        ),
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rj,
-            Access::Read
-        ),
-    ],
-    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
-);
-
-loongarch_insn!(
-    FTINTRM_W_S,
-    "ftintrm.w.s",
-    "FTINTRM_W_S",
-    0xFFFFFC00,
-    0x011A0400,
-    &FMT_R2,
-    &[
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rd,
-            Access::Write
-        ),
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rj,
-            Access::Read
-        ),
-    ],
-    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
-);
-
-loongarch_insn!(
-    FTINTRNE_L_D,
-    "ftintrne.l.d",
-    "FTINTRNE_L_D",
-    0xFFFFFC00,
-    0x011AE800,
-    &FMT_R2,
-    &[
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rd,
-            Access::Write
-        ),
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rj,
-            Access::Read
-        ),
-    ],
-    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
-);
-
-loongarch_insn!(
-    FTINTRNE_W_S,
-    "ftintrne.w.s",
-    "FTINTRNE_W_S",
-    0xFFFFFC00,
-    0x011AC400,
-    &FMT_R2,
-    &[
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rd,
-            Access::Write
-        ),
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rj,
-            Access::Read
-        ),
-    ],
-    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
-);
-
-loongarch_insn!(
-    FTINTRP_L_D,
-    "ftintrp.l.d",
-    "FTINTRP_L_D",
-    0xFFFFFC00,
-    0x011A6800,
-    &FMT_R2,
-    &[
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rd,
-            Access::Write
-        ),
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rj,
-            Access::Read
-        ),
-    ],
-    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
-);
-
-loongarch_insn!(
-    FTINTRP_W_S,
-    "ftintrp.w.s",
-    "FTINTRP_W_S",
-    0xFFFFFC00,
-    0x011A4400,
-    &FMT_R2,
-    &[
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rd,
-            Access::Write
-        ),
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rj,
-            Access::Read
-        ),
-    ],
-    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
-);
-
-loongarch_insn!(
-    FTINTRZ_L_D,
-    "ftintrz.l.d",
-    "FTINTRZ_L_D",
-    0xFFFFFC00,
-    0x011AA800,
-    &FMT_R2,
-    &[
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rd,
-            Access::Write
-        ),
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rj,
-            Access::Read
-        ),
-    ],
-    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
-);
-
-loongarch_insn!(
-    FTINTRZ_W_S,
-    "ftintrz.w.s",
-    "FTINTRZ_W_S",
-    0xFFFFFC00,
-    0x011A8400,
-    &FMT_R2,
-    &[
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rd,
-            Access::Write
-        ),
-        robustone_isa::reg!(
-            LoongArchRegisterClass::Fpr,
-            LoongArchField::Rj,
             Access::Read
         ),
     ],
@@ -4021,6 +3757,649 @@ loongarch_insn!(
         robustone_isa::reg!(
             LoongArchRegisterClass::Fpr,
             LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCVT_D_LD,
+    "fcvt.d.ld",
+    "FCVT_D_LD",
+    0xFFFF8000,
+    0x01150000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rk,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCVT_D_S,
+    "fcvt.d.s",
+    "FCVT_D_S",
+    0xFFFFFC00,
+    0x01192400,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCVT_LD_D,
+    "fcvt.ld.d",
+    "FCVT_LD_D",
+    0xFFFFFC00,
+    0x0114E000,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCVT_S_D,
+    "fcvt.s.d",
+    "FCVT_S_D",
+    0xFFFFFC00,
+    0x01191800,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FCVT_UD_D,
+    "fcvt.ud.d",
+    "FCVT_UD_D",
+    0xFFFFFC00,
+    0x0114E400,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FFINT_D_L,
+    "ffint.d.l",
+    "FFINT_D_L",
+    0xFFFFFC00,
+    0x011D2800,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FFINT_D_W,
+    "ffint.d.w",
+    "FFINT_D_W",
+    0xFFFFFC00,
+    0x011D2000,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FFINT_S_L,
+    "ffint.s.l",
+    "FFINT_S_L",
+    0xFFFFFC00,
+    0x011D1800,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FFINT_S_W,
+    "ffint.s.w",
+    "FFINT_S_W",
+    0xFFFFFC00,
+    0x011D1000,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FTINT_L_D,
+    "ftint.l.d",
+    "FTINT_L_D",
+    0xFFFFFC00,
+    0x011B2800,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FTINT_L_S,
+    "ftint.l.s",
+    "FTINT_L_S",
+    0xFFFFFC00,
+    0x011B2400,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FTINT_W_D,
+    "ftint.w.d",
+    "FTINT_W_D",
+    0xFFFFFC00,
+    0x011B0800,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FTINT_W_S,
+    "ftint.w.s",
+    "FTINT_W_S",
+    0xFFFFFC00,
+    0x011B0400,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FTINTRM_L_D,
+    "ftintrm.l.d",
+    "FTINTRM_L_D",
+    0xFFFFFC00,
+    0x011A2800,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FTINTRM_L_S,
+    "ftintrm.l.s",
+    "FTINTRM_L_S",
+    0xFFFFFC00,
+    0x011A2400,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FTINTRM_W_D,
+    "ftintrm.w.d",
+    "FTINTRM_W_D",
+    0xFFFFFC00,
+    0x011A0800,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FTINTRM_W_S,
+    "ftintrm.w.s",
+    "FTINTRM_W_S",
+    0xFFFFFC00,
+    0x011A0400,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FTINTRNE_L_D,
+    "ftintrne.l.d",
+    "FTINTRNE_L_D",
+    0xFFFFFC00,
+    0x011AE800,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FTINTRNE_L_S,
+    "ftintrne.l.s",
+    "FTINTRNE_L_S",
+    0xFFFFFC00,
+    0x011AE400,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FTINTRNE_W_D,
+    "ftintrne.w.d",
+    "FTINTRNE_W_D",
+    0xFFFFFC00,
+    0x011AC800,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FTINTRNE_W_S,
+    "ftintrne.w.s",
+    "FTINTRNE_W_S",
+    0xFFFFFC00,
+    0x011AC400,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FTINTRP_L_D,
+    "ftintrp.l.d",
+    "FTINTRP_L_D",
+    0xFFFFFC00,
+    0x011A6800,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FTINTRP_L_S,
+    "ftintrp.l.s",
+    "FTINTRP_L_S",
+    0xFFFFFC00,
+    0x011A6400,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FTINTRP_W_D,
+    "ftintrp.w.d",
+    "FTINTRP_W_D",
+    0xFFFFFC00,
+    0x011A4800,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FTINTRP_W_S,
+    "ftintrp.w.s",
+    "FTINTRP_W_S",
+    0xFFFFFC00,
+    0x011A4400,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FTINTRZ_L_D,
+    "ftintrz.l.d",
+    "FTINTRZ_L_D",
+    0xFFFFFC00,
+    0x011AA800,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FTINTRZ_L_S,
+    "ftintrz.l.s",
+    "FTINTRZ_L_S",
+    0xFFFFFC00,
+    0x011AA400,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FTINTRZ_W_D,
+    "ftintrz.w.d",
+    "FTINTRZ_W_D",
+    0xFFFFFC00,
+    0x011A8800,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+    ],
+    &[InstructionGroup::Float, InstructionGroup::Arithmetic]
+);
+
+loongarch_insn!(
+    FTINTRZ_W_S,
+    "ftintrz.w.s",
+    "FTINTRZ_W_S",
+    0xFFFFFC00,
+    0x011A8400,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Fpr,
+            LoongArchField::Rj,
             Access::Read
         ),
     ],
