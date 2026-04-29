@@ -548,6 +548,35 @@ r3_insn!(MOD_DU, "mod.du", "MOD_DU", 0xFFFF_8000, 0x0023_8000);
 // Immediate ALU (R2I12)
 r2i12_insn!(ADDI_W, "addi.w", "ADDI_W", 0xFFC0_0000, 0x0280_0000);
 r2i12_insn!(ADDI_D, "addi.d", "ADDI_D", 0xFFC0_0000, 0x02C0_0000);
+
+// addu16i.d (R2I16)
+loongarch_insn!(
+    ADDU16I_D,
+    "addu16i.d",
+    "ADDU16I_D",
+    0xFC00_0000,
+    0x1000_0000,
+    &FMT_R2I16,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::imm!(
+            LoongArchField::Si16,
+            ImmediateTransform::SignExtend { bits: 16 },
+            ImmediateKind::Absolute
+        ),
+    ],
+    &[InstructionGroup::Integer, InstructionGroup::Arithmetic]
+);
+
 r2i12_insn!(SLTI, "slti", "SLTI", 0xFFC0_0000, 0x0200_0000);
 r2i12_insn!(SLTUI, "sltui", "SLTUI", 0xFFC0_0000, 0x0240_0000);
 
@@ -1080,7 +1109,8 @@ pub static LOONGARCH_BASE_SPECS: &[InstructionSpec<LoongArchBackend>] = &[
     SLLI_W, SLLI_D, SRLI_W, SRLI_D, SRAI_W, SRAI_D, // Shift (R3)
     SLL_W, SRL_W, SRA_W, SLL_D, SRL_D, SRA_D, ROTR_B, ROTR_H, ROTR_W, ROTR_D, ADC_B, ADC_H, ADC_W,
     ADC_D, SBC_B, SBC_H, SBC_W, SBC_D, RCR_B, RCR_H, RCR_W, RCR_D, // Immediate ALU
-    ADDI_W, ADDI_D, SLTI, SLTUI, ANDI, ORI, XORI, ADDU12I_W, ADDU12I_D, // Upper immediate
+    ADDI_W, ADDI_D, ADDU16I_D, SLTI, SLTUI, ANDI, ORI, XORI, ADDU12I_W,
+    ADDU12I_D, // Upper immediate
     LU12I_W, PCADDI, PCALAU12I, PCADDU12I, // Branch
     BEQ, BNE, BLT, BGE, BLTU, BGEU, B, BL, JIRL, BEQZ, BNEZ, // Memory
     LD_B, LD_H, LD_W, LD_D, ST_B, ST_H, ST_W, ST_D, LDX_B, LDX_H, LDX_W, LDX_D, STX_B, STX_H,
