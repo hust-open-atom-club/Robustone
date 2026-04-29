@@ -405,6 +405,8 @@ r2_insn!(BITREV_W, "bitrev.w", "BITREV_W", 0xFFFF_FC00, 0x0000_5000);
 r2_insn!(BITREV_D, "bitrev.d", "BITREV_D", 0xFFFF_FC00, 0x0000_5400);
 r2_insn!(EXT_W_H, "ext.w.h", "EXT_W_H", 0xFFFF_FC00, 0x0000_5800);
 r2_insn!(EXT_W_B, "ext.w.b", "EXT_W_B", 0xFFFF_FC00, 0x0000_5C00);
+r2_insn!(ASRTLE_D, "asrtle.d", "ASRTLE_D", 0xFFFF_FC00, 0x0001_0000);
+r2_insn!(ASRTGT_D, "asrtgt.d", "ASRTGT_D", 0xFFFF_FC00, 0x0001_8000);
 
 // Multiply / Divide / Modulo (R3)
 // ALSL (R3I2)
@@ -998,8 +1000,8 @@ pub static LOONGARCH_BASE_SPECS: &[InstructionSpec<LoongArchBackend>] = &[
     ADD_W, ADD_D, SUB_W, SUB_D, SLT, SLTU, MASKEQZ, MASKNEZ, AND, OR, XOR, NOR, ORN, ANDN,
     // Bit manipulation
     CLO_W, CLZ_W, CTO_W, CTZ_W, CLO_D, CLZ_D, CTO_D, CTZ_D, REVB_2H, REVB_4H, REVB_2W, REVB_D,
-    REVH_2W, REVH_D, BITREV_4B, BITREV_8B, BITREV_W, BITREV_D, EXT_W_H, EXT_W_B,
-    // Multiply / Divide
+    REVH_2W, REVH_D, BITREV_4B, BITREV_8B, BITREV_W, BITREV_D, EXT_W_H, EXT_W_B, ASRTLE_D,
+    ASRTGT_D, // Multiply / Divide
     ALSL_W, ALSL_WU, ALSL_D, MUL_W, MULH_W, MULH_WU, MUL_D, MULH_D, MULH_DU, MULW_D_W, MULW_D_WU,
     DIV_W, MOD_W, DIV_WU, MOD_WU, DIV_D, MOD_D, DIV_DU, MOD_DU, // Shift immediate
     SLLI_W, SLLI_D, SRLI_W, SRLI_D, SRAI_W, SRAI_D, // Shift (R3)
