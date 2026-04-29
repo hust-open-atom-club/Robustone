@@ -63,6 +63,10 @@ pub enum LoongArchField {
     Si21,
     Ui5,
     Ui6,
+    MsbW,
+    LsbW,
+    MsbD,
+    LsbD,
     I26Lo,
     I26Hi,
     Code,
@@ -169,6 +173,18 @@ robustone_isa::format_specs! {
         rd: field("rd", 0, 5, LoongArchField::Rd),
         rj: field("rj", 5, 5, LoongArchField::Rj),
         ui4: field("ui4", 10, 4, LoongArchField::Ui5),
+    }
+    format FMT_BSTR_W[LoongArchField] {
+        rd: field("rd", 0, 5, LoongArchField::Rd),
+        rj: field("rj", 5, 5, LoongArchField::Rj),
+        msb: field("msb", 16, 5, LoongArchField::MsbW),
+        lsb: field("lsb", 10, 5, LoongArchField::LsbW),
+    }
+    format FMT_BSTR_D[LoongArchField] {
+        rd: field("rd", 0, 5, LoongArchField::Rd),
+        rj: field("rj", 5, 5, LoongArchField::Rj),
+        msb: field("msb", 16, 6, LoongArchField::MsbD),
+        lsb: field("lsb", 10, 6, LoongArchField::LsbD),
     }
     format FMT_1RI20[LoongArchField] {
         rd: field("rd", 0, 5, LoongArchField::Rd),
@@ -540,6 +556,132 @@ r2_insn!(EXT_W_H, "ext.w.h", "EXT_W_H", 0xFFFF_FC00, 0x0000_5800);
 r2_insn!(EXT_W_B, "ext.w.b", "EXT_W_B", 0xFFFF_FC00, 0x0000_5C00);
 r2_insn!(ASRTLE_D, "asrtle.d", "ASRTLE_D", 0xFFFF_FC00, 0x0001_0000);
 r2_insn!(ASRTGT_D, "asrtgt.d", "ASRTGT_D", 0xFFFF_FC00, 0x0001_8000);
+
+// Bit-field insert / pick
+loongarch_insn!(
+    BSTRINS_W,
+    "bstrins.w",
+    "BSTRINS_W",
+    0xFFE0_8000,
+    0x0060_0000,
+    &FMT_BSTR_W,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::imm!(
+            LoongArchField::MsbW,
+            ImmediateTransform::None,
+            ImmediateKind::Unsigned
+        ),
+        robustone_isa::imm!(
+            LoongArchField::LsbW,
+            ImmediateTransform::None,
+            ImmediateKind::Unsigned
+        ),
+    ],
+    &[InstructionGroup::Integer, InstructionGroup::BitManipulation]
+);
+loongarch_insn!(
+    BSTRPICK_W,
+    "bstrpick.w",
+    "BSTRPICK_W",
+    0xFFE0_8000,
+    0x0060_8000,
+    &FMT_BSTR_W,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::imm!(
+            LoongArchField::MsbW,
+            ImmediateTransform::None,
+            ImmediateKind::Unsigned
+        ),
+        robustone_isa::imm!(
+            LoongArchField::LsbW,
+            ImmediateTransform::None,
+            ImmediateKind::Unsigned
+        ),
+    ],
+    &[InstructionGroup::Integer, InstructionGroup::BitManipulation]
+);
+loongarch_insn!(
+    BSTRINS_D,
+    "bstrins.d",
+    "BSTRINS_D",
+    0xFFC0_0000,
+    0x0080_0000,
+    &FMT_BSTR_D,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::imm!(
+            LoongArchField::MsbD,
+            ImmediateTransform::None,
+            ImmediateKind::Unsigned
+        ),
+        robustone_isa::imm!(
+            LoongArchField::LsbD,
+            ImmediateTransform::None,
+            ImmediateKind::Unsigned
+        ),
+    ],
+    &[InstructionGroup::Integer, InstructionGroup::BitManipulation]
+);
+loongarch_insn!(
+    BSTRPICK_D,
+    "bstrpick.d",
+    "BSTRPICK_D",
+    0xFFC0_0000,
+    0x00C0_0000,
+    &FMT_BSTR_D,
+    &[
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rd,
+            Access::Write
+        ),
+        robustone_isa::reg!(
+            LoongArchRegisterClass::Gpr,
+            LoongArchField::Rj,
+            Access::Read
+        ),
+        robustone_isa::imm!(
+            LoongArchField::MsbD,
+            ImmediateTransform::None,
+            ImmediateKind::Unsigned
+        ),
+        robustone_isa::imm!(
+            LoongArchField::LsbD,
+            ImmediateTransform::None,
+            ImmediateKind::Unsigned
+        ),
+    ],
+    &[InstructionGroup::Integer, InstructionGroup::BitManipulation]
+);
 
 // Multiply / Divide / Modulo (R3)
 // ALSL (R3I2)
@@ -1217,7 +1359,7 @@ pub static LOONGARCH_BASE_SPECS: &[InstructionSpec<LoongArchBackend>] = &[
     // Bit manipulation
     CLO_W, CLZ_W, CTO_W, CTZ_W, CLO_D, CLZ_D, CTO_D, CTZ_D, REVB_2H, REVB_4H, REVB_2W, REVB_D,
     REVH_2W, REVH_D, BITREV_4B, BITREV_8B, BITREV_W, BITREV_D, EXT_W_H, EXT_W_B, ASRTLE_D,
-    ASRTGT_D, // Multiply / Divide
+    ASRTGT_D, BSTRINS_W, BSTRPICK_W, BSTRINS_D, BSTRPICK_D, // Multiply / Divide
     ALSL_W, ALSL_WU, ALSL_D, BYTEPICK_W, BYTEPICK_D, MUL_W, MULH_W, MULH_WU, MUL_D, MULH_D,
     MULH_DU, MULW_D_W, MULW_D_WU, DIV_W, MOD_W, DIV_WU, MOD_WU, DIV_D, MOD_D, DIV_DU,
     MOD_DU, // Shift immediate
