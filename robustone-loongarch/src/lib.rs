@@ -1,11 +1,10 @@
 //! LoongArch LA64 disassembly module for Robustone.
 //!
-//! Provides instruction decoding for LoongArch LA64 targets.
+//! Provides instruction decoding for LoongArch LA64 targets using the
+//! shared `robustone-isa` framework.
 
 pub mod arch;
 pub mod backend;
-pub mod decoder;
-pub mod extensions;
 pub mod printer;
 pub mod render;
 pub mod shared;
@@ -31,8 +30,6 @@ pub mod utils {
 
 pub mod loongarch {
     pub use crate::arch;
-    pub use crate::decoder;
-    pub use crate::extensions;
     pub use crate::printer;
     pub use crate::render;
     pub use crate::shared;
@@ -42,7 +39,6 @@ pub mod loongarch {
 pub use robustone_core::Instruction;
 
 use arch::LoongArchInstructionDetail;
-use decoder::LoongArchDecoder;
 use robustone_core::{
     common::ArchitectureProfile,
     ir::{DecodedInstruction, Operand, TextRenderProfile},
@@ -54,17 +50,13 @@ use robustone_isa::{AliasPolicy, DecodeProfile, FeatureSet, RenderDialect, decod
 
 /// Architecture handler implementation for LoongArch LA64 targets.
 pub struct LoongArchHandler {
-    decoder: LoongArchDecoder,
     detail: bool,
 }
 
 impl LoongArchHandler {
     /// Creates a new handler.
     pub fn new() -> Self {
-        Self {
-            decoder: LoongArchDecoder::new(),
-            detail: true,
-        }
+        Self { detail: true }
     }
 }
 
@@ -93,124 +85,133 @@ impl ArchitectureHandler for LoongArchHandler {
             return Err(DisasmError::UnsupportedArchitecture(arch_name.to_string()));
         }
 
-        // Shadow path: try the new ArchitectureBackend first.
         let profile = DecodeProfile {
             mode: backend::LoongArchMode::LA64,
             features: backend::LoongArchFeature::all_supported_for_tests(),
             render_dialect: RenderDialect::Assembler,
             alias_policy: AliasPolicy::PreferPseudo,
         };
-        match decode_one::<backend::LoongArchBackend>(bytes, addr, &profile) {
-            Ok(mut decoded) => {
-                let size = decoded.size;
-                // Alias: andi $zero, $zero, 0 => nop
-                if decoded.mnemonic == "andi"
-                    && decoded.operands.len() == 3
-                    && let (
-                        Operand::Register { register: rd },
-                        Operand::Register { register: rj },
-                        Operand::Immediate { value: 0 },
-                    ) = (
-                        &decoded.operands[0],
-                        &decoded.operands[1],
-                        &decoded.operands[2],
-                    )
-                    && rd.id == 0
-                    && rj.id == 0
-                {
-                    decoded.mnemonic = "nop".to_string();
-                    decoded.operands.clear();
-                }
-                // Alias: or $rd, $rj, $zero => move $rd, $rj
-                if decoded.mnemonic == "or"
-                    && decoded.operands.len() == 3
-                    && let (
-                        Operand::Register { register: _rd },
-                        Operand::Register { register: _rj },
-                        Operand::Register { register: rk },
-                    ) = (
-                        &decoded.operands[0],
-                        &decoded.operands[1],
-                        &decoded.operands[2],
-                    )
-                    && rk.id == 0
-                {
-                    decoded.mnemonic = "move".to_string();
-                    decoded.operands.pop();
-                }
-
-                // Capstone v6 drops duplicated destination register for CSR ops.
-                if (decoded.mnemonic == "csrwr" || decoded.mnemonic == "gcsrwr")
-                    && decoded.operands.len() == 3
-                    && let (
-                        Operand::Register { register: r0 },
-                        Operand::Register { register: r1 },
-                        _,
-                    ) = (
-                        &decoded.operands[0],
-                        &decoded.operands[1],
-                        &decoded.operands[2],
-                    )
-                    && r0.id == r1.id
-                {
-                    decoded.operands.remove(1);
-                }
-                if (decoded.mnemonic == "csrxchg" || decoded.mnemonic == "gcsrxchg")
-                    && decoded.operands.len() == 4
-                    && let (
-                        Operand::Register { register: r0 },
-                        Operand::Register { register: r1 },
-                        _,
-                        _,
-                    ) = (
-                        &decoded.operands[0],
-                        &decoded.operands[1],
-                        &decoded.operands[2],
-                        &decoded.operands[3],
-                    )
-                    && r0.id == r1.id
-                {
-                    decoded.operands.remove(1);
-                }
-
-                // Capstone v6 reorders invtlb operands to imm, rj, rk.
-                // The legacy decoder emits rk, rj, imm; the backend path already
-                // emits the correct order, so only swap when the first operand
-                // is a register (rk) rather than an immediate.
-                if decoded.mnemonic == "invtlb"
-                    && decoded.operands.len() == 3
-                    && matches!(decoded.operands[0], Operand::Register { .. })
-                {
-                    let imm = decoded.operands.pop().unwrap();
-                    let rj = decoded.operands.pop().unwrap();
-                    let rk = decoded.operands.pop().unwrap();
-                    decoded.operands.push(imm);
-                    decoded.operands.push(rj);
-                    decoded.operands.push(rk);
-                }
-
-                // Capstone v6 drops the .xs suffix from certain float instructions.
-                if let Some(base) = decoded.mnemonic.strip_suffix(".xs") {
-                    decoded.mnemonic = base.to_string();
-                }
-
-                Ok((decoded, size))
-            }
-            Err(e) => {
-                // Fallback to legacy decoder for instructions not yet in the new spec table.
-                if let DisasmError::DecodeFailure {
-                    kind: DecodeErrorKind::InvalidEncoding,
-                    ..
-                } = &e
-                {
-                    let decoded = self.decoder.decode(bytes, arch_name, addr)?;
-                    let size = decoded.size;
-                    Ok((decoded, size))
-                } else {
-                    Err(e)
+        let mut decoded = match decode_one::<backend::LoongArchBackend>(bytes, addr, &profile) {
+            Ok(d) => d,
+            Err(DisasmError::DecodeFailure {
+                kind: DecodeErrorKind::InvalidEncoding,
+                ..
+            }) => {
+                // Fallback to legacy pattern table for instructions not yet in the spec framework.
+                match crate::patterns::try_decode_from_patterns(
+                    u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]),
+                    addr,
+                ) {
+                    Some(Ok(d)) => d,
+                    Some(Err(e)) => return Err(e),
+                    None => {
+                        return Err(DisasmError::decode_failure(
+                            DecodeErrorKind::InvalidEncoding,
+                            Some("loongarch".to_string()),
+                            "unrecognized LoongArch encoding",
+                        ));
+                    }
                 }
             }
+            Err(e) => return Err(e),
+        };
+        let size = decoded.size;
+
+        // Alias: andi $zero, $zero, 0 => nop
+        if decoded.mnemonic == "andi"
+            && decoded.operands.len() == 3
+            && let (
+                Operand::Register { register: rd },
+                Operand::Register { register: rj },
+                Operand::Immediate { value: 0 },
+            ) = (
+                &decoded.operands[0],
+                &decoded.operands[1],
+                &decoded.operands[2],
+            )
+            && rd.id == 0
+            && rj.id == 0
+        {
+            decoded.mnemonic = "nop".to_string();
+            decoded.operands.clear();
         }
+        // Alias: or $rd, $rj, $zero => move $rd, $rj
+        if decoded.mnemonic == "or"
+            && decoded.operands.len() == 3
+            && let (
+                Operand::Register { register: _rd },
+                Operand::Register { register: _rj },
+                Operand::Register { register: rk },
+            ) = (
+                &decoded.operands[0],
+                &decoded.operands[1],
+                &decoded.operands[2],
+            )
+            && rk.id == 0
+        {
+            decoded.mnemonic = "move".to_string();
+            decoded.operands.pop();
+        }
+
+        // Capstone v6 drops duplicated destination register for CSR ops.
+        if (decoded.mnemonic == "csrwr" || decoded.mnemonic == "gcsrwr")
+            && decoded.operands.len() == 3
+            && let (Operand::Register { register: r0 }, Operand::Register { register: r1 }, _) = (
+                &decoded.operands[0],
+                &decoded.operands[1],
+                &decoded.operands[2],
+            )
+            && r0.id == r1.id
+        {
+            decoded.operands.remove(1);
+        }
+        if (decoded.mnemonic == "csrxchg" || decoded.mnemonic == "gcsrxchg")
+            && decoded.operands.len() == 4
+            && let (Operand::Register { register: r0 }, Operand::Register { register: r1 }, _, _) = (
+                &decoded.operands[0],
+                &decoded.operands[1],
+                &decoded.operands[2],
+                &decoded.operands[3],
+            )
+            && r0.id == r1.id
+        {
+            decoded.operands.remove(1);
+        }
+
+        // Capstone v6 reorders invtlb operands to imm, rj, rk.
+        if decoded.mnemonic == "invtlb"
+            && decoded.operands.len() == 3
+            && matches!(decoded.operands[0], Operand::Register { .. })
+        {
+            let imm = decoded.operands.pop().unwrap();
+            let rj = decoded.operands.pop().unwrap();
+            let rk = decoded.operands.pop().unwrap();
+            decoded.operands.push(imm);
+            decoded.operands.push(rj);
+            decoded.operands.push(rk);
+        }
+
+        // Capstone v6 drops the .xs suffix from certain float instructions.
+        if let Some(base) = decoded.mnemonic.strip_suffix(".xs") {
+            decoded.mnemonic = base.to_string();
+        }
+
+        // Capstone v6 omits duplicated destination register for certain
+        // vector instructions (e.g. xvpermi.w, xvsrarni, xvinsve0, xvshuf).
+        if decoded.mnemonic.starts_with("xv")
+            && decoded.operands.len() == 4
+            && let (Operand::Register { register: r0 }, Operand::Register { register: r1 }, _, _) = (
+                &decoded.operands[0],
+                &decoded.operands[1],
+                &decoded.operands[2],
+                &decoded.operands[3],
+            )
+            && r0.id == r1.id
+        {
+            decoded.operands.remove(1);
+        }
+
+        Ok((decoded, size))
     }
 
     fn decode_instruction_with_profile(
@@ -312,7 +313,6 @@ mod tests {
     #[test]
     fn test_addi_w_decode() {
         let handler = LoongArchHandler::new();
-        // addi.w $a1, $a3, 0xf6 => bytes from arith.s.yaml
         let bytes = [0xe5, 0xd8, 0x83, 0x02];
         let (instr, size) = handler.disassemble(&bytes, "loongarch64", 0).unwrap();
         assert_eq!(size, 4);
@@ -323,7 +323,6 @@ mod tests {
     #[test]
     fn test_add_w_decode() {
         let handler = LoongArchHandler::new();
-        // add.w $a5, $ra, $s8 => bytes from arith.s.yaml
         let bytes = [0x29, 0x7c, 0x10, 0x00];
         let (instr, size) = handler.disassemble(&bytes, "loongarch64", 0).unwrap();
         assert_eq!(size, 4);
@@ -334,7 +333,6 @@ mod tests {
     #[test]
     fn test_or_decode() {
         let handler = LoongArchHandler::new();
-        // or $t5, $t4, $s7 => bytes from arith.s.yaml
         let bytes = [0x11, 0x7a, 0x15, 0x00];
         let (instr, size) = handler.disassemble(&bytes, "loongarch64", 0).unwrap();
         assert_eq!(size, 4);

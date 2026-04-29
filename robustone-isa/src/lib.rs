@@ -613,6 +613,32 @@ macro_rules! isa_specs {
             features = $features:expr;
             modes = $modes:expr;
             groups = $groups:expr;
+            manual = $manual:expr;
+        })*
+    ) => {
+        $(pub static $name: $crate::InstructionSpec<$backend> = $crate::InstructionSpec {
+            mnemonic: $mnemonic,
+            opcode_id: $opcode_id,
+            pattern: $pattern,
+            format: $format,
+            operands: $operands,
+            features: $features,
+            modes: $modes,
+            groups: $groups,
+            manual_ref: Some($manual),
+        };)*
+    };
+    (
+        backend = $backend:ty;
+        $(spec $name:ident {
+            mnemonic = $mnemonic:expr;
+            opcode_id = $opcode_id:expr;
+            pattern = $pattern:expr;
+            format = $format:expr;
+            operands = $operands:expr;
+            features = $features:expr;
+            modes = $modes:expr;
+            groups = $groups:expr;
         })*
     ) => {
         $(pub static $name: $crate::InstructionSpec<$backend> = $crate::InstructionSpec {
