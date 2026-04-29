@@ -170,7 +170,7 @@ impl Rvi {
         );
 
         if mnemonic == "addi" && rs1 == 0 && rd != 0 {
-            Ok(instruction.with_capstone_alias("li", vec![1]))
+            Ok(instruction.with_compat_alias("li", vec![1]))
         } else {
             Ok(instruction)
         }
@@ -238,8 +238,8 @@ impl Rvi {
         );
 
         match mnemonic {
-            "beq" if rs2 == 0 => Ok(instruction.with_capstone_alias("beqz", vec![1])),
-            "bne" if rs2 == 0 => Ok(instruction.with_capstone_alias("bnez", vec![1])),
+            "beq" if rs2 == 0 => Ok(instruction.with_compat_alias("beqz", vec![1])),
+            "bne" if rs2 == 0 => Ok(instruction.with_compat_alias("bnez", vec![1])),
             _ => Ok(instruction),
         }
     }
@@ -261,7 +261,7 @@ impl Rvi {
     ) -> Result<DecodedInstruction, DisasmError> {
         let instruction = self.decode_j_type("jal", rd, imm_j)?;
         match rd {
-            0 => Ok(instruction.with_capstone_alias("j", vec![0])),
+            0 => Ok(instruction.with_compat_alias("j", vec![0])),
             1 => Ok(instruction.with_hidden_operands(vec![0])),
             _ => Ok(instruction),
         }
@@ -587,7 +587,7 @@ impl Rvi {
         csr: i64,
     ) -> Result<DecodedInstruction, DisasmError> {
         let _ = &self.register_manager;
-        let (capstone_alias, hidden_operands) = csr_capstone_alias(mnemonic, rd, rs1, csr as u16);
+        let (compat_alias, hidden_operands) = csr_compat_alias(mnemonic, rd, rs1, csr as u16);
 
         let instruction = self.formatter.create_decoded_instruction(
             mnemonic,
@@ -602,8 +602,8 @@ impl Rvi {
             ],
         );
 
-        if let Some(capstone_alias) = capstone_alias {
-            Ok(instruction.with_capstone_alias(capstone_alias, hidden_operands))
+        if let Some(compat_alias) = compat_alias {
+            Ok(instruction.with_compat_alias(compat_alias, hidden_operands))
         } else {
             Ok(instruction)
         }
@@ -629,7 +629,7 @@ impl Rvi {
             ],
         );
 
-        let capstone_alias = if rd == 0 {
+        let compat_alias = if rd == 0 {
             match mnemonic {
                 "csrrwi" => Some("csrwi"),
                 "csrrsi" => Some("csrsi"),
@@ -640,8 +640,8 @@ impl Rvi {
             None
         };
 
-        if let Some(capstone_alias) = capstone_alias {
-            Ok(instruction.with_capstone_alias(capstone_alias, vec![0]))
+        if let Some(compat_alias) = compat_alias {
+            Ok(instruction.with_compat_alias(compat_alias, vec![0]))
         } else {
             Ok(instruction)
         }
@@ -658,7 +658,7 @@ fn prefetch_mnemonic(imm: i64) -> Option<&'static str> {
     }
 }
 
-fn csr_capstone_alias(
+fn csr_compat_alias(
     mnemonic: &str,
     rd: u8,
     rs1: u8,

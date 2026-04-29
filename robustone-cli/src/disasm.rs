@@ -264,7 +264,7 @@ impl DisassemblyEngine {
 
     /// Enable or disable decode-time detail generation.
     ///
-    /// This mirrors Capstone's `CS_OPT_DETAIL` option.
+    /// This mirrors the traditional `CS_OPT_DETAIL` option.
     pub fn with_detail(mut self, detail: bool) -> Self {
         self.detail = detail;
         self.dispatcher.borrow_mut().set_detail(detail);

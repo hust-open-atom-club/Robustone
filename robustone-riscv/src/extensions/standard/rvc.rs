@@ -68,7 +68,7 @@ impl Rvc {
                 convenience::immediate(imm),
             ],
         )
-        .with_capstone_alias("lui", Vec::new()))
+        .with_compat_alias("lui", Vec::new()))
     }
 
     fn decode_c_add(&self, rd: u8, rs2: u8) -> Result<DecodedInstruction, DisasmError> {
@@ -83,7 +83,7 @@ impl Rvc {
                 convenience::register(rs2, Access::read()),
             ],
         )
-        .with_capstone_alias("add", Vec::new()))
+        .with_compat_alias("add", Vec::new()))
     }
 
     fn decode_c_mv(&self, rd: u8, rs2: u8) -> Result<DecodedInstruction, DisasmError> {
@@ -97,7 +97,7 @@ impl Rvc {
                 convenience::register(rs2, Access::read()),
             ],
         )
-        .with_capstone_alias("mv", Vec::new()))
+        .with_compat_alias("mv", Vec::new()))
     }
 
     fn decode_c_jr(&self, rd: u8) -> Result<DecodedInstruction, DisasmError> {
@@ -108,7 +108,7 @@ impl Rvc {
             2,
             vec![convenience::register(rd, Access::read())],
         )
-        .with_capstone_alias("jr", Vec::new()))
+        .with_compat_alias("jr", Vec::new()))
     }
 
     fn decode_c_jalr(&self, rd: u8) -> Result<DecodedInstruction, DisasmError> {
@@ -119,7 +119,7 @@ impl Rvc {
             2,
             vec![convenience::register(rd, Access::read())],
         )
-        .with_capstone_alias("jalr", Vec::new()))
+        .with_compat_alias("jalr", Vec::new()))
     }
 
     fn decode_c_lw(&self, rd: u8, rs1: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
@@ -134,7 +134,7 @@ impl Rvc {
                 convenience::memory(rs1 + 8, imm_val),
             ],
         )
-        .with_capstone_alias("lw", Vec::new()))
+        .with_compat_alias("lw", Vec::new()))
     }
 
     fn decode_c_sw(&self, rs2: u8, rs1: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
@@ -149,7 +149,7 @@ impl Rvc {
                 convenience::memory(rs1 + 8, imm_val),
             ],
         )
-        .with_capstone_alias("sw", Vec::new()))
+        .with_compat_alias("sw", Vec::new()))
     }
 
     fn decode_c_lwsp(&self, rd: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
@@ -164,7 +164,7 @@ impl Rvc {
                 convenience::memory(2, imm_val),
             ],
         )
-        .with_capstone_alias("lw", Vec::new()))
+        .with_compat_alias("lw", Vec::new()))
     }
 
     fn decode_c_swsp(&self, rs2: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
@@ -179,7 +179,7 @@ impl Rvc {
                 convenience::memory(2, imm_val),
             ],
         )
-        .with_capstone_alias("sw", Vec::new()))
+        .with_compat_alias("sw", Vec::new()))
     }
 
     fn decode_c_ld(&self, rd: u8, rs1: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
@@ -194,7 +194,7 @@ impl Rvc {
                 convenience::memory(rs1 + 8, imm_val),
             ],
         )
-        .with_capstone_alias("ld", Vec::new()))
+        .with_compat_alias("ld", Vec::new()))
     }
 
     fn decode_c_sd(&self, rs2: u8, rs1: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
@@ -209,7 +209,7 @@ impl Rvc {
                 convenience::memory(rs1 + 8, imm_val),
             ],
         )
-        .with_capstone_alias("sd", Vec::new()))
+        .with_compat_alias("sd", Vec::new()))
     }
 
     fn decode_c_ldsp(&self, rd: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
@@ -224,7 +224,7 @@ impl Rvc {
                 convenience::memory(2, imm_val),
             ],
         )
-        .with_capstone_alias("ld", Vec::new()))
+        .with_compat_alias("ld", Vec::new()))
     }
 
     fn decode_c_sdsp(&self, rs2: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
@@ -239,7 +239,7 @@ impl Rvc {
                 convenience::memory(2, imm_val),
             ],
         )
-        .with_capstone_alias("sd", Vec::new()))
+        .with_compat_alias("sd", Vec::new()))
     }
 
     fn decode_c_fld(&self, rd: u8, rs1: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
@@ -254,7 +254,7 @@ impl Rvc {
                 convenience::memory(rs1 + 8, imm_val),
             ],
         )
-        .with_capstone_alias("fld", Vec::new()))
+        .with_compat_alias("fld", Vec::new()))
     }
 
     fn decode_c_fsd(&self, rs2: u8, rs1: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
@@ -269,7 +269,7 @@ impl Rvc {
                 convenience::memory(rs1 + 8, imm_val),
             ],
         )
-        .with_capstone_alias("fsd", Vec::new()))
+        .with_compat_alias("fsd", Vec::new()))
     }
 
     fn decode_c_flw(&self, rd: u8, rs1: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
@@ -284,7 +284,7 @@ impl Rvc {
                 convenience::memory(rs1 + 8, imm_val),
             ],
         )
-        .with_capstone_alias("flw", Vec::new()))
+        .with_compat_alias("flw", Vec::new()))
     }
 
     fn decode_c_fsw(&self, rs2: u8, rs1: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
@@ -299,7 +299,7 @@ impl Rvc {
                 convenience::memory(rs1 + 8, imm_val),
             ],
         )
-        .with_capstone_alias("fsw", Vec::new()))
+        .with_compat_alias("fsw", Vec::new()))
     }
 
     fn decode_c_fldsp(&self, rd: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
@@ -314,7 +314,7 @@ impl Rvc {
                 convenience::memory(2, imm_val),
             ],
         )
-        .with_capstone_alias("fld", Vec::new()))
+        .with_compat_alias("fld", Vec::new()))
     }
 
     fn decode_c_fsdsp(&self, rs2: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
@@ -329,7 +329,7 @@ impl Rvc {
                 convenience::memory(2, imm_val),
             ],
         )
-        .with_capstone_alias("fsd", Vec::new()))
+        .with_compat_alias("fsd", Vec::new()))
     }
 
     fn decode_c_flwsp(&self, rd: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
@@ -344,7 +344,7 @@ impl Rvc {
                 convenience::memory(2, imm_val),
             ],
         )
-        .with_capstone_alias("flw", Vec::new()))
+        .with_compat_alias("flw", Vec::new()))
     }
 
     fn decode_c_fswsp(&self, rs2: u8, imm: u16) -> Result<DecodedInstruction, DisasmError> {
@@ -359,7 +359,7 @@ impl Rvc {
                 convenience::memory(2, imm_val),
             ],
         )
-        .with_capstone_alias("fsw", Vec::new()))
+        .with_compat_alias("fsw", Vec::new()))
     }
 
     fn decode_c_addi(&self, rd: u8, imm: i64) -> Result<DecodedInstruction, DisasmError> {
@@ -374,7 +374,7 @@ impl Rvc {
                 convenience::immediate(imm),
             ],
         )
-        .with_capstone_alias("addi", Vec::new()))
+        .with_compat_alias("addi", Vec::new()))
     }
 
     fn decode_c_li(&self, rd: u8, imm: i64) -> Result<DecodedInstruction, DisasmError> {
@@ -388,7 +388,7 @@ impl Rvc {
                 convenience::immediate(imm),
             ],
         )
-        .with_capstone_alias("li", Vec::new()))
+        .with_compat_alias("li", Vec::new()))
     }
 
     fn decode_c_addiw(&self, rd: u8, imm: i64) -> Result<DecodedInstruction, DisasmError> {
@@ -403,7 +403,7 @@ impl Rvc {
                 convenience::immediate(imm),
             ],
         )
-        .with_capstone_alias("addiw", Vec::new()))
+        .with_compat_alias("addiw", Vec::new()))
     }
 
     fn decode_c_alu(
@@ -415,7 +415,7 @@ impl Rvc {
         xlen: Xlen,
         imm_ci: i64,
     ) -> Result<DecodedInstruction, DisasmError> {
-        let (mnemonic, capstone_alias) = match (funct6, funct2, xlen) {
+        let (mnemonic, compat_alias) = match (funct6, funct2, xlen) {
             (0b100011, 0b00, _) => ("c.sub", None),
             (0b100011, 0b01, _) => ("c.xor", None),
             (0b100011, 0b10, _) => ("c.or", None),
@@ -466,8 +466,8 @@ impl Rvc {
             )
         };
 
-        if let Some(capstone_alias) = capstone_alias {
-            Ok(instruction.with_capstone_alias(capstone_alias, Vec::new()))
+        if let Some(compat_alias) = compat_alias {
+            Ok(instruction.with_compat_alias(compat_alias, Vec::new()))
         } else {
             Ok(instruction)
         }
@@ -489,7 +489,7 @@ impl Rvc {
             2,
             vec![convenience::immediate(imm)],
         )
-        .with_capstone_alias("jal", Vec::new()))
+        .with_compat_alias("jal", Vec::new()))
     }
 
     fn decode_c_beqz(&self, rs1: u8, imm: i64) -> Result<DecodedInstruction, DisasmError> {

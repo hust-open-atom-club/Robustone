@@ -66,7 +66,7 @@ fn test_architecture_spec_accepts_cstool_style_modifier_sets() {
 }
 
 #[test]
-fn test_architecture_spec_accepts_riscv_capstone_modifiers() {
+fn test_architecture_spec_accepts_riscv_compat_modifiers() {
     assert!(ArchitectureSpec::parse("riscv64+a+fd").is_ok());
     assert!(ArchitectureSpec::parse("riscv32+noalias").is_ok());
     assert!(ArchitectureSpec::parse("riscv32+noaliascompressed").is_ok());
@@ -130,7 +130,7 @@ fn test_noalias_modifier_disables_aliases_in_real_detail_sections() {
 }
 
 #[test]
-fn test_real_detail_defaults_to_capstone_register_aliases() {
+fn test_real_detail_defaults_to_compat_register_aliases() {
     let args = vec!["robustone", "-r", "riscv32", "93001000"];
     let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
     let config = DisasmConfig::config_from_cli(&cli).expect("configuration should be valid");
@@ -367,7 +367,7 @@ fn test_riscv_profile_modifier_builds_correct_extension_set() {
 #[test]
 fn test_riscv_profile_extension_semantics_at_decode_time() {
     // A compressed instruction (c.addi t0, t0, 1 = 0x0105) should succeed with +c.
-    // Note: Capstone renders c.addi as "addi", so we verify the decoded IR instead.
+    // Note: The compatible renderer emits c.addi as "addi", so we verify the decoded IR instead.
     let args = vec!["robustone", "riscv32+c", "0105"];
     let cli = Cli::try_parse_from(args).expect("CLI arguments should parse");
     let config = DisasmConfig::config_from_cli(&cli).expect("configuration should be valid");

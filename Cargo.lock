@@ -705,8 +705,10 @@ dependencies = [
 name = "robustone-arm"
 version = "0.1.0"
 dependencies = [
+ "bitflags",
  "inventory",
  "robustone-core",
+ "robustone-isa",
 ]
 
 [[package]]
@@ -789,14 +791,17 @@ dependencies = [
  "hex",
  "inventory",
  "robustone-core",
+ "robustone-isa",
 ]
 
 [[package]]
 name = "robustone-x86"
 version = "0.1.0"
 dependencies = [
+ "bitflags",
  "inventory",
  "robustone-core",
+ "robustone-isa",
 ]
 
 [[package]]

@@ -8,5 +8,9 @@ robustone-core = { path = "../robustone-core" }
 robustone-isa-macros = { path = "../robustone-isa-macros" }
 bitflags = "2"
 
+[features]
+default = ["std"]
+std = []
+
 [dev-dependencies]
 robustone-core = { path = "../robustone-core" }

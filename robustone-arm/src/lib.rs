@@ -4,6 +4,7 @@
 //!
 //! Provides instruction decoding for ARM AArch64 targets.
 
+pub mod backend;
 pub mod decoder;
 pub mod render;
 

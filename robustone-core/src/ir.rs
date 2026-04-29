@@ -144,7 +144,7 @@ impl DecodedInstruction {
     }
 
     /// Set a decoder-facing alias mnemonic and optional hidden operands.
-    pub fn with_capstone_alias(
+    pub fn with_compat_alias(
         mut self,
         compat_mnemonic: impl Into<String>,
         hidden_operands: Vec<usize>,
@@ -190,7 +190,7 @@ impl DecodedInstruction {
     }
 
     /// Render the instruction using the decoder-compatible text profile.
-    pub fn render_capstone_text_parts(&self) -> (String, String) {
+    pub fn render_compat_text_parts(&self) -> (String, String) {
         self.render_text_parts(TextRenderProfile::Compat)
     }
 
@@ -274,7 +274,7 @@ mod tests {
                 Operand::Immediate { value: 42 },
             ],
         );
-        let (mnemonic, operands) = instruction.render_capstone_text_parts();
+        let (mnemonic, operands) = instruction.render_compat_text_parts();
         assert_eq!(mnemonic, "addi");
         assert_eq!(operands, "riscv:1, riscv:2, 42");
     }
@@ -293,14 +293,14 @@ mod tests {
                 },
             ],
         );
-        let (_, operands) = instruction.render_capstone_text_parts();
+        let (_, operands) = instruction.render_compat_text_parts();
         assert_eq!(operands, "riscv:5, 8(riscv:2)");
     }
 
     #[test]
     fn generic_renderer_uses_stored_mnemonic() {
         let instruction = sample_instruction("c.addi", vec![]);
-        let (mnemonic, _) = instruction.render_capstone_text_parts();
+        let (mnemonic, _) = instruction.render_compat_text_parts();
         assert_eq!(mnemonic, "c.addi");
     }
 
@@ -316,7 +316,7 @@ mod tests {
             ],
         );
         instruction.render_hints.compat_hidden_operands = vec![0];
-        let (_, operands) = instruction.render_capstone_text_parts();
+        let (_, operands) = instruction.render_compat_text_parts();
         // Generic renderer does not apply hidden operands
         assert_eq!(operands, "riscv:1, 4096");
     }
@@ -333,8 +333,8 @@ mod tests {
             ],
         );
         instruction.render_hints.compat_mnemonic = Some("li".to_string());
-        let (mnemonic, _) = instruction.render_capstone_text_parts();
-        // Generic renderer does not apply capstone mnemonic aliases
+        let (mnemonic, _) = instruction.render_compat_text_parts();
+        // Generic renderer does not apply compat mnemonic aliases
         assert_eq!(mnemonic, "addi");
     }
 }

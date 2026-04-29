@@ -157,9 +157,9 @@ fn check_forbidden_strings(
                         && !lower.contains("capstone_hidden")
                         && !lower.contains("compat_mnemonic")
                         && !lower.contains("render_hints")
-                        && !lower.contains("with_capstone_alias")
+                        && !lower.contains("with_compat_alias")
                         && !lower.contains("textprofile")
-                        && !lower.contains("capstone_alias")
+                        && !lower.contains("compat_alias")
                     {
                         violations.push(format!(
                             "{}:{}: forbidden string '{}' in {}",
@@ -225,10 +225,11 @@ fn check_spec(args: &[String]) -> ExitCode {
                 Ok(out) => {
                     let stderr = String::from_utf8_lossy(&out.stderr);
                     if stderr.contains("no test target named") {
-                        println!(
-                            "check-spec: {} SKIPPED (no spec_validation test)",
+                        eprintln!(
+                            "check-spec: {} FAILED (missing spec_validation integration test)",
                             crate_name
                         );
+                        failed = true;
                     } else {
                         eprintln!("check-spec: {} FAILED\n{}", crate_name, stderr);
                         failed = true;
@@ -309,16 +310,8 @@ pub use arch::{{{}Backend, {}Decoder}};
 
     let pascal = to_pascal_case(name);
     let upper = pascal.to_uppercase();
-    let (arch_id, register_ctor) = match name.to_lowercase().as_str() {
-        "riscv" => ("Riscv", "riscv"),
-        "arm" => ("Arm", "arm"),
-        "x86" => ("X86", "x86"),
-        "loongarch" => ("LoongArch", "loongarch"),
-        _ => {
-            eprintln!("Error: unsupported architecture '{}'", name);
-            return ExitCode::FAILURE;
-        }
-    };
+    let arch_id = &pascal;
+    let register_ctor = name.to_lowercase();
     let arch_rs = format!(
         r#"use robustone_isa::{{
     Access, ArchitectureBackend, DecodeProfile, FeatureSet, FormatSpec, ImmediateKind,
@@ -446,9 +439,23 @@ pub type {pascal}Decoder = robustone_isa::Decoder<{pascal}Backend>;
     );
     fs::write(crate_dir.join("src/arch.rs"), arch_rs).unwrap();
 
-    let stub_files = ["profile.rs", "registers.rs", "formats.rs", "render.rs"];
-    for f in &stub_files {
-        fs::write(crate_dir.join("src").join(f), "// TODO: implement\n").unwrap();
+    let stub_files = [
+        ("profile.rs", "//! Architecture profile definitions.\n"),
+        (
+            "registers.rs",
+            "//! Register bank definitions.\n\n/// Register manager for the architecture.\npub struct RegisterManager;\n",
+        ),
+        (
+            "formats.rs",
+            "//! Instruction format definitions.\n\nuse robustone_isa::FormatSpec;\n",
+        ),
+        (
+            "render.rs",
+            "//! Text rendering for decoded instructions.\n\nuse robustone_core::ir::DecodedInstruction;\n\n/// Render a decoded instruction into text.\npub fn render(_insn: &DecodedInstruction) -> (String, String) {\n    (String::new(), String::new())\n}\n",
+        ),
+    ];
+    for (f, content) in &stub_files {
+        fs::write(crate_dir.join("src").join(f), content).unwrap();
     }
 
     fs::create_dir_all(crate_dir.join("src/specs")).unwrap();

@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 //! ISA-level decode framework shared across architecture backends.
 //!
@@ -6,6 +7,8 @@
 //! `decode_one()` pipeline. Architecture-specific crates (RISC-V, LoongArch)
 //! implement `ArchitectureBackend` and use the shared pipeline to produce
 //! `DecodedInstruction` IR.
+
+extern crate alloc;
 
 use robustone_core::ir::{ArchitectureId, DecodedInstruction, Operand, RegisterId};
 use robustone_core::types::error::{DecodeErrorKind, DisasmError};
@@ -133,7 +136,7 @@ pub struct InstructionRead<W> {
 pub trait FeatureSet: Copy + Eq + core::fmt::Debug + 'static {
     /// Empty feature set.
     fn empty() -> Self;
-    /// All supported features (used for Capstone compatibility testing).
+    /// All supported features (used for compatibility testing).
     fn all_supported_for_tests() -> Self;
     /// Check whether `self` contains all features in `required`.
     fn contains(self, required: Self) -> bool;
@@ -569,7 +572,7 @@ pub fn check_spec_table<B: ArchitectureBackend>(
     validate_no_overlaps(specs)?;
 
     // 2. Check opcode_id uniqueness
-    let mut seen = std::collections::HashMap::new();
+    let mut seen = alloc::collections::BTreeMap::new();
     for spec in specs {
         if let Some(prev) = seen.insert(spec.opcode_id, spec.mnemonic) {
             return Err(format!(
@@ -591,6 +594,20 @@ pub fn check_spec_table<B: ArchitectureBackend>(
             missing_manual.len(),
             missing_manual
         );
+    }
+
+    // 4. Check group self-consistency (every spec must belong to at least one group)
+    let missing_groups: Vec<_> = specs
+        .iter()
+        .filter(|s| s.groups.is_empty())
+        .map(|s| s.mnemonic)
+        .collect();
+    if !missing_groups.is_empty() {
+        return Err(format!(
+            "{} specs missing groups: {:?}",
+            missing_groups.len(),
+            missing_groups
+        ));
     }
 
     Ok(())

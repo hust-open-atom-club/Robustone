@@ -12,6 +12,7 @@
 //! compatibility interfaces.
 
 pub mod arch;
+pub mod backend;
 pub mod decoder;
 pub mod extensions;
 pub mod patterns;

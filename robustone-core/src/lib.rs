@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 //! Robustone – Core disassembly engine with multi-architecture support.
 //!
@@ -45,6 +46,8 @@
 //! `ArchitectureDispatcher::new()` and `ArchitectureDispatcher::default()` return an
 //! empty dispatcher with no handlers registered. You must call `register()` to add
 //! architecture backends before disassembling.
+
+extern crate alloc;
 
 pub mod architecture;
 pub mod common;

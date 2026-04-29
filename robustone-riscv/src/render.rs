@@ -404,7 +404,7 @@ pub struct RiscVRenderer;
 impl Renderer for RiscVRenderer {
     fn render(&self, instruction: &DecodedInstruction, options: RenderOptions) -> (String, String) {
         // Match the legacy behavior where register aliases are enabled for
-        // Capstone profile unless explicitly disabled via compat_aliases.
+        // compat profile unless explicitly disabled via compat_aliases.
         let alias_regs = options.compat_aliases
             && (options.alias_regs
                 || !matches!(options.text_profile, TextRenderProfile::Canonical));

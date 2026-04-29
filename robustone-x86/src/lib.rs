@@ -4,6 +4,7 @@
 //!
 //! Provides instruction decoding for x86 and x86-64 targets.
 
+pub mod backend;
 pub mod decoder;
 pub mod render;
 
