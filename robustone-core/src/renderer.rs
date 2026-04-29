@@ -12,9 +12,9 @@ use crate::render::RenderOptions;
 pub enum RenderProfile {
     /// Canonical mnemonic and register names (no aliases).
     Canonical,
-    /// Capstone-compatible output (aliases, hidden operands, etc.).
+    /// decoder-compatible output (aliases, hidden operands, etc.).
     #[default]
-    CapstoneCompat,
+    CompatOutput,
     /// Human-readable debug view.
     Debug,
 }

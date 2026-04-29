@@ -70,7 +70,7 @@ impl ArchitectureHandler for ArmHandler {
         let (decoded, size) = self.decode_instruction(bytes, arch_name, addr)?;
         let (mnemonic, operands) = render::render_aarch64_text_parts(
             &decoded,
-            robustone_core::ir::TextRenderProfile::Capstone,
+            robustone_core::ir::TextRenderProfile::Compat,
             true,
             true,
             true,

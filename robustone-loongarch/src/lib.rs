@@ -207,7 +207,7 @@ impl ArchitectureHandler for LoongArchHandler {
         let (decoded, size) = self.decode_instruction(bytes, arch_name, addr)?;
         let (mnemonic, operands) = render::render_loongarch_text_parts(
             &decoded,
-            TextRenderProfile::Capstone,
+            TextRenderProfile::Compat,
             true,
             true,
             true,

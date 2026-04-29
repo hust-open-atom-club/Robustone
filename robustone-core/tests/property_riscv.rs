@@ -121,7 +121,7 @@ prop_compose! {
             "beqz".to_string(),
             "j".to_string(),
         ])),
-        capstone_hidden_operands in prop::collection::vec(0usize..5, 0..2),
+        compat_hidden_operands in prop::collection::vec(0usize..5, 0..2),
         status in prop::sample::select(vec![
             DecodeStatus::Success,
             DecodeStatus::InvalidEncoding,
@@ -154,7 +154,7 @@ prop_compose! {
             status,
             render_hints: RenderHints {
                 capstone_mnemonic,
-                capstone_hidden_operands,
+                compat_hidden_operands,
             },
         }
     }
@@ -304,7 +304,7 @@ proptest! {
     ) {
         let instruction = Instruction::from_decoded(decoded, "legacy".to_string(), "legacy".to_string(), None);
         let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
-            let _ = render_instruction_text(&instruction, None, render_options(TextRenderProfile::Capstone));
+            let _ = render_instruction_text(&instruction, None, render_options(TextRenderProfile::Compat));
             let _ = render_instruction_text(&instruction, None, render_options(TextRenderProfile::Canonical));
             let _ = render_instruction_text(&instruction, None, render_options(TextRenderProfile::VerboseDebug));
         }));

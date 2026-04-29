@@ -1,7 +1,7 @@
 //! Robustone – Core disassembly engine with multi-architecture support.
 //!
 //! This crate provides a flexible, extensible disassembly framework inspired by
-//! Capstone's design but implemented in pure Rust. The architecture is designed
+//! reference decoder design but implemented in pure Rust. The architecture is designed
 //! to support multiple instruction set architectures through a unified interface.
 //!
 //! # Architecture Overview
@@ -136,7 +136,7 @@ impl ArchitectureDispatcher {
 
     /// Sets the detail flag on all registered handlers.
     ///
-    /// This mirrors Capstone's `CS_OPT_DETAIL` option. When `false`, handlers
+    /// This mirrors the reference decoder `CS_OPT_DETAIL` option. When `false`, handlers
     /// may skip expensive detail construction and return `Instruction` objects
     /// with `detail` set to `None`.
     pub fn set_detail(&mut self, detail: bool) {
@@ -500,7 +500,7 @@ mod tests {
             decoded.render_hints.capstone_mnemonic.as_deref(),
             Some("li")
         );
-        assert_eq!(decoded.render_hints.capstone_hidden_operands, vec![1]);
+        assert_eq!(decoded.render_hints.compat_hidden_operands, vec![1]);
     }
 
     #[test]

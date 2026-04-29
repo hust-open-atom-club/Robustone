@@ -164,7 +164,7 @@ impl OutputConfig {
             text_profile: if display.real_detail {
                 TextRenderProfile::VerboseDebug
             } else {
-                TextRenderProfile::Capstone
+                TextRenderProfile::Compat
             },
             alias_regs: display.alias_regs,
             capstone_aliases: true,
@@ -179,7 +179,7 @@ impl OutputConfig {
     /// Create minimal output configuration for brief display.
     pub fn minimal() -> Self {
         Self {
-            text_profile: TextRenderProfile::Capstone,
+            text_profile: TextRenderProfile::Compat,
             alias_regs: false,
             capstone_aliases: true,
             compressed_aliases: true,
@@ -264,7 +264,7 @@ mod tests {
         };
 
         let output = OutputConfig::from_display_options(&display);
-        assert_eq!(output.text_profile, TextRenderProfile::Capstone);
+        assert_eq!(output.text_profile, TextRenderProfile::Compat);
         assert!(!output.alias_regs);
         assert!(output.capstone_aliases);
         assert!(output.compressed_aliases);

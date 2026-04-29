@@ -58,7 +58,7 @@ fn assert_case(case: GoldenCase) {
         case.expected_ir.render_hint_mnemonic.as_deref()
     );
     assert_eq!(
-        decoded.render_hints.capstone_hidden_operands,
+        decoded.render_hints.compat_hidden_operands,
         case.expected_ir.hidden_operands
     );
     assert_eq!(decoded.groups, case.expected_ir.groups);

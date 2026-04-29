@@ -128,7 +128,7 @@ impl Instruction {
     }
 
     pub fn assembly_line(&self) -> String {
-        let (mnemonic, operands) = self.rendered_text_parts(TextRenderProfile::Capstone);
+        let (mnemonic, operands) = self.rendered_text_parts(TextRenderProfile::Compat);
         format!("0x{:08x}: {:<7} {}", self.address, mnemonic, operands)
     }
 }
@@ -199,13 +199,13 @@ mod tests {
             status: DecodeStatus::Success,
             render_hints: RenderHints {
                 capstone_mnemonic: Some("li".to_string()),
-                capstone_hidden_operands: vec![1],
+                compat_hidden_operands: vec![1],
             },
         };
         let instruction =
             Instruction::from_decoded(decoded, "legacy".to_string(), "legacy".to_string(), None);
 
-        let (mnemonic, operands) = instruction.rendered_text_parts(TextRenderProfile::Capstone);
+        let (mnemonic, operands) = instruction.rendered_text_parts(TextRenderProfile::Compat);
         // Without an external renderer, rendered_text_parts falls back to the
         // pre-rendered mnemonic and operands fields.
         assert_eq!(mnemonic, "legacy");

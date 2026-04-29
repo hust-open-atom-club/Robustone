@@ -304,7 +304,7 @@ pub fn decode_from_pattern(
                     .unwrap_or(false)
             {
                 decoded.render_hints.capstone_mnemonic = Some("li".to_string());
-                decoded.render_hints.capstone_hidden_operands = vec![1];
+                decoded.render_hints.compat_hidden_operands = vec![1];
             }
         }
         "ori" => {
@@ -346,18 +346,18 @@ pub fn decode_from_pattern(
                 && rd.id == 0
             {
                 decoded.render_hints.capstone_mnemonic = Some("j".to_string());
-                decoded.render_hints.capstone_hidden_operands = vec![0];
+                decoded.render_hints.compat_hidden_operands = vec![0];
             } else if let Some(rd) = decoded.registers_written.first()
                 && rd.id == 1
             {
-                decoded.render_hints.capstone_hidden_operands = vec![0];
+                decoded.render_hints.compat_hidden_operands = vec![0];
             }
         }
         "jalr" => {
             if let Some(rd) = decoded.registers_written.first()
                 && rd.id == 1
             {
-                decoded.render_hints.capstone_hidden_operands = vec![0];
+                decoded.render_hints.compat_hidden_operands = vec![0];
             }
         }
         "beq" => {
@@ -365,7 +365,7 @@ pub fn decode_from_pattern(
                 && rs2.id == 0
             {
                 decoded.render_hints.capstone_mnemonic = Some("beqz".to_string());
-                decoded.render_hints.capstone_hidden_operands = vec![1];
+                decoded.render_hints.compat_hidden_operands = vec![1];
             }
         }
         "bne" => {
@@ -373,7 +373,7 @@ pub fn decode_from_pattern(
                 && rs2.id == 0
             {
                 decoded.render_hints.capstone_mnemonic = Some("bnez".to_string());
-                decoded.render_hints.capstone_hidden_operands = vec![1];
+                decoded.render_hints.compat_hidden_operands = vec![1];
             }
         }
         "csrrs" | "csrrw" | "csrrc" => {
@@ -409,7 +409,7 @@ pub fn decode_from_pattern(
                 };
                 if let Some(a) = alias {
                     decoded.render_hints.capstone_mnemonic = Some(a.to_string());
-                    decoded.render_hints.capstone_hidden_operands = hidden;
+                    decoded.render_hints.compat_hidden_operands = hidden;
                 }
             }
         }
@@ -423,7 +423,7 @@ pub fn decode_from_pattern(
                 };
                 if let Some(a) = alias {
                     decoded.render_hints.capstone_mnemonic = Some(a.to_string());
-                    decoded.render_hints.capstone_hidden_operands = vec![0];
+                    decoded.render_hints.compat_hidden_operands = vec![0];
                 }
             }
         }

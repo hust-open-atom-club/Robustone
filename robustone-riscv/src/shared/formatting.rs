@@ -441,7 +441,7 @@ mod tests {
         let instruction = instruction.with_context("riscv32", 0, vec![0; 4]);
         let rendered = crate::render::render_riscv_text_parts(
             &instruction,
-            robustone_core::ir::TextRenderProfile::Capstone,
+            robustone_core::ir::TextRenderProfile::Compat,
             true,
             true,
             true,

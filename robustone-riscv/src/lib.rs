@@ -193,7 +193,7 @@ impl ArchitectureHandler for RiscVHandler {
         let ir = decoder.decode(bytes, arch_name, addr)?;
         let (mnemonic, operands) = crate::render::render_riscv_text_parts(
             &ir,
-            TextRenderProfile::Capstone,
+            TextRenderProfile::Compat,
             true,
             true,
             true,

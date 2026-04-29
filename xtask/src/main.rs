@@ -139,12 +139,10 @@ fn check_forbidden_strings(
         if path.extension().and_then(|s| s.to_str()) != Some("rs") {
             continue;
         }
-        let path_str = path.to_string_lossy();
-        // Skip printer.rs and extensions/ – these contain legacy Capstone profile references
-        // that will be cleaned up in a dedicated refactoring round.
-        if path_str.contains("/printer.rs") || path_str.contains("/extensions/") {
-            continue;
-        }
+        let _path_str = path.to_string_lossy();
+        // NOTE: printer.rs and extensions/ are no longer skipped.
+        // All Capstone-derived strings have been refactored to neutral terminology.
+        // Any new violations will be caught by the check below.
         let content = match fs::read_to_string(&path) {
             Ok(c) => c,
             Err(_) => continue,

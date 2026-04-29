@@ -1,6 +1,6 @@
 //! RISC-V instruction formatting helpers.
 //!
-//! Inspired by Capstone's printer to maintain compatible output formatting.
+//! Inspired by reference decoder printer to maintain compatible output formatting.
 
 use super::shared::operands::csr_name_lookup;
 use super::shared::{OperandFormatter, operands::DefaultOperandFactory};
@@ -11,7 +11,7 @@ use robustone_core::ir::{DecodedInstruction, Operand, RegisterId, TextRenderProf
 /// Text formatting profiles for the RISC-V formatter.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RiscVTextProfile {
-    Capstone,
+    Compat,
     Canonical,
     VerboseDebug,
 }
@@ -22,8 +22,8 @@ pub struct RiscVPrinter {
     alias_regs: bool,
     /// Whether alias register behavior was explicitly chosen by the caller.
     alias_regs_explicit: bool,
-    /// Whether Capstone-facing aliases should be emitted instead of canonical mnemonics.
-    capstone_aliases: bool,
+    /// Whether decoder-facing aliases should be emitted instead of canonical mnemonics.
+    compat_aliases: bool,
     /// Whether compressed instruction aliases should be emitted.
     compressed_aliases: bool,
     /// Whether immediates should be rendered as unsigned values when possible.
@@ -35,7 +35,7 @@ pub struct RiscVPrinter {
 impl RiscVPrinter {
     fn text_render_profile(&self) -> TextRenderProfile {
         match self.profile {
-            RiscVTextProfile::Capstone => TextRenderProfile::Capstone,
+            RiscVTextProfile::Compat => TextRenderProfile::Compat,
             RiscVTextProfile::Canonical => TextRenderProfile::Canonical,
             RiscVTextProfile::VerboseDebug => TextRenderProfile::VerboseDebug,
         }
@@ -46,10 +46,10 @@ impl RiscVPrinter {
         Self {
             alias_regs: true,
             alias_regs_explicit: false,
-            capstone_aliases: true,
+            compat_aliases: true,
             compressed_aliases: true,
             unsigned_immediate: false,
-            profile: RiscVTextProfile::Capstone,
+            profile: RiscVTextProfile::Compat,
         }
     }
 
@@ -60,8 +60,8 @@ impl RiscVPrinter {
         self
     }
 
-    pub fn with_capstone_aliases(mut self, capstone_aliases: bool) -> Self {
-        self.capstone_aliases = capstone_aliases;
+    pub fn with_compat_aliases(mut self, compat_aliases: bool) -> Self {
+        self.compat_aliases = compat_aliases;
         self
     }
 
@@ -82,11 +82,11 @@ impl RiscVPrinter {
         if !self.alias_regs_explicit {
             self.alias_regs = matches!(
                 profile,
-                RiscVTextProfile::Capstone | RiscVTextProfile::VerboseDebug
+                RiscVTextProfile::Compat | RiscVTextProfile::VerboseDebug
             );
         }
-        self.capstone_aliases = !matches!(profile, RiscVTextProfile::Canonical);
-        self.compressed_aliases = self.capstone_aliases;
+        self.compat_aliases = !matches!(profile, RiscVTextProfile::Canonical);
+        self.compressed_aliases = self.compat_aliases;
         self
     }
 
@@ -152,24 +152,23 @@ impl RiscVPrinter {
 
     /// Render the shared IR into mnemonic and operand text.
     pub fn render_ir_parts(&self, ir: &DecodedInstruction) -> (String, String) {
-        let use_capstone_aliases =
-            self.capstone_aliases && (self.compressed_aliases || !ir.mnemonic.starts_with("c."));
+        let use_compat_aliases =
+            self.compat_aliases && (self.compressed_aliases || !ir.mnemonic.starts_with("c."));
         let mnemonic = match self.profile {
-            RiscVTextProfile::Capstone | RiscVTextProfile::VerboseDebug if use_capstone_aliases => {
-                ir.render_hints
-                    .capstone_mnemonic
-                    .clone()
-                    .unwrap_or_else(|| ir.mnemonic.clone())
-            }
+            RiscVTextProfile::Compat | RiscVTextProfile::VerboseDebug if use_compat_aliases => ir
+                .render_hints
+                .capstone_mnemonic
+                .clone()
+                .unwrap_or_else(|| ir.mnemonic.clone()),
             _ => ir.mnemonic.clone(),
         };
 
         let hidden_operands = if matches!(
             self.profile,
-            RiscVTextProfile::Capstone | RiscVTextProfile::VerboseDebug
-        ) && use_capstone_aliases
+            RiscVTextProfile::Compat | RiscVTextProfile::VerboseDebug
+        ) && use_compat_aliases
         {
-            ir.render_hints.capstone_hidden_operands.as_slice()
+            ir.render_hints.compat_hidden_operands.as_slice()
         } else {
             &[]
         };
@@ -650,7 +649,7 @@ mod tests {
 
     #[test]
     fn test_render_ir_parts_uses_shared_ir() {
-        let printer = RiscVPrinter::new().with_profile(RiscVTextProfile::Capstone);
+        let printer = RiscVPrinter::new().with_profile(RiscVTextProfile::Compat);
         let decoded = DecodedInstruction {
             architecture: ArchitectureId::Riscv,
             address: 0,
@@ -676,7 +675,7 @@ mod tests {
             status: DecodeStatus::Success,
             render_hints: RenderHints {
                 capstone_mnemonic: Some("li".to_string()),
-                capstone_hidden_operands: vec![1],
+                compat_hidden_operands: vec![1],
             },
         };
 
@@ -699,7 +698,7 @@ mod tests {
     }
 
     #[test]
-    fn test_default_printer_keeps_capstone_aliases_for_decoded_instructions() {
+    fn test_default_printer_keeps_compat_aliases_for_decoded_instructions() {
         let decoder = RiscVDecoder::rv32gc();
         let decoded = decoder
             .decode(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
@@ -750,7 +749,7 @@ mod tests {
             status: DecodeStatus::Success,
             render_hints: RenderHints {
                 capstone_mnemonic: None,
-                capstone_hidden_operands: Vec::new(),
+                compat_hidden_operands: Vec::new(),
             },
         };
         let instruction = Instruction::from_decoded(

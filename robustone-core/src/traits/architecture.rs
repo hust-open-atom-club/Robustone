@@ -178,7 +178,7 @@ pub trait ArchitectureHandler: Sync {
     /// Return an architecture-specific renderer, if available.
     ///
     /// When `None`, the generic fallback renderer in `robustone-core` is
-    /// used. Backends that need Capstone-compatible aliases, custom operand
+    /// used. Backends that need decoder-compatible aliases, custom operand
     /// formatting, or hidden operands should return a concrete renderer here.
     fn renderer(&self) -> Option<&dyn Renderer> {
         None
@@ -187,7 +187,7 @@ pub trait ArchitectureHandler: Sync {
     /// Controls whether the handler should produce detailed instruction
     /// metadata (registers read/written, groups, etc.) during disassembly.
     ///
-    /// This mirrors Capstone's `CS_OPT_DETAIL` option. When disabled,
+    /// This mirrors the reference decoder `CS_OPT_DETAIL` option. When disabled,
     /// handlers can skip the expensive detail construction and return
     /// `Instruction` objects with `detail` set to `None`.
     ///

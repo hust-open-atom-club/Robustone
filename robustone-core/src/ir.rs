@@ -29,7 +29,7 @@ pub enum DecodeStatus {
 /// Text output profiles derived from the shared IR.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TextRenderProfile {
-    Capstone,
+    Compat,
     Canonical,
     VerboseDebug,
 }
@@ -100,7 +100,7 @@ pub struct RenderHints {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub capstone_mnemonic: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub capstone_hidden_operands: Vec<usize>,
+    pub compat_hidden_operands: Vec<usize>,
 }
 
 /// Shared decoded instruction payload.
@@ -143,20 +143,20 @@ impl DecodedInstruction {
         self
     }
 
-    /// Set a Capstone-facing alias mnemonic and optional hidden operands.
+    /// Set a decoder-facing alias mnemonic and optional hidden operands.
     pub fn with_capstone_alias(
         mut self,
         capstone_mnemonic: impl Into<String>,
         hidden_operands: Vec<usize>,
     ) -> Self {
         self.render_hints.capstone_mnemonic = Some(capstone_mnemonic.into());
-        self.render_hints.capstone_hidden_operands = hidden_operands;
+        self.render_hints.compat_hidden_operands = hidden_operands;
         self
     }
 
-    /// Hide the specified operands in the Capstone-facing outward view.
+    /// Hide the specified operands in the decoder-facing outward view.
     pub fn with_hidden_operands(mut self, hidden_operands: Vec<usize>) -> Self {
-        self.render_hints.capstone_hidden_operands = hidden_operands;
+        self.render_hints.compat_hidden_operands = hidden_operands;
         self
     }
 
@@ -175,7 +175,7 @@ impl DecodedInstruction {
         &self,
         _profile: TextRenderProfile,
         _alias_regs: bool,
-        _capstone_aliases: bool,
+        _compat_aliases: bool,
         _compressed_aliases: bool,
         _unsigned_immediate: bool,
     ) -> (String, String) {
@@ -189,9 +189,9 @@ impl DecodedInstruction {
         (self.mnemonic.clone(), operands)
     }
 
-    /// Render the instruction using the Capstone-compatible text profile.
+    /// Render the instruction using the decoder-compatible text profile.
     pub fn render_capstone_text_parts(&self) -> (String, String) {
-        self.render_text_parts(TextRenderProfile::Capstone)
+        self.render_text_parts(TextRenderProfile::Compat)
     }
 
     /// Render the instruction using the canonical text profile.
@@ -305,7 +305,7 @@ mod tests {
     }
 
     #[test]
-    fn capstone_hidden_operands_are_ignored_by_generic_renderer() {
+    fn compat_hidden_operands_are_ignored_by_generic_renderer() {
         let mut instruction = sample_instruction(
             "jal",
             vec![
@@ -315,7 +315,7 @@ mod tests {
                 Operand::Immediate { value: 0x1000 },
             ],
         );
-        instruction.render_hints.capstone_hidden_operands = vec![0];
+        instruction.render_hints.compat_hidden_operands = vec![0];
         let (_, operands) = instruction.render_capstone_text_parts();
         // Generic renderer does not apply hidden operands
         assert_eq!(operands, "riscv:1, 4096");

@@ -164,7 +164,7 @@ mod tests {
         let instr = instr.with_context("riscv32", 0, vec![0; 4]);
         let rendered = crate::render::render_riscv_text_parts(
             &instr,
-            robustone_core::ir::TextRenderProfile::Capstone,
+            robustone_core::ir::TextRenderProfile::Compat,
             true,
             true,
             true,
@@ -188,7 +188,7 @@ mod tests {
         let instr = instr.with_context("riscv32", 0, vec![0; 4]);
         let rendered = crate::render::render_riscv_text_parts(
             &instr,
-            robustone_core::ir::TextRenderProfile::Capstone,
+            robustone_core::ir::TextRenderProfile::Compat,
             true,
             true,
             true,

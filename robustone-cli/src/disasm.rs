@@ -682,7 +682,7 @@ mod tests {
         };
         let result = engine.disassemble(&config).unwrap();
         let formatter = DisassemblyFormatter::new(OutputConfig {
-            text_profile: robustone_core::ir::TextRenderProfile::Capstone,
+            text_profile: robustone_core::ir::TextRenderProfile::Compat,
             alias_regs: false,
             capstone_aliases: true,
             compressed_aliases: true,
@@ -726,7 +726,7 @@ mod tests {
             status: DecodeStatus::Success,
             render_hints: RenderHints {
                 capstone_mnemonic: Some("li".to_string()),
-                capstone_hidden_operands: vec![1],
+                compat_hidden_operands: vec![1],
             },
         };
         let instruction =
@@ -765,7 +765,7 @@ mod tests {
         };
         let result = engine.disassemble(&config).unwrap();
         let formatter = DisassemblyFormatter::new(OutputConfig {
-            text_profile: robustone_core::ir::TextRenderProfile::Capstone,
+            text_profile: robustone_core::ir::TextRenderProfile::Compat,
             alias_regs: false,
             capstone_aliases: true,
             compressed_aliases: true,
@@ -803,7 +803,7 @@ mod tests {
         };
         let result = engine.disassemble(&config).unwrap();
         let formatter = DisassemblyFormatter::new(OutputConfig {
-            text_profile: robustone_core::ir::TextRenderProfile::Capstone,
+            text_profile: robustone_core::ir::TextRenderProfile::Compat,
             alias_regs: false,
             capstone_aliases: true,
             compressed_aliases: true,
@@ -839,7 +839,7 @@ mod tests {
         };
         let result = engine.disassemble(&config).unwrap();
         let formatter = DisassemblyFormatter::new(OutputConfig {
-            text_profile: robustone_core::ir::TextRenderProfile::Capstone,
+            text_profile: robustone_core::ir::TextRenderProfile::Compat,
             alias_regs: false,
             capstone_aliases: true,
             compressed_aliases: true,
@@ -902,7 +902,7 @@ mod tests {
         };
         let result = engine.disassemble(&config).unwrap();
         let formatter = DisassemblyFormatter::new(OutputConfig {
-            text_profile: robustone_core::ir::TextRenderProfile::Capstone,
+            text_profile: robustone_core::ir::TextRenderProfile::Compat,
             alias_regs: false,
             capstone_aliases: true,
             compressed_aliases: true,

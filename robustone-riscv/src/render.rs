@@ -34,7 +34,7 @@ pub fn render_riscv_text_parts(
         if matches!(profile, TextRenderProfile::Canonical) || !use_capstone_aliases {
             &[][..]
         } else {
-            instruction.render_hints.capstone_hidden_operands.as_slice()
+            instruction.render_hints.compat_hidden_operands.as_slice()
         };
 
     let visible_operands = instruction

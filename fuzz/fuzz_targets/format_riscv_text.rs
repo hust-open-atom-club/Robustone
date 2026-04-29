@@ -101,7 +101,7 @@ fn build_instruction(data: &[u8]) -> Instruction {
             } else {
                 None
             },
-            capstone_hidden_operands: vec![usize::from(next_byte(data, &mut cursor) % 4)],
+            compat_hidden_operands: vec![usize::from(next_byte(data, &mut cursor) % 4)],
         },
     };
 
@@ -119,7 +119,7 @@ fn options(profile: TextRenderProfile) -> RenderOptions {
 fuzz_target!(|data: &[u8]| {
     let instruction = build_instruction(data);
 
-    let _ = render_instruction_text(&instruction, options(TextRenderProfile::Capstone));
+    let _ = render_instruction_text(&instruction, options(TextRenderProfile::Compat));
     let _ = render_instruction_text(&instruction, options(TextRenderProfile::Canonical));
     let _ = render_instruction_text(&instruction, options(TextRenderProfile::VerboseDebug));
     let _ = render_disassembly(
@@ -128,6 +128,6 @@ fuzz_target!(|data: &[u8]| {
         instruction.size,
         Vec::new(),
         &[instruction],
-        options(TextRenderProfile::Capstone),
+        options(TextRenderProfile::Compat),
     );
 });

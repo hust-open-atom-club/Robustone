@@ -111,7 +111,7 @@ pub fn render_loongarch_text_parts(
     };
 
     let hidden_operands = if use_capstone_aliases {
-        instruction.render_hints.capstone_hidden_operands.as_slice()
+        instruction.render_hints.compat_hidden_operands.as_slice()
     } else {
         &[][..]
     };
