@@ -610,6 +610,49 @@ pub fn check_spec_table<B: ArchitectureBackend>(
         ));
     }
 
+    // 5. Check that every operand field exists in the format
+    for spec in specs {
+        for op in spec.operands {
+            let field = match op {
+                OperandSpec::Register { field, .. } => *field,
+                OperandSpec::Immediate { field, .. } => *field,
+            };
+            let found = spec.format.fields.iter().any(|f| f.field_type == field);
+            if !found {
+                return Err(format!(
+                    "spec '{}' operand references unknown field in format '{}'",
+                    spec.mnemonic, spec.format.name
+                ));
+            }
+        }
+    }
+
+    // 6. Check that no operand field is fully covered by the pattern mask
+    for spec in specs {
+        let mask: u64 = spec.pattern.mask.into();
+        for op in spec.operands {
+            let field = match op {
+                OperandSpec::Register { field, .. } => *field,
+                OperandSpec::Immediate { field, .. } => *field,
+            };
+            if let Some(field_spec) = spec.format.fields.iter().find(|f| f.field_type == field) {
+                let start = field_spec.start as u64;
+                let length = field_spec.length as u64;
+                if length == 0 || start + length > 64 {
+                    continue;
+                }
+                let field_mask = ((1u64 << length) - 1) << start;
+                if (mask & field_mask) == field_mask {
+                    return Err(format!(
+                        "spec '{}' operand field '{}' is fully covered by pattern mask; \
+                         the operand cannot vary",
+                        spec.mnemonic, field_spec.name
+                    ));
+                }
+            }
+        }
+    }
+
     Ok(())
 }
 

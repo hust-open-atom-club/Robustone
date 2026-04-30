@@ -59,6 +59,7 @@ pub fn apply_riscv_aliases(decoded: &mut DecodedInstruction) {
                             displacement: 0,
                         }];
                         decoded.registers_read = vec![rs1];
+                        decoded.registers_written.clear();
                         decoded.groups = vec!["load".to_string()];
                         decoded.render_hints = Default::default();
                     }
@@ -106,6 +107,11 @@ pub fn apply_riscv_aliases(decoded: &mut DecodedInstruction) {
             ] = decoded.operands.as_slice()
             {
                 let mnemonic = decoded.mnemonic.as_str();
+                let rd_zero = decoded
+                    .registers_written
+                    .first()
+                    .map(|r| r.id == 0)
+                    .unwrap_or(false);
                 let (alias, hidden) = match (
                     mnemonic,
                     decoded.registers_written.first(),
@@ -119,15 +125,9 @@ pub fn apply_riscv_aliases(decoded: &mut DecodedInstruction) {
                     ("csrrs", _, 0, 0xC81) => (Some("rdtimeh"), vec![1, 2]),
                     ("csrrs", _, 0, 0xC82) => (Some("rdinstreth"), vec![1, 2]),
                     ("csrrs", Some(_), 0, _) => (Some("csrr"), vec![2]),
-                    ("csrrw", _, _, _) if decoded.registers_written.is_empty() => {
-                        (Some("csrw"), vec![0])
-                    }
-                    ("csrrs", _, _, _) if decoded.registers_written.is_empty() => {
-                        (Some("csrs"), vec![0])
-                    }
-                    ("csrrc", _, _, _) if decoded.registers_written.is_empty() => {
-                        (Some("csrc"), vec![0])
-                    }
+                    ("csrrw", _, _, _) if rd_zero => (Some("csrw"), vec![0]),
+                    ("csrrs", _, _, _) if rd_zero => (Some("csrs"), vec![0]),
+                    ("csrrc", _, _, _) if rd_zero => (Some("csrc"), vec![0]),
                     _ => (None, Vec::new()),
                 };
                 if let Some(a) = alias {
@@ -137,7 +137,12 @@ pub fn apply_riscv_aliases(decoded: &mut DecodedInstruction) {
             }
         }
         "csrrwi" | "csrrsi" | "csrrci" => {
-            if decoded.registers_written.is_empty() {
+            let rd_zero = decoded
+                .registers_written
+                .first()
+                .map(|r| r.id == 0)
+                .unwrap_or(false);
+            if rd_zero {
                 let alias = match decoded.mnemonic.as_str() {
                     "csrrwi" => Some("csrwi"),
                     "csrrsi" => Some("csrsi"),
