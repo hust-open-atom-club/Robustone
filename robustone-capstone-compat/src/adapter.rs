@@ -2,7 +2,10 @@
 
 use std::path::Path;
 
-use robustone_isa::{ArchitectureBackend, DecodeProfile};
+use robustone_isa::{ArchitectureBackend, DecodeProfile, FeatureSet};
+use robustone_loongarch::backend::{LoongArchBackend, LoongArchFeature, LoongArchMode};
+
+use crate::yaml::{CapstoneYaml, TestCase};
 
 /// Errors encountered during compatibility testing.
 #[derive(Debug)]
@@ -57,4 +60,49 @@ pub trait ExternalTestAdapter<B: ArchitectureBackend> {
 
     /// Normalize actual text before comparison.
     fn normalize_actual(text: &str) -> String;
+}
+
+/// Concrete adapter for Capstone YAML test files targeting LoongArch.
+pub struct CapstoneLoongArchYaml;
+
+impl ExternalTestAdapter<LoongArchBackend> for CapstoneLoongArchYaml {
+    type Fixture = TestCase;
+
+    fn load_fixtures(path: &Path) -> Result<Vec<Self::Fixture>, CompatError> {
+        let content = std::fs::read_to_string(path)
+            .map_err(|e| CompatError::Io(format!("failed to read {:?}: {}", path, e)))?;
+        let yaml: CapstoneYaml = serde_yaml::from_str(&content)
+            .map_err(|e| CompatError::Parse(format!("failed to parse {:?}: {}", path, e)))?;
+        Ok(yaml.test_cases)
+    }
+
+    fn input_bytes(fixture: &Self::Fixture) -> &[u8] {
+        &fixture.input.bytes
+    }
+
+    fn expected_text(fixture: &Self::Fixture) -> Option<&str> {
+        fixture.expected.insns.first().map(|i| i.asm_text.trim())
+    }
+
+    fn expected_detail(_fixture: &Self::Fixture) -> Option<ExpectedDetail> {
+        // Capstone YAML does not carry detailed operand-level metadata in the format we parse.
+        None
+    }
+
+    fn profile_for_fixture(_fixture: &Self::Fixture) -> DecodeProfile<LoongArchBackend> {
+        DecodeProfile {
+            mode: LoongArchMode::LA64,
+            features: LoongArchFeature::all_supported_for_tests(),
+            render_dialect: robustone_isa::RenderDialect::Assembler,
+            alias_policy: robustone_isa::AliasPolicy::PreferPseudo,
+        }
+    }
+
+    fn normalize_expected(text: &str) -> String {
+        text.to_string()
+    }
+
+    fn normalize_actual(text: &str) -> String {
+        text.to_string()
+    }
 }

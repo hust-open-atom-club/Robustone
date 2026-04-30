@@ -5,6 +5,9 @@ use robustone_isa::{
 };
 use std::hint::black_box;
 
+// LoongArch real-backend benchmarks
+use robustone_loongarch::backend::{LoongArchBackend, LoongArchFeature, LoongArchMode};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BenchMode {
     Base,
@@ -129,12 +132,53 @@ fn bench_decode_one(c: &mut Criterion) {
     };
     let bytes = [0x00, 0x00, 0x00, 0x00];
 
-    c.bench_function("isa_decode_one", |b| {
+    c.bench_function("isa_decode_one_nop", |b| {
         b.iter(|| {
             black_box(robustone_isa::decode_one::<BenchBackend>(&bytes, 0x1000, &profile).unwrap())
         });
     });
 }
 
-criterion_group!(benches, bench_decode_one);
+fn bench_decode_loongarch(c: &mut Criterion) {
+    let profile = DecodeProfile {
+        mode: LoongArchMode::LA64,
+        features: LoongArchFeature::all_supported_for_tests(),
+        render_dialect: RenderDialect::Canonical,
+        alias_policy: AliasPolicy::None,
+    };
+
+    // add.w $t0, $t1, $t2
+    let add_bytes = [0x00, 0x10, 0x00, 0x00];
+    c.bench_function("loongarch_decode_add", |b| {
+        b.iter(|| {
+            black_box(
+                robustone_isa::decode_one::<LoongArchBackend>(&add_bytes, 0x1000, &profile)
+                    .unwrap(),
+            )
+        });
+    });
+
+    // beq $t0, $t1, offset
+    let beq_bytes = [0x00, 0x10, 0x00, 0x58];
+    c.bench_function("loongarch_decode_beq", |b| {
+        b.iter(|| {
+            black_box(
+                robustone_isa::decode_one::<LoongArchBackend>(&beq_bytes, 0x1000, &profile)
+                    .unwrap(),
+            )
+        });
+    });
+
+    // ld.w $t0, $t1, 0
+    let ld_bytes = [0x00, 0x10, 0x00, 0x28];
+    c.bench_function("loongarch_decode_ld_w", |b| {
+        b.iter(|| {
+            black_box(
+                robustone_isa::decode_one::<LoongArchBackend>(&ld_bytes, 0x1000, &profile).unwrap(),
+            )
+        });
+    });
+}
+
+criterion_group!(benches, bench_decode_one, bench_decode_loongarch);
 criterion_main!(benches);

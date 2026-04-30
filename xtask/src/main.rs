@@ -361,9 +361,19 @@ robustone_isa_macros::define_instructions! {{
         operands = &[];
         modes = robustone_isa::ModeSet::All;
         features = {pascal}Feature::BASE;
-        groups = &[];
+        groups = &[robustone_isa::InstructionGroup::Integer];
         manual = "Architecture Reference Manual";
     }}
+}}
+
+robustone_isa_macros::define_aliases! {{
+    arch = {pascal};
+    // Add aliases here, e.g.:
+    // alias "nop" for "NOP" {{
+    //     when [operand(0) == reg(0)];
+    //     mnemonic = "nop";
+    //     visible_operands = [];
+    // }}
 }}
 
 impl ArchitectureBackend for {pascal}Backend {{
@@ -456,11 +466,29 @@ pub type {pascal}Decoder = robustone_isa::Decoder<{pascal}Backend>;
     )
     .unwrap();
 
-    fs::write(
-        crate_dir.join("tests/invariants.rs"),
-        "// TODO: add invariant tests\n",
-    )
-    .unwrap();
+    let crate_name_underscore = crate_name.replace("-", "_");
+    let spec_validation = format!(
+        r#"#![forbid(unsafe_code)]
+
+use robustone_isa::{{ArchitectureBackend, check_spec_table}};
+use {}::arch::{{{}Backend, SPECS}};
+
+#[test]
+fn test_specs_no_overlaps() {{
+    assert!(
+        robustone_isa::validate_no_overlaps(SPECS).is_ok(),
+        "overlapping specs detected"
+    );
+}}
+
+#[test]
+fn test_specs_full_validation() {{
+    check_spec_table::<{}Backend>(SPECS).unwrap();
+}}
+"#,
+        crate_name_underscore, pascal, pascal,
+    );
+    fs::write(crate_dir.join("tests/spec_validation.rs"), spec_validation).unwrap();
 
     // Update workspace Cargo.toml
     let workspace_toml = workspace_root.join("Cargo.toml");

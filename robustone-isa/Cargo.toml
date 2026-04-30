@@ -14,6 +14,7 @@ std = []
 
 [dev-dependencies]
 robustone-core = { path = "../robustone-core" }
+robustone-loongarch = { path = "../robustone-loongarch" }
 criterion = "0.5"
 
 [[bench]]
