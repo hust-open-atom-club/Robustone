@@ -308,6 +308,11 @@ pub enum OperandSpec<B: ArchitectureBackend + 'static> {
         field: B::Field,
         transform: ImmediateTransform,
     },
+    Memory {
+        base_class: B::RegisterClass,
+        base_field: B::Field,
+        displacement: i64,
+    },
 }
 
 /// Operand access direction.
@@ -501,6 +506,18 @@ fn lower_operand<B: ArchitectureBackend>(
                 value: value.to_string(),
             }
         }
+        OperandSpec::Memory {
+            base_class,
+            base_field,
+            displacement,
+        } => {
+            let raw = B::extract_field(word, format, *base_field);
+            let reg = B::lower_register(*base_class, raw, profile);
+            Operand::Memory {
+                base: Some(reg),
+                displacement: *displacement,
+            }
+        }
     }
 }
 
@@ -649,6 +666,7 @@ pub fn check_spec_table<B: ArchitectureBackend>(
                 OperandSpec::Register { field, .. } => *field,
                 OperandSpec::Immediate { field, .. } => *field,
                 OperandSpec::Text { field, .. } => *field,
+                OperandSpec::Memory { base_field, .. } => *base_field,
             };
             let found = spec.format.fields.iter().any(|f| f.field_type == field);
             if !found {
@@ -668,6 +686,7 @@ pub fn check_spec_table<B: ArchitectureBackend>(
                 OperandSpec::Register { field, .. } => *field,
                 OperandSpec::Immediate { field, .. } => *field,
                 OperandSpec::Text { field, .. } => *field,
+                OperandSpec::Memory { base_field, .. } => *base_field,
             };
             if let Some(field_spec) = spec.format.fields.iter().find(|f| f.field_type == field) {
                 let start = field_spec.start as u64;
@@ -880,6 +899,18 @@ macro_rules! text {
         $crate::OperandSpec::Text {
             field: $field,
             transform: $transform,
+        }
+    };
+}
+
+/// Helper to construct a memory operand spec.
+#[macro_export]
+macro_rules! mem {
+    ($class:expr, $base_field:expr, $displacement:expr) => {
+        $crate::OperandSpec::Memory {
+            base_class: $class,
+            base_field: $base_field,
+            displacement: $displacement,
         }
     };
 }

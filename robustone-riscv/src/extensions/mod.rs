@@ -159,6 +159,7 @@ pub trait InstructionExtension: Sync {
 }
 
 /// Create all available standard RISC-V extensions.
+#[cfg(feature = "legacy-decoder")]
 pub fn create_extensions() -> Vec<Box<dyn InstructionExtension>> {
     vec![
         Box::new(standard::Rvi::new()),
@@ -169,6 +170,12 @@ pub fn create_extensions() -> Vec<Box<dyn InstructionExtension>> {
         Box::new(standard::Rvc::new()),
         Box::new(thead::CMov::new()),
     ]
+}
+
+/// Create an empty extension list when the legacy decoder is disabled.
+#[cfg(not(feature = "legacy-decoder"))]
+pub fn create_extensions() -> Vec<Box<dyn InstructionExtension>> {
+    Vec::new()
 }
 
 pub(crate) fn invalid_encoding(detail: impl Into<String>) -> DisasmError {

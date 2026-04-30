@@ -10,3 +10,7 @@ robustone-isa = { path = "../robustone-isa" }
 bitflags = "2.10.0"
 hex = "0.4"
 inventory = "0.3.24"
+
+[features]
+default = ["legacy-decoder"]
+legacy-decoder = []
