@@ -351,6 +351,44 @@ fn bench_decode_valid_float(c: &mut Criterion) {
     group.finish();
 }
 
+fn bench_render_assembler(c: &mut Criterion) {
+    let profile = DecodeProfile {
+        mode: RiscVMode::RV64,
+        features: RiscVFeature::all_supported_for_tests(),
+        render_dialect: RenderDialect::Canonical,
+        alias_policy: AliasPolicy::None,
+    };
+
+    // add x1, x2, x3
+    let add_bytes = [0xB3, 0x00, 0x11, 0x00];
+    let decoded = robustone_isa::decode_one::<RiscVBackend>(&add_bytes, 0x1000, &profile).unwrap();
+
+    c.bench_function("render_assembler_add", |b| {
+        b.iter(|| {
+            let mut out = String::with_capacity(64);
+            out.push_str(&decoded.mnemonic);
+            for (i, op) in decoded.operands.iter().enumerate() {
+                if i == 0 {
+                    out.push(' ');
+                } else {
+                    out.push_str(", ");
+                }
+                match op {
+                    robustone_core::ir::Operand::Register { register } => {
+                        out.push_str("x");
+                        out.push_str(&register.id.to_string());
+                    }
+                    robustone_core::ir::Operand::Immediate { value } => {
+                        out.push_str(&value.to_string());
+                    }
+                    _ => {}
+                }
+            }
+            black_box(out);
+        });
+    });
+}
+
 criterion_group!(
     benches,
     bench_decode_one,
@@ -360,5 +398,6 @@ criterion_group!(
     bench_decode_valid_memory,
     bench_decode_valid_float,
     bench_decode_invalid_random,
+    bench_render_assembler,
 );
 criterion_main!(benches);
