@@ -764,6 +764,7 @@ dependencies = [
  "robustone-core",
  "robustone-isa-macros",
  "robustone-loongarch",
+ "robustone-riscv",
 ]
 
 [[package]]
