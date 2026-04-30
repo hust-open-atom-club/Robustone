@@ -285,8 +285,9 @@ fn check_spec(args: &[String]) -> ExitCode {
 // ============================================================================
 
 fn new_arch(args: &[String]) -> ExitCode {
-    if args.is_empty() {
+    if args.is_empty() || args[0] == "--help" || args[0] == "-h" {
         eprintln!("Usage: cargo xtask new-arch <name>");
+        eprintln!("Scaffolds a new architecture crate under robustone-<name>/");
         return ExitCode::FAILURE;
     }
     let name = &args[0];

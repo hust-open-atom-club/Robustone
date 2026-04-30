@@ -10,7 +10,6 @@ members = [
     "robustone-riscv",
     "robustone-arm",
     "robustone-x86",
-
     "robustone-capstone-compat",
     "xtask",
 ]
