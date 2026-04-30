@@ -322,10 +322,39 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Arithmetic];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
+    spec LR_W {
+        mnemonic = "lr.w";
+        opcode_id = "LR_W";
+        pattern = robustone_isa::mask_value!(0xF9F0_707F, 0x1000_202F);
+        format = &R_TYPE;
+        operands = &[
+            robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write),
+            robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read),
+        ];
+        features = RiscVFeature::A;
+        modes = ModeSet::All;
+        groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Atomic];
+        manual = "RISC-V Unprivileged ISA Vol. I";
+    }
+    spec SC_W {
+        mnemonic = "sc.w";
+        opcode_id = "SC_W";
+        pattern = robustone_isa::mask_value!(0xF800_707F, 0x1800_202F);
+        format = &R_TYPE;
+        operands = &[
+            robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write),
+            robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read),
+            robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs2, robustone_isa::Access::Read),
+        ];
+        features = RiscVFeature::A;
+        modes = ModeSet::All;
+        groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Atomic];
+        manual = "RISC-V Unprivileged ISA Vol. I";
+    }
 }
 
 pub static RISCV_SPECS: &[InstructionSpec<RiscVBackend>] = &[
-    ADD, ADDI, LW, SW, BEQ, BNE, JAL, JALR, LUI, AUIPC, MUL, DIV, REM,
+    ADD, ADDI, LW, SW, BEQ, BNE, JAL, JALR, LUI, AUIPC, MUL, DIV, REM, LR_W, SC_W,
 ];
 
 pub struct RiscVBackend;
