@@ -14,6 +14,7 @@ use crate::{
 // ============================================================================
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum MockMode {
     Base,
     Extended,
@@ -183,7 +184,7 @@ impl ArchitectureBackend for MockBackend {
         for f in format.fields {
             if f.field_type == field {
                 let mask = ((1u64 << f.length) - 1) as u32;
-                return ((word >> f.start) & mask) as u32;
+                return (word >> f.start) & mask;
             }
         }
         0

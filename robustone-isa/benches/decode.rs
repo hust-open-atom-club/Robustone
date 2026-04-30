@@ -375,7 +375,7 @@ fn bench_render_assembler(c: &mut Criterion) {
                 }
                 match op {
                     robustone_core::ir::Operand::Register { register } => {
-                        out.push_str("x");
+                        out.push('x');
                         out.push_str(&register.id.to_string());
                     }
                     robustone_core::ir::Operand::Immediate { value } => {
@@ -385,6 +385,54 @@ fn bench_render_assembler(c: &mut Criterion) {
                 }
             }
             black_box(out);
+        });
+    });
+}
+
+fn bench_capstone_fixture_batch(c: &mut Criterion) {
+    let profile = DecodeProfile {
+        mode: RiscVMode::RV32,
+        features: RiscVFeature::all_supported_for_tests(),
+        render_dialect: RenderDialect::Canonical,
+        alias_policy: AliasPolicy::None,
+    };
+
+    let manifest_dir = std::env!("CARGO_MANIFEST_DIR");
+    let fixtures_dir = std::path::Path::new(manifest_dir)
+        .parent()
+        .unwrap()
+        .join("tests/golden/riscv");
+
+    let mut fixtures = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(&fixtures_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|e| e.to_str()) == Some("json") {
+                let content = std::fs::read_to_string(&path).unwrap();
+                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content)
+                    && let Some(hex) = val.get("hex").and_then(|h| h.as_str())
+                {
+                    let bytes = (0..hex.len())
+                        .step_by(2)
+                        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
+                        .collect::<Vec<u8>>();
+                    fixtures.push(bytes);
+                }
+            }
+        }
+    }
+
+    if fixtures.is_empty() {
+        return;
+    }
+
+    c.bench_function("capstone_fixture_batch_riscv", |b| {
+        b.iter(|| {
+            for bytes in &fixtures {
+                let _ = black_box(robustone_isa::decode_one::<RiscVBackend>(
+                    bytes, 0x1000, &profile,
+                ));
+            }
         });
     });
 }
@@ -399,5 +447,6 @@ criterion_group!(
     bench_decode_valid_float,
     bench_decode_invalid_random,
     bench_render_assembler,
+    bench_capstone_fixture_batch,
 );
 criterion_main!(benches);
