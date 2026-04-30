@@ -13,7 +13,7 @@ use robustone_core::renderer::Renderer;
 use robustone_isa::{AliasPolicy, DecodeProfile, FeatureSet, RenderDialect, decode_one};
 use robustone_riscv::{
     backend::{RiscVBackend, RiscVFeature, RiscVMode},
-    printer::RiscVRenderer,
+    render::RiscVRenderer,
 };
 
 fn decode(bytes: &[u8], addr: u64) -> robustone_core::ir::DecodedInstruction {
@@ -60,7 +60,7 @@ fn snapshot_decode_basic_rv64i_operands() {
         (vec![0x13, 0x05, 0x00, 0x00], 3, 0u64), // addi a0, x0, 0
         (vec![0x33, 0x05, 0xb5, 0x00], 3, 0u64), // add a0, a0, a1
         (vec![0x67, 0x80, 0x00, 0x00], 3, 0u64), // jalr x0, 0(ra)
-        (vec![0x6f, 0x00, 0x00, 0x00], 1, 0u64), // jal x0, 0
+        (vec![0x6f, 0x00, 0x00, 0x00], 2, 0u64), // jal x0, 0 (rd + imm)
     ];
 
     for (bytes, expected_count, addr) in &test_cases {
@@ -234,7 +234,7 @@ fn snapshot_alias_application() {
     let decoded = decode(&[0x13, 0x00, 0x00, 0x00], 0);
     // Apply aliases
     let mut decoded = decoded;
-    robustone_riscv::aliases::apply_aliases(&mut decoded, false);
+    robustone_riscv::aliases::apply_riscv_aliases(&mut decoded);
 
     // Current behavior: after applying aliases, addi x0,x0,0 might become some form
     // Document what actually happens

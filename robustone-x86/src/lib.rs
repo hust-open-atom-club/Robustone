@@ -2,7 +2,10 @@
 
 //! x86/x64 disassembly module for Robustone.
 //!
-//! Provides instruction decoding for x86 and x86-64 targets.
+//! ⚠️ LEGACY EXPERIMENTAL: This module uses a private decoder loop (`X86Decoder`)
+//! rather than the unified `decode_one` pipeline. It is frozen and does not receive
+//! new features. Full migration to the unified ISA backend framework is planned for
+//! Phase 6 (see plan T6.3).
 
 pub mod backend;
 pub mod decoder;

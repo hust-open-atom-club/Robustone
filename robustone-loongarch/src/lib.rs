@@ -94,6 +94,11 @@ impl ArchitectureHandler for LoongArchHandler {
         let mut decoded = decode_one::<backend::LoongArchBackend>(bytes, addr, &profile)?;
         let size = decoded.size;
 
+        // ------------------------------------------------------------------
+        // LEGACY HANDLER PATCHES — Phase 3 will migrate all of the following
+        // to spec-level alias/render view rules. Do NOT add new patches here.
+        // ------------------------------------------------------------------
+
         // Alias: andi $zero, $zero, 0 => nop
         if decoded.mnemonic == "andi"
             && decoded.operands.len() == 3
@@ -187,6 +192,10 @@ impl ArchitectureHandler for LoongArchHandler {
         {
             decoded.operands.remove(1);
         }
+
+        // ------------------------------------------------------------------
+        // END LEGACY HANDLER PATCHES
+        // ------------------------------------------------------------------
 
         Ok((decoded, size))
     }
