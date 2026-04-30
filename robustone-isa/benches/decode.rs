@@ -180,17 +180,18 @@ fn bench_decode_loongarch(c: &mut Criterion) {
     });
 }
 
-fn bench_decode_riscv(c: &mut Criterion) {
+fn bench_decode_valid_integer(c: &mut Criterion) {
     let profile = DecodeProfile {
         mode: RiscVMode::RV64,
         features: RiscVFeature::all_supported_for_tests(),
         render_dialect: RenderDialect::Canonical,
         alias_policy: AliasPolicy::None,
     };
+    let mut group = c.benchmark_group("decode_valid_integer");
 
     // add x1, x2, x3  =>  0x001100B3
     let add_bytes = [0xB3, 0x00, 0x11, 0x00];
-    c.bench_function("riscv_decode_add", |b| {
+    group.bench_function("add", |b| {
         b.iter(|| {
             black_box(
                 robustone_isa::decode_one::<RiscVBackend>(&add_bytes, 0x1000, &profile).unwrap(),
@@ -200,7 +201,7 @@ fn bench_decode_riscv(c: &mut Criterion) {
 
     // addi x1, x0, 42  =>  0x02A00093
     let addi_bytes = [0x93, 0x00, 0xA0, 0x02];
-    c.bench_function("riscv_decode_addi", |b| {
+    group.bench_function("addi", |b| {
         b.iter(|| {
             black_box(
                 robustone_isa::decode_one::<RiscVBackend>(&addi_bytes, 0x1000, &profile).unwrap(),
@@ -208,9 +209,41 @@ fn bench_decode_riscv(c: &mut Criterion) {
         });
     });
 
+    // mul x1, x2, x3  =>  0x021100B3
+    let mul_bytes = [0xB3, 0x00, 0x11, 0x02];
+    group.bench_function("mul", |b| {
+        b.iter(|| {
+            black_box(
+                robustone_isa::decode_one::<RiscVBackend>(&mul_bytes, 0x1000, &profile).unwrap(),
+            )
+        });
+    });
+
+    // lui x1, 0x12345  =>  0x123450B7
+    let lui_bytes = [0xB7, 0x45, 0x34, 0x12];
+    group.bench_function("lui", |b| {
+        b.iter(|| {
+            black_box(
+                robustone_isa::decode_one::<RiscVBackend>(&lui_bytes, 0x1000, &profile).unwrap(),
+            )
+        });
+    });
+
+    group.finish();
+}
+
+fn bench_decode_valid_branch(c: &mut Criterion) {
+    let profile = DecodeProfile {
+        mode: RiscVMode::RV64,
+        features: RiscVFeature::all_supported_for_tests(),
+        render_dialect: RenderDialect::Canonical,
+        alias_policy: AliasPolicy::None,
+    };
+    let mut group = c.benchmark_group("decode_valid_branch");
+
     // beq x1, x2, +8  =>  0x00208463
     let beq_bytes = [0x63, 0x04, 0x20, 0x00];
-    c.bench_function("riscv_decode_beq", |b| {
+    group.bench_function("beq", |b| {
         b.iter(|| {
             black_box(
                 robustone_isa::decode_one::<RiscVBackend>(&beq_bytes, 0x1000, &profile).unwrap(),
@@ -220,7 +253,7 @@ fn bench_decode_riscv(c: &mut Criterion) {
 
     // jal x0, +16  =>  0x0100006F
     let jal_bytes = [0x6F, 0x00, 0x00, 0x01];
-    c.bench_function("riscv_decode_jal", |b| {
+    group.bench_function("jal", |b| {
         b.iter(|| {
             black_box(
                 robustone_isa::decode_one::<RiscVBackend>(&jal_bytes, 0x1000, &profile).unwrap(),
@@ -228,9 +261,21 @@ fn bench_decode_riscv(c: &mut Criterion) {
         });
     });
 
+    group.finish();
+}
+
+fn bench_decode_valid_memory(c: &mut Criterion) {
+    let profile = DecodeProfile {
+        mode: RiscVMode::RV64,
+        features: RiscVFeature::all_supported_for_tests(),
+        render_dialect: RenderDialect::Canonical,
+        alias_policy: AliasPolicy::None,
+    };
+    let mut group = c.benchmark_group("decode_valid_memory");
+
     // lw x1, 4(x2)  =>  0x00412083
     let lw_bytes = [0x83, 0x20, 0x41, 0x00];
-    c.bench_function("riscv_decode_lw", |b| {
+    group.bench_function("lw", |b| {
         b.iter(|| {
             black_box(
                 robustone_isa::decode_one::<RiscVBackend>(&lw_bytes, 0x1000, &profile).unwrap(),
@@ -238,9 +283,30 @@ fn bench_decode_riscv(c: &mut Criterion) {
         });
     });
 
-    // invalid encoding
+    // sw x1, 4(x2)  =>  0x00112223
+    let sw_bytes = [0x23, 0x22, 0x11, 0x00];
+    group.bench_function("sw", |b| {
+        b.iter(|| {
+            black_box(
+                robustone_isa::decode_one::<RiscVBackend>(&sw_bytes, 0x1000, &profile).unwrap(),
+            )
+        });
+    });
+
+    group.finish();
+}
+
+fn bench_decode_invalid_random(c: &mut Criterion) {
+    let profile = DecodeProfile {
+        mode: RiscVMode::RV64,
+        features: RiscVFeature::all_supported_for_tests(),
+        render_dialect: RenderDialect::Canonical,
+        alias_policy: AliasPolicy::None,
+    };
+    let mut group = c.benchmark_group("decode_invalid_random");
+
     let invalid_bytes = [0xFF, 0xFF, 0xFF, 0xFF];
-    c.bench_function("riscv_decode_invalid", |b| {
+    group.bench_function("all_ones", |b| {
         b.iter(|| {
             let _ = black_box(robustone_isa::decode_one::<RiscVBackend>(
                 &invalid_bytes,
@@ -249,12 +315,17 @@ fn bench_decode_riscv(c: &mut Criterion) {
             ));
         });
     });
+
+    group.finish();
 }
 
 criterion_group!(
     benches,
     bench_decode_one,
     bench_decode_loongarch,
-    bench_decode_riscv
+    bench_decode_valid_integer,
+    bench_decode_valid_branch,
+    bench_decode_valid_memory,
+    bench_decode_invalid_random,
 );
 criterion_main!(benches);
