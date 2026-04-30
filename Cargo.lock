@@ -756,16 +756,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "robustone-foo"
-version = "0.1.0"
-dependencies = [
- "bitflags",
- "robustone-core",
- "robustone-isa",
- "robustone-isa-macros",
-]
-
-[[package]]
 name = "robustone-isa"
 version = "0.1.0"
 dependencies = [
