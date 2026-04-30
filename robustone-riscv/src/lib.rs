@@ -11,6 +11,7 @@
 //! and provides both modern architecture-aware interfaces and legacy
 //! compatibility interfaces.
 
+pub mod aliases;
 pub mod arch;
 pub mod backend;
 pub mod decoder;

@@ -9,7 +9,7 @@ use crate::decoder::Xlen;
 use crate::shared::encoding::convenience as bits;
 use crate::types::*;
 
-use robustone_core::ir::{DecodedInstruction, Operand, RenderHints};
+use robustone_core::ir::DecodedInstruction;
 use robustone_core::types::error::DisasmError;
 
 /// Which XLEN variants a pattern applies to.
@@ -293,142 +293,7 @@ pub fn decode_from_pattern(
     );
 
     // Apply reference-compatible aliases based on operand values.
-    match pattern.mnemonic {
-        "addi" => {
-            if let [_, Operand::Register { register: rs1 }, _] = decoded.operands.as_slice()
-                && rs1.id == 0
-                && decoded
-                    .registers_written
-                    .first()
-                    .map(|r| r.id != 0)
-                    .unwrap_or(false)
-            {
-                decoded.render_hints.compat_mnemonic = Some("li".to_string());
-                decoded.render_hints.compat_hidden_operands = vec![1];
-            }
-        }
-        "ori" => {
-            let rd = ((word >> 7) & 0x1F) as u8;
-            if rd == 0 {
-                let (rs1, imm) = if let [
-                    _,
-                    Operand::Register { register: rs1 },
-                    Operand::Immediate { value: imm },
-                ] = decoded.operands.as_slice()
-                {
-                    (Some(*rs1), *imm)
-                } else {
-                    (None, 0)
-                };
-                if let Some(rs1) = rs1 {
-                    let prefetch = match imm {
-                        0 => Some("prefetch.i"),
-                        1 => Some("prefetch.r"),
-                        2 => Some("prefetch.t"),
-                        3 => Some("prefetch.w"),
-                        _ => None,
-                    };
-                    if let Some(pf) = prefetch {
-                        decoded.mnemonic = pf.to_string();
-                        decoded.operands = vec![Operand::Memory {
-                            base: Some(rs1),
-                            displacement: 0,
-                        }];
-                        decoded.registers_read = vec![rs1];
-                        decoded.groups = vec!["load".to_string()];
-                        decoded.render_hints = RenderHints::default();
-                    }
-                }
-            }
-        }
-        "jal" => {
-            if let Some(rd) = decoded.registers_written.first()
-                && rd.id == 0
-            {
-                decoded.render_hints.compat_mnemonic = Some("j".to_string());
-                decoded.render_hints.compat_hidden_operands = vec![0];
-            } else if let Some(rd) = decoded.registers_written.first()
-                && rd.id == 1
-            {
-                decoded.render_hints.compat_hidden_operands = vec![0];
-            }
-        }
-        "jalr" => {
-            if let Some(rd) = decoded.registers_written.first()
-                && rd.id == 1
-            {
-                decoded.render_hints.compat_hidden_operands = vec![0];
-            }
-        }
-        "beq" => {
-            if let [_, _, Operand::Register { register: rs2 }] = decoded.operands.as_slice()
-                && rs2.id == 0
-            {
-                decoded.render_hints.compat_mnemonic = Some("beqz".to_string());
-                decoded.render_hints.compat_hidden_operands = vec![1];
-            }
-        }
-        "bne" => {
-            if let [_, _, Operand::Register { register: rs2 }] = decoded.operands.as_slice()
-                && rs2.id == 0
-            {
-                decoded.render_hints.compat_mnemonic = Some("bnez".to_string());
-                decoded.render_hints.compat_hidden_operands = vec![1];
-            }
-        }
-        "csrrs" | "csrrw" | "csrrc" => {
-            if let [
-                _,
-                Operand::Immediate { value: csr },
-                Operand::Register { register: rs1 },
-            ] = decoded.operands.as_slice()
-            {
-                let (alias, hidden) = match (
-                    pattern.mnemonic,
-                    decoded.registers_written.first(),
-                    rs1.id,
-                    *csr as u16,
-                ) {
-                    ("csrrs", _, 0, 0xC00) => (Some("rdcycle"), vec![1, 2]),
-                    ("csrrs", _, 0, 0xC01) => (Some("rdtime"), vec![1, 2]),
-                    ("csrrs", _, 0, 0xC02) => (Some("rdinstret"), vec![1, 2]),
-                    ("csrrs", _, 0, 0xC80) => (Some("rdcycleh"), vec![1, 2]),
-                    ("csrrs", _, 0, 0xC81) => (Some("rdtimeh"), vec![1, 2]),
-                    ("csrrs", _, 0, 0xC82) => (Some("rdinstreth"), vec![1, 2]),
-                    ("csrrs", Some(_), 0, _) => (Some("csrr"), vec![2]),
-                    ("csrrw", _, _, _) if decoded.registers_written.is_empty() => {
-                        (Some("csrw"), vec![0])
-                    }
-                    ("csrrs", _, _, _) if decoded.registers_written.is_empty() => {
-                        (Some("csrs"), vec![0])
-                    }
-                    ("csrrc", _, _, _) if decoded.registers_written.is_empty() => {
-                        (Some("csrc"), vec![0])
-                    }
-                    _ => (None, Vec::new()),
-                };
-                if let Some(a) = alias {
-                    decoded.render_hints.compat_mnemonic = Some(a.to_string());
-                    decoded.render_hints.compat_hidden_operands = hidden;
-                }
-            }
-        }
-        "csrrwi" | "csrrsi" | "csrrci" => {
-            if decoded.registers_written.is_empty() {
-                let alias = match pattern.mnemonic {
-                    "csrrwi" => Some("csrwi"),
-                    "csrrsi" => Some("csrsi"),
-                    "csrrci" => Some("csrci"),
-                    _ => None,
-                };
-                if let Some(a) = alias {
-                    decoded.render_hints.compat_mnemonic = Some(a.to_string());
-                    decoded.render_hints.compat_hidden_operands = vec![0];
-                }
-            }
-        }
-        _ => {}
-    }
+    crate::aliases::apply_riscv_aliases(&mut decoded);
 
     Ok(decoded)
 }
