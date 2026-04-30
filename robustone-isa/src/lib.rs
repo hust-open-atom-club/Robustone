@@ -205,6 +205,231 @@ pub struct EncodingPattern<W> {
     pub value: W,
 }
 
+// ============================================================================
+// Phase 1: Core abstractions (T1.1–T1.3)
+// ============================================================================
+
+/// Trait for instruction encoding tokens.
+///
+/// Represents the raw encoding of an instruction before decoding.
+/// Different ISAs use different encoding schemes:
+/// - Fixed-width 32-bit words (RISC-V, LoongArch, AArch64)
+/// - Variable-length prefix-based (x86)
+/// - Bytecode (WebAssembly)
+pub trait EncodingToken: Copy + Eq + core::fmt::Debug + 'static {
+    /// The fixed-width word type for bit-field extraction.
+    /// For variable-length encodings, this is the primary opcode word.
+    type Word: Copy + Eq + core::fmt::Debug + Into<u64>;
+
+    /// Total size of the encoded instruction in bytes.
+    fn size(&self) -> u8;
+
+    /// Extract a bit field from the primary word.
+    fn extract(&self, start: u8, length: u8) -> u32;
+}
+
+/// Fixed 32-bit instruction word encoding.
+/// Used by RISC-V, LoongArch, AArch64, and ARM (Thumb-2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FixedWord32(pub u32);
+
+impl EncodingToken for FixedWord32 {
+    type Word = u32;
+
+    fn size(&self) -> u8 {
+        4
+    }
+
+    fn extract(&self, start: u8, length: u8) -> u32 {
+        if length == 0 || start >= 32 {
+            return 0;
+        }
+        let effective_len = length.min(32 - start);
+        let mask = if effective_len >= 32 {
+            0xFFFF_FFFF
+        } else {
+            (1u32 << effective_len) - 1
+        };
+        (self.0 >> start) & mask
+    }
+}
+
+/// x86 variable-length instruction encoding.
+///
+/// Placeholder for the full prefix + opcode + ModRM + SIB + disp + imm
+/// encoding used by x86/x86-64. Phase 6 will flesh out the complete
+/// structure; for now this stub proves the `EncodingToken` trait is
+/// generic enough to handle non-fixed-width encodings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct X86Encoding {
+    /// Total instruction size in bytes.
+    pub size: u8,
+    /// Primary opcode byte.
+    pub opcode: u8,
+    /// ModRM byte (if present).
+    pub modrm: Option<u8>,
+}
+
+impl EncodingToken for X86Encoding {
+    type Word = u8;
+
+    fn size(&self) -> u8 {
+        self.size
+    }
+
+    fn extract(&self, start: u8, length: u8) -> u32 {
+        if length == 0 || start >= 8 {
+            return 0;
+        }
+        let effective_len = length.min(8 - start);
+        let mask = if effective_len >= 8 {
+            0xFF
+        } else {
+            (1u8 << effective_len) - 1
+        };
+        ((self.opcode >> start) & mask) as u32
+    }
+}
+
+/// A single part of a composed immediate.
+///
+/// Maps a contiguous source bit field to a destination position
+/// in the final immediate value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ImmComposePart {
+    /// Source bit field start position in the instruction word.
+    pub src_start: u8,
+    /// Source bit field length.
+    pub src_length: u8,
+    /// Destination bit position in the composed immediate.
+    pub dst_start: u8,
+}
+
+/// Expression describing how an immediate value is constructed from
+/// one or more bit fields in the instruction encoding.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImmExpr {
+    /// Single contiguous bit field with optional transform.
+    Simple {
+        field_start: u8,
+        field_length: u8,
+        transform: ImmediateTransform,
+    },
+    /// Compose an immediate from multiple non-contiguous bit fields.
+    ///
+    /// Used for:
+    /// - RISC-V B-type: imm[12|10:5|4:1|11] from bits [31],[30:25],[11:8],[7]
+    /// - RISC-V J-type: imm[20|10:1|11|19:12] from bits [31],[30:21],[20],[19:12]
+    /// - RISC-V S-type: imm[11:5|4:0] from bits [31:25],[11:7]
+    /// - LoongArch I26: disp[15:0|25:16] from bits [25:10],[9:0]
+    Compose {
+        parts: &'static [ImmComposePart],
+        transform: ImmediateTransform,
+    },
+}
+
+impl ImmExpr {
+    /// Evaluate this expression against a raw instruction word.
+    pub fn evaluate(&self, word: u32) -> i64 {
+        match *self {
+            ImmExpr::Simple {
+                field_start,
+                field_length,
+                transform,
+            } => {
+                let raw = if field_length >= 32 {
+                    word
+                } else {
+                    let mask = (1u32 << field_length) - 1;
+                    (word >> field_start) & mask
+                };
+                apply_transform(raw, transform)
+            }
+            ImmExpr::Compose { parts, transform } => {
+                let mut composed: u32 = 0;
+                for part in parts {
+                    let raw = if part.src_length >= 32 {
+                        word
+                    } else {
+                        let mask = (1u32 << part.src_length) - 1;
+                        (word >> part.src_start) & mask
+                    };
+                    composed |= raw << part.dst_start;
+                }
+                apply_transform(composed, transform)
+            }
+        }
+    }
+}
+
+/// Memory expression describing a memory operand's addressing mode.
+///
+/// Covers all主流架构 memory operand forms:
+/// - LoongArch: base + disp
+/// - RISC-V: base + imm
+/// - AArch64: base + imm, pre-indexed, post-indexed
+/// - x86: segment:base + index*scale + disp
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MemExpr<B: ArchitectureBackend + 'static> {
+    /// Base register field.
+    pub base: Option<B::Field>,
+    /// Index register field (for scaled indexed addressing).
+    pub index: Option<B::Field>,
+    /// Scale factor (1, 2, 4, 8).
+    pub scale: u8,
+    /// Displacement (immediate offset).
+    pub displacement: i64,
+    /// Segment register field (x86-specific).
+    pub segment: Option<B::Field>,
+    /// Whether this is a pre-indexed access (AArch64).
+    pub pre_indexed: bool,
+    /// Whether this is a post-indexed access (AArch64).
+    pub post_indexed: bool,
+}
+
+/// Constraint on instruction encoding legality beyond pattern matching.
+///
+/// Some instructions have additional constraints that cannot be expressed
+/// by mask/value patterns alone (e.g., register must be non-zero,
+/// certain feature combinations are illegal).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EncodingConstraint<B: ArchitectureBackend + 'static> {
+    /// A specific register field must not be zero.
+    ///
+    /// Example: RISC-V `c.jr` requires rs1 ≠ x0.
+    RegisterNotZero { field: B::Field },
+    /// A specific register field must equal a given value.
+    ///
+    /// Example: Some pseudo-instructions encode an implicit register.
+    RegisterEquals { field: B::Field, value: u32 },
+    /// A specific mode is required.
+    ///
+    /// Example: Compressed instructions only valid in specific modes.
+    ModeRequired(B::Mode),
+    /// A specific feature combination is required.
+    ///
+    /// Example: D-extension requires F-extension.
+    FeatureRequired(B::Feature),
+    /// Two register fields must not alias (must be different registers).
+    ///
+    /// Example: AArch64 load-pair with identical destination registers is UNPREDICTABLE.
+    RegistersDistinct {
+        field_a: B::Field,
+        field_b: B::Field,
+    },
+    /// Two register fields must alias (must be the same register).
+    ///
+    /// Example: Some vector instructions require Rd == Rm.
+    RegistersAlias {
+        field_a: B::Field,
+        field_b: B::Field,
+    },
+}
+
+// ============================================================================
+// Set of supported modes.
+// ============================================================================
+
 /// Set of supported modes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModeSet<M: Copy + Eq + 'static> {
