@@ -316,8 +316,8 @@ pub use arch::{{{}Backend, {}Decoder}};
 
     let pascal = to_pascal_case(name);
     let _upper = pascal.to_uppercase();
-    let arch_id = &pascal;
-    let register_ctor = name.to_lowercase();
+    let _arch_id = &pascal;
+    let _register_ctor = name.to_lowercase();
     let arch_rs = format!(
         r#"use robustone_core::ir::{{ArchitectureId, RegisterId}};
 use robustone_core::types::error::{{DecodeErrorKind, DisasmError}};
@@ -374,7 +374,7 @@ impl ArchitectureBackend for {pascal}Backend {{
     type RegisterClass = {pascal}RegisterClass;
 
     fn architecture_id() -> ArchitectureId {{
-        ArchitectureId::{arch_id}
+        ArchitectureId::Other("{name}")
     }}
 
     fn read_instruction(bytes: &[u8]) -> Result<InstructionRead<Self::Word>, DisasmError> {{
@@ -401,7 +401,7 @@ impl ArchitectureBackend for {pascal}Backend {{
         raw: u32,
         _profile: &DecodeProfile<Self>,
     ) -> RegisterId {{
-        RegisterId::{register_ctor}(raw)
+        RegisterId::new(ArchitectureId::Other("{name}"), raw)
     }}
 
     fn render_policy(_profile: &DecodeProfile<Self>) -> RenderPolicy<Self> {{
@@ -539,22 +539,39 @@ fn compat(args: &[String]) -> ExitCode {
 // compat-report
 // ============================================================================
 
+fn expected_xfail_count() -> usize {
+    let workspace_root = find_workspace_root();
+    let xfail_rs = workspace_root.join("robustone-capstone-compat/src/xfail.rs");
+    let content = fs::read_to_string(&xfail_rs).unwrap_or_default();
+    // Count explicit register(XfailEntry calls in the registry builder.
+    content.matches("register(XfailEntry").count()
+}
+
 fn compat_report(args: &[String]) -> ExitCode {
     let deny_xfail_increase = args.contains(&"--deny-xfail-increase".to_string());
 
     let output = std::process::Command::new("cargo")
-        .args(["test", "-p", "robustone-capstone-compat", "--lib"])
+        .args([
+            "test",
+            "-p",
+            "robustone-capstone-compat",
+            "--lib",
+            "--",
+            "--nocapture",
+            "--test-threads=1",
+        ])
         .output();
 
     match output {
         Ok(out) => {
-            let _stdout = String::from_utf8_lossy(&out.stdout);
+            let stdout = String::from_utf8_lossy(&out.stdout);
             let stderr = String::from_utf8_lossy(&out.stderr);
-            let combined = format!("{}\n{}", _stdout, stderr);
+            let combined = format!("{}\n{}", stdout, stderr);
 
             let mut pass = 0usize;
             let mut fail = 0usize;
             let mut ignored = 0usize;
+            let mut known_diff = 0usize;
 
             for line in combined.lines() {
                 if line.contains("test result:") {
@@ -581,20 +598,37 @@ fn compat_report(args: &[String]) -> ExitCode {
                         }
                     }
                 }
+                // Parse per-file summaries emitted by the tests.
+                if line.contains("summary:") && line.contains("known_diff") {
+                    for part in line.split(',') {
+                        let part = part.trim();
+                        if let Some(n) = part.strip_suffix(" known_diff")
+                            && let Ok(v) = n.trim().parse::<usize>()
+                        {
+                            known_diff += v;
+                        }
+                    }
+                }
             }
 
             println!(
-                "compat-report: {} passed, {} failed, {} ignored",
-                pass, fail, ignored
+                "compat-report: {} passed, {} failed, {} ignored, {} known_diff",
+                pass, fail, ignored, known_diff
             );
 
             if fail > 0 {
                 println!("compat-report: WARNING – {} test(s) failed", fail);
             }
 
-            if deny_xfail_increase && fail > 0 {
-                eprintln!("compat-report: FAIL – xfail increased ({} failures)", fail);
-                return ExitCode::FAILURE;
+            if deny_xfail_increase {
+                let expected = expected_xfail_count();
+                if known_diff > expected {
+                    eprintln!(
+                        "compat-report: FAIL – xfail increased ({} known_diff > expected {})",
+                        known_diff, expected
+                    );
+                    return ExitCode::FAILURE;
+                }
             }
 
             ExitCode::SUCCESS

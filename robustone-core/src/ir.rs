@@ -6,13 +6,30 @@
 use serde::Serialize;
 
 /// Architectures that can currently populate the shared IR.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ArchitectureId {
     Riscv,
     Arm,
     X86,
     LoongArch,
+    /// Architecture identifier for dynamically added or experimental backends.
+    Other(&'static str),
+}
+
+impl Serialize for ArchitectureId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let s = match self {
+            ArchitectureId::Riscv => "riscv",
+            ArchitectureId::Arm => "arm",
+            ArchitectureId::X86 => "x86",
+            ArchitectureId::LoongArch => "loongarch",
+            ArchitectureId::Other(name) => name,
+        };
+        serializer.serialize_str(s)
+    }
 }
 
 /// Machine-readable decode status.
@@ -42,6 +59,11 @@ pub struct RegisterId {
 }
 
 impl RegisterId {
+    /// Create a register identifier with an arbitrary architecture.
+    pub const fn new(architecture: ArchitectureId, id: u32) -> Self {
+        Self { architecture, id }
+    }
+
     /// Create a register identifier for the RISC-V backend.
     pub const fn riscv(id: u32) -> Self {
         Self {
@@ -211,6 +233,7 @@ fn format_generic_operand(operand: &Operand) -> String {
         ArchitectureId::Arm => "arm",
         ArchitectureId::X86 => "x86",
         ArchitectureId::LoongArch => "loongarch",
+        ArchitectureId::Other(name) => name,
     };
     match operand {
         Operand::Register { register } => {

@@ -6,7 +6,20 @@ use std::path::Path;
 use robustone_core::ArchitectureDispatcher;
 use robustone_core::types::Instruction;
 
+use crate::xfail::XfailRegistry;
 use crate::yaml::{CapstoneYaml, ExpectedInsn, TestCase};
+
+/// Result of running a single compatibility test case.
+#[derive(Debug)]
+pub enum TestResult {
+    Pass,
+    /// Known expected failure (xfail). Carries reason and detail message.
+    Xfail(String, String),
+    /// Unsupported architecture or mode.
+    Unsupported(String),
+    /// Unexpected mismatch.
+    Fail(String),
+}
 
 /// Maps a Capstone arch/options pair to a Robustone architecture name.
 ///
@@ -27,27 +40,43 @@ pub fn map_arch_mode(arch: &str, options: &[String]) -> Option<&'static str> {
 
 /// Runs a single YAML test case through Robustone.
 ///
-/// On mismatch returns a descriptive error string; on success returns `Ok(())`.
-pub fn run_test_case(dispatcher: &ArchitectureDispatcher, case: &TestCase) -> Result<(), String> {
-    let arch_name = map_arch_mode(&case.input.arch, &case.input.options).ok_or_else(|| {
-        format!(
-            "unsupported arch/options: {} / {:?}",
-            case.input.arch, case.input.options
-        )
-    })?;
+/// Returns a [`TestResult`] describing the outcome.
+pub fn run_test_case(
+    dispatcher: &ArchitectureDispatcher,
+    case: &TestCase,
+    xfail: &XfailRegistry,
+) -> TestResult {
+    let arch_name = match map_arch_mode(&case.input.arch, &case.input.options) {
+        Some(name) => name,
+        None => {
+            return TestResult::Unsupported(format!(
+                "unsupported arch/options: {} / {:?}",
+                case.input.arch, case.input.options
+            ));
+        }
+    };
 
     let bytes = &case.input.bytes;
-    let (instruction, _size) = dispatcher
-        .disassemble_bytes(bytes, arch_name, 0x0)
-        .map_err(|e| format!("disassembly error: {:?}", e))?;
+    let (instruction, _size) = match dispatcher.disassemble_bytes(bytes, arch_name, 0x0) {
+        Ok(res) => res,
+        Err(e) => return TestResult::Fail(format!("disassembly error: {:?}", e)),
+    };
 
-    let expected = case
-        .expected
-        .insns
-        .first()
-        .ok_or("expected.insns is empty")?;
+    let expected = match case.expected.insns.first() {
+        Some(e) => e,
+        None => return TestResult::Fail("expected.insns is empty".into()),
+    };
 
-    compare_instruction(&instruction, expected)
+    match compare_instruction(&instruction, expected) {
+        Ok(()) => TestResult::Pass,
+        Err(msg) => {
+            if let Some(entry) = xfail.match_error(&msg) {
+                TestResult::Xfail(entry.reason.clone(), msg)
+            } else {
+                TestResult::Fail(msg)
+            }
+        }
+    }
 }
 
 /// Compare a decoded [`Instruction`] against an [`ExpectedInsn`].
@@ -78,6 +107,23 @@ fn format_instruction(instruction: &Instruction) -> String {
     s
 }
 
+/// Count results by category.
+pub fn count_results(results: &[TestResult]) -> (usize, usize, usize, usize) {
+    let mut pass = 0usize;
+    let mut fail = 0usize;
+    let mut xfail = 0usize;
+    let mut unsupported = 0usize;
+    for r in results {
+        match r {
+            TestResult::Pass => pass += 1,
+            TestResult::Xfail(_, _) => xfail += 1,
+            TestResult::Unsupported(_) => unsupported += 1,
+            TestResult::Fail(_) => fail += 1,
+        }
+    }
+    (pass, fail, xfail, unsupported)
+}
+
 /// Parse a single YAML file and return all test cases.
 pub fn parse_yaml_file(path: &Path) -> Result<Vec<TestCase>, String> {
     let content =
@@ -90,16 +136,19 @@ pub fn parse_yaml_file(path: &Path) -> Result<Vec<TestCase>, String> {
 /// Run every test case in a single YAML file.
 ///
 /// Returns a vector where each element corresponds to the test case at the
-/// same index. `Ok(())` means the case passed; `Err(String)` carries the
-/// failure reason.
-pub fn run_yaml_file(dispatcher: &ArchitectureDispatcher, path: &Path) -> Vec<Result<(), String>> {
+/// same index.
+pub fn run_yaml_file(
+    dispatcher: &ArchitectureDispatcher,
+    path: &Path,
+    xfail: &XfailRegistry,
+) -> Vec<TestResult> {
     let cases = match parse_yaml_file(path) {
         Ok(c) => c,
-        Err(e) => return vec![Err(e)],
+        Err(e) => return vec![TestResult::Fail(e)],
     };
     cases
         .iter()
-        .map(|case| run_test_case(dispatcher, case))
+        .map(|case| run_test_case(dispatcher, case, xfail))
         .collect()
 }
 
@@ -119,7 +168,7 @@ pub fn discover_yaml_files(dir: &Path) -> Result<Vec<std::path::PathBuf>, String
 }
 
 /// Alias for the per-case result used by [`run_yaml_dir`].
-pub type YamlCaseResult = (std::path::PathBuf, usize, Result<(), String>);
+pub type YamlCaseResult = (std::path::PathBuf, usize, TestResult);
 
 /// Run every YAML file discovered under `dir`.
 ///
@@ -127,11 +176,12 @@ pub type YamlCaseResult = (std::path::PathBuf, usize, Result<(), String>);
 pub fn run_yaml_dir(
     dispatcher: &ArchitectureDispatcher,
     dir: &Path,
+    xfail: &XfailRegistry,
 ) -> Result<Vec<YamlCaseResult>, String> {
     let files = discover_yaml_files(dir)?;
     let mut results = Vec::new();
     for file in files {
-        let cases = run_yaml_file(dispatcher, &file);
+        let cases = run_yaml_file(dispatcher, &file, xfail);
         for (idx, res) in cases.into_iter().enumerate() {
             results.push((file.clone(), idx, res));
         }

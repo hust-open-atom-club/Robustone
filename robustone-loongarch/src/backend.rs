@@ -4,8 +4,7 @@ use robustone_core::ir::{ArchitectureId, RegisterId};
 use robustone_core::types::error::DisasmError;
 use robustone_isa::{
     Access, ArchitectureBackend, DecodeProfile, FeatureSet, FormatSpec, ImmediateKind,
-    ImmediateTransform, InstructionGroup, InstructionRead, InstructionSpec, ModeSet, RenderPolicy,
-    field,
+    ImmediateTransform, InstructionGroup, InstructionRead, InstructionSpec, RenderPolicy, field,
 };
 
 // ============================================================================

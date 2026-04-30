@@ -86,6 +86,14 @@ jobs:
         id: parity_tests
         run: make test
 
+      - name: Run compat tests (strict)
+        id: compat_tests
+        run: cargo xtask compat --strict
+
+      - name: Run compat report
+        id: compat_report
+        run: cargo xtask compat-report --deny-xfail-increase
+
       - name: Summarize workspace and parity tests
         if: always()
         run: |
@@ -94,6 +102,8 @@ jobs:
             echo
             echo "- \`cargo test --workspace --all-features\`: ${{ steps.workspace_tests.outcome }}"
             echo "- \`make test\`: ${{ steps.parity_tests.outcome }}"
+            echo "- \`cargo xtask compat --strict\`: ${{ steps.compat_tests.outcome }}"
+            echo "- \`cargo xtask compat-report --deny-xfail-increase\`: ${{ steps.compat_report.outcome }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
   capstone-yaml-tests:

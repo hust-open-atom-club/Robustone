@@ -582,18 +582,18 @@ pub fn check_spec_table<B: ArchitectureBackend>(
         }
     }
 
-    // 3. Check manual_ref presence (report count, not fail)
+    // 3. Check manual_ref presence
     let missing_manual: Vec<_> = specs
         .iter()
         .filter(|s| s.manual_ref.is_none())
         .map(|s| s.mnemonic)
         .collect();
     if !missing_manual.is_empty() {
-        eprintln!(
-            "check-spec warning: {} specs missing manual_ref: {:?}",
+        return Err(format!(
+            "check-spec: {} specs missing manual_ref: {:?}",
             missing_manual.len(),
             missing_manual
-        );
+        ));
     }
 
     // 4. Check group self-consistency (every spec must belong to at least one group)
@@ -713,6 +713,34 @@ macro_rules! isa_specs {
             groups: $groups,
             manual_ref: None,
             priority: 0,
+        };)*
+    };
+    (
+        backend = $backend:ty;
+        $(spec $name:ident {
+            mnemonic = $mnemonic:expr;
+            opcode_id = $opcode_id:expr;
+            pattern = $pattern:expr;
+            format = $format:expr;
+            operands = $operands:expr;
+            features = $features:expr;
+            modes = $modes:expr;
+            groups = $groups:expr;
+            manual = $manual:expr;
+            priority = $priority:expr;
+        })*
+    ) => {
+        $(pub static $name: $crate::InstructionSpec<$backend> = $crate::InstructionSpec {
+            mnemonic: $mnemonic,
+            opcode_id: $opcode_id,
+            pattern: $pattern,
+            format: $format,
+            operands: $operands,
+            features: $features,
+            modes: $modes,
+            groups: $groups,
+            manual_ref: Some($manual),
+            priority: $priority,
         };)*
     };
     (

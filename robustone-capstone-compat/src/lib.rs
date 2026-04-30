@@ -10,7 +10,8 @@ pub mod yaml;
 
 #[cfg(test)]
 mod tests {
-    use super::harness;
+    use super::harness::{self, TestResult};
+    use super::xfail;
     use robustone_core::ArchitectureDispatcher;
     use robustone_loongarch::LoongArchHandler;
 
@@ -22,30 +23,17 @@ mod tests {
 
     fn run_yaml_file(path: &std::path::Path) -> (usize, usize, usize, usize) {
         let dispatcher = loongarch_dispatcher();
-        let results = harness::run_yaml_file(&dispatcher, path);
+        let xfail = xfail::loongarch_default_xfails();
+        let results = harness::run_yaml_file(&dispatcher, path, &xfail);
         assert!(!results.is_empty(), "expected at least one test case");
 
-        let mut pass = 0usize;
-        let mut fail = 0usize;
-        let mut known_diff = 0usize;
-        let mut unsupported = 0usize;
+        let (pass, fail, known_diff, unsupported) = harness::count_results(&results);
 
         for (idx, res) in results.iter().enumerate() {
-            match res {
-                Ok(()) => pass += 1,
-                Err(msg) if msg.contains("unsupported arch/options") => unsupported += 1,
-                Err(msg) if msg.contains("nor") && msg.contains("orn") => {
-                    known_diff += 1;
-                    eprintln!("case {} known diff: {}", idx, msg);
-                }
-                Err(msg) if msg.contains("screl") => {
-                    known_diff += 1;
-                    eprintln!("case {} known diff: {}", idx, msg);
-                }
-                Err(msg) => {
-                    fail += 1;
-                    eprintln!("case {} failed: {}", idx, msg);
-                }
+            if let TestResult::Xfail(reason, detail) = res {
+                eprintln!("case {} known diff ({}): {}", idx, reason, detail);
+            } else if let TestResult::Fail(msg) = res {
+                eprintln!("case {} failed: {}", idx, msg);
             }
         }
 
@@ -307,7 +295,8 @@ mod tests {
 
 #[cfg(test)]
 mod bulk_tests {
-    use super::harness;
+    use super::harness::{self, TestResult};
+    use super::xfail;
     use robustone_core::ArchitectureDispatcher;
     use robustone_loongarch::LoongArchHandler;
 
@@ -321,11 +310,12 @@ mod bulk_tests {
     #[ignore]
     fn bulk_run_all_loongarch_yaml() {
         let dispatcher = loongarch_dispatcher();
+        let xfail = xfail::loongarch_default_xfails();
         let dir = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../third_party/capstone/tests/MC/LoongArch"
         ));
-        let results = harness::run_yaml_dir(&dispatcher, dir).unwrap();
+        let results = harness::run_yaml_dir(&dispatcher, dir, &xfail).unwrap();
 
         let mut total_pass = 0usize;
         let mut total_fail = 0usize;
@@ -338,14 +328,10 @@ mod bulk_tests {
             let file = file.file_name().unwrap().to_str().unwrap();
             let entry = per_file.entry(file.to_string()).or_insert((0, 0, 0, 0));
             match res {
-                Ok(()) => entry.0 += 1,
-                Err(msg) if msg.contains("unsupported arch/options") => entry.3 += 1,
-                Err(msg) if msg.contains("nor") && msg.contains("orn") => entry.2 += 1,
-                Err(msg) if msg.contains("screl") => entry.2 += 1,
-                // Capstone v6 YAML expects `0x9` for some vector immediates
-                // but cstool itself renders them as `9`.  Treat as known diff.
-                Err(msg) if msg.contains("0x9\"") && msg.ends_with(", 9\"") => entry.2 += 1,
-                Err(msg) => {
+                TestResult::Pass => entry.0 += 1,
+                TestResult::Unsupported(_) => entry.3 += 1,
+                TestResult::Xfail(_, _) => entry.2 += 1,
+                TestResult::Fail(msg) => {
                     entry.1 += 1;
                     if entry.1 <= 3 {
                         eprintln!("{}: {}", file, msg);

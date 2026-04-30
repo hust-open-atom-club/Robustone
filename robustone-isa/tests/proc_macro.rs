@@ -3,32 +3,21 @@
 use robustone_core::ir::{ArchitectureId, RegisterId};
 use robustone_core::types::error::{DecodeErrorKind, DisasmError};
 use robustone_isa::{
-    Access, AliasPolicy, ArchitectureBackend, DecodeProfile, FeatureSet, FormatSpec, ImmediateKind,
-    ImmediateTransform, InstructionGroup, InstructionRead, InstructionSpec, ModeSet, RenderDialect,
-    RenderPolicy, field,
+    Access, AliasPolicy, ArchitectureBackend, DecodeProfile, FormatSpec, InstructionGroup,
+    InstructionRead, InstructionSpec, ModeSet, RenderDialect, RenderPolicy, field,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MacroMode {
-    Base,
-}
-
-bitflags::bitflags! {
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct MacroFeature: u8 {
-        const BASE = 1 << 0;
-    }
-}
-
-impl FeatureSet for MacroFeature {
-    fn empty() -> Self {
-        Self::empty()
-    }
-    fn all_supported_for_tests() -> Self {
-        Self::BASE
-    }
-    fn contains(self, required: Self) -> bool {
-        self.bits() & required.bits() == required.bits()
+robustone_isa_macros::define_arch! {
+    pub arch Macro {
+        word = u32;
+        endian = little;
+        instruction_length = fixed(4);
+        modes { Base = "base"; };
+        features: u8 { BASE = 0; };
+        registers = macro_registers;
+        formats = macro_formats;
+        specs = macro_specs;
+        render = MacroRenderPolicy;
     }
 }
 
@@ -62,7 +51,14 @@ robustone_isa_macros::define_instructions! {
     }
 }
 
-pub struct MacroBackend;
+robustone_isa_macros::define_aliases! {
+    arch = Macro;
+    alias "nop" for "MACRO_ADD" {
+        when [operand(0) == reg(0), operand(1) == reg(0), operand(2) == reg(0)];
+        mnemonic = "nop";
+        visible_operands = [];
+    }
+}
 
 impl ArchitectureBackend for MacroBackend {
     type Word = u32;
@@ -149,4 +145,25 @@ fn proc_macro_specs_decode_correctly() {
     let bytes = &[0x00, 0x00, 0x00, 0x01];
     let decoded = robustone_isa::decode_one::<MacroBackend>(bytes, 0x1000, &profile).unwrap();
     assert_eq!(decoded.mnemonic, "add");
+}
+
+#[test]
+fn proc_macro_define_aliases_applies_compat_mnemonic() {
+    let profile = DecodeProfile {
+        mode: MacroMode::Base,
+        features: MacroFeature::BASE,
+        render_dialect: RenderDialect::Canonical,
+        alias_policy: AliasPolicy::None,
+    };
+    // word = 0x0100_0000 => rd=0, rs1=0, rs2=0
+    let bytes = &[0x00, 0x00, 0x00, 0x01];
+    let mut decoded = robustone_isa::decode_one::<MacroBackend>(bytes, 0x1000, &profile).unwrap();
+    assert_eq!(decoded.mnemonic, "add");
+    assert!(decoded.render_hints.compat_mnemonic.is_none());
+    apply_aliases(&mut decoded);
+    assert_eq!(
+        decoded.render_hints.compat_mnemonic,
+        Some("nop".to_string())
+    );
+    assert_eq!(decoded.render_hints.compat_hidden_operands, vec![0, 1, 2]);
 }

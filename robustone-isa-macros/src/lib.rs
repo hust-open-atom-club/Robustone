@@ -9,7 +9,7 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
 use syn::parse::{Parse, ParseStream};
-use syn::{Expr, Ident, LitStr, Token, Type, braced};
+use syn::{Expr, Ident, LitInt, LitStr, Token, Type, braced};
 
 // ============================================================================
 // define_arch!
@@ -65,7 +65,27 @@ pub fn define_arch(input: TokenStream) -> TokenStream {
 
     let feature_ty = &parsed.features.ty;
 
+    // Compile-time validation: duplicate feature bit values
+    let mut duplicate_feature_checks = Vec::new();
+    for i in 0..parsed.features.bits.len() {
+        for j in (i + 1)..parsed.features.bits.len() {
+            let a = &parsed.features.bits[i];
+            let b = &parsed.features.bits[j];
+            if a.value.base10_digits() == b.value.base10_digits() {
+                let msg = format!(
+                    "duplicate feature bit: {} and {} both use bit {}",
+                    a.name, b.name, a.value
+                );
+                duplicate_feature_checks.push(quote! {
+                    const _: () = ::core::compile_error!(#msg);
+                });
+            }
+        }
+    }
+
     let output = quote! {
+        #(#duplicate_feature_checks)*
+
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
         #vis enum #modes_name {
             #(#mode_variants),*
@@ -515,6 +535,26 @@ impl Parse for DefineFormatsInput {
 ///     }
 /// }
 /// ```
+fn is_exact_word_mask(expr: &Expr) -> bool {
+    if let Expr::Macro(mac) = expr {
+        let last = mac.mac.path.segments.last().map(|s| s.ident.to_string());
+        if last.as_deref() == Some("mask_value") {
+            let tokens = quote::quote!(#mac.mac.tokens)
+                .to_string()
+                .replace([' ', '\n'], "");
+            if tokens.starts_with("(0xFFFF_FFFF,") || tokens.starts_with("(0xFFFFFFFFFFFFFFFF,") {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn is_non_empty_operands(expr: &Expr) -> bool {
+    let tokens = quote::quote!(#expr).to_string().replace([' ', '\n'], "");
+    tokens != "&[]"
+}
+
 #[proc_macro]
 pub fn define_instructions(input: TokenStream) -> TokenStream {
     let parsed = syn::parse_macro_input!(input as DefineInstructionsInput);
@@ -584,6 +624,25 @@ pub fn define_instructions(input: TokenStream) -> TokenStream {
         })
         .collect();
 
+    // Compile-time validation: exact-word pattern with variable operands
+    let exact_word_checks: Vec<_> = parsed
+        .instructions
+        .iter()
+        .filter_map(|i| {
+            if is_exact_word_mask(&i.pattern) && is_non_empty_operands(&i.operands) {
+                let msg = format!(
+                    "instruction '{}' has exact-word pattern but non-empty operands",
+                    i.mnemonic.value()
+                );
+                Some(quote! {
+                    const _: () = ::core::compile_error!(#msg);
+                })
+            } else {
+                None
+            }
+        })
+        .collect();
+
     // Compile-time validation: missing manual_ref
     let missing_manual_checks: Vec<_> = parsed
         .instructions
@@ -605,6 +664,8 @@ pub fn define_instructions(input: TokenStream) -> TokenStream {
 
     quote! {
         #(#duplicate_checks)*
+
+        #(#exact_word_checks)*
 
         #(#missing_manual_checks)*
 
@@ -728,45 +789,238 @@ impl Parse for DefineInstructionsInput {
 // define_aliases!
 // ============================================================================
 
-/// Define instruction aliases.
+/// Define instruction aliases applied post-decode.
 ///
 /// Example:
 /// ```ignore
 /// define_aliases! {
 ///     arch = LoongArch;
-///     alias nop for andi { when [rd == 0, rj == 0, si12 == 0]; mnemonic = "nop"; visible_operands = []; }
+///     alias "nop" for "ANDI" {
+///         when [operand(0) == reg(0), operand(1) == reg(0), operand(2) == imm(0)];
+///         mnemonic = "nop";
+///         visible_operands = [];
+///     }
 /// }
 /// ```
 #[proc_macro]
 pub fn define_aliases(input: TokenStream) -> TokenStream {
-    let _parsed = syn::parse_macro_input!(input as DefineAliasesInput);
+    let parsed = syn::parse_macro_input!(input as DefineAliasesInput);
+    let aliases = parsed.aliases;
+
+    let alias_branches = aliases.iter().map(|alias| {
+        let opcode_id = &alias.opcode_id;
+        let mnemonic = &alias.mnemonic;
+        let visible = &alias.visible_operands;
+
+        let cond_checks = alias.conditions.iter().map(|cond| {
+            let idx = cond.operand_index;
+            let idx_lit = syn::Index::from(idx);
+            match &cond.kind {
+                AliasConditionKind::Reg(expected) => {
+                    let exp = *expected;
+                    quote! {
+                        {
+                            let __v = match insn.operands.get(#idx_lit) {
+                                Some(::robustone_core::ir::Operand::Register { register }) => register.id == #exp,
+                                _ => false,
+                            };
+                            __v
+                        }
+                    }
+                }
+                AliasConditionKind::Imm(expected) => {
+                    let exp = *expected;
+                    quote! {
+                        {
+                            let __v = match insn.operands.get(#idx_lit) {
+                                Some(::robustone_core::ir::Operand::Immediate { value }) => *value == #exp,
+                                _ => false,
+                            };
+                            __v
+                        }
+                    }
+                }
+            }
+        });
+
+        let visible_arr = quote! { &[#(#visible),*] };
+
+        quote! {
+            if insn.opcode_id.as_deref() == Some(#opcode_id) {
+                if true #(&& #cond_checks)* {
+                    insn.render_hints.compat_mnemonic = Some(#mnemonic.into());
+                    let mut hidden = Vec::new();
+                    for i in 0..insn.operands.len() {
+                        if !#visible_arr.contains(&i) {
+                            hidden.push(i);
+                        }
+                    }
+                    insn.render_hints.compat_hidden_operands = hidden;
+                }
+            }
+        }
+    });
+
     quote! {
-        // Alias table will be expanded in a subsequent round.
-        // For now, aliases are applied post-decode in the architecture handler.
+        /// Apply architecture-specific aliases to a decoded instruction.
+        pub fn apply_aliases(insn: &mut ::robustone_core::ir::DecodedInstruction) {
+            #(#alias_branches)*
+        }
     }
     .into()
 }
 
-struct DefineAliasesInput;
+struct DefineAliasesInput {
+    _arch: Ident,
+    aliases: Vec<AliasDef>,
+}
+
+struct AliasDef {
+    opcode_id: String,
+    mnemonic: String,
+    conditions: Vec<AliasCondition>,
+    visible_operands: Vec<usize>,
+}
+
+struct AliasCondition {
+    operand_index: usize,
+    kind: AliasConditionKind,
+}
+
+enum AliasConditionKind {
+    Reg(u32),
+    Imm(i64),
+}
 
 impl Parse for DefineAliasesInput {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        // arch = <ident>;
-        let _arch_kw: Ident = input.parse()?;
-        let _eq: Token![=] = input.parse()?;
-        let _arch_name: Ident = input.parse()?;
-        let _semi: Token![;] = input.parse()?;
+        let arch_kw: Ident = input.parse()?;
+        if arch_kw != "arch" {
+            return Err(syn::Error::new(arch_kw.span(), "expected `arch`"));
+        }
+        let _: Token![=] = input.parse()?;
+        let arch_name: Ident = input.parse()?;
+        let _: Token![;] = input.parse()?;
 
-        // Consume remaining alias definitions
+        let mut aliases = Vec::new();
         while !input.is_empty() {
-            let _alias_kw: Ident = input.parse()?;
-            let _alias_name: Ident = input.parse()?;
-            let _for_kw: Ident = input.parse()?;
-            let _base_name: Ident = input.parse()?;
-            let _content;
-            braced!(_content in input);
+            let alias_kw: Ident = input.parse()?;
+            if alias_kw != "alias" {
+                return Err(syn::Error::new(alias_kw.span(), "expected `alias`"));
+            }
+            let alias_mnemonic: LitStr = input.parse()?;
+            let _: Token![for] = input.parse()?;
+            let opcode_id: LitStr = input.parse()?;
+
+            let content;
+            braced!(content in input);
+
+            let mut conditions = Vec::new();
+            let mut mnemonic = None;
+            let mut visible_operands = Vec::new();
+
+            while !content.is_empty() {
+                let key: Ident = content.parse()?;
+                if key == "when" {
+                    let conds;
+                    syn::bracketed!(conds in content);
+                    while !conds.is_empty() {
+                        let cond = parse_alias_condition(&conds)?;
+                        conditions.push(cond);
+                        if !conds.is_empty() {
+                            let _: Token![,] = conds.parse()?;
+                        }
+                    }
+                    let _: Token![;] = content.parse()?;
+                } else if key == "mnemonic" {
+                    let _: Token![=] = content.parse()?;
+                    let val: LitStr = content.parse()?;
+                    mnemonic = Some(val.value());
+                    let _: Token![;] = content.parse()?;
+                } else if key == "visible_operands" {
+                    let _: Token![=] = content.parse()?;
+                    let vals;
+                    syn::bracketed!(vals in content);
+                    while !vals.is_empty() {
+                        let v: LitInt = vals.parse()?;
+                        visible_operands.push(v.base10_parse()?);
+                        if !vals.is_empty() {
+                            let _: Token![,] = vals.parse()?;
+                        }
+                    }
+                    let _: Token![;] = content.parse()?;
+                } else {
+                    return Err(syn::Error::new(key.span(), "unknown alias property"));
+                }
+            }
+
+            aliases.push(AliasDef {
+                opcode_id: opcode_id.value(),
+                mnemonic: mnemonic.unwrap_or_else(|| alias_mnemonic.value()),
+                conditions,
+                visible_operands,
+            });
         }
 
-        Ok(DefineAliasesInput)
+        Ok(DefineAliasesInput {
+            _arch: arch_name,
+            aliases,
+        })
     }
+}
+
+fn parse_alias_condition(input: ParseStream) -> syn::Result<AliasCondition> {
+    let operand_kw: Ident = input.parse()?;
+    if operand_kw != "operand" {
+        return Err(syn::Error::new(operand_kw.span(), "expected `operand`"));
+    }
+    let idx_paren;
+    syn::parenthesized!(idx_paren in input);
+    let idx: LitInt = idx_paren.parse()?;
+    let operand_index: usize = idx.base10_parse()?;
+
+    let _: Token![==] = input.parse()?;
+
+    let kind_kw: Ident = input.parse()?;
+    let kind = if kind_kw == "reg" {
+        let val_paren;
+        syn::parenthesized!(val_paren in input);
+        let val: LitInt = val_paren.parse()?;
+        AliasConditionKind::Reg(val.base10_parse()?)
+    } else if kind_kw == "imm" {
+        let val_paren;
+        syn::parenthesized!(val_paren in input);
+        // Support negative immediates
+        let val: Expr = val_paren.parse()?;
+        let lit_val = match val {
+            Expr::Lit(syn::ExprLit {
+                lit: syn::Lit::Int(i),
+                ..
+            }) => i.base10_parse()?,
+            Expr::Unary(syn::ExprUnary {
+                op: syn::UnOp::Neg(_),
+                expr,
+                ..
+            }) => {
+                if let Expr::Lit(syn::ExprLit {
+                    lit: syn::Lit::Int(i),
+                    ..
+                }) = *expr
+                {
+                    -i.base10_parse::<i64>()?
+                } else {
+                    return Err(syn::Error::new(kind_kw.span(), "expected integer literal"));
+                }
+            }
+            _ => return Err(syn::Error::new(kind_kw.span(), "expected integer literal")),
+        };
+        AliasConditionKind::Imm(lit_val)
+    } else {
+        return Err(syn::Error::new(kind_kw.span(), "expected `reg` or `imm`"));
+    };
+
+    Ok(AliasCondition {
+        operand_index,
+        kind,
+    })
 }
