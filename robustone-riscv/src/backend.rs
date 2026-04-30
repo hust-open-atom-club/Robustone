@@ -909,54 +909,58 @@ impl ArchitectureBackend for RiscVBackend {
         word: Self::Word,
         format: &FormatSpec<Self::Field>,
         field: Self::Field,
-    ) -> u32 {
+    ) -> Result<u32, DisasmError> {
         match field {
             RiscVField::Imm12S => {
                 let imm115 = (word >> 25) & 0x7F;
                 let imm40 = (word >> 7) & 0x1F;
-                (imm115 << 5) | imm40
+                Ok((imm115 << 5) | imm40)
             }
             RiscVField::Imm12B => {
                 let imm12 = (word >> 31) & 1;
                 let imm105 = (word >> 25) & 0x3F;
                 let imm41 = (word >> 8) & 0xF;
                 let imm11 = (word >> 7) & 1;
-                (imm12 << 11) | (imm11 << 10) | (imm105 << 4) | imm41
+                Ok((imm12 << 11) | (imm11 << 10) | (imm105 << 4) | imm41)
             }
-            RiscVField::Imm20U => (word >> 12) & 0xFFFFF,
+            RiscVField::Imm20U => Ok((word >> 12) & 0xFFFFF),
             RiscVField::Imm20J => {
                 let imm20 = (word >> 31) & 1;
                 let imm101 = (word >> 21) & 0x3FF;
                 let imm11 = (word >> 20) & 1;
                 let imm1912 = (word >> 12) & 0xFF;
-                (imm20 << 19) | (imm1912 << 11) | (imm11 << 10) | imm101
+                Ok((imm20 << 19) | (imm1912 << 11) | (imm11 << 10) | imm101)
             }
             RiscVField::Imm6 => {
                 let high = (word >> 12) & 1;
                 let low = (word >> 2) & 0x1F;
-                (high << 5) | low
+                Ok((high << 5) | low)
             }
             RiscVField::ImmCL => {
                 // CL-format immediate for c.ld: {bits[6:5], bits[12:10]} << 3
                 let low = (word >> 5) & 0x3;
                 let high = (word >> 8) & 0x1C;
-                (low | high) << 3
+                Ok((low | high) << 3)
             }
             RiscVField::ImmCLW => {
                 // CL-format immediate for c.flw: {bit[5], bits[12:10], bit[6], 0}
                 let bit5 = (word >> 5) & 1;
                 let bits12_10 = (word >> 10) & 0x7;
                 let bit6 = (word >> 6) & 1;
-                (bit5 << 6) | (bits12_10 << 3) | (bit6 << 2)
+                Ok((bit5 << 6) | (bits12_10 << 3) | (bit6 << 2))
             }
             _ => {
                 for f in format.fields {
                     if f.field_type == field {
                         let mask = ((1u64 << f.length) - 1) as u32;
-                        return (word >> f.start) & mask;
+                        return Ok((word >> f.start) & mask);
                     }
                 }
-                0
+                Err(DisasmError::decode_failure(
+                    DecodeErrorKind::InvalidField,
+                    Some("riscv".to_string()),
+                    format!("field {:?} not found in format {}", field, format.name),
+                ))
             }
         }
     }

@@ -111,14 +111,18 @@ impl ArchitectureBackend for MacroBackend {
         word: Self::Word,
         format: &FormatSpec<Self::Field>,
         field: Self::Field,
-    ) -> u32 {
+    ) -> Result<u32, DisasmError> {
         for f in format.fields {
             if f.field_type == field {
                 let mask = ((1u64 << f.length) - 1) as u32;
-                return (word >> f.start) & mask;
+                return Ok((word >> f.start) & mask);
             }
         }
-        0
+        Err(DisasmError::decode_failure(
+            DecodeErrorKind::InvalidField,
+            None::<String>,
+            format!("field not found"),
+        ))
     }
 }
 

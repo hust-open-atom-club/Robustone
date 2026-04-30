@@ -1,7 +1,7 @@
 //! Verify that `Decoder<B>` and `DecodedInstruction` are `Send + Sync`.
 
 use robustone_core::ir::{ArchitectureId, RegisterId};
-use robustone_core::types::error::DisasmError;
+use robustone_core::types::error::{DecodeErrorKind, DisasmError};
 use robustone_isa::{
     ArchitectureBackend, DecodeProfile, FeatureSet, FormatSpec, InstructionRead, InstructionSpec,
     ModeSet, RenderPolicy,
@@ -77,7 +77,7 @@ impl ArchitectureBackend for DummyBackend {
         _word: Self::Word,
         _format: &FormatSpec<Self::Field>,
         _field: Self::Field,
-    ) -> u32 {
+    ) -> Result<u32, DisasmError> {
         unreachable!()
     }
 }

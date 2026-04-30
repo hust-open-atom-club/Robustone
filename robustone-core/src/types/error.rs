@@ -9,6 +9,7 @@ pub enum DecodeErrorKind {
     UnsupportedExtension,
     UnimplementedInstruction,
     UnsupportedMode,
+    InvalidField,
     InternalSpecBug,
 }
 
@@ -21,6 +22,7 @@ impl std::fmt::Display for DecodeErrorKind {
             DecodeErrorKind::UnsupportedExtension => "unsupported_extension",
             DecodeErrorKind::UnimplementedInstruction => "unimplemented_instruction",
             DecodeErrorKind::UnsupportedMode => "unsupported_mode",
+            DecodeErrorKind::InvalidField => "invalid_field",
             DecodeErrorKind::InternalSpecBug => "internal_spec_bug",
         };
         write!(f, "{text}")
@@ -103,6 +105,7 @@ impl DisasmError {
                 DecodeErrorKind::UnsupportedExtension => "unsupported_extension",
                 DecodeErrorKind::UnimplementedInstruction => "unimplemented_instruction",
                 DecodeErrorKind::UnsupportedMode => "unsupported_mode",
+                DecodeErrorKind::InvalidField => "invalid_field",
                 DecodeErrorKind::InternalSpecBug => "internal_spec_bug",
             },
             DisasmError::DecodingError(_) => "decoding_error",
