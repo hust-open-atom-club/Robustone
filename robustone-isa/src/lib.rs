@@ -231,6 +231,27 @@ pub enum InstructionGroup {
     BitManipulation,
 }
 
+impl InstructionGroup {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            InstructionGroup::Integer => "integer",
+            InstructionGroup::Arithmetic => "arithmetic",
+            InstructionGroup::Logical => "logical",
+            InstructionGroup::Shift => "shift",
+            InstructionGroup::Branch => "branch",
+            InstructionGroup::Jump => "jump",
+            InstructionGroup::Memory => "memory",
+            InstructionGroup::Atomic => "atomic",
+            InstructionGroup::Float => "floating_point",
+            InstructionGroup::Privileged => "privileged",
+            InstructionGroup::Barrier => "barrier",
+            InstructionGroup::System => "system",
+            InstructionGroup::Vector => "vector",
+            InstructionGroup::BitManipulation => "bit_manipulation",
+        }
+    }
+}
+
 // ============================================================================
 // Format specification
 // ============================================================================
@@ -282,6 +303,10 @@ pub enum OperandSpec<B: ArchitectureBackend + 'static> {
         field: B::Field,
         transform: ImmediateTransform,
         kind: ImmediateKind,
+    },
+    Text {
+        field: B::Field,
+        transform: ImmediateTransform,
     },
 }
 
@@ -431,7 +456,7 @@ pub fn decode_one<B: ArchitectureBackend>(
         registers_written: regs_written,
         implicit_registers_read: Vec::new(),
         implicit_registers_written: Vec::new(),
-        groups: spec.groups.iter().map(|g| format!("{:?}", g)).collect(),
+        groups: spec.groups.iter().map(|g| g.as_str().to_string()).collect(),
         status: robustone_core::ir::DecodeStatus::Success,
         render_hints: robustone_core::ir::RenderHints::default(),
     };
@@ -467,6 +492,13 @@ fn lower_operand<B: ArchitectureBackend>(
                 ImmediateKind::Absolute | ImmediateKind::PcRelative | ImmediateKind::Unsigned => {
                     Operand::Immediate { value }
                 }
+            }
+        }
+        OperandSpec::Text { field, transform } => {
+            let raw = B::extract_field(word, format, *field);
+            let value = apply_transform(raw, *transform);
+            Operand::Text {
+                value: value.to_string(),
             }
         }
     }
@@ -616,6 +648,7 @@ pub fn check_spec_table<B: ArchitectureBackend>(
             let field = match op {
                 OperandSpec::Register { field, .. } => *field,
                 OperandSpec::Immediate { field, .. } => *field,
+                OperandSpec::Text { field, .. } => *field,
             };
             let found = spec.format.fields.iter().any(|f| f.field_type == field);
             if !found {
@@ -634,6 +667,7 @@ pub fn check_spec_table<B: ArchitectureBackend>(
             let field = match op {
                 OperandSpec::Register { field, .. } => *field,
                 OperandSpec::Immediate { field, .. } => *field,
+                OperandSpec::Text { field, .. } => *field,
             };
             if let Some(field_spec) = spec.format.fields.iter().find(|f| f.field_type == field) {
                 let start = field_spec.start as u64;
@@ -835,6 +869,17 @@ macro_rules! imm {
             field: $field,
             transform: $transform,
             kind: $kind,
+        }
+    };
+}
+
+/// Helper to construct a text operand spec.
+#[macro_export]
+macro_rules! text {
+    ($field:expr, $transform:expr) => {
+        $crate::OperandSpec::Text {
+            field: $field,
+            transform: $transform,
         }
     };
 }

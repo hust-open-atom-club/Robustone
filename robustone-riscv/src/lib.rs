@@ -173,26 +173,24 @@ impl ArchitectureHandler for RiscVHandler {
         addr: u64,
     ) -> Result<(DecodedInstruction, usize), DisasmError> {
         let decoder = self.decoder_for_arch(arch_name)?;
-        let mut decoded = match decoder.decode(bytes, arch_name, addr) {
+        let mode = match decoder.xlen() {
+            Xlen::X32 => crate::backend::RiscVMode::RV32,
+            Xlen::X64 => crate::backend::RiscVMode::RV64,
+        };
+        let features = crate::backend::RiscVFeature::from_extensions(decoder.extensions());
+        let profile = DecodeProfile {
+            mode,
+            features,
+            render_dialect: robustone_isa::RenderDialect::Canonical,
+            alias_policy: robustone_isa::AliasPolicy::None,
+        };
+
+        let mut decoded = match robustone_isa::decode_one::<crate::backend::RiscVBackend>(
+            bytes, addr, &profile,
+        ) {
             Ok(d) => d,
-            Err(ref e)
-                if matches!(
-                    e.stable_kind(),
-                    "invalid_encoding" | "unimplemented_instruction"
-                ) =>
-            {
-                let mode = match decoder.xlen() {
-                    Xlen::X32 => crate::backend::RiscVMode::RV32,
-                    Xlen::X64 => crate::backend::RiscVMode::RV64,
-                };
-                let features = crate::backend::RiscVFeature::from_extensions(decoder.extensions());
-                let profile = DecodeProfile {
-                    mode,
-                    features,
-                    render_dialect: robustone_isa::RenderDialect::Canonical,
-                    alias_policy: robustone_isa::AliasPolicy::None,
-                };
-                robustone_isa::decode_one::<crate::backend::RiscVBackend>(bytes, addr, &profile)?
+            Err(ref e) if matches!(e.stable_kind(), "invalid_encoding") => {
+                decoder.decode(bytes, arch_name, addr)?
             }
             Err(e) => return Err(e),
         };

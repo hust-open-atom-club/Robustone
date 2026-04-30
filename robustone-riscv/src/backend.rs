@@ -157,7 +157,7 @@ robustone_isa::isa_specs! {
         ];
         features = RiscVFeature::I;
         modes = ModeSet::All;
-        groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Arithmetic];
+        groups = &[robustone_isa::InstructionGroup::Arithmetic];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
     spec LW {
@@ -384,16 +384,17 @@ robustone_isa::isa_specs! {
     spec FADD_S {
         mnemonic = "fadd.s";
         opcode_id = "FADD_S";
-        pattern = robustone_isa::mask_value!(0xFE00_707F, 0x0000_0053);
+        pattern = robustone_isa::mask_value!(0xFE00_007F, 0x0000_0053);
         format = &R_TYPE;
         operands = &[
             robustone_isa::reg!(RiscVRegisterClass::Fpr, RiscVField::Rd, robustone_isa::Access::Write),
             robustone_isa::reg!(RiscVRegisterClass::Fpr, RiscVField::Rs1, robustone_isa::Access::Read),
             robustone_isa::reg!(RiscVRegisterClass::Fpr, RiscVField::Rs2, robustone_isa::Access::Read),
+            robustone_isa::text!(RiscVField::Funct3, robustone_isa::ImmediateTransform::None),
         ];
         features = RiscVFeature::F;
         modes = ModeSet::All;
-        groups = &[robustone_isa::InstructionGroup::Float, robustone_isa::InstructionGroup::Arithmetic];
+        groups = &[robustone_isa::InstructionGroup::Float];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
     spec FSUB_S {
