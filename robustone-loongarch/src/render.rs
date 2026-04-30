@@ -18,17 +18,20 @@ fn format_register(id: u32, alias_regs: bool) -> String {
     }
 }
 
+// LEGACY: Phase 3 will replace mnemonic lists with spec-level EffectSpec/InstructionGroup classification.
 /// Branch instructions that Upstream renders as absolute addresses.
 const BRANCH_MNEMONICS: &[&str] = &[
     "b", "bl", "beq", "bne", "blt", "bge", "bltu", "bgeu", "beqz", "bnez", "bceqz", "bcnez",
 ];
 
+// LEGACY: Phase 3 will replace mnemonic lists with spec-level render metadata (is_pc_relative flag on FormatSpec).
 /// Control-flow mnemonics whose last immediate operand is PC-relative.
 /// `jirl` is excluded because its offset is added to `rj`, not to the PC.
 const PC_RELATIVE_MNEMONICS: &[&str] = &[
     "b", "bl", "beq", "bne", "blt", "bge", "bltu", "bgeu", "beqz", "bnez", "bceqz", "bcnez",
 ];
 
+// LEGACY: Phase 3 will migrate immediate masks to per-instruction spec fields (FormatSpec::imm_width or OperandSpec::imm_mask).
 /// Return the expected raw bit-mask for the immediate field of `mnemonic`.
 ///
 /// This is used when `unsigned_immediate` is enabled so that sign-extended
@@ -143,6 +146,7 @@ pub fn render_loongarch_text_parts(
         .collect::<Vec<_>>()
         .join(", ");
 
+    // LEGACY: Phase 3 will replace mnemonic-based vector register alias detection with register bank metadata on OperandSpec.
     // The reference decoder uses $vr for LSX (128-bit) vector registers and $xr for LASX (256-bit).
     // LSX instructions start with 'v' but do not contain "xv"; LASX instructions contain "xv".
     // Only apply the alias when register aliasing is enabled.
