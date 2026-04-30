@@ -59,7 +59,7 @@ use robustone_core::{
     traits::instruction::Detail,
     types::error::DisasmError,
 };
-use robustone_isa::{DecodeProfile, FeatureSet};
+use robustone_isa::DecodeProfile;
 
 /// Architecture handler implementation for RISC-V targets.
 pub struct RiscVHandler {
@@ -181,9 +181,14 @@ impl ArchitectureHandler for RiscVHandler {
                     "invalid_encoding" | "unimplemented_instruction"
                 ) =>
             {
+                let mode = match decoder.xlen() {
+                    Xlen::X32 => crate::backend::RiscVMode::RV32,
+                    Xlen::X64 => crate::backend::RiscVMode::RV64,
+                };
+                let features = crate::backend::RiscVFeature::from_extensions(decoder.extensions());
                 let profile = DecodeProfile {
-                    mode: crate::backend::RiscVMode::RV64,
-                    features: crate::backend::RiscVFeature::all_supported_for_tests(),
+                    mode,
+                    features,
                     render_dialect: robustone_isa::RenderDialect::Canonical,
                     alias_policy: robustone_isa::AliasPolicy::None,
                 };

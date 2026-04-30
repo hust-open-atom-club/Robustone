@@ -44,6 +44,33 @@ impl FeatureSet for RiscVFeature {
     }
 }
 
+impl RiscVFeature {
+    /// Build feature set from legacy `Extensions` configuration.
+    pub fn from_extensions(extensions: &crate::extensions::Extensions) -> Self {
+        use crate::extensions::standard::Standard;
+        let mut features = Self::empty();
+        if extensions.standard.contains(Standard::I) {
+            features |= Self::I;
+        }
+        if extensions.standard.contains(Standard::M) {
+            features |= Self::M;
+        }
+        if extensions.standard.contains(Standard::A) {
+            features |= Self::A;
+        }
+        if extensions.standard.contains(Standard::F) {
+            features |= Self::F;
+        }
+        if extensions.standard.contains(Standard::D) {
+            features |= Self::D;
+        }
+        if extensions.standard.contains(Standard::C) {
+            features |= Self::C;
+        }
+        features
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RiscVField {
     Rd,
@@ -97,7 +124,7 @@ robustone_isa::format_specs! {
     }
     format J_TYPE[RiscVField] {
         rd: robustone_isa::field("rd", 7, 5, RiscVField::Rd),
-        imm20j: robustone_isa::field("imm20j", 0, 20, RiscVField::Imm20J),
+        imm20j: robustone_isa::field("imm20j", 0, 21, RiscVField::Imm20J),
     }
 }
 
@@ -200,7 +227,7 @@ robustone_isa::isa_specs! {
         format = &J_TYPE;
         operands = &[
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write),
-            robustone_isa::imm!(RiscVField::Imm20J, robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 20, shift: 1 }, robustone_isa::ImmediateKind::PcRelative),
+            robustone_isa::imm!(RiscVField::Imm20J, robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 21, shift: 1 }, robustone_isa::ImmediateKind::PcRelative),
         ];
         features = RiscVFeature::I;
         modes = ModeSet::All;

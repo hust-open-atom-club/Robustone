@@ -51,6 +51,16 @@ impl RiscVDecoder {
         Self::new(Xlen::X64, Extensions::rv64gc())
     }
 
+    /// Return the configured XLEN.
+    pub fn xlen(&self) -> Xlen {
+        self.xlen
+    }
+
+    /// Return the enabled extensions.
+    pub fn extensions(&self) -> &Extensions {
+        &self.extensions
+    }
+
     /// Build a decoder from an explicit architecture profile.
     pub fn from_profile(profile: &ArchitectureProfile) -> Result<Self, DisasmError> {
         if profile.endianness != Endianness::Little {
