@@ -147,6 +147,7 @@ pub fn infer_groups(mnemonic: &str) -> Vec<String> {
     groups
 }
 
+// LEGACY: Phase 5 will migrate implicit register inference to spec-level EffectSpec.
 /// Infer implicit registers read/written for special instructions.
 pub fn infer_implicit_registers(mnemonic: &str) -> (Vec<RegisterId>, Vec<RegisterId>) {
     match mnemonic {

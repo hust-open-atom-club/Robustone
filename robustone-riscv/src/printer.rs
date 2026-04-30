@@ -384,6 +384,8 @@ impl RiscVPrinter {
         csr_mnemonics.contains(&mnemonic) && index == 1
     }
 
+    // LEGACY: Phase 5 will replace mnemonic-based control-flow detection with
+    // InstructionGroup membership. Note: duplicates render.rs logic — consolidate in Phase 5.
     fn is_control_flow_mnemonic(&self, mnemonic: &str) -> bool {
         matches!(
             mnemonic,

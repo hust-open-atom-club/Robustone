@@ -349,6 +349,7 @@ fn format_riscv_unsigned_immediate(value: i64, mode: &str) -> String {
     }
 }
 
+// LEGACY: Phase 5 will replace mnemonic-based control-flow detection with InstructionGroup membership.
 fn is_riscv_control_flow_mnemonic(mnemonic: &str) -> bool {
     matches!(
         mnemonic,
@@ -369,6 +370,7 @@ fn is_riscv_control_flow_mnemonic(mnemonic: &str) -> bool {
     )
 }
 
+// LEGACY: Phase 5 will migrate CSR operand detection to spec-level operand metadata.
 fn is_riscv_csr_operand(mnemonic: &str, index: usize) -> bool {
     matches!(
         mnemonic,
