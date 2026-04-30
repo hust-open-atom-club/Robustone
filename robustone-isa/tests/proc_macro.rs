@@ -32,16 +32,9 @@ impl FeatureSet for MacroFeature {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MacroField {
-    Rd,
-    Rs1,
-    Rs2,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MacroRegClass {
-    Gpr,
+robustone_isa_macros::define_registers! {
+    arch = Macro;
+    bank Gpr { count = 32; prefix = "$r"; }
 }
 
 robustone_isa_macros::define_formats! {
@@ -58,9 +51,9 @@ robustone_isa_macros::define_instructions! {
         pattern = robustone_isa::mask_value!(0xFF00_0000, 0x0100_0000);
         format = &MACRO_R3;
         operands = &[
-            robustone_isa::reg!(MacroRegClass::Gpr, MacroField::Rd, Access::Write),
-            robustone_isa::reg!(MacroRegClass::Gpr, MacroField::Rs1, Access::Read),
-            robustone_isa::reg!(MacroRegClass::Gpr, MacroField::Rs2, Access::Read),
+            robustone_isa::reg!(MacroRegisterClass::Gpr, MacroField::Rd, Access::Write),
+            robustone_isa::reg!(MacroRegisterClass::Gpr, MacroField::Rs1, Access::Read),
+            robustone_isa::reg!(MacroRegisterClass::Gpr, MacroField::Rs2, Access::Read),
         ];
         modes = ModeSet::All;
         features = MacroFeature::BASE;
@@ -76,7 +69,7 @@ impl ArchitectureBackend for MacroBackend {
     type Mode = MacroMode;
     type Feature = MacroFeature;
     type Field = MacroField;
-    type RegisterClass = MacroRegClass;
+    type RegisterClass = MacroRegisterClass;
 
     fn architecture_id() -> ArchitectureId {
         ArchitectureId::Riscv

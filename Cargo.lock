@@ -760,6 +760,7 @@ name = "robustone-isa"
 version = "0.1.0"
 dependencies = [
  "bitflags",
+ "criterion",
  "robustone-core",
  "robustone-isa-macros",
 ]

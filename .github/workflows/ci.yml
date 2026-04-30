@@ -38,6 +38,14 @@ jobs:
         id: repo_checks
         run: make check
 
+      - name: Run boundary checks
+        id: boundary_checks
+        run: cargo xtask verify-boundary
+
+      - name: Run spec validation
+        id: spec_checks
+        run: cargo xtask check-spec --all
+
       - name: Summarize repository checks
         if: always()
         run: |
@@ -45,6 +53,8 @@ jobs:
             echo "## Repository Checks"
             echo
             echo "- \`make check\`: ${{ steps.repo_checks.outcome }}"
+            echo "- \`cargo xtask verify-boundary\`: ${{ steps.boundary_checks.outcome }}"
+            echo "- \`cargo xtask check-spec --all\`: ${{ steps.spec_checks.outcome }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
   test:

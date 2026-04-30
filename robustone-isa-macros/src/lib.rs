@@ -38,7 +38,7 @@ pub fn define_arch(input: TokenStream) -> TokenStream {
     let parsed = syn::parse_macro_input!(input as DefineArchInput);
     let vis = &parsed.vis;
     let name = &parsed.name;
-    let word_ty = &parsed.word;
+    let _word_ty = &parsed.word;
     let modes_name = Ident::new(&format!("{}Mode", name), Span::call_site());
     let feature_name = Ident::new(&format!("{}Feature", name), Span::call_site());
     let backend_name = Ident::new(&format!("{}Backend", name), Span::call_site());
@@ -85,14 +85,6 @@ pub fn define_arch(input: TokenStream) -> TokenStream {
         }
 
         #vis struct #backend_name;
-
-        impl ::robustone_isa::ArchitectureBackend for #backend_name {
-            type Word = #word_ty;
-            type Mode = #modes_name;
-            type Feature = #feature_name;
-            // Field, RegisterClass, and remaining trait methods must be provided
-            // by the architecture crate after invoking define_arch!.
-        }
     };
 
     output.into()
@@ -163,7 +155,7 @@ impl Parse for DefineArchInput {
         let _ilen_kind: Ident = content.parse()?;
         let _paren;
         syn::parenthesized!(_paren in content);
-        let _ilen_val: syn::LitInt = content.parse()?;
+        let _ilen_val: syn::LitInt = _paren.parse()?;
         let _semi: Token![;] = content.parse()?;
 
         // modes { ... }
@@ -253,33 +245,70 @@ impl Parse for DefineArchInput {
 /// ```
 #[proc_macro]
 pub fn define_registers(input: TokenStream) -> TokenStream {
-    let _parsed = syn::parse_macro_input!(input as DefineRegistersInput);
+    let parsed = syn::parse_macro_input!(input as DefineRegistersInput);
+    let arch = &parsed.arch;
+    let reg_class_enum = Ident::new(&format!("{}RegisterClass", arch), Span::call_site());
+
+    let variants: Vec<_> = parsed
+        .banks
+        .iter()
+        .map(|b| {
+            let variant = to_pascal_case_ident(&b.name);
+            quote! { #variant }
+        })
+        .collect();
+
     quote! {
-        // Register bank metadata is stored as a static table for now.
-        // Full implementation will expand in a subsequent round.
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        pub enum #reg_class_enum {
+            #(#variants),*
+        }
     }
     .into()
 }
 
-struct DefineRegistersInput;
+struct DefineRegistersInput {
+    arch: Ident,
+    banks: Vec<RegisterBankDef>,
+}
+
+struct RegisterBankDef {
+    name: Ident,
+}
 
 impl Parse for DefineRegistersInput {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         // arch = <ident>;
         let _arch_kw: Ident = input.parse()?;
         let _eq: Token![=] = input.parse()?;
-        let _arch_name: Ident = input.parse()?;
+        let arch: Ident = input.parse()?;
         let _semi: Token![;] = input.parse()?;
 
-        // Minimal parse: consume remaining tokens as register bank definitions
+        // Parse bank definitions
+        let mut banks = Vec::new();
         while !input.is_empty() {
             let _bank_kw: Ident = input.parse()?;
-            let _bank_name: Ident = input.parse()?;
-            let _content;
-            braced!(_content in input);
+            let name: Ident = input.parse()?;
+            let content;
+            braced!(content in input);
+            // Consume bank body (count, prefix, aliases) but don't use yet
+            while !content.is_empty() {
+                let _key: Ident = content.parse()?;
+                let _eq: Token![=] = content.parse()?;
+                if content.peek(syn::token::Brace) {
+                    let _nested;
+                    braced!(_nested in content);
+                } else {
+                    let _val: syn::Expr = content.parse()?;
+                }
+                if !content.is_empty() {
+                    let _semi: Token![;] = content.parse()?;
+                }
+            }
+            banks.push(RegisterBankDef { name });
         }
 
-        Ok(DefineRegistersInput)
+        Ok(DefineRegistersInput { arch, banks })
     }
 }
 
@@ -303,23 +332,40 @@ pub fn define_formats(input: TokenStream) -> TokenStream {
     let arch = &parsed.arch;
     let field_enum = Ident::new(&format!("{}Field", arch), Span::call_site());
 
+    // Generate field enum variants from the fields block
+    let field_variants: Vec<_> = parsed
+        .fields
+        .iter()
+        .map(|f| {
+            let variant = to_pascal_case_ident(f);
+            quote! { #variant }
+        })
+        .collect();
+
+    // Validate that all fields used in formats are declared in the fields block
+    let declared_fields: std::collections::HashSet<String> =
+        parsed.fields.iter().map(|f| f.to_string()).collect();
+    for format in &parsed.formats {
+        for field in &format.fields {
+            if !declared_fields.contains(&field.name.to_string()) {
+                let msg = format!(
+                    "field '{}' used in format '{}' but not declared in fields block",
+                    field.name, format.name
+                );
+                return syn::Error::new(field.name.span(), msg)
+                    .to_compile_error()
+                    .into();
+            }
+        }
+    }
+
     let format_statics: Vec<_> = parsed.formats.iter().map(|f| {
         let name = &f.name;
         let field_specs: Vec<_> = f.fields.iter().map(|field| {
             let fname = &field.name;
             let start = &field.start;
             let length = &field.length;
-            let name_str = fname.to_string();
-            let field_type_str = if name_str.is_empty() {
-                String::new()
-            } else {
-                let mut chars = name_str.chars();
-                match chars.next() {
-                    Some(first) => first.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase(),
-                    None => String::new(),
-                }
-            };
-            let field_type = Ident::new(&field_type_str, Span::call_site());
+            let field_type = to_pascal_case_ident(fname);
             quote! {
                 ::robustone_isa::field(stringify!(#fname), #start, #length, #field_enum::#field_type)
             }
@@ -334,6 +380,11 @@ pub fn define_formats(input: TokenStream) -> TokenStream {
     }).collect();
 
     quote! {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        pub enum #field_enum {
+            #(#field_variants),*
+        }
+
         #(#format_statics)*
     }
     .into()
@@ -341,6 +392,7 @@ pub fn define_formats(input: TokenStream) -> TokenStream {
 
 struct DefineFormatsInput {
     arch: Ident,
+    fields: Vec<Ident>,
     formats: Vec<FormatDef>,
 }
 
@@ -358,6 +410,16 @@ struct FormatFieldDef {
     length: syn::LitInt,
 }
 
+fn to_pascal_case_ident(ident: &Ident) -> Ident {
+    let s = ident.to_string();
+    let mut chars = s.chars();
+    let pascal = match chars.next() {
+        Some(first) => first.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase(),
+        None => String::new(),
+    };
+    Ident::new(&pascal, ident.span())
+}
+
 impl Parse for DefineFormatsInput {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         // arch = <ident>;
@@ -366,14 +428,16 @@ impl Parse for DefineFormatsInput {
         let arch: Ident = input.parse()?;
         let _semi: Token![;] = input.parse()?;
 
-        // fields { ... } - consume but don't use yet
+        // fields { rd; rj; rk; si12; }
         let _fields_kw: Ident = input.parse()?;
-        let _fields_content;
-        braced!(_fields_content in input);
-        while !_fields_content.is_empty() {
-            let _field_name: Ident = _fields_content.parse()?;
-            if !_fields_content.is_empty() {
-                let _semi: Token![;] = _fields_content.parse()?;
+        let fields_content;
+        braced!(fields_content in input);
+        let mut fields = Vec::new();
+        while !fields_content.is_empty() {
+            let field_name: Ident = fields_content.parse()?;
+            fields.push(field_name);
+            if !fields_content.is_empty() {
+                let _semi: Token![;] = fields_content.parse()?;
             }
         }
         let _semi: Token![;] = input.parse()?;
@@ -386,7 +450,7 @@ impl Parse for DefineFormatsInput {
             let content;
             braced!(content in input);
 
-            let mut fields = Vec::new();
+            let mut format_fields = Vec::new();
             while !content.is_empty() {
                 let field_name: Ident = content.parse()?;
                 let _colon: Token![:] = content.parse()?;
@@ -402,7 +466,7 @@ impl Parse for DefineFormatsInput {
                 if !content.is_empty() {
                     let _comma: Token![,] = content.parse()?;
                 }
-                fields.push(FormatFieldDef {
+                format_fields.push(FormatFieldDef {
                     name: field_name,
                     _colon,
                     _bits_fn: bits_fn,
@@ -412,14 +476,21 @@ impl Parse for DefineFormatsInput {
                 });
             }
 
-            formats.push(FormatDef { name, fields });
+            formats.push(FormatDef {
+                name,
+                fields: format_fields,
+            });
 
             if !input.is_empty() {
                 let _semi: Token![;] = input.parse()?;
             }
         }
 
-        Ok(DefineFormatsInput { arch, formats })
+        Ok(DefineFormatsInput {
+            arch,
+            fields,
+            formats,
+        })
     }
 }
 
@@ -513,11 +584,29 @@ pub fn define_instructions(input: TokenStream) -> TokenStream {
         })
         .collect();
 
+    // Compile-time validation: missing manual_ref
+    let missing_manual_checks: Vec<_> = parsed
+        .instructions
+        .iter()
+        .filter_map(|i| {
+            if i.manual.is_none() {
+                let msg = format!("instruction '{}' is missing manual_ref", i.mnemonic.value());
+                Some(quote! {
+                    const _: () = ::core::compile_error!(#msg);
+                })
+            } else {
+                None
+            }
+        })
+        .collect();
+
     // Generate specs array
     let spec_names: Vec<_> = parsed.instructions.iter().map(|i| &i.name).collect();
 
     quote! {
         #(#duplicate_checks)*
+
+        #(#missing_manual_checks)*
 
         #(#spec_statics)*
 

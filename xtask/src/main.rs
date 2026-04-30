@@ -3,6 +3,8 @@
 //! Provides development and CI tools:
 //! - `cargo xtask verify-boundary` – check workspace dependency and content boundaries
 //! - `cargo xtask check-spec --all` – validate instruction spec tables
+//! - `cargo xtask compat [--strict]` – run Capstone compatibility tests
+//! - `cargo xtask compat-report [--deny-xfail-increase]` – generate compatibility report
 //! - `cargo xtask new-arch <name>` – scaffold a new architecture crate
 
 use std::env;
@@ -15,15 +17,19 @@ fn main() -> ExitCode {
     if args.is_empty() {
         eprintln!("Usage: cargo xtask <command> [args...]");
         eprintln!("Commands:");
-        eprintln!("  verify-boundary     Check workspace boundary constraints");
-        eprintln!("  check-spec --all    Validate instruction spec tables");
-        eprintln!("  new-arch <name>     Scaffold a new architecture crate");
+        eprintln!("  verify-boundary       Check workspace boundary constraints");
+        eprintln!("  check-spec --all      Validate instruction spec tables");
+        eprintln!("  compat [--strict]     Run Capstone compatibility tests");
+        eprintln!("  compat-report [--deny-xfail-increase]  Generate compatibility report");
+        eprintln!("  new-arch <name>       Scaffold a new architecture crate");
         return ExitCode::FAILURE;
     }
 
     match args[0].as_str() {
         "verify-boundary" => verify_boundary(),
         "check-spec" => check_spec(&args[1..]),
+        "compat" => compat(&args[1..]),
+        "compat-report" => compat_report(&args[1..]),
         "new-arch" => new_arch(&args[1..]),
         other => {
             eprintln!("Unknown command: {}", other);
@@ -309,71 +315,56 @@ pub use arch::{{{}Backend, {}Decoder}};
     fs::write(crate_dir.join("src/lib.rs"), lib_rs).unwrap();
 
     let pascal = to_pascal_case(name);
-    let upper = pascal.to_uppercase();
+    let _upper = pascal.to_uppercase();
     let arch_id = &pascal;
     let register_ctor = name.to_lowercase();
     let arch_rs = format!(
-        r#"use robustone_isa::{{
-    Access, ArchitectureBackend, DecodeProfile, FeatureSet, FormatSpec, ImmediateKind,
-    ImmediateTransform, InstructionGroup, InstructionRead, InstructionSpec, ModeSet, RenderPolicy,
-    field,
-}};
-use robustone_core::ir::{{ArchitectureId, RegisterId}};
+        r#"use robustone_core::ir::{{ArchitectureId, RegisterId}};
 use robustone_core::types::error::{{DecodeErrorKind, DisasmError}};
+use robustone_isa::{{
+    ArchitectureBackend, DecodeProfile, FeatureSet, FormatSpec, InstructionRead,
+    InstructionSpec, RenderPolicy,
+}};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum {pascal}Mode {{
-    Base,
-}}
-
-bitflags::bitflags! {{
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct {pascal}Feature: u8 {{
-        const BASE = 1 << 0;
+robustone_isa_macros::define_arch! {{
+    pub arch {pascal} {{
+        word = u32;
+        endian = little;
+        instruction_length = fixed(4);
+        modes {{ Base = "{name}"; }};
+        features: u8 {{ BASE = 0; }};
+        registers = {name}_registers;
+        formats = {name}_formats;
+        specs = {name}_specs;
+        render = {pascal}RenderPolicy;
     }}
 }}
 
-impl FeatureSet for {pascal}Feature {{
-    fn empty() -> Self {{ Self::empty() }}
-    fn all_supported_for_tests() -> Self {{ Self::BASE }}
-    fn contains(self, required: Self) -> bool {{ self.0 & required.0 == required.0 }}
+robustone_isa_macros::define_registers! {{
+    arch = {pascal};
+    bank Gpr {{ count = 32; prefix = "$r"; }}
 }}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum {pascal}Field {{
-    Rd,
-    Rs1,
+robustone_isa_macros::define_formats! {{
+    arch = {pascal};
+    fields {{ rd; rs1; }};
+    format R {{ rd: bits(0, 5), rs1: bits(5, 5) }}
 }}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum {pascal}RegisterClass {{
-    Gpr,
-}}
-
-robustone_isa::format_specs! {{
-    format R[{pascal}Field] {{
-        rd: field("rd", 0, 5, {pascal}Field::Rd),
-        rs1: field("rs1", 5, 5, {pascal}Field::Rs1),
-    }}
-}}
-
-robustone_isa::isa_specs! {{
-    backend = {pascal}Backend;
-    spec NOP {{
+robustone_isa_macros::define_instructions! {{
+    arch = {pascal}; module = base;
+    insn NOP {{
         mnemonic = "nop";
         opcode_id = "NOP";
         pattern = robustone_isa::mask_value!(0xFFFF_FFFF, 0x0000_0000);
         format = &R;
         operands = &[];
+        modes = robustone_isa::ModeSet::All;
         features = {pascal}Feature::BASE;
-        modes = ModeSet::All;
         groups = &[];
+        manual = "Architecture Reference Manual";
     }}
 }}
-
-pub static {upper}_SPECS: &[InstructionSpec<{pascal}Backend>] = &[NOP];
-
-pub struct {pascal}Backend;
 
 impl ArchitectureBackend for {pascal}Backend {{
     type Word = u32;
@@ -390,7 +381,7 @@ impl ArchitectureBackend for {pascal}Backend {{
         if bytes.len() < 4 {{
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::NeedMoreBytes,
-                Some("mock".to_string()),
+                Some("{name}".to_string()),
                 "need 4 bytes",
             ));
         }}
@@ -402,7 +393,7 @@ impl ArchitectureBackend for {pascal}Backend {{
         word: Self::Word,
         _profile: &DecodeProfile<Self>,
     ) -> Option<&'static InstructionSpec<Self>> {{
-        {upper}_SPECS.iter().find(|spec| (word & spec.pattern.mask) == spec.pattern.value)
+        SPECS.iter().find(|spec| (word & spec.pattern.mask) == spec.pattern.value)
     }}
 
     fn lower_register(
@@ -435,7 +426,7 @@ impl ArchitectureBackend for {pascal}Backend {{
 pub type {pascal}Decoder = robustone_isa::Decoder<{pascal}Backend>;
 "#,
         pascal = pascal,
-        upper = upper
+        name = name.to_lowercase(),
     );
     fs::write(crate_dir.join("src/arch.rs"), arch_rs).unwrap();
 
@@ -498,6 +489,121 @@ fn to_pascal_case(s: &str) -> String {
             }
         })
         .collect()
+}
+
+// ============================================================================
+// compat
+// ============================================================================
+
+fn compat(args: &[String]) -> ExitCode {
+    let strict = args.contains(&"--strict".to_string());
+    let output = std::process::Command::new("cargo")
+        .args([
+            "test",
+            "-p",
+            "robustone-capstone-compat",
+            "--lib",
+            "--quiet",
+        ])
+        .output();
+
+    match output {
+        Ok(out) => {
+            let _stdout = String::from_utf8_lossy(&out.stdout);
+            let stderr = String::from_utf8_lossy(&out.stderr);
+            if out.status.success() {
+                println!("compat: all tests passed");
+                if !stderr.is_empty() {
+                    println!("{}", stderr);
+                }
+                ExitCode::SUCCESS
+            } else {
+                eprintln!("compat: tests failed");
+                eprintln!("{}", stderr);
+                if strict {
+                    ExitCode::FAILURE
+                } else {
+                    println!("compat: non-strict mode – treating as warning");
+                    ExitCode::SUCCESS
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("compat: failed to run tests: {}", e);
+            ExitCode::FAILURE
+        }
+    }
+}
+
+// ============================================================================
+// compat-report
+// ============================================================================
+
+fn compat_report(args: &[String]) -> ExitCode {
+    let deny_xfail_increase = args.contains(&"--deny-xfail-increase".to_string());
+
+    let output = std::process::Command::new("cargo")
+        .args(["test", "-p", "robustone-capstone-compat", "--lib"])
+        .output();
+
+    match output {
+        Ok(out) => {
+            let _stdout = String::from_utf8_lossy(&out.stdout);
+            let stderr = String::from_utf8_lossy(&out.stderr);
+            let combined = format!("{}\n{}", _stdout, stderr);
+
+            let mut pass = 0usize;
+            let mut fail = 0usize;
+            let mut ignored = 0usize;
+
+            for line in combined.lines() {
+                if line.contains("test result:") {
+                    // Parse "test result: ok. 18 passed; 0 failed; 1 ignored"
+                    if let Some(p) = line.find("passed") {
+                        let trimmed = line[..p].trim_end();
+                        let start = trimmed.rfind(' ').map(|i| i + 1).unwrap_or(0);
+                        if let Ok(n) = trimmed[start..].trim().parse::<usize>() {
+                            pass += n;
+                        }
+                    }
+                    if let Some(f) = line.find("failed") {
+                        let trimmed = line[..f].trim_end();
+                        let start = trimmed.rfind(' ').map(|i| i + 1).unwrap_or(0);
+                        if let Ok(n) = trimmed[start..].trim().parse::<usize>() {
+                            fail += n;
+                        }
+                    }
+                    if let Some(i) = line.find("ignored") {
+                        let trimmed = line[..i].trim_end();
+                        let start = trimmed.rfind(' ').map(|i| i + 1).unwrap_or(0);
+                        if let Ok(n) = trimmed[start..].trim().parse::<usize>() {
+                            ignored += n;
+                        }
+                    }
+                }
+            }
+
+            println!(
+                "compat-report: {} passed, {} failed, {} ignored",
+                pass, fail, ignored
+            );
+
+            if fail > 0 {
+                println!("compat-report: WARNING – {} test(s) failed", fail);
+            }
+
+            if deny_xfail_increase && fail > 0 {
+                eprintln!("compat-report: FAIL – xfail increased ({} failures)", fail);
+                return ExitCode::FAILURE;
+            }
+
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("compat-report: failed to run tests: {}", e);
+            ExitCode::FAILURE
+        }
+    }
 }
 
 // ============================================================================
