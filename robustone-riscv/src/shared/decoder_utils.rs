@@ -80,6 +80,8 @@ fn rounding_mode_name(rm: u8) -> &'static str {
     }
 }
 
+// LEGACY: Phase 5 will migrate all mnemonic-based group inference to spec-level
+// InstructionGroup/EffectSpec classification. Do NOT add new mnemonic patterns here.
 /// Infer instruction groups from mnemonic.
 pub fn infer_groups(mnemonic: &str) -> Vec<String> {
     let mut groups = Vec::new();

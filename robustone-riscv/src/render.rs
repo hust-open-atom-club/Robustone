@@ -17,6 +17,8 @@ pub fn render_riscv_text_parts(
     compressed_aliases: bool,
     unsigned_immediate: bool,
 ) -> (String, String) {
+    // LEGACY: Phase 5 will migrate compressed-instruction detection to spec-level
+    // EncodingConstraint or instruction group membership.
     let use_compat_aliases =
         compat_aliases && (compressed_aliases || !instruction.mnemonic.starts_with("c."));
 
@@ -56,6 +58,7 @@ pub fn render_riscv_text_parts(
         );
     }
 
+    // LEGACY: Phase 5 will migrate atomic operand formatting to spec-level OperandSpec layout hints.
     if mnemonic.starts_with("sc.") || mnemonic.starts_with("amo") {
         return (
             mnemonic,
@@ -373,6 +376,8 @@ fn is_riscv_csr_operand(mnemonic: &str, index: usize) -> bool {
     ) && index == 1
 }
 
+// LEGACY: Phase 5 will replace mnemonic-based atomic memory detection with
+// InstructionGroup membership checks from the spec table.
 fn is_riscv_atomic_memory_mnemonic(mnemonic: &str) -> bool {
     mnemonic.starts_with("lr.") || mnemonic.starts_with("sc.") || mnemonic.starts_with("amo")
 }

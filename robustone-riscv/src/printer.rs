@@ -152,6 +152,7 @@ impl RiscVPrinter {
 
     /// Render the shared IR into mnemonic and operand text.
     pub fn render_ir_parts(&self, ir: &DecodedInstruction) -> (String, String) {
+        // LEGACY: Phase 5 will migrate compressed-instruction detection to spec-level EncodingConstraint.
         let use_compat_aliases =
             self.compat_aliases && (self.compressed_aliases || !ir.mnemonic.starts_with("c."));
         let mnemonic = match self.profile {
@@ -180,6 +181,8 @@ impl RiscVPrinter {
             .collect::<Vec<_>>();
         let last_visible_index = visible_operands.last().map(|(index, _)| *index);
 
+        // LEGACY: Phase 5 will migrate LR/SC/AMO operand formatting to spec-level
+        // OperandSpec layout hints (is_atomic_memory, operand_order, etc.).
         let operands = if mnemonic == "jalr" {
             self.format_ir_jalr_operands(&visible_operands, ir.mode.as_str())
         } else if mnemonic.starts_with("lr.") {
