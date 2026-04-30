@@ -319,6 +319,38 @@ fn bench_decode_invalid_random(c: &mut Criterion) {
     group.finish();
 }
 
+fn bench_decode_valid_float(c: &mut Criterion) {
+    let profile = DecodeProfile {
+        mode: RiscVMode::RV64,
+        features: RiscVFeature::all_supported_for_tests(),
+        render_dialect: RenderDialect::Canonical,
+        alias_policy: AliasPolicy::None,
+    };
+    let mut group = c.benchmark_group("decode_valid_float");
+
+    // fadd.s f1, f2, f3  =>  0x003100D3
+    let fadd_bytes = [0xD3, 0x00, 0x31, 0x00];
+    group.bench_function("fadd_s", |b| {
+        b.iter(|| {
+            black_box(
+                robustone_isa::decode_one::<RiscVBackend>(&fadd_bytes, 0x1000, &profile).unwrap(),
+            )
+        });
+    });
+
+    // fmul.s f1, f2, f3  =>  0x103100D3
+    let fmul_bytes = [0xD3, 0x00, 0x31, 0x10];
+    group.bench_function("fmul_s", |b| {
+        b.iter(|| {
+            black_box(
+                robustone_isa::decode_one::<RiscVBackend>(&fmul_bytes, 0x1000, &profile).unwrap(),
+            )
+        });
+    });
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_decode_one,
@@ -326,6 +358,7 @@ criterion_group!(
     bench_decode_valid_integer,
     bench_decode_valid_branch,
     bench_decode_valid_memory,
+    bench_decode_valid_float,
     bench_decode_invalid_random,
 );
 criterion_main!(benches);
