@@ -115,7 +115,7 @@ robustone_isa::format_specs! {
     format B_TYPE[RiscVField] {
         rs1: robustone_isa::field("rs1", 15, 5, RiscVField::Rs1),
         rs2: robustone_isa::field("rs2", 20, 5, RiscVField::Rs2),
-        imm12b: robustone_isa::field("imm12b", 0, 13, RiscVField::Imm12B),
+        imm12b: robustone_isa::field("imm12b", 0, 12, RiscVField::Imm12B),
         funct3: robustone_isa::field("funct3", 12, 3, RiscVField::Funct3),
     }
     format U_TYPE[RiscVField] {
@@ -124,7 +124,7 @@ robustone_isa::format_specs! {
     }
     format J_TYPE[RiscVField] {
         rd: robustone_isa::field("rd", 7, 5, RiscVField::Rd),
-        imm20j: robustone_isa::field("imm20j", 0, 21, RiscVField::Imm20J),
+        imm20j: robustone_isa::field("imm20j", 0, 20, RiscVField::Imm20J),
     }
 }
 
@@ -198,7 +198,7 @@ robustone_isa::isa_specs! {
         operands = &[
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read),
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs2, robustone_isa::Access::Read),
-            robustone_isa::imm!(RiscVField::Imm12B, robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 13, shift: 1 }, robustone_isa::ImmediateKind::PcRelative),
+            robustone_isa::imm!(RiscVField::Imm12B, robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 12, shift: 1 }, robustone_isa::ImmediateKind::PcRelative),
         ];
         features = RiscVFeature::I;
         modes = ModeSet::All;
@@ -213,7 +213,7 @@ robustone_isa::isa_specs! {
         operands = &[
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read),
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs2, robustone_isa::Access::Read),
-            robustone_isa::imm!(RiscVField::Imm12B, robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 13, shift: 1 }, robustone_isa::ImmediateKind::PcRelative),
+            robustone_isa::imm!(RiscVField::Imm12B, robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 12, shift: 1 }, robustone_isa::ImmediateKind::PcRelative),
         ];
         features = RiscVFeature::I;
         modes = ModeSet::All;
@@ -227,7 +227,7 @@ robustone_isa::isa_specs! {
         format = &J_TYPE;
         operands = &[
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write),
-            robustone_isa::imm!(RiscVField::Imm20J, robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 21, shift: 1 }, robustone_isa::ImmediateKind::PcRelative),
+            robustone_isa::imm!(RiscVField::Imm20J, robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 20, shift: 1 }, robustone_isa::ImmediateKind::PcRelative),
         ];
         features = RiscVFeature::I;
         modes = ModeSet::All;
@@ -357,7 +357,7 @@ impl ArchitectureBackend for RiscVBackend {
                 let imm105 = (word >> 25) & 0x3F;
                 let imm41 = (word >> 8) & 0xF;
                 let imm11 = (word >> 7) & 1;
-                (imm12 << 12) | (imm11 << 11) | (imm105 << 5) | (imm41 << 1)
+                (imm12 << 11) | (imm11 << 10) | (imm105 << 4) | imm41
             }
             RiscVField::Imm20U => (word >> 12) & 0xFFFFF,
             RiscVField::Imm20J => {
@@ -365,7 +365,7 @@ impl ArchitectureBackend for RiscVBackend {
                 let imm101 = (word >> 21) & 0x3FF;
                 let imm11 = (word >> 20) & 1;
                 let imm1912 = (word >> 12) & 0xFF;
-                (imm20 << 20) | (imm1912 << 12) | (imm11 << 11) | (imm101 << 1)
+                (imm20 << 19) | (imm1912 << 11) | (imm11 << 10) | imm101
             }
             _ => {
                 for f in format.fields {
