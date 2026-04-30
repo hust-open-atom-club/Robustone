@@ -155,6 +155,21 @@ pub fn apply_riscv_aliases(decoded: &mut DecodedInstruction) {
                 }
             }
         }
+        "c.addiw" => {
+            decoded.render_hints.compat_mnemonic = Some("addiw".to_string());
+        }
+        "c.lui" => {
+            decoded.render_hints.compat_mnemonic = Some("lui".to_string());
+        }
+        "c.jr" => {
+            decoded.render_hints.compat_mnemonic = Some("jr".to_string());
+        }
+        "c.subw" => {
+            decoded.render_hints.compat_mnemonic = Some("subw".to_string());
+        }
+        "c.addw" => {
+            decoded.render_hints.compat_mnemonic = Some("addw".to_string());
+        }
         _ => {}
     }
 }

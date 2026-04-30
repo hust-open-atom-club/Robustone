@@ -10,8 +10,12 @@ fn test_specs_no_overlaps() {
 
 #[test]
 fn test_specs_full_validation() {
+    let result = robustone_isa::check_spec_table(RISCV_SPECS);
+    if let Err(ref e) = result {
+        eprintln!("check_spec_table error: {}", e);
+    }
     assert!(
-        robustone_isa::check_spec_table(RISCV_SPECS).is_ok(),
+        result.is_ok(),
         "RISC-V spec table must pass all validation checks"
     );
 }

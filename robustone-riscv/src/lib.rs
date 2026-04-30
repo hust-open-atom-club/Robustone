@@ -178,6 +178,19 @@ impl ArchitectureHandler for RiscVHandler {
             Xlen::X64 => crate::backend::RiscVMode::RV64,
         };
         let features = crate::backend::RiscVFeature::from_extensions(decoder.extensions());
+
+        // Compressed instructions require the C extension globally.
+        if bytes.len() >= 2
+            && (bytes[0] & 0x3) != 0x3
+            && !features.contains(crate::backend::RiscVFeature::C)
+        {
+            return Err(robustone_core::types::error::DisasmError::decode_failure(
+                robustone_core::types::error::DecodeErrorKind::UnsupportedExtension,
+                Some(arch_name.to_string()),
+                "compressed instruction requires C extension".to_string(),
+            ));
+        }
+
         let profile = DecodeProfile {
             mode,
             features,
@@ -189,11 +202,51 @@ impl ArchitectureHandler for RiscVHandler {
             bytes, addr, &profile,
         ) {
             Ok(d) => d,
-            Err(ref e) if matches!(e.stable_kind(), "invalid_encoding") => {
-                decoder.decode(bytes, arch_name, addr)?
+            Err(robustone_core::types::error::DisasmError::DecodeFailure {
+                kind,
+                architecture: _,
+                detail,
+            }) => {
+                return Err(robustone_core::types::error::DisasmError::DecodeFailure {
+                    kind,
+                    architecture: Some(arch_name.to_string()),
+                    detail,
+                });
             }
             Err(e) => return Err(e),
         };
+        // Reject compressed encodings that the spec framework cannot conditionally exclude.
+        if decoded.size == 2 {
+            match decoded.mnemonic.as_str() {
+                "c.addiw" | "c.lui"
+                    if decoded
+                        .registers_written
+                        .first()
+                        .map(|r| r.id == 0)
+                        .unwrap_or(true) =>
+                {
+                    return Err(robustone_core::types::error::DisasmError::decode_failure(
+                        robustone_core::types::error::DecodeErrorKind::InvalidEncoding,
+                        Some("riscv".to_string()),
+                        "invalid compressed encoding".to_string(),
+                    ));
+                }
+                "c.jr"
+                    if decoded
+                        .registers_read
+                        .first()
+                        .map(|r| r.id == 0)
+                        .unwrap_or(true) =>
+                {
+                    return Err(robustone_core::types::error::DisasmError::decode_failure(
+                        robustone_core::types::error::DecodeErrorKind::InvalidEncoding,
+                        Some("riscv".to_string()),
+                        "invalid compressed encoding".to_string(),
+                    ));
+                }
+                _ => {}
+            }
+        }
         crate::aliases::apply_riscv_aliases(&mut decoded);
         let size = decoded.size;
         Ok((decoded, size))

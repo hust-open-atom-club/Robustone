@@ -16,19 +16,24 @@ pub enum ArchitectureId {
     Other(&'static str),
 }
 
-impl Serialize for ArchitectureId {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let s = match self {
+impl ArchitectureId {
+    pub fn as_str(&self) -> &str {
+        match self {
             ArchitectureId::Riscv => "riscv",
             ArchitectureId::Arm => "arm",
             ArchitectureId::X86 => "x86",
             ArchitectureId::LoongArch => "loongarch",
             ArchitectureId::Other(name) => name,
-        };
-        serializer.serialize_str(s)
+        }
+    }
+}
+
+impl Serialize for ArchitectureId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.as_str())
     }
 }
 

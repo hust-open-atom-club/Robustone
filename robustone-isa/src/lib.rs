@@ -229,6 +229,7 @@ pub enum InstructionGroup {
     System,
     Vector,
     BitManipulation,
+    Compressed,
 }
 
 impl InstructionGroup {
@@ -239,7 +240,7 @@ impl InstructionGroup {
             InstructionGroup::Logical => "logical",
             InstructionGroup::Shift => "shift",
             InstructionGroup::Branch => "branch",
-            InstructionGroup::Jump => "jump",
+            InstructionGroup::Jump => "control_flow",
             InstructionGroup::Memory => "memory",
             InstructionGroup::Atomic => "atomic",
             InstructionGroup::Float => "floating_point",
@@ -248,6 +249,7 @@ impl InstructionGroup {
             InstructionGroup::System => "system",
             InstructionGroup::Vector => "vector",
             InstructionGroup::BitManipulation => "bit_manipulation",
+            InstructionGroup::Compressed => "compressed",
         }
     }
 }
@@ -389,7 +391,7 @@ pub fn decode_one<B: ArchitectureBackend>(
     let spec = B::lookup(instr.raw, profile).ok_or_else(|| {
         DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
-            Some(format!("{:?}", B::architecture_id())),
+            Some(B::architecture_id().as_str().to_string()),
             format!("unknown encoding: raw={:?}", instr.raw),
         )
     })?;
@@ -398,7 +400,7 @@ pub fn decode_one<B: ArchitectureBackend>(
     if !spec.modes.matches(profile.mode) {
         return Err(DisasmError::decode_failure(
             DecodeErrorKind::UnsupportedMode,
-            Some(format!("{:?}", B::architecture_id())),
+            Some(B::architecture_id().as_str().to_string()),
             format!(
                 "mode {:?} not supported for {}",
                 profile.mode, spec.mnemonic
@@ -410,7 +412,7 @@ pub fn decode_one<B: ArchitectureBackend>(
     if !profile.features.contains(spec.features) {
         return Err(DisasmError::decode_failure(
             DecodeErrorKind::UnsupportedExtension,
-            Some(format!("{:?}", B::architecture_id())),
+            Some(B::architecture_id().as_str().to_string()),
             format!(
                 "features {:?} required for {} not enabled",
                 spec.features, spec.mnemonic
@@ -560,6 +562,14 @@ impl<M: Copy + Eq + 'static> ModeSet<M> {
             ModeSet::Only(modes) => modes.contains(&mode),
         }
     }
+
+    /// Check whether this mode set and another have no modes in common.
+    pub fn is_disjoint(&self, other: &Self) -> bool {
+        match (self, other) {
+            (ModeSet::All, _) | (_, ModeSet::All) => false,
+            (ModeSet::Only(a), ModeSet::Only(b)) => a.iter().all(|x| !b.contains(x)),
+        }
+    }
 }
 
 impl<W: Copy + Eq + core::fmt::Debug + Into<u64> + 'static> EncodingPattern<W> {
@@ -595,6 +605,11 @@ pub fn validate_no_overlaps<B: ArchitectureBackend>(
                 // Overlaps with different priorities are allowed: the higher-priority
                 // (more specific) spec is tried first by lookup.
                 if specs[i].priority != specs[j].priority {
+                    continue;
+                }
+                // Overlaps with disjoint mode sets are allowed: they can never
+                // match the same profile (e.g. c.addiw on RV64 vs c.jal on RV32).
+                if specs[i].modes.is_disjoint(&specs[j].modes) {
                     continue;
                 }
                 return Err(format!(
