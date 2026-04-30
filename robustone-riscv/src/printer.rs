@@ -528,8 +528,9 @@ pub mod format {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::RiscVHandler;
     use crate::ir::{ArchitectureId, DecodeStatus, Operand, RegisterId, RenderHints};
-    use crate::riscv::decoder::RiscVDecoder;
+    use robustone_core::traits::ArchitectureHandler;
 
     #[test]
     fn test_printer_creation() {
@@ -623,9 +624,9 @@ mod tests {
 
     #[test]
     fn test_canonical_profile_renders_full_operands() {
-        let decoder = RiscVDecoder::rv32gc();
-        let decoded = decoder
-            .decode(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
+        let handler = RiscVHandler::new();
+        let (decoded, _size) = handler
+            .decode_instruction(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
             .unwrap();
         let printer = RiscVPrinter::new().with_profile(RiscVTextProfile::Canonical);
         let (mnemonic, operands) = printer.render_ir_parts(&decoded);
@@ -636,9 +637,9 @@ mod tests {
 
     #[test]
     fn test_canonical_profile_renders_fp_registers_without_aliases() {
-        let decoder = RiscVDecoder::rv64gc();
-        let decoded = decoder
-            .decode(&[0xd3, 0x02, 0x73, 0x00], "riscv64", 0)
+        let handler = RiscVHandler::new();
+        let (decoded, _size) = handler
+            .decode_instruction(&[0xd3, 0x02, 0x73, 0x00], "riscv64", 0)
             .unwrap();
         let printer = RiscVPrinter::new().with_profile(RiscVTextProfile::Canonical);
         let (mnemonic, operands) = printer.render_ir_parts(&decoded);
@@ -686,9 +687,9 @@ mod tests {
 
     #[test]
     fn test_print_basic_honors_canonical_profile() {
-        let decoder = RiscVDecoder::rv32gc();
-        let decoded = decoder
-            .decode(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
+        let handler = RiscVHandler::new();
+        let (decoded, _size) = handler
+            .decode_instruction(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
             .unwrap();
         let instruction =
             Instruction::from_decoded(decoded, "li".to_string(), "ra, 1".to_string(), None);
@@ -699,9 +700,9 @@ mod tests {
 
     #[test]
     fn test_default_printer_keeps_compat_aliases_for_decoded_instructions() {
-        let decoder = RiscVDecoder::rv32gc();
-        let decoded = decoder
-            .decode(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
+        let handler = RiscVHandler::new();
+        let (decoded, _size) = handler
+            .decode_instruction(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
             .unwrap();
         let instruction =
             Instruction::from_decoded(decoded, "li".to_string(), "ra, 1".to_string(), None);
@@ -711,9 +712,9 @@ mod tests {
 
     #[test]
     fn test_with_alias_regs_false_is_honored_for_decoded_instructions() {
-        let decoder = RiscVDecoder::rv32gc();
-        let decoded = decoder
-            .decode(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
+        let handler = RiscVHandler::new();
+        let (decoded, _size) = handler
+            .decode_instruction(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
             .unwrap();
         let instruction =
             Instruction::from_decoded(decoded, "li".to_string(), "ra, 1".to_string(), None);

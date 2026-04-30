@@ -119,6 +119,27 @@ fn verify_boundary() -> ExitCode {
         }
     }
 
+    // 5. RISC-V production crate must not reference legacy decoder infrastructure
+    let riscv_src = workspace_root.join("robustone-riscv").join("src");
+    if riscv_src.exists() {
+        check_forbidden_strings(
+            &riscv_src,
+            "robustone-riscv",
+            &["InstructionExtension", "create_extensions()"],
+            &mut violations,
+        );
+    }
+    let riscv_cargo = workspace_root.join("robustone-riscv").join("Cargo.toml");
+    if riscv_cargo.exists() {
+        let content = fs::read_to_string(&riscv_cargo).unwrap_or_default();
+        if content.contains("legacy-decoder") {
+            violations.push(format!(
+                "{}: legacy-decoder feature still present",
+                riscv_cargo.display()
+            ));
+        }
+    }
+
     if violations.is_empty() {
         println!("verify-boundary: OK – no violations found");
         ExitCode::SUCCESS

@@ -14,6 +14,12 @@ use robustone_isa::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Xlen {
+    X32,
+    X64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RiscVMode {
     RV32,
     RV64,
@@ -46,27 +52,20 @@ impl FeatureSet for RiscVFeature {
 }
 
 impl RiscVFeature {
-    /// Build feature set from legacy `Extensions` configuration.
-    pub fn from_extensions(extensions: &crate::extensions::Extensions) -> Self {
-        use crate::extensions::standard::Standard;
+    /// Build feature set from an extension name list (e.g. ["I", "M", "A", "F", "D", "C"]).
+    pub fn from_extension_names(names: &[&str]) -> Self {
         let mut features = Self::empty();
-        if extensions.standard.contains(Standard::I) {
-            features |= Self::I;
-        }
-        if extensions.standard.contains(Standard::M) {
-            features |= Self::M;
-        }
-        if extensions.standard.contains(Standard::A) {
-            features |= Self::A;
-        }
-        if extensions.standard.contains(Standard::F) {
-            features |= Self::F;
-        }
-        if extensions.standard.contains(Standard::D) {
-            features |= Self::D;
-        }
-        if extensions.standard.contains(Standard::C) {
-            features |= Self::C;
+        for name in names {
+            match *name {
+                "I" => features |= Self::I,
+                "M" => features |= Self::M,
+                "A" => features |= Self::A,
+                "F" => features |= Self::F,
+                "D" => features |= Self::D,
+                "C" => features |= Self::C,
+                "G" => features |= Self::G,
+                _ => {}
+            }
         }
         features
     }
@@ -154,6 +153,12 @@ robustone_isa::format_specs! {
         rs1_prime: robustone_isa::field("rs1_prime", 7, 3, RiscVField::Rs1Prime),
         imm_cl: robustone_isa::field("imm_cl", 5, 5, RiscVField::ImmCL),
         imm_clw: robustone_isa::field("imm_clw", 5, 5, RiscVField::ImmCLW),
+    }
+    format CS_TYPE[RiscVField] {
+        rs1_prime: robustone_isa::field("rs1_prime", 7, 3, RiscVField::Rs1Prime),
+        rs2_prime: robustone_isa::field("rs2_prime", 2, 3, RiscVField::Rs2Prime),
+        imm_csd: robustone_isa::field("imm_csd", 5, 5, RiscVField::ImmCL),
+        imm_csw: robustone_isa::field("imm_csw", 5, 5, RiscVField::ImmCLW),
     }
 }
 
@@ -501,6 +506,32 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::System];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
+    spec MRET {
+        mnemonic = "mret";
+        opcode_id = "MRET";
+        pattern = robustone_isa::mask_value!(0xFFFF_FFFF, 0x3020_0073);
+        format = &I_TYPE;
+        operands = &[];
+        features = RiscVFeature::I;
+        modes = ModeSet::All;
+        groups = &[robustone_isa::InstructionGroup::System];
+        manual = "RISC-V Privileged ISA";
+    }
+    spec FCVT_S_D {
+        mnemonic = "fcvt.s.d";
+        opcode_id = "FCVT_S_D";
+        pattern = robustone_isa::mask_value!(0xFFF0_007F, 0x4010_0053);
+        format = &R_TYPE;
+        operands = &[
+            robustone_isa::reg!(RiscVRegisterClass::Fpr, RiscVField::Rd, robustone_isa::Access::Write),
+            robustone_isa::reg!(RiscVRegisterClass::Fpr, RiscVField::Rs1, robustone_isa::Access::Read),
+            robustone_isa::text!(RiscVField::Funct3, robustone_isa::ImmediateTransform::None),
+        ];
+        features = RiscVFeature::D;
+        modes = ModeSet::All;
+        groups = &[robustone_isa::InstructionGroup::Float];
+        manual = "RISC-V Unprivileged ISA Vol. I";
+    }
     // Compressed specs
     spec C_ADDIW {
         mnemonic = "c.addiw";
@@ -692,12 +723,87 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Memory, robustone_isa::InstructionGroup::Float];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
+    spec C_FLD {
+        mnemonic = "c.fld";
+        opcode_id = "C_FLD";
+        pattern = robustone_isa::mask_value!(0xE003, 0x2000);
+        format = &CL_TYPE;
+        operands = &[
+            robustone_isa::reg!(RiscVRegisterClass::FprPrime, RiscVField::RdPrime, robustone_isa::Access::Write),
+            robustone_isa::imm!(RiscVField::ImmCL, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::Absolute),
+            robustone_isa::reg!(RiscVRegisterClass::GprPrime, RiscVField::Rs1Prime, robustone_isa::Access::Read),
+        ];
+        features = RiscVFeature::CF;
+        modes = ModeSet::All;
+        groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Memory, robustone_isa::InstructionGroup::Float];
+        manual = "RISC-V Unprivileged ISA Vol. I";
+    }
+    spec C_SW {
+        mnemonic = "c.sw";
+        opcode_id = "C_SW";
+        pattern = robustone_isa::mask_value!(0xE003, 0xC000);
+        format = &CS_TYPE;
+        operands = &[
+            robustone_isa::reg!(RiscVRegisterClass::GprPrime, RiscVField::Rs2Prime, robustone_isa::Access::Read),
+            robustone_isa::imm!(RiscVField::ImmCLW, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::Absolute),
+            robustone_isa::reg!(RiscVRegisterClass::GprPrime, RiscVField::Rs1Prime, robustone_isa::Access::Read),
+        ];
+        features = RiscVFeature::C;
+        modes = ModeSet::All;
+        groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Memory];
+        manual = "RISC-V Unprivileged ISA Vol. I";
+    }
+    spec C_SD {
+        mnemonic = "c.sd";
+        opcode_id = "C_SD";
+        pattern = robustone_isa::mask_value!(0xE003, 0xE000);
+        format = &CS_TYPE;
+        operands = &[
+            robustone_isa::reg!(RiscVRegisterClass::GprPrime, RiscVField::Rs2Prime, robustone_isa::Access::Read),
+            robustone_isa::imm!(RiscVField::ImmCL, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::Absolute),
+            robustone_isa::reg!(RiscVRegisterClass::GprPrime, RiscVField::Rs1Prime, robustone_isa::Access::Read),
+        ];
+        features = RiscVFeature::C;
+        modes = ModeSet::Only(&[RiscVMode::RV64]);
+        groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Memory];
+        manual = "RISC-V Unprivileged ISA Vol. I";
+    }
+    spec C_FSW {
+        mnemonic = "c.fsw";
+        opcode_id = "C_FSW";
+        pattern = robustone_isa::mask_value!(0xE003, 0xE000);
+        format = &CS_TYPE;
+        operands = &[
+            robustone_isa::reg!(RiscVRegisterClass::FprPrime, RiscVField::Rs2Prime, robustone_isa::Access::Read),
+            robustone_isa::imm!(RiscVField::ImmCLW, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::Absolute),
+            robustone_isa::reg!(RiscVRegisterClass::GprPrime, RiscVField::Rs1Prime, robustone_isa::Access::Read),
+        ];
+        features = RiscVFeature::CF;
+        modes = ModeSet::Only(&[RiscVMode::RV32]);
+        groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Memory, robustone_isa::InstructionGroup::Float];
+        manual = "RISC-V Unprivileged ISA Vol. I";
+    }
+    spec C_FSD {
+        mnemonic = "c.fsd";
+        opcode_id = "C_FSD";
+        pattern = robustone_isa::mask_value!(0xE003, 0xA000);
+        format = &CS_TYPE;
+        operands = &[
+            robustone_isa::reg!(RiscVRegisterClass::FprPrime, RiscVField::Rs2Prime, robustone_isa::Access::Read),
+            robustone_isa::imm!(RiscVField::ImmCL, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::Absolute),
+            robustone_isa::reg!(RiscVRegisterClass::GprPrime, RiscVField::Rs1Prime, robustone_isa::Access::Read),
+        ];
+        features = RiscVFeature::CF;
+        modes = ModeSet::All;
+        groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Memory, robustone_isa::InstructionGroup::Float];
+        manual = "RISC-V Unprivileged ISA Vol. I";
+    }
 }
 
 pub static RISCV_SPECS: &[InstructionSpec<RiscVBackend>] = &[
     ADD, ADDI, ORI, LW, SW, BEQ, BNE, JAL, JALR, LUI, AUIPC, MUL, MULW, DIV, REM, LR_W, SC_W,
-    AMOADD_W, LD, LR_D, FLW, FSW, FADD_S, FSUB_S, FMUL_S, FDIV_S, CSRRS, C_ADDI, C_ADDIW, C_JAL,
-    C_LUI, C_LD, C_FLW, C_JR, C_SUBW, C_ADDW,
+    AMOADD_W, LD, LR_D, FLW, FSW, FADD_S, FSUB_S, FMUL_S, FDIV_S, CSRRS, MRET, FCVT_S_D, C_ADDI,
+    C_ADDIW, C_JAL, C_LUI, C_LD, C_FLW, C_FLD, C_SW, C_SD, C_FSW, C_FSD, C_JR, C_SUBW, C_ADDW,
 ];
 
 pub struct RiscVBackend;
@@ -785,10 +891,10 @@ impl ArchitectureBackend for RiscVBackend {
         _profile: &DecodeProfile<Self>,
     ) -> RegisterId {
         match class {
-            RiscVRegisterClass::GprPrime | RiscVRegisterClass::FprPrime => {
-                RegisterId::riscv(raw + 8)
-            }
-            _ => RegisterId::riscv(raw),
+            RiscVRegisterClass::Gpr => RegisterId::riscv(raw),
+            RiscVRegisterClass::Fpr => RegisterId::riscv(raw + 32),
+            RiscVRegisterClass::GprPrime => RegisterId::riscv(raw + 8),
+            RiscVRegisterClass::FprPrime => RegisterId::riscv(raw + 8 + 32),
         }
     }
 

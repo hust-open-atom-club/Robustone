@@ -14,9 +14,7 @@
 pub mod aliases;
 pub mod arch;
 pub mod backend;
-pub mod decoder;
-pub mod extensions;
-pub mod patterns;
+// Legacy decoder modules removed — shared backend is now the sole decode path.
 pub mod printer;
 pub mod render;
 pub mod shared;
@@ -40,8 +38,6 @@ pub mod utils {
 
 pub mod riscv {
     pub use crate::arch;
-    pub use crate::decoder;
-    pub use crate::extensions;
     pub use crate::printer;
     pub use crate::shared;
     pub use crate::types;
@@ -50,8 +46,7 @@ pub mod riscv {
 pub use robustone_core::Instruction;
 
 use arch::RiscVInstructionDetail;
-use decoder::{RiscVDecoder, Xlen};
-use extensions::Extensions;
+use backend::Xlen;
 use robustone_core::{
     common::ArchitectureProfile,
     ir::{DecodedInstruction, TextRenderProfile},
@@ -63,18 +58,18 @@ use robustone_isa::DecodeProfile;
 
 /// Architecture handler implementation for RISC-V targets.
 pub struct RiscVHandler {
-    rv32_decoder: RiscVDecoder,
-    rv64_decoder: RiscVDecoder,
+    rv32_features: crate::backend::RiscVFeature,
+    rv64_features: crate::backend::RiscVFeature,
     configured_xlen: Option<Xlen>,
     detail: bool,
 }
 
 impl RiscVHandler {
-    /// Creates a new handler with both RV32GC and RV64GC decoders.
+    /// Creates a new handler with both RV32GC and RV64GC profiles.
     pub fn new() -> Self {
         Self {
-            rv32_decoder: RiscVDecoder::rv32gc(),
-            rv64_decoder: RiscVDecoder::rv64gc(),
+            rv32_features: crate::backend::RiscVFeature::G | crate::backend::RiscVFeature::C,
+            rv64_features: crate::backend::RiscVFeature::G | crate::backend::RiscVFeature::C,
             configured_xlen: None,
             detail: true,
         }
@@ -83,8 +78,8 @@ impl RiscVHandler {
     /// Creates a handler targeting RV32GC.
     pub fn rv32() -> Self {
         Self {
-            rv32_decoder: RiscVDecoder::rv32gc(),
-            rv64_decoder: RiscVDecoder::rv64gc(),
+            rv32_features: crate::backend::RiscVFeature::G | crate::backend::RiscVFeature::C,
+            rv64_features: crate::backend::RiscVFeature::G | crate::backend::RiscVFeature::C,
             configured_xlen: Some(Xlen::X32),
             detail: true,
         }
@@ -93,54 +88,86 @@ impl RiscVHandler {
     /// Creates a handler targeting RV64GC.
     pub fn rv64() -> Self {
         Self {
-            rv32_decoder: RiscVDecoder::rv32gc(),
-            rv64_decoder: RiscVDecoder::rv64gc(),
+            rv32_features: crate::backend::RiscVFeature::G | crate::backend::RiscVFeature::C,
+            rv64_features: crate::backend::RiscVFeature::G | crate::backend::RiscVFeature::C,
             configured_xlen: Some(Xlen::X64),
             detail: true,
         }
     }
 
     /// Creates a handler with custom XLEN and extension flags.
-    pub fn with_extensions(xlen: Xlen, extensions: Extensions) -> Self {
+    pub fn with_extensions(xlen: Xlen, extensions: &[&str]) -> Self {
+        let features = crate::backend::RiscVFeature::from_extension_names(extensions);
         match xlen {
             Xlen::X32 => Self {
-                rv32_decoder: RiscVDecoder::new(Xlen::X32, extensions),
-                rv64_decoder: RiscVDecoder::rv64gc(),
+                rv32_features: features,
+                rv64_features: crate::backend::RiscVFeature::G | crate::backend::RiscVFeature::C,
                 configured_xlen: Some(Xlen::X32),
                 detail: true,
             },
             Xlen::X64 => Self {
-                rv32_decoder: RiscVDecoder::rv32gc(),
-                rv64_decoder: RiscVDecoder::new(Xlen::X64, extensions),
+                rv32_features: crate::backend::RiscVFeature::G | crate::backend::RiscVFeature::C,
+                rv64_features: features,
                 configured_xlen: Some(Xlen::X64),
                 detail: true,
             },
         }
     }
 
-    fn decoder_for_arch(&self, arch_name: &str) -> Result<&RiscVDecoder, DisasmError> {
+    fn features_for_arch(
+        &self,
+        arch_name: &str,
+    ) -> Result<(Xlen, crate::backend::RiscVFeature), DisasmError> {
         match (self.configured_xlen, arch_name) {
-            (Some(Xlen::X32), "riscv32") => Ok(&self.rv32_decoder),
-            (Some(Xlen::X64), "riscv64" | "riscv") => Ok(&self.rv64_decoder),
+            (Some(Xlen::X32), "riscv32") => Ok((Xlen::X32, self.rv32_features)),
+            (Some(Xlen::X64), "riscv64" | "riscv") => Ok((Xlen::X64, self.rv64_features)),
             (Some(_), _) => Err(DisasmError::UnsupportedArchitecture(arch_name.to_string())),
-            (None, "riscv32") => Ok(&self.rv32_decoder),
-            (None, "riscv64" | "riscv") => Ok(&self.rv64_decoder),
+            (None, "riscv32") => Ok((Xlen::X32, self.rv32_features)),
+            (None, "riscv64" | "riscv") => Ok((Xlen::X64, self.rv64_features)),
             _ => Err(DisasmError::UnsupportedArchitecture(arch_name.to_string())),
         }
     }
 
     pub fn from_profile(profile: &ArchitectureProfile) -> Result<Self, DisasmError> {
-        let decoder = RiscVDecoder::from_profile(profile)?;
+        let exts: Vec<&str> = profile.enabled_extensions.to_vec();
+        // D extension requires F extension.
+        if exts.contains(&"D") && !exts.contains(&"F") {
+            return Err(robustone_core::types::error::DisasmError::decode_failure(
+                robustone_core::types::error::DecodeErrorKind::UnsupportedExtension,
+                Some(profile.mode_name.to_string()),
+                "D extension requires F extension".to_string(),
+            ));
+        }
+        let features = crate::backend::RiscVFeature::from_extension_names(
+            profile.enabled_extensions.as_slice(),
+        );
+        match (&profile.architecture, profile.mode_name) {
+            (crate::architecture::Architecture::RiscV32, "riscv64") => {
+                return Err(robustone_core::types::error::DisasmError::decode_failure(
+                    robustone_core::types::error::DecodeErrorKind::UnsupportedMode,
+                    Some(profile.mode_name.to_string()),
+                    "RV32 profile cannot use riscv64 mode".to_string(),
+                ));
+            }
+            (crate::architecture::Architecture::RiscV64, "riscv32") => {
+                return Err(robustone_core::types::error::DisasmError::decode_failure(
+                    robustone_core::types::error::DecodeErrorKind::UnsupportedMode,
+                    Some(profile.mode_name.to_string()),
+                    "RV64 profile cannot use riscv32 mode".to_string(),
+                ));
+            }
+            _ => {}
+        }
         match &profile.architecture {
             crate::architecture::Architecture::RiscV32 => Ok(Self {
-                rv32_decoder: decoder,
-                rv64_decoder: RiscVDecoder::rv64gc(),
+                rv32_features: features,
+                rv64_features: crate::backend::RiscVFeature::G | crate::backend::RiscVFeature::C,
                 configured_xlen: Some(Xlen::X32),
                 detail: true,
             }),
             crate::architecture::Architecture::RiscV64 => Ok(Self {
-                rv32_decoder: RiscVDecoder::rv32gc(),
-                rv64_decoder: decoder,
+                rv32_features: crate::backend::RiscVFeature::G | crate::backend::RiscVFeature::C,
+                rv64_features: features,
                 configured_xlen: Some(Xlen::X64),
                 detail: true,
             }),
@@ -172,12 +199,11 @@ impl ArchitectureHandler for RiscVHandler {
         arch_name: &str,
         addr: u64,
     ) -> Result<(DecodedInstruction, usize), DisasmError> {
-        let decoder = self.decoder_for_arch(arch_name)?;
-        let mode = match decoder.xlen() {
+        let (xlen, features) = self.features_for_arch(arch_name)?;
+        let mode = match xlen {
             Xlen::X32 => crate::backend::RiscVMode::RV32,
             Xlen::X64 => crate::backend::RiscVMode::RV64,
         };
-        let features = crate::backend::RiscVFeature::from_extensions(decoder.extensions());
 
         // Compressed instructions require the C extension globally.
         if bytes.len() >= 2
@@ -247,6 +273,7 @@ impl ArchitectureHandler for RiscVHandler {
                 _ => {}
             }
         }
+        decoded.mode = arch_name.to_string();
         crate::aliases::apply_riscv_aliases(&mut decoded);
         let size = decoded.size;
         Ok((decoded, size))
@@ -268,8 +295,7 @@ impl ArchitectureHandler for RiscVHandler {
         arch_name: &str,
         addr: u64,
     ) -> Result<(Instruction, usize), DisasmError> {
-        let decoder = self.decoder_for_arch(arch_name)?;
-        let ir = decoder.decode(bytes, arch_name, addr)?;
+        let (ir, _size) = self.decode_instruction(bytes, arch_name, addr)?;
         let (mnemonic, operands) = crate::render::render_riscv_text_parts(
             &ir,
             TextRenderProfile::Compat,
@@ -350,7 +376,7 @@ mod tests {
 
     #[test]
     fn test_with_extensions_limits_supported_architectures() {
-        let handler = RiscVHandler::with_extensions(Xlen::X32, Extensions::rv32gc());
+        let handler = RiscVHandler::with_extensions(Xlen::X32, &["i", "m", "a", "f", "d", "c"]);
         assert!(handler.supports("riscv32"));
         assert!(!handler.supports("riscv64"));
         assert!(!handler.supports("riscv"));

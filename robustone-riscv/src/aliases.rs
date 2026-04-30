@@ -164,11 +164,27 @@ pub fn apply_riscv_aliases(decoded: &mut DecodedInstruction) {
         "c.jr" => {
             decoded.render_hints.compat_mnemonic = Some("jr".to_string());
         }
+        "c.jal" => {
+            decoded.render_hints.compat_mnemonic = Some("jal".to_string());
+        }
         "c.subw" => {
             decoded.render_hints.compat_mnemonic = Some("subw".to_string());
         }
         "c.addw" => {
             decoded.render_hints.compat_mnemonic = Some("addw".to_string());
+        }
+        "fadd.s" | "fsub.s" | "fmul.s" | "fdiv.s" => {
+            if let Some(Operand::Text { value }) = decoded.operands.last_mut() {
+                *value = match value.as_str() {
+                    "0" => "rne".to_string(),
+                    "1" => "rtz".to_string(),
+                    "2" => "rdn".to_string(),
+                    "3" => "rup".to_string(),
+                    "4" => "rmm".to_string(),
+                    "7" => "dyn".to_string(),
+                    _ => value.clone(),
+                };
+            }
         }
         _ => {}
     }

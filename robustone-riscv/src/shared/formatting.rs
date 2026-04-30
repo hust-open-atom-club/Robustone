@@ -5,7 +5,7 @@
 
 use super::super::types::*;
 use crate::ir::DecodedInstruction;
-use crate::riscv::decoder::build_riscv_decoded_instruction;
+use crate::shared::decoder_utils::build_riscv_decoded_instruction;
 
 /// Trait for formatting decoded RISC-V instructions.
 #[allow(clippy::too_many_arguments)]

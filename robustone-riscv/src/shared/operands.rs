@@ -4,7 +4,7 @@
 //! all RISC-V extensions to eliminate code duplication.
 
 use super::super::types::*;
-use crate::decoder::Xlen;
+use crate::backend::Xlen;
 
 /// Trait for creating RISC-V operands in extensions.
 pub trait OperandFactory {

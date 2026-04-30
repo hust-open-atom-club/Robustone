@@ -3,6 +3,7 @@
 //! This module contains common utilities and shared functionality used across
 //! all RISC-V extensions to eliminate code duplication and maintain consistency.
 
+pub mod decoder_utils;
 pub mod encoding;
 pub mod formatting;
 pub mod operands;
