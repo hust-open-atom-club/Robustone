@@ -377,6 +377,7 @@ impl RiscVPrinter {
         }
     }
 
+    // LEGACY: Phase 5 will migrate CSR operand detection to spec-level operand metadata.
     fn is_csr_operand(&self, mnemonic: &str, index: usize) -> bool {
         let csr_mnemonics = [
             "csrrw", "csrrs", "csrrc", "csrrwi", "csrrsi", "csrrci", "csrr", "csrc", "csrw",

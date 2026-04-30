@@ -291,6 +291,41 @@ impl EncodingToken for X86Encoding {
     }
 }
 
+/// WebAssembly bytecode instruction encoding.
+///
+/// WebAssembly uses a variable-length LEB128-based encoding for its
+/// bytecode instructions. This stub proves the `EncodingToken` trait
+/// handles fundamentally different encoding schemes beyond machine-code
+/// ISAs. Phase 6+ will flesh out the complete structure.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WasmEncoding {
+    /// Total instruction size in bytes (including LEB128 operands).
+    pub size: u8,
+    /// Primary opcode byte.
+    pub opcode: u8,
+}
+
+impl EncodingToken for WasmEncoding {
+    type Word = u8;
+
+    fn size(&self) -> u8 {
+        self.size
+    }
+
+    fn extract(&self, start: u8, length: u8) -> u32 {
+        if length == 0 || start >= 8 {
+            return 0;
+        }
+        let effective_len = length.min(8 - start);
+        let mask = if effective_len >= 8 {
+            0xFF
+        } else {
+            (1u8 << effective_len) - 1
+        };
+        ((self.opcode >> start) & mask) as u32
+    }
+}
+
 /// A single part of a composed immediate.
 ///
 /// Maps a contiguous source bit field to a destination position
@@ -387,6 +422,20 @@ pub struct MemExpr<B: ArchitectureBackend + 'static> {
     pub post_indexed: bool,
 }
 
+/// Semantic roles a register encoding can take.
+///
+/// Some ISAs use the same register encoding for different semantic
+/// roles depending on instruction context.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RegisterRoleKind {
+    /// Register encoding is treated as the stack pointer.
+    StackPointer,
+    /// Register encoding is treated as the zero register.
+    ZeroRegister,
+    /// Register encoding is treated as the link register.
+    LinkRegister,
+}
+
 /// Constraint on instruction encoding legality beyond pattern matching.
 ///
 /// Some instructions have additional constraints that cannot be expressed
@@ -423,6 +472,22 @@ pub enum EncodingConstraint<B: ArchitectureBackend + 'static> {
     RegistersAlias {
         field_a: B::Field,
         field_b: B::Field,
+    },
+    /// One feature requires another feature to also be present.
+    ///
+    /// Example: RISC-V D-extension (double-precision float) requires
+    /// F-extension (single-precision float).
+    FeatureDepends {
+        feature: B::Feature,
+        requires: B::Feature,
+    },
+    /// A register field must encode a specific semantic role in context.
+    ///
+    /// Example: AArch64 register 31 encodes SP in load/store addressing
+    /// but XZR in data-processing instructions.
+    RegisterRole {
+        field: B::Field,
+        role: RegisterRoleKind,
     },
 }
 
