@@ -128,6 +128,8 @@ pub struct RenderHints {
     pub compat_mnemonic: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub compat_hidden_operands: Vec<usize>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub compat_operand_order: Vec<usize>,
 }
 
 /// Semantic effect of an instruction.

@@ -41,7 +41,7 @@ pub use robustone_core::Instruction;
 use arch::LoongArchInstructionDetail;
 use robustone_core::{
     common::ArchitectureProfile,
-    ir::{DecodedInstruction, Operand, TextRenderProfile},
+    ir::{DecodedInstruction, TextRenderProfile},
     traits::ArchitectureHandler,
     traits::instruction::Detail,
     types::error::DisasmError,
@@ -91,73 +91,16 @@ impl ArchitectureHandler for LoongArchHandler {
             render_dialect: RenderDialect::Assembler,
             alias_policy: AliasPolicy::PreferPseudo,
         };
-        let mut decoded = decode_one::<backend::LoongArchBackend>(bytes, addr, &profile)?;
+        let decoded = decode_one::<backend::LoongArchBackend>(bytes, addr, &profile)?;
         let size = decoded.size;
 
         // ------------------------------------------------------------------
-        // LEGACY HANDLER PATCHES — Phase 3 will migrate all of the following
-        // to spec-level alias/render view rules. Do NOT add new patches here.
-        // nop and move aliases migrated to aliases.rs (Round 7).
-        // ------------------------------------------------------------------
-
-        // Upstream decoder drops duplicated destination register for CSR ops.
-        if (decoded.mnemonic == "csrwr" || decoded.mnemonic == "gcsrwr")
-            && decoded.operands.len() == 3
-            && let (Operand::Register { register: r0 }, Operand::Register { register: r1 }, _) = (
-                &decoded.operands[0],
-                &decoded.operands[1],
-                &decoded.operands[2],
-            )
-            && r0.id == r1.id
-        {
-            decoded.operands.remove(1);
-        }
-        if (decoded.mnemonic == "csrxchg" || decoded.mnemonic == "gcsrxchg")
-            && decoded.operands.len() == 4
-            && let (Operand::Register { register: r0 }, Operand::Register { register: r1 }, _, _) = (
-                &decoded.operands[0],
-                &decoded.operands[1],
-                &decoded.operands[2],
-                &decoded.operands[3],
-            )
-            && r0.id == r1.id
-        {
-            decoded.operands.remove(1);
-        }
-
-        // Upstream decoder reorders invtlb operands to imm, rj, rk.
-        if decoded.mnemonic == "invtlb"
-            && decoded.operands.len() == 3
-            && matches!(decoded.operands[0], Operand::Register { .. })
-        {
-            let imm = decoded.operands.pop().unwrap();
-            let rj = decoded.operands.pop().unwrap();
-            let rk = decoded.operands.pop().unwrap();
-            decoded.operands.push(imm);
-            decoded.operands.push(rj);
-            decoded.operands.push(rk);
-        }
-
-        // LEGACY: .xs suffix strip migrated to render.rs (Round 13).
-        // No longer mutated here — render handles it as a display concern.
-
-        // Upstream decoder omits duplicated destination register for certain
-        // vector instructions (e.g. xvpermi.w, xvsrarni, xvinsve0, xvshuf).
-        if decoded.mnemonic.starts_with("xv")
-            && decoded.operands.len() == 4
-            && let (Operand::Register { register: r0 }, Operand::Register { register: r1 }, _, _) = (
-                &decoded.operands[0],
-                &decoded.operands[1],
-                &decoded.operands[2],
-                &decoded.operands[3],
-            )
-            && r0.id == r1.id
-        {
-            decoded.operands.remove(1);
-        }
-
-        // ------------------------------------------------------------------
-        // END LEGACY HANDLER PATCHES
+        // All handler patches migrated to render hints (Round 14):
+        // - nop/move aliases: aliases.rs (Round 7)
+        // - .xs suffix: removed (dead code, Round 13-14)
+        // - CSR/vector dedup: render-stage operand deduplication (Round 14)
+        // - invtlb reorder: aliases.rs operand_order (Round 14)
+        // Do NOT add new patches here.
         // ------------------------------------------------------------------
 
         Ok((decoded, size))

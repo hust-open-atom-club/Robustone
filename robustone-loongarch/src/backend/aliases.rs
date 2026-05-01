@@ -17,4 +17,5 @@ robustone_isa_macros::define_aliases! {
         mnemonic = "move";
         visible_operands = [0, 1];
     }
+
 }

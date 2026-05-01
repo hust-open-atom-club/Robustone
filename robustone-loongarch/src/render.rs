@@ -104,26 +104,48 @@ pub fn render_loongarch_text_parts(
         instruction.mnemonic.clone()
     };
 
-    // LEGACY: Phase 3 will migrate .xs suffix stripping to spec-level metadata.
-    // Strip .xs suffix in canonical/assembler render (previously in handler patch).
-    let mnemonic = if let Some(base) = mnemonic.strip_suffix(".xs") {
-        base.to_string()
-    } else {
-        mnemonic
-    };
-
     let hidden_operands = if use_compat_aliases {
         instruction.render_hints.compat_hidden_operands.as_slice()
     } else {
         &[][..]
     };
 
-    let visible_operands = instruction
+    let mut visible_operands = instruction
         .operands
         .iter()
         .enumerate()
         .filter(|(index, _)| !hidden_operands.contains(index))
         .collect::<Vec<_>>();
+
+    // Invtlb operand reorder: imm, rj, rk (replaces handler patch).
+    // Reorder operands [2, 0, 1] for INVLTLB.
+    if instruction.opcode_id.as_deref() == Some("INVTLB") {
+        let mut reordered: Vec<(usize, &Operand)> = Vec::new();
+        for &idx in &[2usize, 0, 1] {
+            if let Some(item) = visible_operands.iter().find(|(i, _)| *i == idx) {
+                reordered.push(*item);
+            }
+        }
+        if reordered.len() == visible_operands.len() {
+            visible_operands = reordered;
+        }
+    }
+
+    // Deduplicate equal register operands (replaces CSR/vector handler patches).
+    let mut dedup_indices: Vec<usize> = Vec::new();
+    for i in 0..visible_operands.len() {
+        for j in (i + 1)..visible_operands.len() {
+            if let (
+                (_, Operand::Register { register: ra }),
+                (_, Operand::Register { register: rb }),
+            ) = (&visible_operands[i], &visible_operands[j])
+                && ra.id == rb.id
+            {
+                dedup_indices.push(visible_operands[j].0);
+            }
+        }
+    }
+    visible_operands.retain(|(idx, _)| !dedup_indices.contains(idx));
 
     // PC-relative detection via InstructionGroup::Branch (replaces PC_RELATIVE_MNEMONICS list).
     // jirl is excluded because its offset is added to rj, not to the PC.
