@@ -60,6 +60,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::All;
         features = X86Feature::BASE;
         groups = &[robustone_isa::InstructionGroup::System];
+        effect = None;
         manual = "Intel SDM";
     }
 }

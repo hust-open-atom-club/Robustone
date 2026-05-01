@@ -143,6 +143,8 @@ pub enum EffectSpec {
     Call,
     /// Function return (restores PC from link register).
     Return,
+    /// Memory load or store.
+    Memory,
     /// Memory barrier / fence.
     Barrier,
     /// Supervisor call / trap / exception.

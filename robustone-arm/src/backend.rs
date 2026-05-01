@@ -60,6 +60,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::All;
         features = ArmFeature::BASE;
         groups = &[robustone_isa::InstructionGroup::System];
+        effect = None;
         manual = "ARM ARM";
     }
 }

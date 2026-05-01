@@ -208,6 +208,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Memory];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Memory;
     }
     insn SW {
         mnemonic = "sw";
@@ -223,6 +224,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Memory];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Memory;
     }
     insn BEQ {
         mnemonic = "beq";
@@ -373,6 +375,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Atomic];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Memory;
     }
     insn SC_W {
         mnemonic = "sc.w";
@@ -388,6 +391,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Atomic];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Memory;
     }
     insn FLW {
         mnemonic = "flw";
@@ -403,6 +407,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Float, robustone_isa::InstructionGroup::Memory];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Memory;
     }
     insn FSW {
         mnemonic = "fsw";
@@ -418,6 +423,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Float, robustone_isa::InstructionGroup::Memory];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Memory;
     }
     insn FADD_S {
         mnemonic = "fadd.s";
@@ -641,6 +647,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Atomic];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Memory;
     }
     insn LD {
         mnemonic = "ld";
@@ -656,6 +663,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::Only(&[RiscVMode::RV64]);
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Memory];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Memory;
     }
     insn LR_D {
         mnemonic = "lr.d";
@@ -670,6 +678,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::Only(&[RiscVMode::RV64]);
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Atomic];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Memory;
     }
     insn C_ADDI {
         mnemonic = "c.addi";
@@ -715,6 +724,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::Only(&[RiscVMode::RV64]);
         groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Memory];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Memory;
     }
     insn C_FLW {
         mnemonic = "c.flw";
@@ -730,6 +740,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::Only(&[RiscVMode::RV32]);
         groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Memory, robustone_isa::InstructionGroup::Float];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Memory;
     }
     insn C_FLD {
         mnemonic = "c.fld";
@@ -745,6 +756,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Memory, robustone_isa::InstructionGroup::Float];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Memory;
     }
     insn C_SW {
         mnemonic = "c.sw";
@@ -760,6 +772,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Memory];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Memory;
     }
     insn C_SD {
         mnemonic = "c.sd";
@@ -775,6 +788,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::Only(&[RiscVMode::RV64]);
         groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Memory];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Memory;
     }
     insn C_FSW {
         mnemonic = "c.fsw";
@@ -790,6 +804,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::Only(&[RiscVMode::RV32]);
         groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Memory, robustone_isa::InstructionGroup::Float];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Memory;
     }
     insn C_FSD {
         mnemonic = "c.fsd";
@@ -805,6 +820,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Memory, robustone_isa::InstructionGroup::Float];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Memory;
     }
 }
 

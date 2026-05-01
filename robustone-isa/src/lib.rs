@@ -1664,9 +1664,11 @@ mod tests {
         assert_eq!(EffectSpec::Trap, EffectSpec::Trap);
         assert_eq!(EffectSpec::Privileged, EffectSpec::Privileged);
         assert_eq!(EffectSpec::Stack, EffectSpec::Stack);
+        assert_eq!(EffectSpec::Memory, EffectSpec::Memory);
         assert_eq!(EffectSpec::None, EffectSpec::None);
         assert_ne!(EffectSpec::Branch, EffectSpec::Call);
         assert_ne!(EffectSpec::Return, EffectSpec::Branch);
+        assert_ne!(EffectSpec::Memory, EffectSpec::Branch);
         assert_ne!(EffectSpec::None, EffectSpec::Trap);
     }
 
