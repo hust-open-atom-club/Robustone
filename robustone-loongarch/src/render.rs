@@ -18,27 +18,18 @@ fn format_register(id: u32, alias_regs: bool) -> String {
     }
 }
 
-// LEGACY: Phase 3 will replace mnemonic lists with spec-level EffectSpec/InstructionGroup classification.
-/// Branch instructions that Upstream renders as absolute addresses.
-const BRANCH_MNEMONICS: &[&str] = &[
-    "b", "bl", "beq", "bne", "blt", "bge", "bltu", "bgeu", "beqz", "bnez", "bceqz", "bcnez",
-];
+// LEGACY: Phase 3 will replace immediate masks with per-instruction spec fields.
+// immediate_mask_for_mnemonic() below still uses starts_with/ends_with patterns
+// that must be migrated to OperandSpec::Immediate::unsigned_mask.
 
-// LEGACY: Phase 3 will replace mnemonic lists with spec-level render metadata (is_pc_relative flag on FormatSpec).
-/// Control-flow mnemonics whose last immediate operand is PC-relative.
-/// `jirl` is excluded because its offset is added to `rj`, not to the PC.
-const PC_RELATIVE_MNEMONICS: &[&str] = &[
-    "b", "bl", "beq", "bne", "blt", "bge", "bltu", "bgeu", "beqz", "bnez", "bceqz", "bcnez",
-];
+// LEGACY: Phase 3 will migrate remaining starts_with/ends_with patterns to per-instruction
+// OperandSpec::Immediate::unsigned_mask. Branch masks now use InstructionGroup/EffectSpec.
+/// Return the expected raw bit-mask for the instruction's immediate field.
+fn immediate_mask_for_mnemonic(instruction: &DecodedInstruction) -> u64 {
+    let mnemonic = &instruction.mnemonic;
+    let is_branch = instruction.groups.iter().any(|g| g == "branch");
 
-// LEGACY: Phase 3 will migrate immediate masks to per-instruction spec fields (FormatSpec::imm_width or OperandSpec::imm_mask).
-/// Return the expected raw bit-mask for the immediate field of `mnemonic`.
-///
-/// This is used when `unsigned_immediate` is enabled so that sign-extended
-/// negative constants are truncated back to their original encoded width
-/// instead of being rendered as full 64-bit values.
-fn immediate_mask_for_mnemonic(mnemonic: &str) -> u64 {
-    match mnemonic {
+    match mnemonic.as_str() {
         // 28-bit PC-relative offsets
         "b" | "bl" => 0xFFFFFFF,
         // 20-bit
@@ -47,7 +38,7 @@ fn immediate_mask_for_mnemonic(mnemonic: &str) -> u64 {
         m if m.starts_with("pcaddu12i") => 0xFFFFF,
         m if m.starts_with("pcalau12i") => 0xFFFFF,
         // 16-bit branch / jirl offsets
-        m if BRANCH_MNEMONICS.contains(&m) && m != "b" && m != "bl" || m == "jirl" => 0xFFFF,
+        _ if (is_branch && mnemonic != "b" && mnemonic != "bl") || mnemonic == "jirl" => 0xFFFF,
         // 14-bit
         "ll.w" | "llacq.w" | "sc.w" | "screl.w" => 0x3FFF,
         m if m.starts_with("ldl.")
@@ -126,9 +117,12 @@ pub fn render_loongarch_text_parts(
         .filter(|(index, _)| !hidden_operands.contains(index))
         .collect::<Vec<_>>();
 
-    let is_pc_relative = PC_RELATIVE_MNEMONICS.contains(&mnemonic.as_str());
+    // PC-relative detection via InstructionGroup::Branch (replaces PC_RELATIVE_MNEMONICS list).
+    // jirl is excluded because its offset is added to rj, not to the PC.
+    let is_branch = instruction.groups.iter().any(|g| g == "branch");
+    let is_pc_relative = is_branch || instruction.mnemonic == "jirl";
     let pc = instruction.address as i64;
-    let imm_mask = immediate_mask_for_mnemonic(&mnemonic);
+    let imm_mask = immediate_mask_for_mnemonic(instruction);
 
     let mut operands = visible_operands
         .iter()
@@ -146,11 +140,13 @@ pub fn render_loongarch_text_parts(
         .collect::<Vec<_>>()
         .join(", ");
 
-    // LEGACY: Phase 3 will replace mnemonic-based vector register alias detection with register bank metadata on OperandSpec.
-    // The reference decoder uses $vr for LSX (128-bit) vector registers and $xr for LASX (256-bit).
-    // LSX instructions start with 'v' but do not contain "xv"; LASX instructions contain "xv".
-    // Only apply the alias when register aliasing is enabled.
-    if alias_regs && mnemonic.starts_with('v') && !mnemonic.contains("xv") {
+    // LEGACY: Phase 3 will replace mnemonic-based vector register alias detection
+    // with register bank metadata on OperandSpec. LSX uses $vr, LASX uses $xr.
+    // LSX instructions are in the Vector group but not the SIMD/float groups.
+    if alias_regs
+        && instruction.groups.iter().any(|g| g == "vector")
+        && !instruction.mnemonic.contains("xv")
+    {
         operands = operands.replace("$xr", "$vr");
     }
 
