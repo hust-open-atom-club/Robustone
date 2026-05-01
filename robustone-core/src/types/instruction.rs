@@ -196,6 +196,7 @@ mod tests {
             implicit_registers_read: Vec::new(),
             implicit_registers_written: Vec::new(),
             groups: vec!["arithmetic".to_string()],
+            effect: None,
             status: DecodeStatus::Success,
             render_hints: RenderHints {
                 compat_mnemonic: Some("li".to_string()),

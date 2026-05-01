@@ -188,6 +188,7 @@ pub struct InstructionSpec<B: ArchitectureBackend + 'static> {
     pub features: B::Feature,
     pub modes: ModeSet<B::Mode>,
     pub groups: &'static [InstructionGroup],
+    pub effect: Option<EffectSpec>,
     pub manual_ref: Option<&'static str>,
     pub priority: u16,
 }
@@ -497,30 +498,8 @@ pub enum EncodingConstraint<B: ArchitectureBackend + 'static> {
 // Phase 1 T1.4: EffectSpec + InstructionView
 // ============================================================================
 
-/// Semantic effect of an instruction.
-///
-/// Describes what the instruction does at the architecture level,
-/// independent of mnemonic or encoding details. Used for control-flow
-/// analysis, security scanning, and optimization.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EffectSpec {
-    /// Unconditional or conditional branch.
-    Branch,
-    /// Function call (saves return address).
-    Call,
-    /// Function return (restores PC from link register).
-    Return,
-    /// Memory barrier / fence.
-    Barrier,
-    /// Supervisor call / trap / exception.
-    Trap,
-    /// Privileged instruction (requires elevated privilege level).
-    Privileged,
-    /// Stack operation (push, pop, or stack pointer adjustment).
-    Stack,
-    /// No-architectural-effect (e.g., nop).
-    None,
-}
+// Re-export EffectSpec from robustone_core so downstream crates have a single import path.
+pub use robustone_core::ir::EffectSpec;
 
 /// Typed view over a decoded instruction's fields.
 ///
@@ -585,6 +564,11 @@ impl<'a> InstructionView<'a> {
     /// Check if the instruction belongs to a specific group.
     pub fn is_in_group(&self, group: &str) -> bool {
         self.decoded.groups.iter().any(|g| g == group)
+    }
+
+    /// Semantic effect of this instruction (branch, call, return, etc.).
+    pub fn effect(&self) -> Option<EffectSpec> {
+        self.decoded.effect
     }
 }
 
@@ -851,6 +835,7 @@ pub fn decode_one<B: ArchitectureBackend>(
         implicit_registers_read: Vec::new(),
         implicit_registers_written: Vec::new(),
         groups: spec.groups.iter().map(|g| g.as_str().to_string()).collect(),
+        effect: spec.effect,
         status: robustone_core::ir::DecodeStatus::Success,
         render_hints: robustone_core::ir::RenderHints::default(),
     };
@@ -1183,6 +1168,7 @@ macro_rules! isa_specs {
             features: $features,
             modes: $modes,
             groups: $groups,
+            effect: None,
             manual_ref: Some($manual),
             priority: 0,
         };)*
@@ -1209,6 +1195,7 @@ macro_rules! isa_specs {
             features: $features,
             modes: $modes,
             groups: $groups,
+            effect: None,
             manual_ref: None,
             priority: 0,
         };)*
@@ -1237,6 +1224,7 @@ macro_rules! isa_specs {
             features: $features,
             modes: $modes,
             groups: $groups,
+            effect: None,
             manual_ref: Some($manual),
             priority: $priority,
         };)*
@@ -1250,8 +1238,8 @@ macro_rules! isa_specs {
             format = $format:expr;
             operands = $operands:expr;
             features = $features:expr;
-            modes = $modes:expr;
-            groups = $groups:expr;
+            modes: $modes:expr;
+            groups: $groups:expr;
             priority = $priority:expr;
         })*
     ) => {
@@ -1264,6 +1252,7 @@ macro_rules! isa_specs {
             features: $features,
             modes: $modes,
             groups: $groups,
+            effect: None,
             manual_ref: None,
             priority: $priority,
         };)*
@@ -1423,6 +1412,7 @@ mod tests {
                 features: mock::MockFeature::BASE,
                 modes: ModeSet::All,
                 groups: &[],
+                effect: None,
                 manual_ref: None,
                 priority: 0,
             },
@@ -1438,6 +1428,7 @@ mod tests {
                 features: mock::MockFeature::BASE,
                 modes: ModeSet::All,
                 groups: &[],
+                effect: None,
                 manual_ref: None,
                 priority: 0,
             },
@@ -1493,6 +1484,40 @@ mod tests {
     }
 
     // ============================================================================
+    // T1.4: EffectSpec tests
+    // ============================================================================
+
+    #[test]
+    fn effect_spec_variants_construct_and_compare() {
+        assert_eq!(EffectSpec::Branch, EffectSpec::Branch);
+        assert_eq!(EffectSpec::Call, EffectSpec::Call);
+        assert_eq!(EffectSpec::Return, EffectSpec::Return);
+        assert_eq!(EffectSpec::Barrier, EffectSpec::Barrier);
+        assert_eq!(EffectSpec::Trap, EffectSpec::Trap);
+        assert_eq!(EffectSpec::Privileged, EffectSpec::Privileged);
+        assert_eq!(EffectSpec::Stack, EffectSpec::Stack);
+        assert_eq!(EffectSpec::None, EffectSpec::None);
+        assert_ne!(EffectSpec::Branch, EffectSpec::Call);
+        assert_ne!(EffectSpec::Return, EffectSpec::Branch);
+        assert_ne!(EffectSpec::None, EffectSpec::Trap);
+    }
+
+    #[test]
+    fn instruction_view_effect_returns_spec_effect() {
+        let profile = DecodeProfile {
+            mode: mock::MockMode::Base,
+            features: mock::MockFeature::BASE,
+            render_dialect: RenderDialect::Canonical,
+            alias_policy: AliasPolicy::None,
+        };
+        let bytes = &[0x00, 0x00, 0x00, 0x01];
+        let decoded = decode_one::<MockBackend>(bytes, 0x1000, &profile).unwrap();
+        let view = InstructionView::new(&decoded);
+        // ADD spec has effect: None (default from isa_specs! macro)
+        assert_eq!(view.effect(), None);
+    }
+
+    // ============================================================================
     // T1.5: extract_field returns Result
     // ============================================================================
 
@@ -1512,41 +1537,17 @@ mod tests {
 
     #[test]
     fn mock_extract_field_returns_result_err_on_unknown_field() {
-        use crate::{EncodingPattern, FormatSpec, InstructionSpec, ModeSet};
-
-        // Build a spec that references a field not in its format
-        let bad_spec: InstructionSpec<MockBackend> = InstructionSpec {
-            mnemonic: "bad",
-            opcode_id: "BAD",
-            pattern: EncodingPattern::new(0xFF00_0000, 0x0100_0000),
-            format: &FormatSpec {
-                name: "R",
-                fields: &[], // No fields defined
-            },
-            operands: &[crate::reg!(
-                mock::MockRegisterClass::Gpr,
-                mock::MockField::Rd,
-                Access::Write
-            )],
-            features: mock::MockFeature::BASE,
-            modes: ModeSet::All,
-            groups: &[],
-            manual_ref: None,
-            priority: 0,
-        };
-
-        let profile: DecodeProfile<MockBackend> = DecodeProfile {
-            mode: mock::MockMode::Base,
-            features: mock::MockFeature::BASE,
-            render_dialect: RenderDialect::Canonical,
-            alias_policy: AliasPolicy::None,
-        };
-
-        // We can't easily inject a single bad spec into the lookup table,
-        // but we can verify the error kind exists and the trait compiles.
-        // The real test is that cargo check / cargo test pass with the
-        // new Result signature.
-        let _ = DecodeErrorKind::InvalidField;
+        // Directly call extract_field with a field not present in the format.
+        // MOCK_FORMAT_R has fields Rd(0,5), Rs1(5,5), Rs2(10,5) — no Imm12.
+        let word: u32 = 0;
+        let result = MockBackend::extract_field(word, &mock::MOCK_FORMAT_R, mock::MockField::Imm12);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            err.stable_kind().contains("invalid_field"),
+            "got {}",
+            err.stable_kind()
+        );
     }
 
     // ============================================================================

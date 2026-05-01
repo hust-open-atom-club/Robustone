@@ -130,6 +130,31 @@ pub struct RenderHints {
     pub compat_hidden_operands: Vec<usize>,
 }
 
+/// Semantic effect of an instruction.
+///
+/// Describes what the instruction does at the architecture level,
+/// independent of mnemonic or encoding details.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EffectSpec {
+    /// Unconditional or conditional branch.
+    Branch,
+    /// Function call (saves return address).
+    Call,
+    /// Function return (restores PC from link register).
+    Return,
+    /// Memory barrier / fence.
+    Barrier,
+    /// Supervisor call / trap / exception.
+    Trap,
+    /// Privileged instruction (requires elevated privilege level).
+    Privileged,
+    /// Stack operation (push, pop, or stack pointer adjustment).
+    Stack,
+    /// No-architectural-effect (e.g., nop).
+    None,
+}
+
 /// Shared decoded instruction payload.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[allow(unpredictable_function_pointer_comparisons)]
@@ -151,6 +176,8 @@ pub struct DecodedInstruction {
     pub implicit_registers_written: Vec<RegisterId>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub groups: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effect: Option<EffectSpec>,
     pub status: DecodeStatus,
     #[serde(default)]
     pub render_hints: RenderHints,
@@ -283,6 +310,7 @@ mod tests {
             implicit_registers_read: Vec::new(),
             implicit_registers_written: Vec::new(),
             groups: Vec::new(),
+            effect: None,
             status: DecodeStatus::Success,
             render_hints: RenderHints::default(),
         }

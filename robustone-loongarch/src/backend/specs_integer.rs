@@ -15,6 +15,7 @@ macro_rules! loongarch_insn {
             features: LoongArchFeature::BASE,
             modes: ::robustone_isa::ModeSet::All,
             groups: $groups,
+            effect: None,
             manual_ref: Some("LoongArch Reference Manual"),
             priority: $priority,
         };

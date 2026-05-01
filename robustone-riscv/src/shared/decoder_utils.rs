@@ -61,6 +61,7 @@ pub fn build_riscv_decoded_instruction(
         implicit_registers_read,
         implicit_registers_written,
         groups: infer_groups(&mnemonic),
+        effect: None,
         status: DecodeStatus::Success,
         render_hints: RenderHints::default(),
     }

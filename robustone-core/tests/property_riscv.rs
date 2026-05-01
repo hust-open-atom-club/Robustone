@@ -151,6 +151,7 @@ prop_compose! {
             implicit_registers_read,
             implicit_registers_written,
             groups,
+            effect: None,
             status,
             render_hints: RenderHints {
                 compat_mnemonic,

@@ -1,4 +1,5 @@
 use criterion::{Criterion, criterion_group, criterion_main};
+use robustone_core::types::error::{DecodeErrorKind, DisasmError};
 use robustone_isa::{
     AliasPolicy, ArchitectureBackend, DecodeProfile, FeatureSet, RenderDialect, RenderPolicy,
 };
@@ -112,14 +113,18 @@ impl ArchitectureBackend for BenchBackend {
         word: Self::Word,
         format: &robustone_isa::FormatSpec<Self::Field>,
         field: Self::Field,
-    ) -> u32 {
+    ) -> Result<u32, DisasmError> {
         for f in format.fields {
             if f.field_type == field {
                 let mask = ((1u64 << f.length) - 1) as u32;
-                return (word >> f.start) & mask;
+                return Ok((word >> f.start) & mask);
             }
         }
-        0
+        Err(DisasmError::decode_failure(
+            DecodeErrorKind::InvalidField,
+            Some("bench"),
+            format!("field {:?} not found in format {}", field, format.name),
+        ))
     }
 }
 

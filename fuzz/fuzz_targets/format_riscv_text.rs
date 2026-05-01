@@ -89,6 +89,7 @@ fn build_instruction(data: &[u8]) -> Instruction {
         implicit_registers_read: Vec::new(),
         implicit_registers_written: Vec::new(),
         groups: vec!["arithmetic".to_string()],
+        effect: None,
         status: match next_byte(data, &mut cursor) % 4 {
             0 => DecodeStatus::Success,
             1 => DecodeStatus::InvalidEncoding,

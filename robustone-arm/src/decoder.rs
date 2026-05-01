@@ -52,6 +52,7 @@ impl AArch64Decoder {
             implicit_registers_read: Vec::new(),
             implicit_registers_written: Vec::new(),
             groups: Vec::new(),
+            effect: None,
             status: DecodeStatus::Success,
             render_hints: RenderHints::default(),
         })

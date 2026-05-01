@@ -596,6 +596,7 @@ pub fn define_instructions(input: TokenStream) -> TokenStream {
                 features: #features_expr,
                 modes: #modes_expr,
                 groups: #groups_expr,
+                effect: None,
                 manual_ref: #manual_ref,
                 priority: #priority,
             };

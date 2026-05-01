@@ -225,6 +225,7 @@ mod tests {
             implicit_registers_read: Vec::new(),
             implicit_registers_written: Vec::new(),
             groups: Vec::new(),
+            effect: None,
             status: robustone_core::ir::DecodeStatus::Success,
             render_hints: Default::default(),
         }
