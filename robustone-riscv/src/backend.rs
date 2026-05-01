@@ -238,6 +238,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Branch];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Branch;
     }
     insn BNE {
         mnemonic = "bne";
@@ -253,6 +254,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Branch];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Branch;
     }
     insn JAL {
         mnemonic = "jal";
@@ -267,6 +269,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Jump];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Call;
     }
     insn JALR {
         mnemonic = "jalr";
@@ -282,6 +285,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Jump];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Return;
     }
     insn LUI {
         mnemonic = "lui";
@@ -505,6 +509,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::System];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Privileged;
     }
     insn MRET {
         mnemonic = "mret";
@@ -516,6 +521,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::System];
         manual = "RISC-V Privileged ISA";
+        effect = Return;
     }
     insn FCVT_S_D {
         mnemonic = "fcvt.s.d";
@@ -574,6 +580,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Jump];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Return;
     }
     insn C_SUBW {
         mnemonic = "c.subw";
@@ -692,6 +699,7 @@ robustone_isa_macros::define_instructions! {
         modes = ModeSet::Only(&[RiscVMode::RV32]);
         groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Jump];
         manual = "RISC-V Unprivileged ISA Vol. I";
+        effect = Call;
     }
     insn C_LD {
         mnemonic = "c.ld";
