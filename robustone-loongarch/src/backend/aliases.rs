@@ -21,6 +21,7 @@ robustone_isa_macros::define_aliases! {
     alias "invtlb_reorder" for "INVTLB" {
         when [];
         mnemonic = "invtlb";
-        operand_order = [2, 0, 1];
+        visible_operands = [0, 1, 2];
+        operand_order = [0, 1, 2];
     }
 }
