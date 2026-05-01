@@ -841,6 +841,10 @@ pub enum OperandSpec<B: ArchitectureBackend + 'static> {
         field: B::Field,
         transform: ImmediateTransform,
         kind: ImmediateKind,
+        /// Bit-width mask for unsigned immediate rendering.
+        /// E.g. 0xFFF for 12-bit, 0xFFFF for 16-bit, 0x1F for 5-bit.
+        /// Default (0xFFF) covers the most common LoongArch case.
+        unsigned_mask: u64,
     },
     Text {
         field: B::Field,
@@ -1032,6 +1036,7 @@ fn lower_operand<B: ArchitectureBackend>(
             field,
             transform,
             kind,
+            ..
         } => {
             let raw = B::extract_field(word, format, *field)?;
             let value = apply_transform(raw, *transform);
@@ -1447,6 +1452,15 @@ macro_rules! imm {
             field: $field,
             transform: $transform,
             kind: $kind,
+            unsigned_mask: 0xFFF,
+        }
+    };
+    ($field:expr, $transform:expr, $kind:expr, mask = $mask:expr) => {
+        $crate::OperandSpec::Immediate {
+            field: $field,
+            transform: $transform,
+            kind: $kind,
+            unsigned_mask: $mask,
         }
     };
 }

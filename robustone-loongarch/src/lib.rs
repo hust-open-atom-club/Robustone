@@ -99,7 +99,7 @@ impl ArchitectureHandler for LoongArchHandler {
         // - nop/move aliases: aliases.rs (Round 7)
         // - .xs suffix: removed (dead code, Round 13-14)
         // - CSR/vector dedup: render-stage operand deduplication (Round 14)
-        // - invtlb reorder: aliases.rs operand_order (Round 14)
+        // - invtlb reorder: hardcoded opcode_id check in render.rs (Round 14-15)
         // Do NOT add new patches here.
         // ------------------------------------------------------------------
 
