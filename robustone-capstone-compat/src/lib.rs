@@ -12,10 +12,8 @@ pub mod yaml;
 mod tests {
     use super::harness::{self, TestResult};
     use super::xfail;
-    use crate::adapter::CapstoneArchAdapter;
     use robustone_core::ArchitectureDispatcher;
     use robustone_loongarch::LoongArchHandler;
-    use robustone_loongarch::backend::LoongArchBackend;
 
     fn loongarch_dispatcher() -> ArchitectureDispatcher {
         let mut dispatcher = ArchitectureDispatcher::new();
@@ -302,10 +300,8 @@ mod tests {
 mod bulk_tests {
     use super::harness::{self, TestResult};
     use super::xfail;
-    use crate::adapter::CapstoneArchAdapter;
     use robustone_core::ArchitectureDispatcher;
     use robustone_loongarch::LoongArchHandler;
-    use robustone_loongarch::backend::LoongArchBackend;
 
     fn loongarch_dispatcher() -> ArchitectureDispatcher {
         let mut dispatcher = ArchitectureDispatcher::new();
