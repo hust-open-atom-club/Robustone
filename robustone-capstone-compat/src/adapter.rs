@@ -1,6 +1,6 @@
 //! External test adapter trait for compatibility testing.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use robustone_isa::{ArchitectureBackend, DecodeProfile, FeatureSet};
 use robustone_loongarch::backend::{LoongArchBackend, LoongArchFeature, LoongArchMode};
@@ -40,6 +40,34 @@ pub struct ExpectedDetail {
 pub trait ExternalTestAdapter<B: ArchitectureBackend> {
     type Fixture;
 
+    /// Architecture name for decoder dispatch (e.g. "loongarch64", "riscv64").
+    fn arch_name() -> &'static str;
+
+    /// Return the directory within `third_party/capstone/tests/MC/` where
+    /// YAML test files for this architecture are stored.
+    fn yaml_test_dir() -> &'static str;
+
+    /// Discover all YAML test files for this architecture.
+    fn discover_yaml_files(workspace_root: &Path) -> Vec<PathBuf> {
+        let dir = workspace_root
+            .join("third_party")
+            .join("capstone")
+            .join("tests")
+            .join("MC")
+            .join(Self::yaml_test_dir());
+        let mut files = Vec::new();
+        if let Ok(entries) = std::fs::read_dir(&dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().is_some_and(|e| e == "yaml" || e == "yml") {
+                    files.push(path);
+                }
+            }
+        }
+        files.sort();
+        files
+    }
+
     /// Load test fixtures from a file or directory.
     fn load_fixtures(path: &Path) -> Result<Vec<Self::Fixture>, CompatError>;
 
@@ -67,6 +95,14 @@ pub struct CapstoneLoongArchYaml;
 
 impl ExternalTestAdapter<LoongArchBackend> for CapstoneLoongArchYaml {
     type Fixture = TestCase;
+
+    fn arch_name() -> &'static str {
+        "loongarch64"
+    }
+
+    fn yaml_test_dir() -> &'static str {
+        "LoongArch"
+    }
 
     fn load_fixtures(path: &Path) -> Result<Vec<Self::Fixture>, CompatError> {
         let content = std::fs::read_to_string(path)
