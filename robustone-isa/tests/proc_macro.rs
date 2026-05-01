@@ -92,7 +92,7 @@ impl ArchitectureBackend for MacroBackend {
     ) -> Option<&'static InstructionSpec<Self>> {
         SPECS
             .iter()
-            .find(|spec| (word & spec.pattern.mask) == spec.pattern.value)
+            .find(|spec| (word & spec.pattern().mask) == spec.pattern().value)
     }
 
     fn lower_register(
@@ -134,8 +134,8 @@ fn proc_macro_define_formats_generates_format_spec() {
 
 #[test]
 fn proc_macro_define_instructions_generates_spec() {
-    assert_eq!(MACRO_ADD.mnemonic, "add");
-    assert_eq!(MACRO_ADD.opcode_id, "MACRO_ADD");
+    assert_eq!(MACRO_ADD.mnemonic(), "add");
+    assert_eq!(MACRO_ADD.opcode_id(), "MACRO_ADD");
 }
 
 #[test]

@@ -849,9 +849,9 @@ impl ArchitectureBackend for RiscVBackend {
 
         // First pass: exact match including mode and features.
         let exact = RISCV_SPECS.iter().find(|spec| {
-            (word & spec.pattern.mask) == spec.pattern.value
-                && spec.modes.matches(profile.mode)
-                && profile.features.contains(spec.features)
+            (word & spec.pattern().mask) == spec.pattern().value
+                && spec.modes().matches(profile.mode)
+                && profile.features.contains(spec.features())
         });
         if exact.is_some() {
             return exact;
@@ -863,7 +863,8 @@ impl ArchitectureBackend for RiscVBackend {
             // Legacy decoder returns InvalidEncoding for such compressed cases
             // (e.g. c.flw without F).
             let mode_match = RISCV_SPECS.iter().find(|spec| {
-                (word & spec.pattern.mask) == spec.pattern.value && spec.modes.matches(profile.mode)
+                (word & spec.pattern().mask) == spec.pattern().value
+                    && spec.modes().matches(profile.mode)
             });
             if mode_match.is_some() {
                 return None;
@@ -871,8 +872,8 @@ impl ArchitectureBackend for RiscVBackend {
             // No mode-matching spec: try to find a mode-mismatched spec so
             // decode_one can reject with UnsupportedMode (e.g. c.subw on RV32).
             return RISCV_SPECS.iter().find(|spec| {
-                (word & spec.pattern.mask) == spec.pattern.value
-                    && profile.features.contains(spec.features)
+                (word & spec.pattern().mask) == spec.pattern().value
+                    && profile.features.contains(spec.features())
             });
         }
 
@@ -882,7 +883,7 @@ impl ArchitectureBackend for RiscVBackend {
         // decode_one can reject with UnsupportedExtension.
         RISCV_SPECS
             .iter()
-            .find(|spec| (word & spec.pattern.mask) == spec.pattern.value)
+            .find(|spec| (word & spec.pattern().mask) == spec.pattern().value)
     }
 
     fn lower_register(

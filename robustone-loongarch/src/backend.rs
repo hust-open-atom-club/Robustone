@@ -693,7 +693,7 @@ impl ArchitectureBackend for LoongArchBackend {
     ) -> Option<&'static InstructionSpec<Self>> {
         LOONGARCH_BASE_SPECS
             .iter()
-            .find(|spec| (word & spec.pattern.mask) == spec.pattern.value)
+            .find(|spec| (word & spec.pattern().mask) == spec.pattern().value)
     }
 
     fn lower_register(

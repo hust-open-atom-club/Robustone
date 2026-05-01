@@ -6,19 +6,19 @@ macro_rules! loongarch_insn {
         loongarch_insn!($name, $mnemonic, $opcode_id, $mask, $value, $fmt, $operands, $groups, 0);
     };
     ($name:ident, $mnemonic:expr, $opcode_id:expr, $mask:expr, $value:expr, $fmt:expr, $operands:expr, $groups:expr, $priority:expr) => {
-        pub static $name: ::robustone_isa::InstructionSpec<LoongArchBackend> = ::robustone_isa::InstructionSpec {
-            mnemonic: $mnemonic,
-            opcode_id: $opcode_id,
-            pattern: ::robustone_isa::mask_value!($mask, $value),
-            format: $fmt,
-            operands: $operands,
-            features: LoongArchFeature::BASE,
-            modes: ::robustone_isa::ModeSet::All,
-            groups: $groups,
-            effect: None,
-            manual_ref: Some("LoongArch Reference Manual"),
-            priority: $priority,
-        };
+        pub static $name: ::robustone_isa::InstructionSpec<LoongArchBackend> = ::robustone_isa::InstructionSpec::new(
+            $mnemonic,
+            $opcode_id,
+            ::robustone_isa::mask_value!($mask, $value),
+            $fmt,
+            $operands,
+            LoongArchFeature::BASE,
+            ::robustone_isa::ModeSet::All,
+            $groups,
+            None,
+            Some("LoongArch Reference Manual"),
+            $priority,
+        );
     };
 }
 

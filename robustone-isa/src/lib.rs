@@ -178,19 +178,23 @@ pub enum AliasPolicy {
 // ============================================================================
 
 /// Static specification of a single instruction.
+///
+/// Fields are `pub(crate)` — construction is only possible via
+/// `InstructionSpec::new()` (called by proc-macros). Downstream
+/// crates use the public accessor methods for lookup and decode.
 #[derive(Debug)]
 pub struct InstructionSpec<B: ArchitectureBackend + 'static> {
-    pub mnemonic: &'static str,
-    pub opcode_id: &'static str,
-    pub pattern: EncodingPattern<B::Word>,
-    pub format: &'static FormatSpec<B::Field>,
-    pub operands: &'static [OperandSpec<B>],
-    pub features: B::Feature,
-    pub modes: ModeSet<B::Mode>,
-    pub groups: &'static [InstructionGroup],
-    pub effect: Option<EffectSpec>,
-    pub manual_ref: Option<&'static str>,
-    pub priority: u16,
+    pub(crate) mnemonic: &'static str,
+    pub(crate) opcode_id: &'static str,
+    pub(crate) pattern: EncodingPattern<B::Word>,
+    pub(crate) format: &'static FormatSpec<B::Field>,
+    pub(crate) operands: &'static [OperandSpec<B>],
+    pub(crate) features: B::Feature,
+    pub(crate) modes: ModeSet<B::Mode>,
+    pub(crate) groups: &'static [InstructionGroup],
+    pub(crate) effect: Option<EffectSpec>,
+    pub(crate) manual_ref: Option<&'static str>,
+    pub(crate) priority: u16,
 }
 
 impl<B: ArchitectureBackend + 'static> InstructionSpec<B> {
@@ -226,6 +230,61 @@ impl<B: ArchitectureBackend + 'static> InstructionSpec<B> {
             manual_ref,
             priority,
         }
+    }
+
+    /// Instruction mnemonic (e.g. "add", "lw").
+    pub fn mnemonic(&self) -> &'static str {
+        self.mnemonic
+    }
+
+    /// Stable opcode identifier used for cross-referencing.
+    pub fn opcode_id(&self) -> &'static str {
+        self.opcode_id
+    }
+
+    /// Mask/value pattern for matching instruction words.
+    pub fn pattern(&self) -> &EncodingPattern<B::Word> {
+        &self.pattern
+    }
+
+    /// Format specification defining the field layout.
+    pub fn format(&self) -> &FormatSpec<B::Field> {
+        self.format
+    }
+
+    /// Operand specifications (registers, immediates, etc.).
+    pub fn operands(&self) -> &[OperandSpec<B>] {
+        self.operands
+    }
+
+    /// Required feature set for this instruction.
+    pub fn features(&self) -> B::Feature {
+        self.features
+    }
+
+    /// Supported modes for this instruction.
+    pub fn modes(&self) -> &ModeSet<B::Mode> {
+        &self.modes
+    }
+
+    /// Functional groups this instruction belongs to.
+    pub fn groups(&self) -> &[InstructionGroup] {
+        self.groups
+    }
+
+    /// Semantic effect classification.
+    pub fn effect(&self) -> Option<EffectSpec> {
+        self.effect
+    }
+
+    /// Optional reference to the architecture manual.
+    pub fn manual_ref(&self) -> Option<&'static str> {
+        self.manual_ref
+    }
+
+    /// Priority for disambiguation when multiple patterns match.
+    pub fn priority(&self) -> u16 {
+        self.priority
     }
 }
 
@@ -1214,19 +1273,19 @@ macro_rules! isa_specs {
             manual = $manual:expr;
         })*
     ) => {
-        $(pub static $name: $crate::InstructionSpec<$backend> = $crate::InstructionSpec {
-            mnemonic: $mnemonic,
-            opcode_id: $opcode_id,
-            pattern: $pattern,
-            format: $format,
-            operands: $operands,
-            features: $features,
-            modes: $modes,
-            groups: $groups,
-            effect: None,
-            manual_ref: Some($manual),
-            priority: 0,
-        };)*
+        $(pub static $name: $crate::InstructionSpec<$backend> = $crate::InstructionSpec::new(
+            $mnemonic,
+            $opcode_id,
+            $pattern,
+            $format,
+            $operands,
+            $features,
+            $modes,
+            $groups,
+            None,
+            Some($manual),
+            0,
+        );)*
     };
     (
         backend = $backend:ty;
@@ -1241,19 +1300,19 @@ macro_rules! isa_specs {
             groups = $groups:expr;
         })*
     ) => {
-        $(pub static $name: $crate::InstructionSpec<$backend> = $crate::InstructionSpec {
-            mnemonic: $mnemonic,
-            opcode_id: $opcode_id,
-            pattern: $pattern,
-            format: $format,
-            operands: $operands,
-            features: $features,
-            modes: $modes,
-            groups: $groups,
-            effect: None,
-            manual_ref: None,
-            priority: 0,
-        };)*
+        $(pub static $name: $crate::InstructionSpec<$backend> = $crate::InstructionSpec::new(
+            $mnemonic,
+            $opcode_id,
+            $pattern,
+            $format,
+            $operands,
+            $features,
+            $modes,
+            $groups,
+            None,
+            None,
+            0,
+        );)*
     };
     (
         backend = $backend:ty;
@@ -1270,19 +1329,19 @@ macro_rules! isa_specs {
             priority = $priority:expr;
         })*
     ) => {
-        $(pub static $name: $crate::InstructionSpec<$backend> = $crate::InstructionSpec {
-            mnemonic: $mnemonic,
-            opcode_id: $opcode_id,
-            pattern: $pattern,
-            format: $format,
-            operands: $operands,
-            features: $features,
-            modes: $modes,
-            groups: $groups,
-            effect: None,
-            manual_ref: Some($manual),
-            priority: $priority,
-        };)*
+        $(pub static $name: $crate::InstructionSpec<$backend> = $crate::InstructionSpec::new(
+            $mnemonic,
+            $opcode_id,
+            $pattern,
+            $format,
+            $operands,
+            $features,
+            $modes,
+            $groups,
+            None,
+            Some($manual),
+            $priority,
+        );)*
     };
     (
         backend = $backend:ty;
@@ -1293,24 +1352,24 @@ macro_rules! isa_specs {
             format = $format:expr;
             operands = $operands:expr;
             features = $features:expr;
-            modes: $modes:expr;
-            groups: $groups:expr;
+            modes = $modes:expr;
+            groups = $groups:expr;
             priority = $priority:expr;
         })*
     ) => {
-        $(pub static $name: $crate::InstructionSpec<$backend> = $crate::InstructionSpec {
-            mnemonic: $mnemonic,
-            opcode_id: $opcode_id,
-            pattern: $pattern,
-            format: $format,
-            operands: $operands,
-            features: $features,
-            modes: $modes,
-            groups: $groups,
-            effect: None,
-            manual_ref: None,
-            priority: $priority,
-        };)*
+        $(pub static $name: $crate::InstructionSpec<$backend> = $crate::InstructionSpec::new(
+            $mnemonic,
+            $opcode_id,
+            $pattern,
+            $format,
+            $operands,
+            $features,
+            $modes,
+            $groups,
+            None,
+            None,
+            $priority,
+        );)*
     };
 }
 
