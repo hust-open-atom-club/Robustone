@@ -5,6 +5,7 @@
 //! - `cargo xtask check-spec --all` – validate instruction spec tables
 //! - `cargo xtask compat [--strict]` – run Capstone compatibility tests
 //! - `cargo xtask compat-report [--deny-xfail-increase]` – generate compatibility report
+//! - `cargo xtask audit-no-hardcode` – detect mnemonic-based hardcode
 //! - `cargo xtask new-arch <name>` – scaffold a new architecture crate
 
 use std::env;
@@ -21,6 +22,7 @@ fn main() -> ExitCode {
         eprintln!("  check-spec --all      Validate instruction spec tables");
         eprintln!("  compat [--strict]     Run Capstone compatibility tests");
         eprintln!("  compat-report [--deny-xfail-increase]  Generate compatibility report");
+        eprintln!("  audit-no-hardcode     Detect mnemonic-based hardcode in production");
         eprintln!("  new-arch <name>       Scaffold a new architecture crate");
         return ExitCode::FAILURE;
     }
@@ -30,6 +32,7 @@ fn main() -> ExitCode {
         "check-spec" => check_spec(&args[1..]),
         "compat" => compat(&args[1..]),
         "compat-report" => compat_report(&args[1..]),
+        "audit-no-hardcode" => audit_no_hardcode(),
         "new-arch" => new_arch(&args[1..]),
         other => {
             eprintln!("Unknown command: {}", other);
@@ -706,5 +709,88 @@ fn find_workspace_root() -> PathBuf {
         if !dir.pop() {
             panic!("Could not find workspace root");
         }
+    }
+}
+
+// ============================================================================
+// audit-no-hardcode
+// ============================================================================
+
+/// Scan production crate sources for mnemonic-based semantic classification
+/// and other hardcoded patterns that violate AC-5/AC-6.
+fn audit_no_hardcode() -> ExitCode {
+    let workspace_root = find_workspace_root();
+    let mut violations: Vec<String> = Vec::new();
+
+    // Scan only architecture crates (not infrastructure like core/isa).
+    let arch_crates = [
+        "robustone-loongarch",
+        "robustone-riscv",
+        "robustone-arm",
+        "robustone-x86",
+    ];
+    let forbidden_patterns: &[(&str, &str)] = &[
+        ("mnemonic\\.starts_with\\(", "mnemonic starts_with"),
+        ("mnemonic\\.ends_with\\(", "mnemonic ends_with"),
+        ("mnemonic\\.contains\\(", "mnemonic contains"),
+        ("\\.mnemonic\\s*==\\s*\"[^u]", "mnemonic == string literal"),
+        (
+            "BRANCH_MNEMONICS|PC_RELATIVE_MNEMONICS|immediate_mask_for_mnemonic",
+            "mnemonic list/function",
+        ),
+        ("opcode_id\\..*starts_with", "opcode_id starts_with"),
+    ];
+
+    for crate_name in &arch_crates {
+        let src_dir = workspace_root.join(crate_name).join("src");
+        if !src_dir.exists() {
+            continue;
+        }
+
+        for entry in walk_dir(&src_dir) {
+            let path = entry.path();
+            if path.extension().is_none_or(|e| e != "rs") {
+                continue;
+            }
+            let content = match fs::read_to_string(&path) {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
+
+            for (pattern, desc) in forbidden_patterns {
+                if let Ok(re) = regex::Regex::new(pattern) {
+                    for (line_num, line) in content.lines().enumerate() {
+                        if re.is_match(line) {
+                            // Skip LEGACY-marked lines and comments
+                            if line.trim().starts_with("//") {
+                                continue;
+                            }
+                            let rel_path = path.strip_prefix(&workspace_root).unwrap_or(&path);
+                            violations.push(format!(
+                                "{}:{}: {} — `{}`",
+                                rel_path.display(),
+                                line_num + 1,
+                                desc,
+                                line.trim()
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if violations.is_empty() {
+        println!("audit-no-hardcode: OK – no violations found");
+        ExitCode::SUCCESS
+    } else {
+        println!(
+            "audit-no-hardcode: {} violation(s) found:",
+            violations.len()
+        );
+        for v in &violations {
+            println!("  {}", v);
+        }
+        ExitCode::FAILURE
     }
 }
