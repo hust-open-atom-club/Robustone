@@ -103,7 +103,6 @@ fn build_instruction(data: &[u8]) -> Instruction {
                 None
             },
             compat_hidden_operands: vec![usize::from(next_byte(data, &mut cursor) % 4)],
-            compat_operand_order: Vec::new(),
         },
     };
 

@@ -915,32 +915,10 @@ pub fn define_aliases(input: TokenStream) -> TokenStream {
                         }
                     }
                 }
-                AliasConditionKind::RegEq(other_idx) => {
-                    let other = syn::Index::from(*other_idx);
-                    quote! {
-                        {
-                            let __v = match (insn.operands.get(#idx_lit), insn.operands.get(#other)) {
-                                (Some(::robustone_core::ir::Operand::Register { register: r0 }),
-                                 Some(::robustone_core::ir::Operand::Register { register: r1 })) => r0.id == r1.id,
-                                _ => false,
-                            };
-                            __v
-                        }
-                    }
-                }
             }
         });
 
         let visible_arr = quote! { &[#(#visible),*] };
-        let order = &alias.operand_order;
-
-        let order_code = if order.is_empty() {
-            quote! {}
-        } else {
-            quote! {
-                insn.render_hints.compat_operand_order = vec![#(#order),*];
-            }
-        };
 
         quote! {
             if insn.opcode_id.as_deref() == Some(#opcode_id) {
@@ -953,7 +931,6 @@ pub fn define_aliases(input: TokenStream) -> TokenStream {
                         }
                     }
                     insn.render_hints.compat_hidden_operands = hidden;
-                    #order_code
                 }
             }
         }
@@ -978,7 +955,6 @@ struct AliasDef {
     mnemonic: String,
     conditions: Vec<AliasCondition>,
     visible_operands: Vec<usize>,
-    operand_order: Vec<usize>,
 }
 
 struct AliasCondition {
@@ -989,7 +965,6 @@ struct AliasCondition {
 enum AliasConditionKind {
     Reg(u32),
     Imm(i64),
-    RegEq(usize),
 }
 
 impl Parse for DefineAliasesInput {
@@ -1018,7 +993,6 @@ impl Parse for DefineAliasesInput {
             let mut conditions = Vec::new();
             let mut mnemonic = None;
             let mut visible_operands = Vec::new();
-            let mut operand_order = Vec::new();
 
             while !content.is_empty() {
                 let key: Ident = content.parse()?;
@@ -1050,18 +1024,6 @@ impl Parse for DefineAliasesInput {
                         }
                     }
                     let _: Token![;] = content.parse()?;
-                } else if key == "operand_order" {
-                    let _: Token![=] = content.parse()?;
-                    let vals;
-                    syn::bracketed!(vals in content);
-                    while !vals.is_empty() {
-                        let v: LitInt = vals.parse()?;
-                        operand_order.push(v.base10_parse()?);
-                        if !vals.is_empty() {
-                            let _: Token![,] = vals.parse()?;
-                        }
-                    }
-                    let _: Token![;] = content.parse()?;
                 } else {
                     return Err(syn::Error::new(key.span(), "unknown alias property"));
                 }
@@ -1072,7 +1034,6 @@ impl Parse for DefineAliasesInput {
                 mnemonic: mnemonic.unwrap_or_else(|| alias_mnemonic.value()),
                 conditions,
                 visible_operands,
-                operand_order,
             });
         }
 
@@ -1092,16 +1053,6 @@ fn parse_alias_condition(input: ParseStream) -> syn::Result<AliasCondition> {
     syn::parenthesized!(idx_paren in input);
     let idx: LitInt = idx_paren.parse()?;
     let operand_index: usize = idx.base10_parse()?;
-
-    // Check for operand_eq(idx_a, idx_b) syntax
-    if operand_kw == "operand_eq" {
-        let _comma: Token![,] = input.parse()?;
-        let other_idx: LitInt = input.parse()?;
-        return Ok(AliasCondition {
-            operand_index,
-            kind: AliasConditionKind::RegEq(other_idx.base10_parse()?),
-        });
-    }
 
     let _: Token![==] = input.parse()?;
 
