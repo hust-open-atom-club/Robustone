@@ -32,7 +32,7 @@ fn main() -> ExitCode {
         "check-spec" => check_spec(&args[1..]),
         "compat" => compat(&args[1..]),
         "compat-report" => compat_report(&args[1..]),
-        "audit-no-hardcode" => audit_no_hardcode(),
+        "audit-no-hardcode" => audit_no_hardcode(&args[1..]),
         "new-arch" => new_arch(&args[1..]),
         other => {
             eprintln!("Unknown command: {}", other);
@@ -718,7 +718,18 @@ fn find_workspace_root() -> PathBuf {
 
 /// Scan production crate sources for mnemonic-based semantic classification
 /// and other hardcoded patterns that violate AC-5/AC-6.
-fn audit_no_hardcode() -> ExitCode {
+fn audit_no_hardcode(args: &[String]) -> ExitCode {
+    // Accept --all flag for forward compatibility.
+    for arg in args {
+        if arg == "--all" {
+            // Future: enable all detection categories or scan all crates.
+            // Currently a no-op alias for default behavior.
+        } else {
+            eprintln!("Unknown flag: {}", arg);
+            return ExitCode::FAILURE;
+        }
+    }
+
     let workspace_root = find_workspace_root();
     let mut violations: Vec<String> = Vec::new();
 
@@ -739,6 +750,14 @@ fn audit_no_hardcode() -> ExitCode {
             "mnemonic list/function",
         ),
         ("opcode_id\\..*starts_with", "opcode_id starts_with"),
+        (
+            "word\\s*==\\s*0x[0-9a-fA-F]{5,}",
+            "bare hex exact-word comparison",
+        ),
+        (
+            "include_str!\\s*\\(\\s*\"[^\"]*capstone[^\"]*\"",
+            "include_str with capstone path",
+        ),
     ];
 
     for crate_name in &arch_crates {

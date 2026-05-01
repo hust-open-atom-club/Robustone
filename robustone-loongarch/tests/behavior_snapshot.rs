@@ -3,7 +3,7 @@
 //! These tests freeze the current behavior of LoongArch decoding, including
 //! handler-level patches (nop, move, invtlb, csr, vector, etc.), mnemonic-based
 //! semantic classification (BRANCH_MNEMONICS, PC_RELATIVE_MNEMONICS), and
-//! immediate mask guessing (immediate_mask_for_mnemonic).
+//! immediate mask guessing (now replaced by immediate_unsigned_mask).
 //!
 //! Purpose (T0.1): record current behavior so that during Phase 3 refactoring
 //! we can verify no accidental regressions occur.
@@ -146,7 +146,7 @@ fn snapshot_pc_relative_mnemonics_list() {
 
 #[test]
 fn snapshot_immediate_mask_rules() {
-    // Document immediate_mask_for_mnemonic classification rules
+    // Document immediate_unsigned_mask classification rules
     // These will be migrated to spec-level render metadata in Phase 3
     let masks: Vec<(&str, u64)> = vec![
         ("b", 0x0FFFFFFF),
