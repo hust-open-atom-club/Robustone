@@ -43,10 +43,10 @@ pub enum ArmRegisterClass {
     Gpr,
 }
 
-robustone_isa::format_specs! {
-    format R[ArmField] {
-        rd: robustone_isa::field("rd", 0, 5, ArmField::Rd),
-    }
+robustone_isa_macros::define_formats! {
+    arch = Arm; extern_fields;
+    fields { Rd; };
+    format R { Rd: bits(0, 5) }
 }
 
 robustone_isa_macros::define_instructions! {

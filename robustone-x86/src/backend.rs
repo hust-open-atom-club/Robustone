@@ -35,7 +35,7 @@ impl FeatureSet for X86Feature {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum X86Field {
-    ModRM,
+    Modrm,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -43,10 +43,10 @@ pub enum X86RegisterClass {
     Gpr,
 }
 
-robustone_isa::format_specs! {
-    format R[X86Field] {
-        modrm: robustone_isa::field("modrm", 0, 8, X86Field::ModRM),
-    }
+robustone_isa_macros::define_formats! {
+    arch = X86; extern_fields;
+    fields { Modrm; };
+    format R { Modrm: bits(0, 8) }
 }
 
 robustone_isa_macros::define_instructions! {

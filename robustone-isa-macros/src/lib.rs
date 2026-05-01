@@ -385,9 +385,17 @@ pub fn define_formats(input: TokenStream) -> TokenStream {
             let fname = &field.name;
             let start = &field.start;
             let length = &field.length;
-            let field_type = to_pascal_case_ident(fname);
-            quote! {
-                ::robustone_isa::field(stringify!(#fname), #start, #length, #field_enum::#field_type)
+            if parsed.extern_fields {
+                // extern_fields mode: fields block declares PascalCase names that
+                // match the existing field enum variants (no conversion needed).
+                quote! {
+                    ::robustone_isa::field(stringify!(#fname), #start, #length, #field_enum::#fname)
+                }
+            } else {
+                let field_type = to_pascal_case_ident(fname);
+                quote! {
+                    ::robustone_isa::field(stringify!(#fname), #start, #length, #field_enum::#field_type)
+                }
             }
         }).collect();
 
@@ -399,11 +407,19 @@ pub fn define_formats(input: TokenStream) -> TokenStream {
         }
     }).collect();
 
-    quote! {
-        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-        pub enum #field_enum {
-            #(#field_variants),*
+    let enum_def = if parsed.extern_fields {
+        quote! {}
+    } else {
+        quote! {
+            #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+            pub enum #field_enum {
+                #(#field_variants),*
+            }
         }
+    };
+
+    quote! {
+        #enum_def
 
         #(#format_statics)*
     }
@@ -412,6 +428,7 @@ pub fn define_formats(input: TokenStream) -> TokenStream {
 
 struct DefineFormatsInput {
     arch: Ident,
+    extern_fields: bool,
     fields: Vec<Ident>,
     formats: Vec<FormatDef>,
 }
@@ -432,11 +449,20 @@ struct FormatFieldDef {
 
 fn to_pascal_case_ident(ident: &Ident) -> Ident {
     let s = ident.to_string();
-    let mut chars = s.chars();
-    let pascal = match chars.next() {
-        Some(first) => first.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase(),
-        None => String::new(),
-    };
+    // Convert snake_case or lowercase to PascalCase:
+    // strip underscores, capitalize first char and each char after '_'
+    let mut pascal = String::with_capacity(s.len());
+    let mut capitalize = true;
+    for ch in s.chars() {
+        if ch == '_' {
+            capitalize = true;
+        } else if capitalize {
+            pascal.push(ch.to_ascii_uppercase());
+            capitalize = false;
+        } else {
+            pascal.push(ch);
+        }
+    }
     Ident::new(&pascal, ident.span())
 }
 
@@ -447,6 +473,22 @@ impl Parse for DefineFormatsInput {
         let _eq: Token![=] = input.parse()?;
         let arch: Ident = input.parse()?;
         let _semi: Token![;] = input.parse()?;
+
+        // Optional: extern_fields;
+        let extern_fields;
+        if input.peek(Ident) {
+            let fork = input.fork();
+            let kw: Ident = fork.parse()?;
+            if kw == "extern_fields" {
+                input.parse::<Ident>()?; // consume extern_fields
+                input.parse::<Token![;]>()?; // consume ;
+                extern_fields = true;
+            } else {
+                extern_fields = false;
+            }
+        } else {
+            extern_fields = false;
+        }
 
         // fields { rd; rj; rk; si12; }
         let _fields_kw: Ident = input.parse()?;
@@ -508,6 +550,7 @@ impl Parse for DefineFormatsInput {
 
         Ok(DefineFormatsInput {
             arch,
+            extern_fields,
             fields,
             formats,
         })

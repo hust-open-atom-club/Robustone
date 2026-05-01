@@ -43,10 +43,10 @@ pub enum BenchRegClass {
     Gpr,
 }
 
-robustone_isa::format_specs! {
-    format BENCH_FORMAT[BenchField] {
-        rd: robustone_isa::field("rd", 0, 5, BenchField::Rd),
-    }
+robustone_isa_macros::define_formats! {
+    arch = Bench; extern_fields;
+    fields { Rd; };
+    format BENCH_FORMAT { Rd: bits(0, 5) }
 }
 
 robustone_isa_macros::define_instructions! {
