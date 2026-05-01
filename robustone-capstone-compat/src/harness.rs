@@ -4,11 +4,11 @@ use std::fs;
 use std::path::Path;
 
 use crate::adapter::CapstoneArchAdapter;
-use robustone_core::ArchitectureDispatcher;
-use robustone_core::types::Instruction;
-
 use crate::xfail::XfailRegistry;
 use crate::yaml::{ExpectedInsn, TestCase};
+use robustone_core::ArchitectureDispatcher;
+use robustone_core::types::Instruction;
+use robustone_isa::ArchitectureBackend;
 
 /// Result of running a single compatibility test case.
 #[derive(Debug)]
@@ -25,15 +25,12 @@ pub enum TestResult {
 /// Runs a single YAML test case through Robustone.
 ///
 /// Returns a [`TestResult`] describing the outcome.
-pub fn run_test_case(
+pub fn run_test_case<A: CapstoneArchAdapter<B, Fixture = TestCase>, B: ArchitectureBackend>(
     dispatcher: &ArchitectureDispatcher,
     case: &TestCase,
     xfail: &XfailRegistry,
 ) -> TestResult {
-    let arch_name = match crate::adapter::CapstoneLoongArchYaml::map_arch_mode(
-        &case.input.arch,
-        &case.input.options,
-    ) {
+    let arch_name = match A::map_arch_mode(&case.input.arch, &case.input.options) {
         Some(name) => name,
         None => {
             return TestResult::Unsupported(format!(
@@ -78,7 +75,7 @@ pub fn compare_instruction(
         Ok(())
     } else {
         Err(format!(
-            "mismatch: expected \"{}\", got \"{}\"",
+            "mismatch: expected \"{}\" got \"{}\"",
             expected_trimmed, actual
         ))
     }
@@ -111,30 +108,27 @@ pub fn count_results(results: &[TestResult]) -> (usize, usize, usize, usize) {
     (pass, fail, xfail, unsupported)
 }
 
-/// Parse a single YAML file and return all test cases.
-pub fn parse_yaml_file(path: &Path) -> Result<Vec<TestCase>, String> {
-    match crate::adapter::CapstoneLoongArchYaml::load_fixtures(path) {
-        Ok(fixtures) => Ok(fixtures),
-        Err(e) => Err(format!("failed to load {:?}: {}", path, e)),
-    }
-}
-
 /// Run every test case in a single YAML file.
 ///
 /// Returns a vector where each element corresponds to the test case at the
 /// same index.
-pub fn run_yaml_file(
+pub fn run_yaml_file<A: CapstoneArchAdapter<B, Fixture = TestCase>, B: ArchitectureBackend>(
     dispatcher: &ArchitectureDispatcher,
     path: &Path,
     xfail: &XfailRegistry,
 ) -> Vec<TestResult> {
-    let cases = match parse_yaml_file(path) {
+    let cases = match A::load_fixtures(path) {
         Ok(c) => c,
-        Err(e) => return vec![TestResult::Fail(e)],
+        Err(e) => {
+            return vec![TestResult::Fail(format!(
+                "failed to load {:?}: {}",
+                path, e
+            ))];
+        }
     };
     cases
         .iter()
-        .map(|case| run_test_case(dispatcher, case, xfail))
+        .map(|case| run_test_case::<A, B>(dispatcher, case, xfail))
         .collect()
 }
 
@@ -159,7 +153,7 @@ pub type YamlCaseResult = (std::path::PathBuf, usize, TestResult);
 /// Run every YAML file discovered under `dir`.
 ///
 /// Returns a flat list of `(file_path, case_index, result)` tuples.
-pub fn run_yaml_dir(
+pub fn run_yaml_dir<A: CapstoneArchAdapter<B, Fixture = TestCase>, B: ArchitectureBackend>(
     dispatcher: &ArchitectureDispatcher,
     dir: &Path,
     xfail: &XfailRegistry,
@@ -167,7 +161,7 @@ pub fn run_yaml_dir(
     let files = discover_yaml_files_recursive(dir)?;
     let mut results = Vec::new();
     for file in files {
-        let cases = run_yaml_file(dispatcher, &file, xfail);
+        let cases = run_yaml_file::<A, B>(dispatcher, &file, xfail);
         for (idx, res) in cases.into_iter().enumerate() {
             results.push((file.clone(), idx, res));
         }

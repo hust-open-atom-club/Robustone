@@ -15,6 +15,7 @@ mod tests {
     use crate::adapter::CapstoneArchAdapter;
     use robustone_core::ArchitectureDispatcher;
     use robustone_loongarch::LoongArchHandler;
+    use robustone_loongarch::backend::LoongArchBackend;
 
     fn loongarch_dispatcher() -> ArchitectureDispatcher {
         let mut dispatcher = ArchitectureDispatcher::new();
@@ -25,7 +26,10 @@ mod tests {
     fn run_yaml_file(path: &std::path::Path) -> (usize, usize, usize, usize) {
         let dispatcher = loongarch_dispatcher();
         let xfail = xfail::loongarch_default_xfails();
-        let results = harness::run_yaml_file(&dispatcher, path, &xfail);
+        let results = harness::run_yaml_file::<
+            crate::adapter::CapstoneLoongArchYaml,
+            robustone_loongarch::backend::LoongArchBackend,
+        >(&dispatcher, path, &xfail);
         assert!(!results.is_empty(), "expected at least one test case");
 
         let (pass, fail, known_diff, unsupported) = harness::count_results(&results);
@@ -301,6 +305,7 @@ mod bulk_tests {
     use crate::adapter::CapstoneArchAdapter;
     use robustone_core::ArchitectureDispatcher;
     use robustone_loongarch::LoongArchHandler;
+    use robustone_loongarch::backend::LoongArchBackend;
 
     fn loongarch_dispatcher() -> ArchitectureDispatcher {
         let mut dispatcher = ArchitectureDispatcher::new();
@@ -317,7 +322,11 @@ mod bulk_tests {
             env!("CARGO_MANIFEST_DIR"),
             "/../third_party/capstone/tests/MC/LoongArch"
         ));
-        let results = harness::run_yaml_dir(&dispatcher, dir, &xfail).unwrap();
+        let results = harness::run_yaml_dir::<
+            crate::adapter::CapstoneLoongArchYaml,
+            robustone_loongarch::backend::LoongArchBackend,
+        >(&dispatcher, dir, &xfail)
+        .unwrap();
 
         let mut total_pass = 0usize;
         let mut total_fail = 0usize;
