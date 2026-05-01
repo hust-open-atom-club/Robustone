@@ -102,63 +102,69 @@ pub enum RiscVRegisterClass {
     FprPrime, // compressed 3-bit float register (actual reg = raw + 8)
 }
 
-robustone_isa::format_specs! {
-    format R_TYPE[RiscVField] {
-        rd: robustone_isa::field("rd", 7, 5, RiscVField::Rd),
-        rs1: robustone_isa::field("rs1", 15, 5, RiscVField::Rs1),
-        rs2: robustone_isa::field("rs2", 20, 5, RiscVField::Rs2),
-        funct3: robustone_isa::field("funct3", 12, 3, RiscVField::Funct3),
-        funct7: robustone_isa::field("funct7", 25, 7, RiscVField::Funct7),
-    }
-    format I_TYPE[RiscVField] {
-        rd: robustone_isa::field("rd", 7, 5, RiscVField::Rd),
-        rs1: robustone_isa::field("rs1", 15, 5, RiscVField::Rs1),
-        imm12: robustone_isa::field("imm12", 20, 12, RiscVField::Imm12),
-        funct3: robustone_isa::field("funct3", 12, 3, RiscVField::Funct3),
-    }
-    format S_TYPE[RiscVField] {
-        rs1: robustone_isa::field("rs1", 15, 5, RiscVField::Rs1),
-        rs2: robustone_isa::field("rs2", 20, 5, RiscVField::Rs2),
-        imm12s: robustone_isa::field("imm12s", 0, 12, RiscVField::Imm12S),
-        funct3: robustone_isa::field("funct3", 12, 3, RiscVField::Funct3),
-    }
-    format B_TYPE[RiscVField] {
-        rs1: robustone_isa::field("rs1", 15, 5, RiscVField::Rs1),
-        rs2: robustone_isa::field("rs2", 20, 5, RiscVField::Rs2),
-        imm12b: robustone_isa::field("imm12b", 0, 12, RiscVField::Imm12B),
-        funct3: robustone_isa::field("funct3", 12, 3, RiscVField::Funct3),
-    }
-    format U_TYPE[RiscVField] {
-        rd: robustone_isa::field("rd", 7, 5, RiscVField::Rd),
-        imm20u: robustone_isa::field("imm20u", 0, 20, RiscVField::Imm20U),
-    }
-    format J_TYPE[RiscVField] {
-        rd: robustone_isa::field("rd", 7, 5, RiscVField::Rd),
-        imm20j: robustone_isa::field("imm20j", 0, 20, RiscVField::Imm20J),
-    }
-    format CI_TYPE[RiscVField] {
-        rd: robustone_isa::field("rd", 7, 5, RiscVField::Rd),
-        imm6: robustone_isa::field("imm6", 2, 6, RiscVField::Imm6),
-    }
-    format CR_TYPE[RiscVField] {
-        rs1: robustone_isa::field("rs1", 7, 5, RiscVField::Rs1),
-        rs2: robustone_isa::field("rs2", 2, 5, RiscVField::Rs2C),
-    }
-    format CA_TYPE[RiscVField] {
-        rd_prime: robustone_isa::field("rd_prime", 7, 3, RiscVField::RdPrime),
-        rs2_prime: robustone_isa::field("rs2_prime", 2, 3, RiscVField::Rs2Prime),
-    }
-    format CL_TYPE[RiscVField] {
-        rd_prime: robustone_isa::field("rd_prime", 2, 3, RiscVField::RdPrime),
-        rs1_prime: robustone_isa::field("rs1_prime", 7, 3, RiscVField::Rs1Prime),
-        imm_cl: robustone_isa::field("imm_cl", 5, 5, RiscVField::ImmCL),
-        imm_clw: robustone_isa::field("imm_clw", 5, 5, RiscVField::ImmCLW),
-    }
-    format CS_TYPE[RiscVField] {
-        rs1_prime: robustone_isa::field("rs1_prime", 7, 3, RiscVField::Rs1Prime),
-        rs2_prime: robustone_isa::field("rs2_prime", 2, 3, RiscVField::Rs2Prime),
-        imm_csd: robustone_isa::field("imm_csd", 5, 5, RiscVField::ImmCL),
-        imm_csw: robustone_isa::field("imm_csw", 5, 5, RiscVField::ImmCLW),
+robustone_isa_macros::define_formats! {
+    arch = RiscV; extern_fields;
+    fields {
+        Rd; Rs1; Rs2; Funct3; Funct7;
+        Imm12; Imm12S; Imm12B; Imm20U; Imm20J;
+        Rs2C; RdPrime; Rs2Prime; Rs1Prime; Imm6; ImmCL; ImmCLW;
+    };
+    format R_TYPE {
+        rd: bits(7, 5) as Rd,
+        rs1: bits(15, 5) as Rs1,
+        rs2: bits(20, 5) as Rs2,
+        funct3: bits(12, 3) as Funct3,
+        funct7: bits(25, 7) as Funct7,
+    };
+    format I_TYPE {
+        rd: bits(7, 5) as Rd,
+        rs1: bits(15, 5) as Rs1,
+        imm12: bits(20, 12) as Imm12,
+        funct3: bits(12, 3) as Funct3,
+    };
+    format S_TYPE {
+        rs1: bits(15, 5) as Rs1,
+        rs2: bits(20, 5) as Rs2,
+        imm12s: bits(0, 12) as Imm12S,
+        funct3: bits(12, 3) as Funct3,
+    };
+    format B_TYPE {
+        rs1: bits(15, 5) as Rs1,
+        rs2: bits(20, 5) as Rs2,
+        imm12b: bits(0, 12) as Imm12B,
+        funct3: bits(12, 3) as Funct3,
+    };
+    format U_TYPE {
+        rd: bits(7, 5) as Rd,
+        imm20u: bits(0, 20) as Imm20U,
+    };
+    format J_TYPE {
+        rd: bits(7, 5) as Rd,
+        imm20j: bits(0, 20) as Imm20J,
+    };
+    format CI_TYPE {
+        rd: bits(7, 5) as Rd,
+        imm6: bits(2, 6) as Imm6,
+    };
+    format CR_TYPE {
+        rs1: bits(7, 5) as Rs1,
+        rs2: bits(2, 5) as Rs2C,
+    };
+    format CA_TYPE {
+        rd_prime: bits(7, 3) as RdPrime,
+        rs2_prime: bits(2, 3) as Rs2Prime,
+    };
+    format CL_TYPE {
+        rd_prime: bits(2, 3) as RdPrime,
+        rs1_prime: bits(7, 3) as Rs1Prime,
+        imm_cl: bits(5, 5) as ImmCL,
+        imm_clw: bits(5, 5) as ImmCLW,
+    };
+    format CS_TYPE {
+        rs1_prime: bits(7, 3) as Rs1Prime,
+        rs2_prime: bits(2, 3) as Rs2Prime,
+        imm_csd: bits(5, 5) as ImmCL,
+        imm_csw: bits(5, 5) as ImmCLW,
     }
 }
 

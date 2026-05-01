@@ -4,7 +4,7 @@ use robustone_core::ir::{ArchitectureId, RegisterId};
 use robustone_core::types::error::{DecodeErrorKind, DisasmError};
 use robustone_isa::{
     Access, ArchitectureBackend, DecodeProfile, FeatureSet, FormatSpec, ImmediateKind,
-    ImmediateTransform, InstructionGroup, InstructionRead, InstructionSpec, RenderPolicy, field,
+    ImmediateTransform, InstructionGroup, InstructionRead, InstructionSpec, RenderPolicy,
 };
 
 // ============================================================================
@@ -86,139 +86,141 @@ pub enum LoongArchRegisterClass {
 // Format specs
 // ============================================================================
 
-robustone_isa::format_specs! {
-    format FMT_R2[LoongArchField] {
-        rd: field("rd", 0, 5, LoongArchField::Rd),
-        rj: field("rj", 5, 5, LoongArchField::Rj),
-    }
-    format FMT_R3[LoongArchField] {
-        rd: field("rd", 0, 5, LoongArchField::Rd),
-        rj: field("rj", 5, 5, LoongArchField::Rj),
-        rk: field("rk", 10, 5, LoongArchField::Rk),
-    }
-    format FMT_R3I2[LoongArchField] {
-        rd: field("rd", 0, 5, LoongArchField::Rd),
-        rj: field("rj", 5, 5, LoongArchField::Rj),
-        rk: field("rk", 10, 5, LoongArchField::Rk),
-        sa2: field("sa2", 15, 2, LoongArchField::Ui5),
-    }
-    format FMT_R3I3[LoongArchField] {
-        rd: field("rd", 0, 5, LoongArchField::Rd),
-        rj: field("rj", 5, 5, LoongArchField::Rj),
-        rk: field("rk", 10, 5, LoongArchField::Rk),
-        ui3: field("ui3", 15, 3, LoongArchField::Ui5),
-    }
-    format FMT_R4[LoongArchField] {
-        rd: field("rd", 0, 5, LoongArchField::Rd),
-        rj: field("rj", 5, 5, LoongArchField::Rj),
-        rk: field("rk", 10, 5, LoongArchField::Rk),
-        ra: field("ra", 15, 5, LoongArchField::Ra),
-    }
-    format FMT_FCMP[LoongArchField] {
-        cd: field("cd", 0, 3, LoongArchField::Cd),
-        fj: field("fj", 5, 5, LoongArchField::Rj),
-        fk: field("fk", 10, 5, LoongArchField::Rk),
-    }
-    format FMT_CSR[LoongArchField] {
-        rd: field("rd", 0, 5, LoongArchField::Rd),
-        csr: field("csr", 10, 14, LoongArchField::Si14),
-    }
-    format FMT_CSRXCHG[LoongArchField] {
-        rd: field("rd", 0, 5, LoongArchField::Rd),
-        rj: field("rj", 5, 5, LoongArchField::Rj),
-        csr: field("csr", 10, 14, LoongArchField::Si14),
-    }
-    format FMT_INVTLB[LoongArchField] {
-        imm: field("imm", 0, 5, LoongArchField::Ui5),
-        rj: field("rj", 5, 5, LoongArchField::Rj),
-        rk: field("rk", 10, 5, LoongArchField::Rk),
-    }
-    format FMT_R2I8[LoongArchField] {
-        rd: field("rd", 0, 5, LoongArchField::Rd),
-        rj: field("rj", 5, 5, LoongArchField::Rj),
-        i8: field("i8", 10, 8, LoongArchField::I8),
-    }
-    format FMT_R2I12[LoongArchField] {
-        rd: field("rd", 0, 5, LoongArchField::Rd),
-        rj: field("rj", 5, 5, LoongArchField::Rj),
-        si12: field("si12", 10, 12, LoongArchField::Si12),
-    }
-    format FMT_R2I14[LoongArchField] {
-        rd: field("rd", 0, 5, LoongArchField::Rd),
-        rj: field("rj", 5, 5, LoongArchField::Rj),
-        si14: field("si14", 10, 14, LoongArchField::Si14),
-    }
-    format FMT_R2I16[LoongArchField] {
-        rd: field("rd", 0, 5, LoongArchField::Rd),
-        rj: field("rj", 5, 5, LoongArchField::Rj),
-        si16: field("si16", 10, 16, LoongArchField::Si16),
-    }
-    format FMT_1RI21[LoongArchField] {
-        rd: field("rd", 0, 5, LoongArchField::Rd),
-        si21: field("si21", 5, 21, LoongArchField::Si21),
-    }
-    format FMT_I26[LoongArchField] {
-        i26_lo: field("i26_lo", 0, 16, LoongArchField::I26Lo),
-        i26_hi: field("i26_hi", 16, 10, LoongArchField::I26Hi),
-    }
-    format FMT_R1[LoongArchField] {
-        rd: field("rd", 0, 5, LoongArchField::Rd),
-    }
-    format FMT_NONE[LoongArchField] {}
-    format FMT_BJ[LoongArchField] {
-        si16: field("si16", 10, 16, LoongArchField::Si16),
-    }
-    format FMT_R1I16_BJ[LoongArchField] {
-        rj: field("rj", 5, 5, LoongArchField::Rj),
-        si16: field("si16", 10, 16, LoongArchField::Si16),
-    }
-    format FMT_I15[LoongArchField] {
-        code: field("code", 0, 15, LoongArchField::Code),
-    }
-    format FMT_R2I5[LoongArchField] {
-        rd: field("rd", 0, 5, LoongArchField::Rd),
-        rj: field("rj", 5, 5, LoongArchField::Rj),
-        ui5: field("ui5", 10, 5, LoongArchField::Ui5),
-    }
-    format FMT_R2I6[LoongArchField] {
-        rd: field("rd", 0, 5, LoongArchField::Rd),
-        rj: field("rj", 5, 5, LoongArchField::Rj),
-        ui6: field("ui6", 10, 6, LoongArchField::Ui6),
-    }
-    format FMT_R2I3[LoongArchField] {
-        rd: field("rd", 0, 5, LoongArchField::Rd),
-        rj: field("rj", 5, 5, LoongArchField::Rj),
-        ui3: field("ui3", 10, 3, LoongArchField::Ui5),
-    }
-    format FMT_R2I4[LoongArchField] {
-        rd: field("rd", 0, 5, LoongArchField::Rd),
-        rj: field("rj", 5, 5, LoongArchField::Rj),
-        ui4: field("ui4", 10, 4, LoongArchField::Ui5),
-    }
-    format FMT_BSTR_W[LoongArchField] {
-        rd: field("rd", 0, 5, LoongArchField::Rd),
-        rj: field("rj", 5, 5, LoongArchField::Rj),
-        msb: field("msb", 16, 5, LoongArchField::MsbW),
-        lsb: field("lsb", 10, 5, LoongArchField::LsbW),
-    }
-    format FMT_BSTR_D[LoongArchField] {
-        rd: field("rd", 0, 5, LoongArchField::Rd),
-        rj: field("rj", 5, 5, LoongArchField::Rj),
-        msb: field("msb", 16, 6, LoongArchField::MsbD),
-        lsb: field("lsb", 10, 6, LoongArchField::LsbD),
-    }
-    format FMT_1RI20[LoongArchField] {
-        rd: field("rd", 0, 5, LoongArchField::Rd),
-        si20: field("si20", 5, 20, LoongArchField::Si20),
-    }
-    format FMT_R2I12_U[LoongArchField] {
-        rd: field("rd", 0, 5, LoongArchField::Rd),
-        rj: field("rj", 5, 5, LoongArchField::Rj),
-        ui12: field("ui12", 10, 12, LoongArchField::Ui12),
-    }
-    format FMT_LDPTE[LoongArchField] {
-        rj: field("rj", 5, 5, LoongArchField::Rj),
-        seq: field("seq", 10, 8, LoongArchField::I8),
+robustone_isa_macros::define_formats! {
+    arch = LoongArch; extern_fields;
+    fields { Cd; Code; I26Hi; I26Lo; I8; LsbD; LsbW; MsbD; MsbW; Ra; Rd; Rj; Rk; Si12; Si14; Si16; Si20; Si21; Ui12; Ui5; Ui6; };
+    format FMT_R2 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+    };
+    format FMT_R3 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        rk: bits(10, 5) as Rk,
+    };
+    format FMT_R3I2 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        rk: bits(10, 5) as Rk,
+        sa2: bits(15, 2) as Ui5,
+    };
+    format FMT_R3I3 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        rk: bits(10, 5) as Rk,
+        ui3: bits(15, 3) as Ui5,
+    };
+    format FMT_R4 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        rk: bits(10, 5) as Rk,
+        ra: bits(15, 5) as Ra,
+    };
+    format FMT_FCMP {
+        cd: bits(0, 3) as Cd,
+        fj: bits(5, 5) as Rj,
+        fk: bits(10, 5) as Rk,
+    };
+    format FMT_CSR {
+        rd: bits(0, 5) as Rd,
+        csr: bits(10, 14) as Si14,
+    };
+    format FMT_CSRXCHG {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        csr: bits(10, 14) as Si14,
+    };
+    format FMT_INVTLB {
+        imm: bits(0, 5) as Ui5,
+        rj: bits(5, 5) as Rj,
+        rk: bits(10, 5) as Rk,
+    };
+    format FMT_R2I8 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        i8: bits(10, 8) as I8,
+    };
+    format FMT_R2I12 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        si12: bits(10, 12) as Si12,
+    };
+    format FMT_R2I14 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        si14: bits(10, 14) as Si14,
+    };
+    format FMT_R2I16 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        si16: bits(10, 16) as Si16,
+    };
+    format FMT_1RI21 {
+        rd: bits(0, 5) as Rd,
+        si21: bits(5, 21) as Si21,
+    };
+    format FMT_I26 {
+        i26_lo: bits(0, 16) as I26Lo,
+        i26_hi: bits(16, 10) as I26Hi,
+    };
+    format FMT_R1 {
+        rd: bits(0, 5) as Rd,
+    };
+    format FMT_NONE {};
+    format FMT_BJ {
+        si16: bits(10, 16) as Si16,
+    };
+    format FMT_R1I16_BJ {
+        rj: bits(5, 5) as Rj,
+        si16: bits(10, 16) as Si16,
+    };
+    format FMT_I15 {
+        code: bits(0, 15) as Code,
+    };
+    format FMT_R2I5 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        ui5: bits(10, 5) as Ui5,
+    };
+    format FMT_R2I6 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        ui6: bits(10, 6) as Ui6,
+    };
+    format FMT_R2I3 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        ui3: bits(10, 3) as Ui5,
+    };
+    format FMT_R2I4 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        ui4: bits(10, 4) as Ui5,
+    };
+    format FMT_BSTR_W {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        msb: bits(16, 5) as MsbW,
+        lsb: bits(10, 5) as LsbW,
+    };
+    format FMT_BSTR_D {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        msb: bits(16, 6) as MsbD,
+        lsb: bits(10, 6) as LsbD,
+    };
+    format FMT_1RI20 {
+        rd: bits(0, 5) as Rd,
+        si20: bits(5, 20) as Si20,
+    };
+    format FMT_R2I12_U {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        ui12: bits(10, 12) as Ui12,
+    };
+    format FMT_LDPTE {
+        rj: bits(5, 5) as Rj,
+        seq: bits(10, 8) as I8,
     }
 }
 
