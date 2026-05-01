@@ -951,16 +951,16 @@ impl ArchitectureBackend for RiscVBackend {
                 Ok((bit5 << 6) | (bits12_10 << 3) | (bit6 << 2))
             }
             _ => {
-                for f in format.fields {
-                    if f.field_type == field {
-                        let mask = ((1u64 << f.length) - 1) as u32;
-                        return Ok((word >> f.start) & mask);
+                for f in format.fields() {
+                    if f.field_type() == field {
+                        let mask = ((1u64 << f.length()) - 1) as u32;
+                        return Ok((word >> f.start()) & mask);
                     }
                 }
                 Err(DisasmError::decode_failure(
                     DecodeErrorKind::InvalidField,
                     Some("riscv".to_string()),
-                    format!("field {:?} not found in format {}", field, format.name),
+                    format!("field {:?} not found in format {}", field, format.name()),
                 ))
             }
         }

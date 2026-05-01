@@ -744,19 +744,68 @@ impl InstructionGroup {
 // ============================================================================
 
 /// Static specification of an instruction format (field layout).
+///
+/// Fields are `pub(crate)` — construction is via `FormatSpec::new()`
+/// or the `format_specs!` / `define_formats!` macros.
 #[derive(Debug)]
 pub struct FormatSpec<F: Copy + Eq + 'static> {
-    pub name: &'static str,
-    pub fields: &'static [FieldSpec<F>],
+    pub(crate) name: &'static str,
+    pub(crate) fields: &'static [FieldSpec<F>],
+}
+
+impl<F: Copy + Eq + 'static> FormatSpec<F> {
+    /// Construct a new format specification.
+    pub const fn new(name: &'static str, fields: &'static [FieldSpec<F>]) -> Self {
+        Self { name, fields }
+    }
+
+    /// Format name (e.g. "R", "R3", "I26").
+    pub fn name(&self) -> &'static str {
+        self.name
+    }
+
+    /// Field specifications defining the bit layout.
+    pub fn fields(&self) -> &[FieldSpec<F>] {
+        self.fields
+    }
 }
 
 /// A single field within a format.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FieldSpec<F: Copy + Eq + 'static> {
-    pub name: &'static str,
-    pub start: u8,
-    pub length: u8,
-    pub field_type: F,
+    pub(crate) name: &'static str,
+    pub(crate) start: u8,
+    pub(crate) length: u8,
+    pub(crate) field_type: F,
+}
+
+impl<F: Copy + Eq + 'static> FieldSpec<F> {
+    /// Construct a new field specification.
+    pub const fn new(name: &'static str, start: u8, length: u8, field_type: F) -> Self {
+        Self {
+            name,
+            start,
+            length,
+            field_type,
+        }
+    }
+
+    /// Field name (e.g. "rd", "rs1", "imm12").
+    pub fn name(&self) -> &'static str {
+        self.name
+    }
+    /// Starting bit position.
+    pub fn start(&self) -> u8 {
+        self.start
+    }
+    /// Bit length.
+    pub fn length(&self) -> u8 {
+        self.length
+    }
+    /// Field type discriminator.
+    pub fn field_type(&self) -> F {
+        self.field_type
+    }
 }
 
 /// Helper to define a field spec.
@@ -766,12 +815,7 @@ pub const fn field<F: Copy + Eq + 'static>(
     length: u8,
     field_type: F,
 ) -> FieldSpec<F> {
-    FieldSpec {
-        name,
-        start,
-        length,
-        field_type,
-    }
+    FieldSpec::new(name, start, length, field_type)
 }
 
 // ============================================================================
@@ -1232,10 +1276,10 @@ macro_rules! format_specs {
             $($field_name:ident: $field_expr:expr),* $(,)?
         })*
     ) => {
-        $(pub static $name: $crate::FormatSpec<$field_ty> = $crate::FormatSpec {
-            name: stringify!($name),
-            fields: &[$($field_expr),*],
-        };)*
+        $(pub static $name: $crate::FormatSpec<$field_ty> = $crate::FormatSpec::new(
+            stringify!($name),
+            &[$($field_expr),*],
+        );)*
     };
 }
 

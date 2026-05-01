@@ -724,16 +724,16 @@ impl ArchitectureBackend for LoongArchBackend {
         format: &FormatSpec<Self::Field>,
         field: Self::Field,
     ) -> Result<u32, DisasmError> {
-        for f in format.fields {
-            if f.field_type == field {
-                let mask = ((1u64 << f.length) - 1) as u32;
-                return Ok((word >> f.start) & mask);
+        for f in format.fields() {
+            if f.field_type() == field {
+                let mask = ((1u64 << f.length()) - 1) as u32;
+                return Ok((word >> f.start()) & mask);
             }
         }
         Err(DisasmError::decode_failure(
             DecodeErrorKind::InvalidField,
             Some("loongarch".to_string()),
-            format!("field {:?} not found in format {}", field, format.name),
+            format!("field {:?} not found in format {}", field, format.name()),
         ))
     }
 }

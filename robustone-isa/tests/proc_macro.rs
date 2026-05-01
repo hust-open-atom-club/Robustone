@@ -112,10 +112,10 @@ impl ArchitectureBackend for MacroBackend {
         format: &FormatSpec<Self::Field>,
         field: Self::Field,
     ) -> Result<u32, DisasmError> {
-        for f in format.fields {
-            if f.field_type == field {
-                let mask = ((1u64 << f.length) - 1) as u32;
-                return Ok((word >> f.start) & mask);
+        for f in format.fields() {
+            if f.field_type() == field {
+                let mask = ((1u64 << f.length()) - 1) as u32;
+                return Ok((word >> f.start()) & mask);
             }
         }
         Err(DisasmError::decode_failure(
@@ -128,8 +128,8 @@ impl ArchitectureBackend for MacroBackend {
 
 #[test]
 fn proc_macro_define_formats_generates_format_spec() {
-    assert_eq!(MACRO_R3.name, "MACRO_R3");
-    assert_eq!(MACRO_R3.fields.len(), 3);
+    assert_eq!(MACRO_R3.name(), "MACRO_R3");
+    assert_eq!(MACRO_R3.fields().len(), 3);
 }
 
 #[test]

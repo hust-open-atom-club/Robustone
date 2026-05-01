@@ -392,10 +392,10 @@ pub fn define_formats(input: TokenStream) -> TokenStream {
         }).collect();
 
         quote! {
-            pub static #name: ::robustone_isa::FormatSpec<#field_enum> = ::robustone_isa::FormatSpec {
-                name: stringify!(#name),
-                fields: &[#(#field_specs),*],
-            };
+            pub static #name: ::robustone_isa::FormatSpec<#field_enum> = ::robustone_isa::FormatSpec::new(
+                stringify!(#name),
+                &[#(#field_specs),*],
+            );
         }
     }).collect();
 
