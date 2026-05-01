@@ -156,7 +156,8 @@ prop_compose! {
             render_hints: RenderHints {
                 compat_mnemonic,
                 compat_hidden_operands,
-            },
+            compat_operand_order: Vec::new(),
+        },
         }
     }
 }

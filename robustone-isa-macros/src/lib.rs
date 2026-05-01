@@ -919,6 +919,14 @@ pub fn define_aliases(input: TokenStream) -> TokenStream {
         });
 
         let visible_arr = quote! { &[#(#visible),*] };
+        let order = &alias.operand_order;
+        let order_code = if order.is_empty() {
+            quote! {}
+        } else {
+            quote! {
+                insn.render_hints.compat_operand_order = vec![#(#order),*];
+            }
+        };
 
         quote! {
             if insn.opcode_id.as_deref() == Some(#opcode_id) {
@@ -931,6 +939,7 @@ pub fn define_aliases(input: TokenStream) -> TokenStream {
                         }
                     }
                     insn.render_hints.compat_hidden_operands = hidden;
+                    #order_code
                 }
             }
         }
@@ -955,6 +964,7 @@ struct AliasDef {
     mnemonic: String,
     conditions: Vec<AliasCondition>,
     visible_operands: Vec<usize>,
+    operand_order: Vec<usize>,
 }
 
 struct AliasCondition {
@@ -993,6 +1003,7 @@ impl Parse for DefineAliasesInput {
             let mut conditions = Vec::new();
             let mut mnemonic = None;
             let mut visible_operands = Vec::new();
+            let mut operand_order = Vec::new();
 
             while !content.is_empty() {
                 let key: Ident = content.parse()?;
@@ -1024,6 +1035,18 @@ impl Parse for DefineAliasesInput {
                         }
                     }
                     let _: Token![;] = content.parse()?;
+                } else if key == "operand_order" {
+                    let _: Token![=] = content.parse()?;
+                    let vals;
+                    syn::bracketed!(vals in content);
+                    while !vals.is_empty() {
+                        let v: LitInt = vals.parse()?;
+                        operand_order.push(v.base10_parse()?);
+                        if !vals.is_empty() {
+                            let _: Token![,] = vals.parse()?;
+                        }
+                    }
+                    let _: Token![;] = content.parse()?;
                 } else {
                     return Err(syn::Error::new(key.span(), "unknown alias property"));
                 }
@@ -1034,6 +1057,7 @@ impl Parse for DefineAliasesInput {
                 mnemonic: mnemonic.unwrap_or_else(|| alias_mnemonic.value()),
                 conditions,
                 visible_operands,
+                operand_order,
             });
         }
 

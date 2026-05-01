@@ -67,11 +67,11 @@ pub fn render_loongarch_text_parts(
         .filter(|(index, _)| !hidden_operands.contains(index))
         .collect::<Vec<_>>();
 
-    // Invtlb operand reorder: imm, rj, rk (replaces handler patch).
-    // Reorder operands [2, 0, 1] for INVLTLB.
-    if instruction.opcode_id.as_deref() == Some("INVTLB") {
+    // Apply operand reordering from render hints (e.g. invtlb operand_order = [2, 0, 1]).
+    if use_compat_aliases && !instruction.render_hints.compat_operand_order.is_empty() {
+        let order = &instruction.render_hints.compat_operand_order;
         let mut reordered: Vec<(usize, &Operand)> = Vec::new();
-        for &idx in &[2usize, 0, 1] {
+        for &idx in order {
             if let Some(item) = visible_operands.iter().find(|(i, _)| *i == idx) {
                 reordered.push(*item);
             }

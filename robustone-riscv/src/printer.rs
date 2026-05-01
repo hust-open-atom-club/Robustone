@@ -693,6 +693,7 @@ mod tests {
             render_hints: RenderHints {
                 compat_mnemonic: Some("li".to_string()),
                 compat_hidden_operands: vec![1],
+                compat_operand_order: Vec::new(),
             },
         };
 
@@ -771,6 +772,7 @@ mod tests {
             render_hints: RenderHints {
                 compat_mnemonic: None,
                 compat_hidden_operands: Vec::new(),
+                compat_operand_order: Vec::new(),
             },
         };
         let instruction = Instruction::from_decoded(
