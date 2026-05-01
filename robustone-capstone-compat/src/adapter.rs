@@ -1,6 +1,6 @@
 //! External test adapter trait for compatibility testing.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use robustone_isa::{ArchitectureBackend, DecodeProfile, FeatureSet};
 use robustone_loongarch::backend::{LoongArchBackend, LoongArchFeature, LoongArchMode};
@@ -49,27 +49,6 @@ pub trait CapstoneArchAdapter<B: ArchitectureBackend> {
     /// Return the directory within `third_party/capstone/tests/MC/` where
     /// YAML test files for this architecture are stored.
     fn yaml_test_dir() -> &'static str;
-
-    /// Discover all YAML test files for this architecture.
-    fn discover_yaml_files(workspace_root: &Path) -> Vec<PathBuf> {
-        let dir = workspace_root
-            .join("third_party")
-            .join("capstone")
-            .join("tests")
-            .join("MC")
-            .join(Self::yaml_test_dir());
-        let mut files = Vec::new();
-        if let Ok(entries) = std::fs::read_dir(&dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.extension().is_some_and(|e| e == "yaml" || e == "yml") {
-                    files.push(path);
-                }
-            }
-        }
-        files.sort();
-        files
-    }
 
     /// Load test fixtures from a file or directory.
     fn load_fixtures(path: &Path) -> Result<Vec<Self::Fixture>, CompatError>;

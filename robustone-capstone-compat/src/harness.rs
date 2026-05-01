@@ -51,7 +51,7 @@ pub fn run_test_case<A: CapstoneArchAdapter<B, Fixture = TestCase>, B: Architect
         None => return TestResult::Fail("expected.insns is empty".into()),
     };
 
-    match compare_instruction(&instruction, expected) {
+    match compare_instruction::<A, B>(&instruction, expected) {
         Ok(()) => TestResult::Pass,
         Err(msg) => {
             if let Some(entry) = xfail.match_error(&msg) {
@@ -64,19 +64,25 @@ pub fn run_test_case<A: CapstoneArchAdapter<B, Fixture = TestCase>, B: Architect
 }
 
 /// Compare a decoded [`Instruction`] against an [`ExpectedInsn`].
-pub fn compare_instruction(
+pub fn compare_instruction<
+    A: CapstoneArchAdapter<B, Fixture = TestCase>,
+    B: ArchitectureBackend,
+>(
     instruction: &Instruction,
     expected: &ExpectedInsn,
 ) -> Result<(), String> {
     let actual = format_instruction(instruction);
-    let expected_trimmed = expected.asm_text.trim();
+    let expected_text = expected.asm_text.trim();
 
-    if actual == expected_trimmed {
+    let normalized_actual = A::normalize_actual(&actual);
+    let normalized_expected = A::normalize_expected(expected_text);
+
+    if normalized_actual == normalized_expected {
         Ok(())
     } else {
         Err(format!(
             "mismatch: expected \"{}\" got \"{}\"",
-            expected_trimmed, actual
+            normalized_expected, normalized_actual
         ))
     }
 }
