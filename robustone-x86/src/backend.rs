@@ -49,22 +49,20 @@ robustone_isa::format_specs! {
     }
 }
 
-robustone_isa::isa_specs! {
-    backend = X86Backend;
-    spec NOP {
+robustone_isa_macros::define_instructions! {
+    arch = X86; module = base;
+    insn NOP {
         mnemonic = "nop";
         opcode_id = "NOP";
         pattern = robustone_isa::mask_value!(0xFFFF_FFFF, 0x0000_0090);
         format = &R;
         operands = &[];
-        features = X86Feature::BASE;
         modes = ModeSet::All;
+        features = X86Feature::BASE;
         groups = &[robustone_isa::InstructionGroup::System];
         manual = "Intel SDM";
     }
 }
-
-pub static X86_SPECS: &[InstructionSpec<X86Backend>] = &[NOP];
 
 pub struct X86Backend;
 
@@ -99,7 +97,7 @@ impl ArchitectureBackend for X86Backend {
         word: Self::Word,
         _profile: &DecodeProfile<Self>,
     ) -> Option<&'static InstructionSpec<Self>> {
-        X86_SPECS
+        SPECS
             .iter()
             .find(|spec| (word & spec.pattern().mask) == spec.pattern().value)
     }

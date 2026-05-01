@@ -162,9 +162,9 @@ robustone_isa::format_specs! {
     }
 }
 
-robustone_isa::isa_specs! {
-    backend = RiscVBackend;
-    spec ADD {
+robustone_isa_macros::define_instructions! {
+    arch = RiscV; module = base;
+    insn ADD {
         mnemonic = "add";
         opcode_id = "ADD";
         pattern = robustone_isa::mask_value!(0xFE00_007F, 0x0000_0033);
@@ -179,7 +179,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Arithmetic];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec ADDI {
+    insn ADDI {
         mnemonic = "addi";
         opcode_id = "ADDI";
         pattern = robustone_isa::mask_value!(0x0000_707F, 0x0000_0013);
@@ -194,7 +194,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Arithmetic];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec LW {
+    insn LW {
         mnemonic = "lw";
         opcode_id = "LW";
         pattern = robustone_isa::mask_value!(0x0000_707F, 0x0000_2003);
@@ -209,7 +209,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Memory];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec SW {
+    insn SW {
         mnemonic = "sw";
         opcode_id = "SW";
         pattern = robustone_isa::mask_value!(0x0000_707F, 0x0000_2023);
@@ -224,7 +224,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Memory];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec BEQ {
+    insn BEQ {
         mnemonic = "beq";
         opcode_id = "BEQ";
         pattern = robustone_isa::mask_value!(0x0000_707F, 0x0000_0063);
@@ -239,7 +239,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Branch];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec BNE {
+    insn BNE {
         mnemonic = "bne";
         opcode_id = "BNE";
         pattern = robustone_isa::mask_value!(0x0000_707F, 0x0000_1063);
@@ -254,7 +254,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Branch];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec JAL {
+    insn JAL {
         mnemonic = "jal";
         opcode_id = "JAL";
         pattern = robustone_isa::mask_value!(0x0000_007F, 0x0000_006F);
@@ -268,7 +268,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Jump];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec JALR {
+    insn JALR {
         mnemonic = "jalr";
         opcode_id = "JALR";
         pattern = robustone_isa::mask_value!(0x0000_707F, 0x0000_0067);
@@ -283,7 +283,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Jump];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec LUI {
+    insn LUI {
         mnemonic = "lui";
         opcode_id = "LUI";
         pattern = robustone_isa::mask_value!(0x0000_007F, 0x0000_0037);
@@ -297,7 +297,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Arithmetic];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec AUIPC {
+    insn AUIPC {
         mnemonic = "auipc";
         opcode_id = "AUIPC";
         pattern = robustone_isa::mask_value!(0x0000_007F, 0x0000_0017);
@@ -311,7 +311,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Arithmetic];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec MUL {
+    insn MUL {
         mnemonic = "mul";
         opcode_id = "MUL";
         pattern = robustone_isa::mask_value!(0xFE00_707F, 0x0200_0033);
@@ -326,7 +326,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Arithmetic];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec DIV {
+    insn DIV {
         mnemonic = "div";
         opcode_id = "DIV";
         pattern = robustone_isa::mask_value!(0xFE00_707F, 0x0200_4033);
@@ -341,7 +341,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Arithmetic];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec REM {
+    insn REM {
         mnemonic = "rem";
         opcode_id = "REM";
         pattern = robustone_isa::mask_value!(0xFE00_707F, 0x0200_6033);
@@ -356,7 +356,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Arithmetic];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec LR_W {
+    insn LR_W {
         mnemonic = "lr.w";
         opcode_id = "LR_W";
         pattern = robustone_isa::mask_value!(0xF9F0_707F, 0x1000_202F);
@@ -370,7 +370,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Atomic];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec SC_W {
+    insn SC_W {
         mnemonic = "sc.w";
         opcode_id = "SC_W";
         pattern = robustone_isa::mask_value!(0xF800_707F, 0x1800_202F);
@@ -385,7 +385,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Atomic];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec FLW {
+    insn FLW {
         mnemonic = "flw";
         opcode_id = "FLW";
         pattern = robustone_isa::mask_value!(0x0000_707F, 0x0000_2007);
@@ -400,7 +400,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Float, robustone_isa::InstructionGroup::Memory];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec FSW {
+    insn FSW {
         mnemonic = "fsw";
         opcode_id = "FSW";
         pattern = robustone_isa::mask_value!(0x0000_707F, 0x0000_2027);
@@ -415,7 +415,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Float, robustone_isa::InstructionGroup::Memory];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec FADD_S {
+    insn FADD_S {
         mnemonic = "fadd.s";
         opcode_id = "FADD_S";
         pattern = robustone_isa::mask_value!(0xFE00_007F, 0x0000_0053);
@@ -431,7 +431,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Float];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec FSUB_S {
+    insn FSUB_S {
         mnemonic = "fsub.s";
         opcode_id = "FSUB_S";
         pattern = robustone_isa::mask_value!(0xFE00_707F, 0x0800_0053);
@@ -446,7 +446,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Float, robustone_isa::InstructionGroup::Arithmetic];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec FMUL_S {
+    insn FMUL_S {
         mnemonic = "fmul.s";
         opcode_id = "FMUL_S";
         pattern = robustone_isa::mask_value!(0xFE00_707F, 0x1000_0053);
@@ -461,7 +461,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Float, robustone_isa::InstructionGroup::Arithmetic];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec FDIV_S {
+    insn FDIV_S {
         mnemonic = "fdiv.s";
         opcode_id = "FDIV_S";
         pattern = robustone_isa::mask_value!(0xFE00_707F, 0x1800_0053);
@@ -476,7 +476,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Float, robustone_isa::InstructionGroup::Arithmetic];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec ORI {
+    insn ORI {
         mnemonic = "ori";
         opcode_id = "ORI";
         pattern = robustone_isa::mask_value!(0x0000_707F, 0x0000_6013);
@@ -491,7 +491,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Logical];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec CSRRS {
+    insn CSRRS {
         mnemonic = "csrrs";
         opcode_id = "CSRRS";
         pattern = robustone_isa::mask_value!(0x0000_707F, 0x0000_2073);
@@ -506,7 +506,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::System];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec MRET {
+    insn MRET {
         mnemonic = "mret";
         opcode_id = "MRET";
         pattern = robustone_isa::mask_value!(0xFFFF_FFFF, 0x3020_0073);
@@ -517,7 +517,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::System];
         manual = "RISC-V Privileged ISA";
     }
-    spec FCVT_S_D {
+    insn FCVT_S_D {
         mnemonic = "fcvt.s.d";
         opcode_id = "FCVT_S_D";
         pattern = robustone_isa::mask_value!(0xFFF0_007F, 0x4010_0053);
@@ -533,7 +533,7 @@ robustone_isa::isa_specs! {
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
     // Compressed specs
-    spec C_ADDIW {
+    insn C_ADDIW {
         mnemonic = "c.addiw";
         opcode_id = "C_ADDIW";
         pattern = robustone_isa::mask_value!(0xE003, 0x2001);
@@ -548,7 +548,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Compressed];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec C_LUI {
+    insn C_LUI {
         mnemonic = "c.lui";
         opcode_id = "C_LUI";
         pattern = robustone_isa::mask_value!(0xE003, 0x6001);
@@ -562,7 +562,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Compressed];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec C_JR {
+    insn C_JR {
         mnemonic = "c.jr";
         opcode_id = "C_JR";
         pattern = robustone_isa::mask_value!(0xF003, 0x8002);
@@ -575,7 +575,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Jump];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec C_SUBW {
+    insn C_SUBW {
         mnemonic = "c.subw";
         opcode_id = "C_SUBW";
         pattern = robustone_isa::mask_value!(0xFC63, 0x9C01);
@@ -590,7 +590,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Compressed];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec C_ADDW {
+    insn C_ADDW {
         mnemonic = "c.addw";
         opcode_id = "C_ADDW";
         pattern = robustone_isa::mask_value!(0xFC63, 0x9C21);
@@ -605,7 +605,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Compressed];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec MULW {
+    insn MULW {
         mnemonic = "mulw";
         opcode_id = "MULW";
         pattern = robustone_isa::mask_value!(0xFE00_707F, 0x0200_003B);
@@ -620,7 +620,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Arithmetic];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec AMOADD_W {
+    insn AMOADD_W {
         mnemonic = "amoadd.w";
         opcode_id = "AMOADD_W";
         pattern = robustone_isa::mask_value!(0xF800_707F, 0x0000_202F);
@@ -635,7 +635,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Atomic];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec LD {
+    insn LD {
         mnemonic = "ld";
         opcode_id = "LD";
         pattern = robustone_isa::mask_value!(0x0000_707F, 0x0000_3003);
@@ -650,7 +650,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Memory];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec LR_D {
+    insn LR_D {
         mnemonic = "lr.d";
         opcode_id = "LR_D";
         pattern = robustone_isa::mask_value!(0xF9F0_707F, 0x1000_302F);
@@ -664,7 +664,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Atomic];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec C_ADDI {
+    insn C_ADDI {
         mnemonic = "c.addi";
         opcode_id = "C_ADDI";
         pattern = robustone_isa::mask_value!(0xE003, 0x0001);
@@ -679,7 +679,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Compressed];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec C_JAL {
+    insn C_JAL {
         mnemonic = "c.jal";
         opcode_id = "C_JAL";
         pattern = robustone_isa::mask_value!(0xE003, 0x2001);
@@ -693,7 +693,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Jump];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec C_LD {
+    insn C_LD {
         mnemonic = "c.ld";
         opcode_id = "C_LD";
         pattern = robustone_isa::mask_value!(0xE003, 0x6000);
@@ -708,7 +708,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Memory];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec C_FLW {
+    insn C_FLW {
         mnemonic = "c.flw";
         opcode_id = "C_FLW";
         pattern = robustone_isa::mask_value!(0xE003, 0x6000);
@@ -723,7 +723,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Memory, robustone_isa::InstructionGroup::Float];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec C_FLD {
+    insn C_FLD {
         mnemonic = "c.fld";
         opcode_id = "C_FLD";
         pattern = robustone_isa::mask_value!(0xE003, 0x2000);
@@ -738,7 +738,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Memory, robustone_isa::InstructionGroup::Float];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec C_SW {
+    insn C_SW {
         mnemonic = "c.sw";
         opcode_id = "C_SW";
         pattern = robustone_isa::mask_value!(0xE003, 0xC000);
@@ -753,7 +753,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Memory];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec C_SD {
+    insn C_SD {
         mnemonic = "c.sd";
         opcode_id = "C_SD";
         pattern = robustone_isa::mask_value!(0xE003, 0xE000);
@@ -768,7 +768,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Memory];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec C_FSW {
+    insn C_FSW {
         mnemonic = "c.fsw";
         opcode_id = "C_FSW";
         pattern = robustone_isa::mask_value!(0xE003, 0xE000);
@@ -783,7 +783,7 @@ robustone_isa::isa_specs! {
         groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Memory, robustone_isa::InstructionGroup::Float];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
-    spec C_FSD {
+    insn C_FSD {
         mnemonic = "c.fsd";
         opcode_id = "C_FSD";
         pattern = robustone_isa::mask_value!(0xE003, 0xA000);
@@ -799,12 +799,6 @@ robustone_isa::isa_specs! {
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
 }
-
-pub static RISCV_SPECS: &[InstructionSpec<RiscVBackend>] = &[
-    ADD, ADDI, ORI, LW, SW, BEQ, BNE, JAL, JALR, LUI, AUIPC, MUL, MULW, DIV, REM, LR_W, SC_W,
-    AMOADD_W, LD, LR_D, FLW, FSW, FADD_S, FSUB_S, FMUL_S, FDIV_S, CSRRS, MRET, FCVT_S_D, C_ADDI,
-    C_ADDIW, C_JAL, C_LUI, C_LD, C_FLW, C_FLD, C_SW, C_SD, C_FSW, C_FSD, C_JR, C_SUBW, C_ADDW,
-];
 
 pub struct RiscVBackend;
 
@@ -848,7 +842,7 @@ impl ArchitectureBackend for RiscVBackend {
         let is_compressed = (word & 0x3) != 0x3;
 
         // First pass: exact match including mode and features.
-        let exact = RISCV_SPECS.iter().find(|spec| {
+        let exact = SPECS.iter().find(|spec| {
             (word & spec.pattern().mask) == spec.pattern().value
                 && spec.modes().matches(profile.mode)
                 && profile.features.contains(spec.features())
@@ -862,7 +856,7 @@ impl ArchitectureBackend for RiscVBackend {
             // the encoding is defined for this mode but the feature is missing.
             // Legacy decoder returns InvalidEncoding for such compressed cases
             // (e.g. c.flw without F).
-            let mode_match = RISCV_SPECS.iter().find(|spec| {
+            let mode_match = SPECS.iter().find(|spec| {
                 (word & spec.pattern().mask) == spec.pattern().value
                     && spec.modes().matches(profile.mode)
             });
@@ -871,7 +865,7 @@ impl ArchitectureBackend for RiscVBackend {
             }
             // No mode-matching spec: try to find a mode-mismatched spec so
             // decode_one can reject with UnsupportedMode (e.g. c.subw on RV32).
-            return RISCV_SPECS.iter().find(|spec| {
+            return SPECS.iter().find(|spec| {
                 (word & spec.pattern().mask) == spec.pattern().value
                     && profile.features.contains(spec.features())
             });
@@ -881,7 +875,7 @@ impl ArchitectureBackend for RiscVBackend {
         // This lets RV32 match RV64-only specs (e.g. ld, mulw) so decode_one
         // can reject with UnsupportedMode, and I-only match A/M/F specs so
         // decode_one can reject with UnsupportedExtension.
-        RISCV_SPECS
+        SPECS
             .iter()
             .find(|spec| (word & spec.pattern().mask) == spec.pattern().value)
     }

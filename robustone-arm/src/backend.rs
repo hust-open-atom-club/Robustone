@@ -49,22 +49,20 @@ robustone_isa::format_specs! {
     }
 }
 
-robustone_isa::isa_specs! {
-    backend = ArmBackend;
-    spec NOP {
+robustone_isa_macros::define_instructions! {
+    arch = Arm; module = base;
+    insn NOP {
         mnemonic = "nop";
         opcode_id = "NOP";
         pattern = robustone_isa::mask_value!(0xFFFF_FFFF, 0xD5_03_20_DF);
         format = &R;
         operands = &[];
-        features = ArmFeature::BASE;
         modes = ModeSet::All;
+        features = ArmFeature::BASE;
         groups = &[robustone_isa::InstructionGroup::System];
         manual = "ARM ARM";
     }
 }
-
-pub static ARM_SPECS: &[InstructionSpec<ArmBackend>] = &[NOP];
 
 pub struct ArmBackend;
 
@@ -98,7 +96,7 @@ impl ArchitectureBackend for ArmBackend {
         word: Self::Word,
         _profile: &DecodeProfile<Self>,
     ) -> Option<&'static InstructionSpec<Self>> {
-        ARM_SPECS
+        SPECS
             .iter()
             .find(|spec| (word & spec.pattern().mask) == spec.pattern().value)
     }

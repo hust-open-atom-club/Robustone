@@ -1,16 +1,16 @@
-use robustone_riscv::backend::{RISCV_SPECS, RiscVBackend};
+use robustone_riscv::backend::{RiscVBackend, SPECS};
 
 #[test]
 fn test_specs_no_overlaps() {
     assert!(
-        robustone_isa::validate_no_overlaps(RISCV_SPECS).is_ok(),
+        robustone_isa::validate_no_overlaps(SPECS).is_ok(),
         "RISC-V specs must not have overlapping patterns"
     );
 }
 
 #[test]
 fn test_specs_full_validation() {
-    let result = robustone_isa::check_spec_table(RISCV_SPECS);
+    let result = robustone_isa::check_spec_table(SPECS);
     if let Err(ref e) = result {
         eprintln!("check_spec_table error: {}", e);
     }

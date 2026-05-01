@@ -709,6 +709,7 @@ dependencies = [
  "inventory",
  "robustone-core",
  "robustone-isa",
+ "robustone-isa-macros",
 ]
 
 [[package]]
@@ -796,6 +797,7 @@ dependencies = [
  "inventory",
  "robustone-core",
  "robustone-isa",
+ "robustone-isa-macros",
 ]
 
 [[package]]
@@ -806,6 +808,7 @@ dependencies = [
  "inventory",
  "robustone-core",
  "robustone-isa",
+ "robustone-isa-macros",
 ]
 
 [[package]]
