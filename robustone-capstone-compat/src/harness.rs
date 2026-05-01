@@ -3,12 +3,12 @@
 use std::fs;
 use std::path::Path;
 
+use crate::adapter::CapstoneArchAdapter;
 use robustone_core::ArchitectureDispatcher;
 use robustone_core::types::Instruction;
 
-use crate::adapter::CapstoneArchAdapter;
 use crate::xfail::XfailRegistry;
-use crate::yaml::{CapstoneYaml, ExpectedInsn, TestCase};
+use crate::yaml::{ExpectedInsn, TestCase};
 
 /// Result of running a single compatibility test case.
 #[derive(Debug)]
@@ -113,11 +113,10 @@ pub fn count_results(results: &[TestResult]) -> (usize, usize, usize, usize) {
 
 /// Parse a single YAML file and return all test cases.
 pub fn parse_yaml_file(path: &Path) -> Result<Vec<TestCase>, String> {
-    let content =
-        fs::read_to_string(path).map_err(|e| format!("failed to read {:?}: {}", path, e))?;
-    let yaml: CapstoneYaml =
-        serde_yaml::from_str(&content).map_err(|e| format!("failed to parse {:?}: {}", path, e))?;
-    Ok(yaml.test_cases)
+    match crate::adapter::CapstoneLoongArchYaml::load_fixtures(path) {
+        Ok(fixtures) => Ok(fixtures),
+        Err(e) => Err(format!("failed to load {:?}: {}", path, e)),
+    }
 }
 
 /// Run every test case in a single YAML file.
@@ -140,13 +139,13 @@ pub fn run_yaml_file(
 }
 
 /// Recursively discover all `.yaml` files under `dir`.
-pub fn discover_yaml_files(dir: &Path) -> Result<Vec<std::path::PathBuf>, String> {
+pub fn discover_yaml_files_recursive(dir: &Path) -> Result<Vec<std::path::PathBuf>, String> {
     let mut files = Vec::new();
     let entries = fs::read_dir(dir).map_err(|e| format!("failed to read dir {:?}: {}", dir, e))?;
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() {
-            files.extend(discover_yaml_files(&path)?);
+            files.extend(discover_yaml_files_recursive(&path)?);
         } else if path.extension().and_then(|s| s.to_str()) == Some("yaml") {
             files.push(path);
         }
@@ -165,7 +164,7 @@ pub fn run_yaml_dir(
     dir: &Path,
     xfail: &XfailRegistry,
 ) -> Result<Vec<YamlCaseResult>, String> {
-    let files = discover_yaml_files(dir)?;
+    let files = discover_yaml_files_recursive(dir)?;
     let mut results = Vec::new();
     for file in files {
         let cases = run_yaml_file(dispatcher, &file, xfail);

@@ -12,6 +12,7 @@ pub mod yaml;
 mod tests {
     use super::harness::{self, TestResult};
     use super::xfail;
+    use crate::adapter::CapstoneArchAdapter;
     use robustone_core::ArchitectureDispatcher;
     use robustone_loongarch::LoongArchHandler;
 
@@ -297,6 +298,7 @@ mod tests {
 mod bulk_tests {
     use super::harness::{self, TestResult};
     use super::xfail;
+    use crate::adapter::CapstoneArchAdapter;
     use robustone_core::ArchitectureDispatcher;
     use robustone_loongarch::LoongArchHandler;
 
