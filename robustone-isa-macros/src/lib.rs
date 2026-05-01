@@ -575,6 +575,13 @@ pub fn define_instructions(input: TokenStream) -> TokenStream {
         let features_expr = &insn.features;
         let modes_expr = &insn.modes;
         let groups_expr = &insn.groups;
+        let effect_expr = match &insn.effect {
+            Some(e) => {
+                let variant = Ident::new(e, Span::call_site());
+                quote! { Some(::robustone_core::ir::EffectSpec::#variant) }
+            }
+            None => quote! { None },
+        };
         let manual_ref = if let Some(manual) = &insn.manual {
             quote! { Some(#manual) }
         } else {
@@ -587,19 +594,19 @@ pub fn define_instructions(input: TokenStream) -> TokenStream {
         };
 
         quote! {
-            pub static #name: ::robustone_isa::InstructionSpec<#backend> = ::robustone_isa::InstructionSpec {
-                mnemonic: #mnemonic,
-                opcode_id: #opcode_id,
-                pattern: #pattern_expr,
-                format: #format_expr,
-                operands: #operands_expr,
-                features: #features_expr,
-                modes: #modes_expr,
-                groups: #groups_expr,
-                effect: None,
-                manual_ref: #manual_ref,
-                priority: #priority,
-            };
+            pub static #name: ::robustone_isa::InstructionSpec<#backend> = ::robustone_isa::InstructionSpec::new(
+                #mnemonic,
+                #opcode_id,
+                #pattern_expr,
+                #format_expr,
+                #operands_expr,
+                #features_expr,
+                #modes_expr,
+                #groups_expr,
+                #effect_expr,
+                #manual_ref,
+                #priority,
+            );
         }
     }).collect();
 
@@ -696,6 +703,7 @@ struct InstructionDef {
     features: Expr,
     modes: Expr,
     groups: Expr,
+    effect: Option<String>,
     manual: Option<LitStr>,
     priority: Option<syn::LitInt>,
 }
@@ -727,6 +735,7 @@ impl Parse for DefineInstructionsInput {
             let mut features = None;
             let mut modes = None;
             let mut groups = None;
+            let mut effect = None;
             let mut manual = None;
             let mut priority = None;
 
@@ -742,6 +751,10 @@ impl Parse for DefineInstructionsInput {
                     "features" => features = Some(content.parse()?),
                     "modes" => modes = Some(content.parse()?),
                     "groups" => groups = Some(content.parse()?),
+                    "effect" => {
+                        let ident: Ident = content.parse()?;
+                        effect = Some(ident.to_string());
+                    }
                     "manual" => manual = Some(content.parse()?),
                     "priority" => priority = Some(content.parse()?),
                     other => {
@@ -772,6 +785,7 @@ impl Parse for DefineInstructionsInput {
                 modes: modes.ok_or_else(|| syn::Error::new(name_clone.span(), "missing modes"))?,
                 groups: groups
                     .ok_or_else(|| syn::Error::new(name_clone.span(), "missing groups"))?,
+                effect,
                 manual,
                 priority,
             });

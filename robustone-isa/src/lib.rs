@@ -193,6 +193,42 @@ pub struct InstructionSpec<B: ArchitectureBackend + 'static> {
     pub priority: u16,
 }
 
+impl<B: ArchitectureBackend + 'static> InstructionSpec<B> {
+    /// Construct a new `InstructionSpec`.
+    ///
+    /// This is the canonical constructor used by proc-macros.
+    /// Architecture crates should use `define_instructions!` rather
+    /// than calling this directly.
+    #[allow(clippy::too_many_arguments)]
+    pub const fn new(
+        mnemonic: &'static str,
+        opcode_id: &'static str,
+        pattern: EncodingPattern<B::Word>,
+        format: &'static FormatSpec<B::Field>,
+        operands: &'static [OperandSpec<B>],
+        features: B::Feature,
+        modes: ModeSet<B::Mode>,
+        groups: &'static [InstructionGroup],
+        effect: Option<EffectSpec>,
+        manual_ref: Option<&'static str>,
+        priority: u16,
+    ) -> Self {
+        Self {
+            mnemonic,
+            opcode_id,
+            pattern,
+            format,
+            operands,
+            features,
+            modes,
+            groups,
+            effect,
+            manual_ref,
+            priority,
+        }
+    }
+}
+
 impl<B: ArchitectureBackend + 'static> Clone for InstructionSpec<B> {
     fn clone(&self) -> Self {
         *self
@@ -500,6 +536,25 @@ pub enum EncodingConstraint<B: ArchitectureBackend + 'static> {
 
 // Re-export EffectSpec from robustone_core so downstream crates have a single import path.
 pub use robustone_core::ir::EffectSpec;
+
+/// Static specification of a register bank.
+///
+/// Describes a named group of registers (e.g. GPR, FPR, vector) within
+/// an architecture. Used by `define_registers!` to generate register
+/// metadata and lowering logic.
+#[derive(Debug, Clone, Copy)]
+pub struct RegisterBankSpec<B: ArchitectureBackend + 'static> {
+    /// Human-readable name (e.g. "Gpr", "Float").
+    pub name: &'static str,
+    /// Number of registers in the bank.
+    pub count: u32,
+    /// Register class this bank maps to.
+    pub class: B::RegisterClass,
+    /// Optional prefix for textual rendering (e.g. "$r" → "$r1").
+    pub prefix: Option<&'static str>,
+    /// Named aliases for specific register indices (e.g. 0 → "$zero").
+    pub aliases: &'static [(&'static str, u32)],
+}
 
 /// Typed view over a decoded instruction's fields.
 ///
