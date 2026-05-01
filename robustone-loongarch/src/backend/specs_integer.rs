@@ -785,7 +785,8 @@ loongarch_insn!(
         robustone_isa::imm!(
             LoongArchField::Si16,
             ImmediateTransform::SignExtendThenShift { bits: 16, shift: 2 },
-            ImmediateKind::PcRelative
+            ImmediateKind::PcRelative,
+            mask = 0xFFFF
         ),
     ],
     &[InstructionGroup::Integer, InstructionGroup::Branch]
@@ -817,7 +818,8 @@ loongarch_insn!(
     &[robustone_isa::imm!(
         LoongArchField::Si16,
         ImmediateTransform::SignExtendThenShift { bits: 16, shift: 2 },
-        ImmediateKind::PcRelative
+        ImmediateKind::PcRelative,
+        mask = 0xFFFF
     ),],
     &[InstructionGroup::Integer, InstructionGroup::Branch]
 );
@@ -839,7 +841,8 @@ loongarch_insn!(
         robustone_isa::imm!(
             LoongArchField::Si16,
             ImmediateTransform::SignExtendThenShift { bits: 16, shift: 2 },
-            ImmediateKind::PcRelative
+            ImmediateKind::PcRelative,
+            mask = 0xFFFF
         ),
     ],
     &[InstructionGroup::Integer, InstructionGroup::Branch]
@@ -860,7 +863,8 @@ loongarch_insn!(
         robustone_isa::imm!(
             LoongArchField::Si16,
             ImmediateTransform::SignExtendThenShift { bits: 16, shift: 2 },
-            ImmediateKind::PcRelative
+            ImmediateKind::PcRelative,
+            mask = 0xFFFF
         ),
     ],
     &[InstructionGroup::Integer, InstructionGroup::Branch]
