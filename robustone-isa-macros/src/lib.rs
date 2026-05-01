@@ -908,7 +908,7 @@ pub fn define_aliases(input: TokenStream) -> TokenStream {
                     quote! {
                         {
                             let __v = match insn.operands.get(#idx_lit) {
-                                Some(::robustone_core::ir::Operand::Immediate { value }) => *value == #exp,
+                                Some(::robustone_core::ir::Operand::Immediate { value, .. }) => *value == #exp,
                                 _ => false,
                             };
                             __v

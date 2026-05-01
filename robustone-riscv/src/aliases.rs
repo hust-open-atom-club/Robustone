@@ -37,7 +37,10 @@ pub fn apply_riscv_aliases(decoded: &mut DecodedInstruction) {
                 let (rs1, imm) = if let [
                     _,
                     Operand::Register { register: rs1 },
-                    Operand::Immediate { value: imm },
+                    Operand::Immediate {
+                        value: imm,
+                        unsigned_mask: 0xFFF,
+                    },
                 ] = decoded.operands.as_slice()
                 {
                     (Some(*rs1), *imm)
@@ -102,7 +105,10 @@ pub fn apply_riscv_aliases(decoded: &mut DecodedInstruction) {
         "csrrs" | "csrrw" | "csrrc" => {
             if let [
                 _,
-                Operand::Immediate { value: csr },
+                Operand::Immediate {
+                    value: csr,
+                    unsigned_mask: 0xFFF,
+                },
                 Operand::Register { register: rs1 },
             ] = decoded.operands.as_slice()
             {
@@ -242,7 +248,10 @@ mod tests {
                 Operand::Register {
                     register: rv_reg(0),
                 },
-                Operand::Immediate { value: 42 },
+                Operand::Immediate {
+                    value: 42,
+                    unsigned_mask: 0xFFF,
+                },
             ],
         );
         d.registers_written = vec![rv_reg(5)];
@@ -259,7 +268,10 @@ mod tests {
                 Operand::Register {
                     register: rv_reg(0),
                 },
-                Operand::Immediate { value: 0x1000 },
+                Operand::Immediate {
+                    value: 0x1000,
+                    unsigned_mask: 0xFFF,
+                },
             ],
         );
         d.registers_written = vec![rv_reg(0)];
@@ -279,7 +291,10 @@ mod tests {
                 Operand::Register {
                     register: rv_reg(0),
                 },
-                Operand::Immediate { value: 8 },
+                Operand::Immediate {
+                    value: 8,
+                    unsigned_mask: 0xFFF,
+                },
             ],
         );
         d.registers_written = vec![];
@@ -299,7 +314,10 @@ mod tests {
                 Operand::Register {
                     register: rv_reg(0),
                 },
-                Operand::Immediate { value: 8 },
+                Operand::Immediate {
+                    value: 8,
+                    unsigned_mask: 0xFFF,
+                },
             ],
         );
         d.registers_written = vec![];
@@ -319,7 +337,10 @@ mod tests {
                 Operand::Register {
                     register: rv_reg(2),
                 },
-                Operand::Immediate { value: 0 },
+                Operand::Immediate {
+                    value: 0,
+                    unsigned_mask: 0xFFF,
+                },
             ],
         );
         d.registers_written = vec![rv_reg(0)];
@@ -336,7 +357,10 @@ mod tests {
                 Operand::Register {
                     register: rv_reg(1),
                 },
-                Operand::Immediate { value: 0xC00 },
+                Operand::Immediate {
+                    value: 0xC00,
+                    unsigned_mask: 0xFFF,
+                },
                 Operand::Register {
                     register: rv_reg(0),
                 },

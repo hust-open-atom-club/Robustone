@@ -383,7 +383,7 @@ fn bench_render_assembler(c: &mut Criterion) {
                         out.push('x');
                         out.push_str(&register.id.to_string());
                     }
-                    robustone_core::ir::Operand::Immediate { value } => {
+                    robustone_core::ir::Operand::Immediate { value, .. } => {
                         out.push_str(&value.to_string());
                     }
                     _ => {}

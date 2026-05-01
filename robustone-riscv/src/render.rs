@@ -102,14 +102,18 @@ fn format_riscv_jalr_operands(
         (
             Some(Operand::Register { register: rd }),
             Some(Operand::Register { register: rs1 }),
-            Some(Operand::Immediate { value }),
+            Some(Operand::Immediate { value, .. }),
         ) => format!(
             "{}, {}({})",
             format_riscv_register(rd.id, alias_regs),
             format_riscv_immediate(*value, mode, unsigned_immediate),
             format_riscv_register(rs1.id, alias_regs)
         ),
-        (Some(Operand::Register { register: rs1 }), Some(Operand::Immediate { value }), None) => {
+        (
+            Some(Operand::Register { register: rs1 }),
+            Some(Operand::Immediate { value, .. }),
+            None,
+        ) => {
             format!(
                 "{}({})",
                 format_riscv_immediate(*value, mode, unsigned_immediate),
@@ -179,12 +183,12 @@ fn format_riscv_operand(
     last_visible_index: Option<usize>,
 ) -> String {
     match operand {
-        Operand::Immediate { value } if is_riscv_csr_operand(mnemonic, index) => {
+        Operand::Immediate { value, .. } if is_riscv_csr_operand(mnemonic, index) => {
             csr_name_lookup(*value as u16)
                 .map(str::to_string)
                 .unwrap_or_else(|| format_riscv_immediate(*value, "", unsigned_immediate))
         }
-        Operand::Immediate { value }
+        Operand::Immediate { value, .. }
             if last_visible_index == Some(index) && is_riscv_control_flow_mnemonic(mnemonic) =>
         {
             format_riscv_control_immediate(*value, mode, unsigned_immediate)
@@ -208,7 +212,7 @@ fn format_riscv_basic_operand(
 ) -> String {
     match operand {
         Operand::Register { register } => format_riscv_register(register.id, alias_regs),
-        Operand::Immediate { value } => {
+        Operand::Immediate { value, .. } => {
             if allow_control_hex {
                 format_riscv_immediate(*value, mode, unsigned_immediate)
             } else {

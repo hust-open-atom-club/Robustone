@@ -644,7 +644,7 @@ mod tests {
         // Immediate operand
         assert_eq!(insn.operands.len(), 3);
         match &insn.operands[2] {
-            robustone_core::ir::Operand::Immediate { value } => {
+            robustone_core::ir::Operand::Immediate { value, .. } => {
                 assert_eq!(*value, 42);
             }
             other => panic!("expected immediate operand, got {:?}", other),

@@ -24,7 +24,7 @@ fn format_x86_operand(operand: &robustone_core::ir::Operand) -> String {
     use robustone_core::ir::Operand;
     match operand {
         Operand::Register { register } => x86_register_name(register.id),
-        Operand::Immediate { value } => format!("0x{value:x}"),
+        Operand::Immediate { value, .. } => format!("0x{value:x}"),
         Operand::Text { value } => value.clone(),
         Operand::Memory { base, displacement } => {
             if let Some(base) = base {

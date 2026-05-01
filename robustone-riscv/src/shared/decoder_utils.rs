@@ -28,7 +28,10 @@ pub fn build_riscv_decoded_instruction(
                 }
                 Operand::Register { register }
             }
-            RiscVOperandValue::Immediate(value) => Operand::Immediate { value: *value },
+            RiscVOperandValue::Immediate(value) => Operand::Immediate {
+                value: *value,
+                unsigned_mask: 0xFFF,
+            },
             RiscVOperandValue::RoundingMode(rm) => Operand::Text {
                 value: rounding_mode_name(*rm).to_string(),
             },

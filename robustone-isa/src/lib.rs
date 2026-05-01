@@ -1036,13 +1036,16 @@ fn lower_operand<B: ArchitectureBackend>(
             field,
             transform,
             kind,
-            ..
+            unsigned_mask,
         } => {
             let raw = B::extract_field(word, format, *field)?;
             let value = apply_transform(raw, *transform);
             Ok(match *kind {
                 ImmediateKind::Absolute | ImmediateKind::PcRelative | ImmediateKind::Unsigned => {
-                    Operand::Immediate { value }
+                    Operand::Immediate {
+                        value,
+                        unsigned_mask: *unsigned_mask,
+                    }
                 }
             })
         }

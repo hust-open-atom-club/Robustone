@@ -47,7 +47,10 @@ fn snapshot_nop_alias_from_andi() {
         if let (
             Operand::Register { register: rd },
             Operand::Register { register: rj },
-            Operand::Immediate { value: 0 },
+            Operand::Immediate {
+                value: 0,
+                unsigned_mask: 0xFFF,
+            },
         ) = (
             &decoded.operands[0],
             &decoded.operands[1],

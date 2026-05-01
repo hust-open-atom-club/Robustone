@@ -80,7 +80,10 @@ fn decode_aarch64_word(word: u32) -> Result<(&'static str, Vec<Operand>, usize),
                 Operand::Register {
                     register: aarch64_reg(rn),
                 },
-                Operand::Immediate { value: imm12 },
+                Operand::Immediate {
+                    value: imm12,
+                    unsigned_mask: 0xFFF,
+                },
             ],
             4,
         ));
@@ -96,7 +99,10 @@ fn decode_aarch64_word(word: u32) -> Result<(&'static str, Vec<Operand>, usize),
                 Operand::Register {
                     register: aarch64_reg(rd),
                 },
-                Operand::Immediate { value: imm16 },
+                Operand::Immediate {
+                    value: imm16,
+                    unsigned_mask: 0xFFF,
+                },
             ],
             4,
         ));

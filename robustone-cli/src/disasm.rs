@@ -716,7 +716,10 @@ mod tests {
                 Operand::Register {
                     register: RegisterId::riscv(0),
                 },
-                Operand::Immediate { value: 1 },
+                Operand::Immediate {
+                    value: 1,
+                    unsigned_mask: 0xFFF,
+                },
             ],
             registers_read: vec![RegisterId::riscv(0)],
             registers_written: vec![RegisterId::riscv(1)],

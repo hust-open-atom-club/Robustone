@@ -24,7 +24,7 @@ fn format_aarch64_operand(operand: &robustone_core::ir::Operand) -> String {
     use robustone_core::ir::Operand;
     match operand {
         Operand::Register { register } => aarch64_register_name(register.id),
-        Operand::Immediate { value } => {
+        Operand::Immediate { value, .. } => {
             if *value >= 0 && *value < 10 {
                 value.to_string()
             } else {

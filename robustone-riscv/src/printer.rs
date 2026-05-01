@@ -215,7 +215,7 @@ impl RiscVPrinter {
     fn format_ir_basic_operand(&self, operand: &Operand, mode: &str) -> String {
         match operand {
             Operand::Register { register } => self.format_ir_register(register),
-            Operand::Immediate { value } => {
+            Operand::Immediate { value, .. } => {
                 if self.unsigned_immediate && *value < 0 {
                     self.format_mode_unsigned_immediate(*value, mode)
                 } else {
@@ -246,12 +246,12 @@ impl RiscVPrinter {
         last_visible_index: Option<usize>,
     ) -> String {
         match operand {
-            Operand::Immediate { value } if self.is_csr_operand(mnemonic, index) => {
+            Operand::Immediate { value, .. } if self.is_csr_operand(mnemonic, index) => {
                 csr_name_lookup(*value as u16)
                     .map(str::to_string)
                     .unwrap_or_else(|| self.format_ir_basic_operand(operand, mode))
             }
-            Operand::Immediate { value }
+            Operand::Immediate { value, .. }
                 if last_visible_index == Some(index) && self.is_control_flow_mnemonic(mnemonic) =>
             {
                 if self.unsigned_immediate {
@@ -270,7 +270,10 @@ impl RiscVPrinter {
             (
                 Some(Operand::Register { register: rd }),
                 Some(Operand::Register { register: rs1 }),
-                Some(Operand::Immediate { value: imm }),
+                Some(Operand::Immediate {
+                    value: imm,
+                    unsigned_mask: 0xFFF,
+                }),
             ) => {
                 let disp = if self.unsigned_immediate && *imm < 0 {
                     self.format_mode_unsigned_immediate(*imm, mode)
@@ -282,7 +285,10 @@ impl RiscVPrinter {
             }
             (
                 Some(Operand::Register { register: rs1 }),
-                Some(Operand::Immediate { value: imm }),
+                Some(Operand::Immediate {
+                    value: imm,
+                    unsigned_mask: 0xFFF,
+                }),
                 None,
             ) => {
                 let disp = if self.unsigned_immediate && *imm < 0 {
@@ -672,7 +678,10 @@ mod tests {
                 Operand::Register {
                     register: RegisterId::riscv(0),
                 },
-                Operand::Immediate { value: 1 },
+                Operand::Immediate {
+                    value: 1,
+                    unsigned_mask: 0xFFF,
+                },
             ],
             registers_read: vec![RegisterId::riscv(0)],
             registers_written: vec![RegisterId::riscv(1)],
@@ -747,7 +756,10 @@ mod tests {
                 Operand::Register {
                     register: RegisterId::riscv(2),
                 },
-                Operand::Immediate { value: -16 },
+                Operand::Immediate {
+                    value: -16,
+                    unsigned_mask: 0xFFF,
+                },
             ],
             registers_read: vec![RegisterId::riscv(2)],
             registers_written: vec![RegisterId::riscv(2)],

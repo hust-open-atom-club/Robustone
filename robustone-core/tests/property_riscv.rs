@@ -167,7 +167,10 @@ fn operand_strategy() -> impl Strategy<Value = Operand> {
         register_strategy
             .clone()
             .prop_map(|register| Operand::Register { register }),
-        any::<i64>().prop_map(|value| Operand::Immediate { value }),
+        any::<i64>().prop_map(|value| Operand::Immediate {
+            value,
+            unsigned_mask: 0xFFF
+        }),
         (prop::option::of(register_strategy.clone()), any::<i64>())
             .prop_map(|(base, displacement)| Operand::Memory { base, displacement }),
         prop::sample::select(vec![
@@ -248,7 +251,7 @@ proptest! {
             .operands
             .iter()
             .find_map(|operand| match operand {
-                rt::ir::Operand::Immediate { value } => Some(*value),
+                rt::ir::Operand::Immediate { value, .. } => Some(*value),
                 _ => None,
             })
             .expect("addi should contain an immediate operand");
@@ -274,7 +277,7 @@ proptest! {
             .operands
             .iter()
             .find_map(|operand| match operand {
-                rt::ir::Operand::Immediate { value } => Some(*value),
+                rt::ir::Operand::Immediate { value, .. } => Some(*value),
                 _ => None,
             })
             .expect("c.addi should contain an immediate operand");

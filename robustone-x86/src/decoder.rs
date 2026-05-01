@@ -84,7 +84,10 @@ impl X86Decoder {
                         Operand::Register {
                             register: x86_reg(reg),
                         },
-                        Operand::Immediate { value: imm },
+                        Operand::Immediate {
+                            value: imm,
+                            unsigned_mask: 0xFFF,
+                        },
                     ],
                     5,
                 )

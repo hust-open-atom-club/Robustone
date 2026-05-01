@@ -18,66 +18,16 @@ fn format_register(id: u32, alias_regs: bool) -> String {
     }
 }
 
-// LEGACY: Phase 3 will replace immediate masks with per-instruction spec fields.
-// immediate_mask_for_mnemonic() below still uses starts_with/ends_with patterns
-// that must be migrated to OperandSpec::Immediate::unsigned_mask.
-
-// LEGACY: Phase 3 will migrate remaining starts_with/ends_with patterns to per-instruction
-// OperandSpec::Immediate::unsigned_mask. Branch masks now use InstructionGroup/EffectSpec.
-/// Return the expected raw bit-mask for the instruction's immediate field.
+/// Return the unsigned bit-mask for the instruction's immediate field,
+/// sourced from the first Immediate operand's declared `unsigned_mask`.
+/// Defaults to 0xFFF (12-bit) when no immediate operand is present.
 fn immediate_mask_for_mnemonic(instruction: &DecodedInstruction) -> u64 {
-    let mnemonic = &instruction.mnemonic;
-    let is_branch = instruction.groups.iter().any(|g| g == "branch");
-
-    match mnemonic.as_str() {
-        // 28-bit PC-relative offsets
-        "b" | "bl" => 0xFFFFFFF,
-        // 20-bit
-        m if m.starts_with("lu12i") => 0xFFFFF,
-        m if m.starts_with("pcaddi") => 0xFFFFF,
-        m if m.starts_with("pcaddu12i") => 0xFFFFF,
-        m if m.starts_with("pcalau12i") => 0xFFFFF,
-        // 16-bit branch / jirl offsets
-        _ if (is_branch && mnemonic != "b" && mnemonic != "bl") || mnemonic == "jirl" => 0xFFFF,
-        // 14-bit
-        "ll.w" | "llacq.w" | "sc.w" | "screl.w" => 0x3FFF,
-        m if m.starts_with("ldl.")
-            || m.starts_with("ldr.")
-            || m.starts_with("stl.")
-            || m.starts_with("str.") =>
-        {
-            0x3FFF
+    for operand in &instruction.operands {
+        if let Operand::Immediate { unsigned_mask, .. } = operand {
+            return *unsigned_mask;
         }
-        // 5-bit unsigned shift / vector immediates
-        m if m.starts_with("slli")
-            || m.starts_with("srli")
-            || m.starts_with("srai")
-            || m.starts_with("rotri")
-            || m.starts_with("rcri")
-            || m.starts_with("xvmaxi")
-            || m.starts_with("xvmini")
-            || m.starts_with("xvseqi")
-            || m.starts_with("xvslei")
-            || m.starts_with("xvslli")
-            || m.starts_with("xvsrli")
-            || m.starts_with("xvsrai")
-            || m.starts_with("xvrotri")
-            || m.starts_with("xvstelm")
-            || m.starts_with("xvfrstpi") =>
-        {
-            0x1F
-        }
-        // 4-bit
-        m if m.ends_with("replvei.b") => 0xF,
-        // 3-bit
-        m if m.ends_with("replvei.h") => 0x7,
-        // 2-bit
-        m if m.ends_with("replvei.w") => 0x3,
-        // 1-bit
-        m if m.ends_with("replvei.d") => 0x1,
-        // 12-bit (default for the vast majority of LoongArch instructions)
-        _ => 0xFFF,
     }
+    0xFFF
 }
 
 /// Render a LoongArch decoded instruction into mnemonic and operand text.
@@ -161,7 +111,7 @@ pub fn render_loongarch_text_parts(
             // For PC-relative instructions, the decoder adds the PC to the last immediate operand
             if is_pc_relative
                 && i == visible_operands.len() - 1
-                && let Operand::Immediate { value } = operand
+                && let Operand::Immediate { value, .. } = operand
             {
                 return format_loongarch_immediate(value + pc, unsigned_immediate, imm_mask);
             }
@@ -170,12 +120,15 @@ pub fn render_loongarch_text_parts(
         .collect::<Vec<_>>()
         .join(", ");
 
-    // LEGACY: Phase 3 will replace mnemonic-based vector register alias detection
-    // with register bank metadata on OperandSpec. LSX uses $vr, LASX uses $xr.
-    // LSX instructions are in the Vector group but not the SIMD/float groups.
+    // LSX (128-bit vector) uses $vr, LASX (256-bit) uses $xr.
+    // Distinguish by opcode_id prefix: LASX instructions have "XV" prefix.
     if alias_regs
         && instruction.groups.iter().any(|g| g == "vector")
-        && !instruction.mnemonic.contains("xv")
+        && !instruction
+            .opcode_id
+            .as_deref()
+            .unwrap_or("")
+            .starts_with("XV")
     {
         operands = operands.replace("$xr", "$vr");
     }
@@ -191,7 +144,7 @@ fn format_loongarch_operand(
 ) -> String {
     match operand {
         Operand::Register { register } => format_register(register.id, alias_regs),
-        Operand::Immediate { value } => {
+        Operand::Immediate { value, .. } => {
             format_loongarch_immediate(*value, unsigned_immediate, imm_mask)
         }
         Operand::Text { value } => value.clone(),

@@ -111,6 +111,8 @@ pub enum Operand {
     },
     Immediate {
         value: i64,
+        /// Bit-width mask for unsigned immediate rendering.
+        unsigned_mask: u64,
     },
     Text {
         value: String,
@@ -273,7 +275,7 @@ fn format_generic_operand(operand: &Operand) -> String {
         Operand::Register { register } => {
             format!("{}:{}", arch_str(register.architecture), register.id)
         }
-        Operand::Immediate { value } => value.to_string(),
+        Operand::Immediate { value, .. } => value.to_string(),
         Operand::Text { value } => value.clone(),
         Operand::Memory {
             base: Some(base),
@@ -329,7 +331,10 @@ mod tests {
                 Operand::Register {
                     register: RegisterId::riscv(2),
                 },
-                Operand::Immediate { value: 42 },
+                Operand::Immediate {
+                    value: 42,
+                    unsigned_mask: 0xFFF,
+                },
             ],
         );
         let (mnemonic, operands) = instruction.render_compat_text_parts();
@@ -370,7 +375,10 @@ mod tests {
                 Operand::Register {
                     register: RegisterId::riscv(1),
                 },
-                Operand::Immediate { value: 0x1000 },
+                Operand::Immediate {
+                    value: 0x1000,
+                    unsigned_mask: 0xFFF,
+                },
             ],
         );
         instruction.render_hints.compat_hidden_operands = vec![0];
@@ -387,7 +395,10 @@ mod tests {
                 Operand::Register {
                     register: RegisterId::riscv(1),
                 },
-                Operand::Immediate { value: 1 },
+                Operand::Immediate {
+                    value: 1,
+                    unsigned_mask: 0xFFF,
+                },
             ],
         );
         instruction.render_hints.compat_mnemonic = Some("li".to_string());
