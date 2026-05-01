@@ -362,19 +362,23 @@ pub fn define_formats(input: TokenStream) -> TokenStream {
         })
         .collect();
 
-    // Validate that all fields used in formats are declared in the fields block
-    let declared_fields: std::collections::HashSet<String> =
-        parsed.fields.iter().map(|f| f.to_string()).collect();
-    for format in &parsed.formats {
-        for field in &format.fields {
-            if !declared_fields.contains(&field.name.to_string()) {
-                let msg = format!(
-                    "field '{}' used in format '{}' but not declared in fields block",
-                    field.name, format.name
-                );
-                return syn::Error::new(field.name.span(), msg)
-                    .to_compile_error()
-                    .into();
+    // Validate that all fields used in formats are declared in the fields block.
+    // Skip in extern_fields mode — the fields block declares type variants, not
+    // format field labels (which use lowercase names with `as Variant` overrides).
+    if !parsed.extern_fields {
+        let declared_fields: std::collections::HashSet<String> =
+            parsed.fields.iter().map(|f| f.to_string()).collect();
+        for format in &parsed.formats {
+            for field in &format.fields {
+                if !declared_fields.contains(&field.name.to_string()) {
+                    let msg = format!(
+                        "field '{}' used in format '{}' but not declared in fields block",
+                        field.name, format.name
+                    );
+                    return syn::Error::new(field.name.span(), msg)
+                        .to_compile_error()
+                        .into();
+                }
             }
         }
     }
@@ -385,9 +389,13 @@ pub fn define_formats(input: TokenStream) -> TokenStream {
             let fname = &field.name;
             let start = &field.start;
             let length = &field.length;
-            if parsed.extern_fields {
-                // extern_fields mode: fields block declares PascalCase names that
-                // match the existing field enum variants (no conversion needed).
+            if let Some(ref v) = field.variant_override {
+                // Explicit variant override: `rd: bits(0, 5) as Rd`
+                quote! {
+                    ::robustone_isa::field(stringify!(#fname), #start, #length, #field_enum::#v)
+                }
+            } else if parsed.extern_fields {
+                // extern_fields mode: field name is PascalCase matching enum variant
                 quote! {
                     ::robustone_isa::field(stringify!(#fname), #start, #length, #field_enum::#fname)
                 }
@@ -445,6 +453,7 @@ struct FormatFieldDef {
     start: syn::LitInt,
     _comma: Token![,],
     length: syn::LitInt,
+    variant_override: Option<Ident>,
 }
 
 fn to_pascal_case_ident(ident: &Ident) -> Ident {
@@ -525,6 +534,13 @@ impl Parse for DefineFormatsInput {
                 let start: syn::LitInt = paren.parse()?;
                 let _comma: Token![,] = paren.parse()?;
                 let length: syn::LitInt = paren.parse()?;
+                // Optional: as Variant
+                let variant_override = if content.peek(Token![as]) {
+                    content.parse::<Token![as]>()?;
+                    Some(content.parse::<Ident>()?)
+                } else {
+                    None
+                };
                 if !content.is_empty() {
                     let _comma: Token![,] = content.parse()?;
                 }
@@ -535,6 +551,7 @@ impl Parse for DefineFormatsInput {
                     start,
                     _comma,
                     length,
+                    variant_override,
                 });
             }
 

@@ -171,3 +171,44 @@ fn proc_macro_define_aliases_applies_compat_mnemonic() {
     );
     assert_eq!(decoded.render_hints.compat_hidden_operands, vec![0, 1, 2]);
 }
+
+// ============================================================================
+// extern_fields + as Variant tests
+// ============================================================================
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExternField {
+    Rd,
+    Imm12S,
+    Funct3,
+}
+
+robustone_isa_macros::define_formats! {
+    arch = Extern; extern_fields;
+    fields { Rd; Imm12S; Funct3; };
+    format TEST_FMT {
+        rd: bits(0, 5) as Rd,
+        imm: bits(10, 12) as Imm12S,
+        funct: bits(12, 3) as Funct3,
+    }
+}
+
+pub struct ExternTestBackend;
+
+#[test]
+fn proc_macro_extern_fields_with_as_variant() {
+    assert_eq!(TEST_FMT.name(), "TEST_FMT");
+    assert_eq!(TEST_FMT.fields().len(), 3);
+
+    // Verify field types are correct enum variants
+    assert_eq!(TEST_FMT.fields()[0].field_type(), ExternField::Rd);
+    assert_eq!(TEST_FMT.fields()[1].field_type(), ExternField::Imm12S);
+    assert_eq!(TEST_FMT.fields()[2].field_type(), ExternField::Funct3);
+}
+
+#[test]
+fn proc_macro_extern_fields_field_names() {
+    assert_eq!(TEST_FMT.fields()[0].name(), "rd");
+    assert_eq!(TEST_FMT.fields()[1].name(), "imm");
+    assert_eq!(TEST_FMT.fields()[2].name(), "funct");
+}
