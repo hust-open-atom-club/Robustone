@@ -97,43 +97,8 @@ impl ArchitectureHandler for LoongArchHandler {
         // ------------------------------------------------------------------
         // LEGACY HANDLER PATCHES — Phase 3 will migrate all of the following
         // to spec-level alias/render view rules. Do NOT add new patches here.
+        // nop and move aliases migrated to aliases.rs (Round 7).
         // ------------------------------------------------------------------
-
-        // Alias: andi $zero, $zero, 0 => nop
-        if decoded.mnemonic == "andi"
-            && decoded.operands.len() == 3
-            && let (
-                Operand::Register { register: rd },
-                Operand::Register { register: rj },
-                Operand::Immediate { value: 0 },
-            ) = (
-                &decoded.operands[0],
-                &decoded.operands[1],
-                &decoded.operands[2],
-            )
-            && rd.id == 0
-            && rj.id == 0
-        {
-            decoded.mnemonic = "nop".to_string();
-            decoded.operands.clear();
-        }
-        // Alias: or $rd, $rj, $zero => move $rd, $rj
-        if decoded.mnemonic == "or"
-            && decoded.operands.len() == 3
-            && let (
-                Operand::Register { register: _rd },
-                Operand::Register { register: _rj },
-                Operand::Register { register: rk },
-            ) = (
-                &decoded.operands[0],
-                &decoded.operands[1],
-                &decoded.operands[2],
-            )
-            && rk.id == 0
-        {
-            decoded.mnemonic = "move".to_string();
-            decoded.operands.pop();
-        }
 
         // Upstream decoder drops duplicated destination register for CSR ops.
         if (decoded.mnemonic == "csrwr" || decoded.mnemonic == "gcsrwr")

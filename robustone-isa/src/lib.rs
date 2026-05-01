@@ -115,6 +115,13 @@ pub trait ArchitectureBackend: Sized + Sync + 'static {
         format: &FormatSpec<Self::Field>,
         field: Self::Field,
     ) -> Result<u32, DisasmError>;
+
+    /// Apply architecture-specific aliases to a decoded instruction.
+    ///
+    /// The default implementation is a no-op. Backends with alias
+    /// rules (declared via `define_aliases!`) override this to set
+    /// `render_hints.compat_mnemonic` and hidden operands.
+    fn apply_aliases(_decoded: &mut DecodedInstruction) {}
 }
 
 // ============================================================================
@@ -979,7 +986,7 @@ pub fn decode_one<B: ArchitectureBackend>(
     }
 
     // Step 6: build DecodedInstruction
-    let decoded = DecodedInstruction {
+    let mut decoded = DecodedInstruction {
         architecture: B::architecture_id(),
         address: addr,
         mode: format!("{:?}", profile.mode),
@@ -997,6 +1004,9 @@ pub fn decode_one<B: ArchitectureBackend>(
         status: robustone_core::ir::DecodeStatus::Success,
         render_hints: robustone_core::ir::RenderHints::default(),
     };
+
+    // Step 7: apply architecture-specific aliases
+    B::apply_aliases(&mut decoded);
 
     Ok(decoded)
 }

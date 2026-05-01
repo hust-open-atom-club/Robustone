@@ -656,6 +656,12 @@ mod tests {
 }
 
 // ============================================================================
+// Aliases (post-decode render hints)
+// ============================================================================
+
+mod aliases;
+
+// ============================================================================
 // Backend implementation
 // ============================================================================
 
@@ -735,5 +741,9 @@ impl ArchitectureBackend for LoongArchBackend {
             Some("loongarch".to_string()),
             format!("field {:?} not found in format {}", field, format.name()),
         ))
+    }
+
+    fn apply_aliases(decoded: &mut robustone_core::ir::DecodedInstruction) {
+        aliases::apply_aliases(decoded);
     }
 }
