@@ -106,7 +106,6 @@ pub fn render_loongarch_text_parts(
     }
 
     // PC-relative detection via InstructionGroup::Branch.
-    // jirl: offset added to rj, not to PC — excluded from PC-relative rendering.
     let is_pc_relative = instruction.groups.iter().any(|g| g == "branch");
     let pc = instruction.address as i64;
     let imm_mask = immediate_unsigned_mask(instruction);
