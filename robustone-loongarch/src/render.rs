@@ -104,6 +104,14 @@ pub fn render_loongarch_text_parts(
         instruction.mnemonic.clone()
     };
 
+    // LEGACY: Phase 3 will migrate .xs suffix stripping to spec-level metadata.
+    // Strip .xs suffix in canonical/assembler render (previously in handler patch).
+    let mnemonic = if let Some(base) = mnemonic.strip_suffix(".xs") {
+        base.to_string()
+    } else {
+        mnemonic
+    };
+
     let hidden_operands = if use_compat_aliases {
         instruction.render_hints.compat_hidden_operands.as_slice()
     } else {

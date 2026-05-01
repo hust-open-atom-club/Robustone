@@ -138,10 +138,8 @@ impl ArchitectureHandler for LoongArchHandler {
             decoded.operands.push(rk);
         }
 
-        // Upstream decoder drops the .xs suffix from certain float instructions.
-        if let Some(base) = decoded.mnemonic.strip_suffix(".xs") {
-            decoded.mnemonic = base.to_string();
-        }
+        // LEGACY: .xs suffix strip migrated to render.rs (Round 13).
+        // No longer mutated here — render handles it as a display concern.
 
         // Upstream decoder omits duplicated destination register for certain
         // vector instructions (e.g. xvpermi.w, xvsrarni, xvinsve0, xvshuf).
