@@ -720,6 +720,8 @@ pub enum InstructionGroup {
     Barrier,
     System,
     Vector,
+    /// 256-bit vector (LASX) — distinct from 128-bit Vector (LSX).
+    Vector256,
     BitManipulation,
     Compressed,
 }
@@ -740,6 +742,7 @@ impl InstructionGroup {
             InstructionGroup::Barrier => "barrier",
             InstructionGroup::System => "system",
             InstructionGroup::Vector => "vector",
+            InstructionGroup::Vector256 => "vector256",
             InstructionGroup::BitManipulation => "bit_manipulation",
             InstructionGroup::Compressed => "compressed",
         }

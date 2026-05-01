@@ -1250,7 +1250,7 @@ loongarch_insn!(
         robustone_isa::reg!(LoongArchRegisterClass::Xr, LoongArchField::Rk, Access::Read),
         robustone_isa::reg!(LoongArchRegisterClass::Xr, LoongArchField::Ra, Access::Read),
     ],
-    &[InstructionGroup::Vector]
+    &[InstructionGroup::Vector, InstructionGroup::Vector256]
 );
 
 loongarch_insn!(
@@ -1265,7 +1265,7 @@ loongarch_insn!(
         robustone_isa::reg!(LoongArchRegisterClass::Xr, LoongArchField::Rj, Access::Read),
         robustone_isa::reg!(LoongArchRegisterClass::Xr, LoongArchField::Rk, Access::Read),
     ],
-    &[InstructionGroup::Vector]
+    &[InstructionGroup::Vector, InstructionGroup::Vector256]
 );
 
 loongarch_insn!(
@@ -1280,7 +1280,7 @@ loongarch_insn!(
         robustone_isa::reg!(LoongArchRegisterClass::Xr, LoongArchField::Rj, Access::Read),
         robustone_isa::reg!(LoongArchRegisterClass::Xr, LoongArchField::Rk, Access::Read),
     ],
-    &[InstructionGroup::Vector]
+    &[InstructionGroup::Vector, InstructionGroup::Vector256]
 );
 
 loongarch_insn!(
@@ -1295,5 +1295,5 @@ loongarch_insn!(
         robustone_isa::reg!(LoongArchRegisterClass::Xr, LoongArchField::Rj, Access::Read),
         robustone_isa::reg!(LoongArchRegisterClass::Xr, LoongArchField::Rk, Access::Read),
     ],
-    &[InstructionGroup::Vector]
+    &[InstructionGroup::Vector, InstructionGroup::Vector256]
 );

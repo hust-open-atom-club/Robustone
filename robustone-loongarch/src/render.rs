@@ -82,12 +82,12 @@ pub fn render_loongarch_text_parts(
     }
 
     // Deduplicate equal register operands for CSR and vector instructions.
-    // Restricted to CSR/vector opcode_id patterns to avoid breaking memory
-    // instructions that legitimately use duplicate register operands.
+    // Uses InstructionGroup to identify relevant instructions (replaces
+    // opcode_id string prefix checks).
     let needs_csr_dedup = instruction
-        .opcode_id
-        .as_deref()
-        .is_some_and(|id| id.starts_with("CSR") || id.starts_with("GCSR") || id.starts_with("XV"));
+        .groups
+        .iter()
+        .any(|g| g == "privileged" || g == "system" || g == "vector" || g == "vector256");
     if needs_csr_dedup {
         let mut dedup_indices: Vec<usize> = Vec::new();
         for i in 0..visible_operands.len() {
@@ -127,14 +127,10 @@ pub fn render_loongarch_text_parts(
         .join(", ");
 
     // LSX (128-bit vector) uses $vr, LASX (256-bit) uses $xr.
-    // Distinguish by opcode_id prefix: LASX instructions have "XV" prefix.
+    // Distinguish by InstructionGroup: LASX specs carry Vector256.
     if alias_regs
         && instruction.groups.iter().any(|g| g == "vector")
-        && !instruction
-            .opcode_id
-            .as_deref()
-            .unwrap_or("")
-            .starts_with("XV")
+        && !instruction.groups.iter().any(|g| g == "vector256")
     {
         operands = operands.replace("$xr", "$vr");
     }
