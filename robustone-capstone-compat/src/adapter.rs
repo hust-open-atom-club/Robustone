@@ -37,11 +37,14 @@ pub struct ExpectedDetail {
 
 /// Adapter that bridges an external test format (Capstone YAML, LLVM MC,
 /// binutils objdump) to the shared compatibility harness.
-pub trait ExternalTestAdapter<B: ArchitectureBackend> {
+pub trait CapstoneArchAdapter<B: ArchitectureBackend> {
     type Fixture;
 
     /// Architecture name for decoder dispatch (e.g. "loongarch64", "riscv64").
     fn arch_name() -> &'static str;
+
+    /// Map Capstone arch/options to a Robustone architecture name.
+    fn map_arch_mode(arch: &str, options: &[String]) -> Option<&'static str>;
 
     /// Return the directory within `third_party/capstone/tests/MC/` where
     /// YAML test files for this architecture are stored.
@@ -93,11 +96,24 @@ pub trait ExternalTestAdapter<B: ArchitectureBackend> {
 /// Concrete adapter for Capstone YAML test files targeting LoongArch.
 pub struct CapstoneLoongArchYaml;
 
-impl ExternalTestAdapter<LoongArchBackend> for CapstoneLoongArchYaml {
+impl CapstoneArchAdapter<LoongArchBackend> for CapstoneLoongArchYaml {
     type Fixture = TestCase;
 
     fn arch_name() -> &'static str {
         "loongarch64"
+    }
+
+    fn map_arch_mode(arch: &str, options: &[String]) -> Option<&'static str> {
+        match arch {
+            "CS_ARCH_LOONGARCH" => {
+                if options.contains(&"CS_MODE_LOONGARCH64".to_string()) {
+                    Some("loongarch64")
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
     }
 
     fn yaml_test_dir() -> &'static str {

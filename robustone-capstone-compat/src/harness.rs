@@ -6,6 +6,7 @@ use std::path::Path;
 use robustone_core::ArchitectureDispatcher;
 use robustone_core::types::Instruction;
 
+use crate::adapter::CapstoneArchAdapter;
 use crate::xfail::XfailRegistry;
 use crate::yaml::{CapstoneYaml, ExpectedInsn, TestCase};
 
@@ -21,23 +22,6 @@ pub enum TestResult {
     Fail(String),
 }
 
-/// Maps a Capstone arch/options pair to a Robustone architecture name.
-///
-/// Returns `None` if the combination is not yet supported by the harness.
-pub fn map_arch_mode(arch: &str, options: &[String]) -> Option<&'static str> {
-    match arch {
-        "CS_ARCH_LOONGARCH" => {
-            if options.contains(&"CS_MODE_LOONGARCH64".to_string()) {
-                Some("loongarch64")
-            } else {
-                // LA32 not yet supported by the new backend harness.
-                None
-            }
-        }
-        _ => None,
-    }
-}
-
 /// Runs a single YAML test case through Robustone.
 ///
 /// Returns a [`TestResult`] describing the outcome.
@@ -46,7 +30,10 @@ pub fn run_test_case(
     case: &TestCase,
     xfail: &XfailRegistry,
 ) -> TestResult {
-    let arch_name = match map_arch_mode(&case.input.arch, &case.input.options) {
+    let arch_name = match crate::adapter::CapstoneLoongArchYaml::map_arch_mode(
+        &case.input.arch,
+        &case.input.options,
+    ) {
         Some(name) => name,
         None => {
             return TestResult::Unsupported(format!(
