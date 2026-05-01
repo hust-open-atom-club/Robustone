@@ -21,7 +21,7 @@ fn format_register(id: u32, alias_regs: bool) -> String {
 /// Return the unsigned bit-mask for the instruction's immediate field,
 /// sourced from the first Immediate operand's declared `unsigned_mask`.
 /// Defaults to 0xFFF (12-bit) when no immediate operand is present.
-fn immediate_mask_for_mnemonic(instruction: &DecodedInstruction) -> u64 {
+fn immediate_unsigned_mask(instruction: &DecodedInstruction) -> u64 {
     for operand in &instruction.operands {
         if let Operand::Immediate { unsigned_mask, .. } = operand {
             return *unsigned_mask;
@@ -81,28 +81,35 @@ pub fn render_loongarch_text_parts(
         }
     }
 
-    // Deduplicate equal register operands (replaces CSR/vector handler patches).
-    let mut dedup_indices: Vec<usize> = Vec::new();
-    for i in 0..visible_operands.len() {
-        for j in (i + 1)..visible_operands.len() {
-            if let (
-                (_, Operand::Register { register: ra }),
-                (_, Operand::Register { register: rb }),
-            ) = (&visible_operands[i], &visible_operands[j])
-                && ra.id == rb.id
-            {
-                dedup_indices.push(visible_operands[j].0);
+    // Deduplicate equal register operands for CSR and vector instructions.
+    // Restricted to CSR/vector opcode_id patterns to avoid breaking memory
+    // instructions that legitimately use duplicate register operands.
+    let needs_csr_dedup = instruction
+        .opcode_id
+        .as_deref()
+        .is_some_and(|id| id.starts_with("CSR") || id.starts_with("GCSR") || id.starts_with("XV"));
+    if needs_csr_dedup {
+        let mut dedup_indices: Vec<usize> = Vec::new();
+        for i in 0..visible_operands.len() {
+            for j in (i + 1)..visible_operands.len() {
+                if let (
+                    (_, Operand::Register { register: ra }),
+                    (_, Operand::Register { register: rb }),
+                ) = (&visible_operands[i], &visible_operands[j])
+                    && ra.id == rb.id
+                {
+                    dedup_indices.push(visible_operands[j].0);
+                }
             }
         }
+        visible_operands.retain(|(idx, _)| !dedup_indices.contains(idx));
     }
-    visible_operands.retain(|(idx, _)| !dedup_indices.contains(idx));
 
-    // PC-relative detection via InstructionGroup::Branch (replaces PC_RELATIVE_MNEMONICS list).
-    // jirl is excluded because its offset is added to rj, not to the PC.
-    let is_branch = instruction.groups.iter().any(|g| g == "branch");
-    let is_pc_relative = is_branch || instruction.mnemonic == "jirl";
+    // PC-relative detection via InstructionGroup::Branch.
+    // jirl: offset added to rj, not to PC — excluded from PC-relative rendering.
+    let is_pc_relative = instruction.groups.iter().any(|g| g == "branch");
     let pc = instruction.address as i64;
-    let imm_mask = immediate_mask_for_mnemonic(instruction);
+    let imm_mask = immediate_unsigned_mask(instruction);
 
     let mut operands = visible_operands
         .iter()
