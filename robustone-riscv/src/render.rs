@@ -17,10 +17,8 @@ pub fn render_riscv_text_parts(
     compressed_aliases: bool,
     unsigned_immediate: bool,
 ) -> (String, String) {
-    // LEGACY: Phase 5 will migrate compressed-instruction detection to spec-level
-    // EncodingConstraint or instruction group membership.
-    let use_compat_aliases =
-        compat_aliases && (compressed_aliases || !instruction.mnemonic.starts_with("c."));
+    let use_compat_aliases = compat_aliases
+        && (compressed_aliases || !instruction.groups.iter().any(|g| g == "compressed"));
 
     let mnemonic = if matches!(profile, TextRenderProfile::Canonical) || !use_compat_aliases {
         instruction.mnemonic.clone()
@@ -58,8 +56,7 @@ pub fn render_riscv_text_parts(
         );
     }
 
-    // LEGACY: Phase 5 will migrate atomic operand formatting to spec-level OperandSpec layout hints.
-    if mnemonic.starts_with("sc.") || mnemonic.starts_with("amo") {
+    if instruction.groups.iter().any(|g| g == "atomic") {
         return (
             mnemonic,
             format_riscv_atomic_operands(
@@ -196,7 +193,7 @@ fn format_riscv_operand(
         Operand::Memory {
             base: Some(base),
             displacement,
-        } if *displacement == 0 && is_riscv_atomic_memory_mnemonic(mnemonic) => {
+        } if *displacement == 0 && is_riscv_atomic(mnemonic) => {
             format!("({})", format_riscv_register(base.id, alias_regs))
         }
         _ => format_riscv_basic_operand(operand, mode, alias_regs, true, unsigned_immediate),
@@ -382,10 +379,24 @@ fn is_riscv_csr_operand(mnemonic: &str, index: usize) -> bool {
     ) && index == 1
 }
 
-// LEGACY: Phase 5 will replace mnemonic-based atomic memory detection with
-// InstructionGroup membership checks from the spec table.
-fn is_riscv_atomic_memory_mnemonic(mnemonic: &str) -> bool {
-    mnemonic.starts_with("lr.") || mnemonic.starts_with("sc.") || mnemonic.starts_with("amo")
+fn is_riscv_atomic(mnemonic: &str) -> bool {
+    // Atomic instructions: LR, SC, AMO prefixes
+    matches!(
+        mnemonic,
+        "lr.w"
+            | "lr.d"
+            | "sc.w"
+            | "sc.d"
+            | "amoadd.w"
+            | "amoswap.w"
+            | "amoand.w"
+            | "amoor.w"
+            | "amoxor.w"
+            | "amomax.w"
+            | "amomin.w"
+            | "amomaxu.w"
+            | "amominu.w"
+    )
 }
 
 fn csr_name_lookup(csr: u16) -> Option<&'static str> {

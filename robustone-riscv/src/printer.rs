@@ -152,9 +152,8 @@ impl RiscVPrinter {
 
     /// Render the shared IR into mnemonic and operand text.
     pub fn render_ir_parts(&self, ir: &DecodedInstruction) -> (String, String) {
-        // LEGACY: Phase 5 will migrate compressed-instruction detection to spec-level EncodingConstraint.
-        let use_compat_aliases =
-            self.compat_aliases && (self.compressed_aliases || !ir.mnemonic.starts_with("c."));
+        let use_compat_aliases = self.compat_aliases
+            && (self.compressed_aliases || !ir.groups.iter().any(|g| g == "compressed"));
         let mnemonic = match self.profile {
             RiscVTextProfile::Compat | RiscVTextProfile::VerboseDebug if use_compat_aliases => ir
                 .render_hints
@@ -181,13 +180,13 @@ impl RiscVPrinter {
             .collect::<Vec<_>>();
         let last_visible_index = visible_operands.last().map(|(index, _)| *index);
 
-        // LEGACY: Phase 5 will migrate LR/SC/AMO operand formatting to spec-level
-        // OperandSpec layout hints (is_atomic_memory, operand_order, etc.).
+        let is_atomic = ir.groups.iter().any(|g| g == "atomic");
+        let is_lr = is_atomic && is_riscv_lr(&mnemonic);
         let operands = if mnemonic == "jalr" {
             self.format_ir_jalr_operands(&visible_operands, ir.mode.as_str())
-        } else if mnemonic.starts_with("lr.") {
+        } else if is_lr {
             self.format_ir_load_reserved_operands(&visible_operands, ir.mode.as_str())
-        } else if mnemonic.starts_with("sc.") || mnemonic.starts_with("amo") {
+        } else if is_atomic {
             self.format_ir_atomic_operands(&visible_operands, ir.mode.as_str())
         } else {
             visible_operands
@@ -800,4 +799,8 @@ mod tests {
 
         assert_eq!(printer.print_basic(&instruction), "addi x2, x2, -16");
     }
+}
+
+fn is_riscv_lr(mnemonic: &str) -> bool {
+    matches!(mnemonic, "lr.w" | "lr.d")
 }
