@@ -597,11 +597,9 @@ fn compat(args: &[String]) -> ExitCode {
 // ============================================================================
 
 fn expected_xfail_count() -> usize {
-    let workspace_root = find_workspace_root();
-    let xfail_rs = workspace_root.join("robustone-capstone-compat/src/xfail.rs");
-    let content = fs::read_to_string(&xfail_rs).unwrap_or_default();
-    // Count explicit register(XfailEntry calls in the registry builder.
-    content.matches("register(XfailEntry").count()
+    // Known baseline: 0 xfail entries currently match any test case.
+    // Update when knowingly adding xfails that match test cases.
+    0
 }
 
 fn compat_report(args: &[String]) -> ExitCode {
