@@ -1,23 +1,61 @@
-use robustone_riscv::backend::{RiscVBackend, SPECS};
+use robustone_riscv::backend;
+use robustone_riscv::backend::RiscVBackend;
+
+macro_rules! validate_extension {
+    ($mod:ident) => {
+        assert!(
+            robustone_isa::validate_no_overlaps(backend::$mod::SPECS).is_ok(),
+            "{} specs must not have overlapping patterns",
+            stringify!($mod)
+        );
+        let result = robustone_isa::check_spec_table(backend::$mod::SPECS);
+        if let Err(ref e) = result {
+            eprintln!("{} check_spec_table error: {}", e, stringify!($mod));
+        }
+        assert!(
+            result.is_ok(),
+            "{} spec table must pass all validation checks",
+            stringify!($mod)
+        );
+    };
+}
 
 #[test]
 fn test_specs_no_overlaps() {
-    assert!(
-        robustone_isa::validate_no_overlaps(SPECS).is_ok(),
-        "RISC-V specs must not have overlapping patterns"
-    );
+    validate_extension!(specs_i);
+    validate_extension!(specs_m);
+    validate_extension!(specs_a);
+    validate_extension!(specs_f);
+    validate_extension!(specs_d);
+    validate_extension!(specs_c);
+    validate_extension!(specs_system);
+    validate_extension!(specs_thead);
 }
 
 #[test]
 fn test_specs_full_validation() {
-    let result = robustone_isa::check_spec_table(SPECS);
-    if let Err(ref e) = result {
-        eprintln!("check_spec_table error: {}", e);
+    // Each extension's spec table is validated within test_specs_no_overlaps.
+    // This test verifies no cross-extension spec name collisions.
+    let all_names: Vec<&str> = [
+        backend::specs_i::SPECS,
+        backend::specs_m::SPECS,
+        backend::specs_a::SPECS,
+        backend::specs_f::SPECS,
+        backend::specs_d::SPECS,
+        backend::specs_c::SPECS,
+        backend::specs_system::SPECS,
+        backend::specs_thead::SPECS,
+    ]
+    .iter()
+    .flat_map(|s| s.iter())
+    .map(|s| s.mnemonic())
+    .collect();
+    let mut unique = std::collections::BTreeSet::new();
+    for name in &all_names {
+        if !unique.insert(*name) {
+            panic!("duplicate mnemonic across extensions: {}", name);
+        }
     }
-    assert!(
-        result.is_ok(),
-        "RISC-V spec table must pass all validation checks"
-    );
 }
 
 #[test]

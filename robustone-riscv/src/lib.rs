@@ -445,6 +445,50 @@ mod tests {
         let detail = instruction.detail.expect("detail should be populated");
         assert_eq!(detail.registers_written(), &[1]);
     }
+
+    #[test]
+    fn test_thead_mveqz_decode() {
+        let handler = RiscVHandler::with_extensions(Xlen::X32, &["I", "THEAD"]);
+        // th.mveqz x1, x2, x3 → funct7=0x20, funct3=0x1, opcode=0x0B
+        // word = (0x20 << 25) | (3 << 20) | (2 << 15) | (1 << 7) | (0x1 << 12) | 0x0B
+        let word: u32 = 0x4000_0000 | (3 << 20) | (2 << 15) | (1 << 7) | (0x1 << 12) | 0x0B;
+        let bytes = word.to_le_bytes();
+        let (decoded, size) = handler
+            .decode_instruction(&bytes, "riscv32", 0x1000)
+            .expect("th.mveqz should decode");
+        assert_eq!(size, 4);
+        assert_eq!(decoded.mnemonic, "th.mveqz");
+        assert_eq!(decoded.registers_written.len(), 1);
+        assert_eq!(decoded.registers_read.len(), 2);
+    }
+
+    #[test]
+    fn test_thead_mvnez_decode() {
+        let handler = RiscVHandler::with_extensions(Xlen::X64, &["I", "THEAD"]);
+        // th.mvnez x4, x5, x6 → funct7=0x21, funct3=0x1, opcode=0x0B
+        let word: u32 = 0x4200_0000 | (6 << 20) | (5 << 15) | (4 << 7) | (0x1 << 12) | 0x0B;
+        let bytes = word.to_le_bytes();
+        let (decoded, size) = handler
+            .decode_instruction(&bytes, "riscv64", 0x2000)
+            .expect("th.mvnez should decode");
+        assert_eq!(size, 4);
+        assert_eq!(decoded.mnemonic, "th.mvnez");
+        assert_eq!(decoded.registers_written.len(), 1);
+        assert_eq!(decoded.registers_read.len(), 2);
+    }
+
+    #[test]
+    fn test_thead_requires_feature() {
+        let handler = RiscVHandler::rv32();
+        // Same encoding as th.mveqz, but without THEAD feature
+        let word: u32 = 0x4000_0000 | (3 << 20) | (2 << 15) | (1 << 7) | (0x1 << 12) | 0x0B;
+        let bytes = word.to_le_bytes();
+        let result = handler.decode_instruction(&bytes, "riscv32", 0x1000);
+        assert!(
+            result.is_err(),
+            "th.mveqz should fail without THEAD feature"
+        );
+    }
 }
 
 // Register the RISC-V handler with the global inventory.
