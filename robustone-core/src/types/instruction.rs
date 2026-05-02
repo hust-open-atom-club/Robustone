@@ -198,7 +198,7 @@ mod tests {
             registers_written: vec![RegisterId::riscv(1)],
             implicit_registers_read: Vec::new(),
             implicit_registers_written: Vec::new(),
-            groups: vec!["arithmetic".to_string()],
+            groups: vec![crate::ir::InstructionGroup::Arithmetic],
             effect: None,
             status: DecodeStatus::Success,
             render_hints: RenderHints {

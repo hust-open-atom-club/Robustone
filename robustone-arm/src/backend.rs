@@ -184,7 +184,7 @@ impl ArchitectureBackend for ArmBackend {
             }
         }
         Err(DisasmError::decode_failure(
-            DecodeErrorKind::InvalidField,
+            DecodeErrorKind::InternalSpecBug,
             Some("aarch64".to_string()),
             format!("field {:?} not found in format {}", field, format.name()),
         ))

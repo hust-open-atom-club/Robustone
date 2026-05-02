@@ -84,10 +84,12 @@ pub fn render_loongarch_text_parts(
     // Deduplicate equal register operands for CSR and vector instructions.
     // Uses InstructionGroup to identify relevant instructions (replaces
     // opcode_id string prefix checks).
-    let needs_csr_dedup = instruction
-        .groups
-        .iter()
-        .any(|g| g == "privileged" || g == "system" || g == "vector" || g == "vector256");
+    let needs_csr_dedup = instruction.groups.iter().any(|g| {
+        *g == robustone_core::ir::InstructionGroup::Privileged
+            || *g == robustone_core::ir::InstructionGroup::System
+            || *g == robustone_core::ir::InstructionGroup::Vector
+            || *g == robustone_core::ir::InstructionGroup::Vector256
+    });
     if needs_csr_dedup {
         let mut dedup_indices: Vec<usize> = Vec::new();
         for i in 0..visible_operands.len() {
@@ -106,7 +108,9 @@ pub fn render_loongarch_text_parts(
     }
 
     // PC-relative detection via InstructionGroup::Branch.
-    let is_pc_relative = instruction.groups.iter().any(|g| g == "branch");
+    let is_pc_relative = instruction
+        .groups
+        .contains(&robustone_core::ir::InstructionGroup::Branch);
     let pc = instruction.address as i64;
     let imm_mask = immediate_unsigned_mask(instruction);
 
@@ -129,8 +133,12 @@ pub fn render_loongarch_text_parts(
     // LSX (128-bit vector) uses $vr, LASX (256-bit) uses $xr.
     // Distinguish by InstructionGroup: LASX specs carry Vector256.
     if alias_regs
-        && instruction.groups.iter().any(|g| g == "vector")
-        && !instruction.groups.iter().any(|g| g == "vector256")
+        && instruction
+            .groups
+            .contains(&robustone_core::ir::InstructionGroup::Vector)
+        && !instruction
+            .groups
+            .contains(&robustone_core::ir::InstructionGroup::Vector256)
     {
         operands = operands.replace("$xr", "$vr");
     }

@@ -109,10 +109,10 @@ prop_compose! {
         ),
         groups in prop::collection::vec(
             prop::sample::select(vec![
-                "arithmetic".to_string(),
-                "branch".to_string(),
-                "load".to_string(),
-                "floating_point".to_string(),
+                robustone::ir::InstructionGroup::Arithmetic,
+                robustone::ir::InstructionGroup::Branch,
+                robustone::ir::InstructionGroup::Memory,
+                robustone::ir::InstructionGroup::Float,
             ]),
             0..3,
         ),

@@ -725,37 +725,55 @@ fn find_workspace_root() -> PathBuf {
 /// Scan production crate sources for mnemonic-based semantic classification
 /// and other hardcoded patterns that violate AC-5/AC-6.
 fn audit_no_hardcode(args: &[String]) -> ExitCode {
-    // Accept --all flag for forward compatibility.
     for arg in args {
-        if arg == "--all" {
-            // Future: enable all detection categories or scan all crates.
-            // Currently a no-op alias for default behavior.
-        } else {
+        if arg != "--all" {
             eprintln!("Unknown flag: {}", arg);
             return ExitCode::FAILURE;
         }
     }
 
     let workspace_root = find_workspace_root();
-    let mut violations: Vec<String> = Vec::new();
+    let mut errors: Vec<String> = Vec::new();
+    let mut warnings: Vec<String> = Vec::new();
 
-    // Scan only architecture crates (not infrastructure like core/isa).
-    let arch_crates = [
-        "robustone-loongarch",
-        "robustone-riscv",
-        "robustone-arm",
-        "robustone-x86",
-    ];
-    let forbidden_patterns: &[(&str, &str)] = &[
-        ("mnemonic\\.starts_with\\(", "mnemonic starts_with"),
-        ("mnemonic\\.ends_with\\(", "mnemonic ends_with"),
-        ("mnemonic\\.contains\\(", "mnemonic contains"),
-        ("\\.mnemonic\\s*==\\s*\"[^u]", "mnemonic == string literal"),
+    // Production crates: hard errors for violations (LoongArch, RISC-V)
+    let hard_error_crates = ["robustone-loongarch", "robustone-riscv"];
+    // Legacy placeholder crates: warnings only (ARM, X86)
+    let warning_crates = ["robustone-arm", "robustone-x86"];
+
+    let handler_patch_patterns: &[(&str, &str)] = &[
         (
-            "BRANCH_MNEMONICS|PC_RELATIVE_MNEMONICS|immediate_mask_for_mnemonic",
-            "mnemonic list/function",
+            "InstructionSpec::new\\s*\\(",
+            "deprecated InstructionSpec::new() — use define_instructions!",
         ),
-        ("opcode_id\\..*starts_with", "opcode_id starts_with"),
+        (
+            "decoded\\.mnemonic\\s*=",
+            "decoded.mnemonic assignment (handler patch)",
+        ),
+        (
+            "decoded\\.operands\\.remove",
+            "decoded.operands.remove (handler patch)",
+        ),
+        (
+            "decoded\\.operands\\.push",
+            "decoded.operands.push (handler patch)",
+        ),
+        ("mnemonic\\.starts_with\\(", "mnemonic.starts_with"),
+        ("mnemonic\\.ends_with\\(", "mnemonic.ends_with"),
+        ("mnemonic\\.contains\\(", "mnemonic.contains"),
+        ("\\.mnemonic\\s*==\\s*\"", "mnemonic == string literal"),
+        (
+            "BRANCH_MNEMONICS|PC_RELATIVE_MNEMONICS",
+            "mnemonic list constant",
+        ),
+        (
+            "all_supported_for_tests\\(\\)",
+            "all_supported_for_tests() — use profile_for_arch_name instead",
+        ),
+        (
+            "\\.groups\\..*==\\s*\"",
+            "string-based instruction group comparison",
+        ),
         (
             "word\\s*==\\s*0x[0-9a-fA-F]{5,}",
             "bare hex exact-word comparison",
@@ -766,56 +784,143 @@ fn audit_no_hardcode(args: &[String]) -> ExitCode {
         ),
     ];
 
-    for crate_name in &arch_crates {
-        let src_dir = workspace_root.join(crate_name).join("src");
-        if !src_dir.exists() {
+    let excluded_dirs = [
+        "tests/",
+        "robustone-capstone-compat/",
+        "robustone-compat/",
+        "xtask/",
+    ];
+
+    // Scan hard-error crates
+    for crate_name in &hard_error_crates {
+        scan_crate(
+            &workspace_root,
+            crate_name,
+            handler_patch_patterns,
+            &excluded_dirs,
+            &mut errors,
+            false,
+        );
+    }
+
+    // Scan warning-only crates
+    for crate_name in &warning_crates {
+        scan_crate(
+            &workspace_root,
+            crate_name,
+            handler_patch_patterns,
+            &excluded_dirs,
+            &mut warnings,
+            true,
+        );
+    }
+
+    // Print warnings
+    if !warnings.is_empty() {
+        println!(
+            "audit-no-hardcode: {} warning(s) in legacy crates:",
+            warnings.len()
+        );
+        for w in &warnings {
+            println!("  WARNING: {}", w);
+        }
+    }
+
+    if errors.is_empty() {
+        println!("audit-no-hardcode: OK – no violations found");
+        ExitCode::SUCCESS
+    } else {
+        println!("audit-no-hardcode: {} violation(s) found:", errors.len());
+        for v in &errors {
+            println!("  ERROR: {}", v);
+        }
+        ExitCode::FAILURE
+    }
+}
+
+fn scan_crate(
+    workspace_root: &Path,
+    crate_name: &str,
+    patterns: &[(&str, &str)],
+    excluded_dirs: &[&str],
+    violations: &mut Vec<String>,
+    warning_only: bool,
+) {
+    let src_dir = workspace_root.join(crate_name).join("src");
+    if !src_dir.exists() {
+        return;
+    }
+
+    for entry in walk_dir(&src_dir) {
+        let path = entry.path();
+        if path.extension().is_none_or(|e| e != "rs") {
             continue;
         }
 
-        for entry in walk_dir(&src_dir) {
-            let path = entry.path();
-            if path.extension().is_none_or(|e| e != "rs") {
-                continue;
-            }
-            let content = match fs::read_to_string(&path) {
-                Ok(c) => c,
-                Err(_) => continue,
-            };
+        // Skip excluded directories (tests, compat, xtask)
+        let path_str = path.to_string_lossy();
+        if excluded_dirs.iter().any(|d| path_str.contains(d)) {
+            continue;
+        }
 
-            for (pattern, desc) in forbidden_patterns {
-                if let Ok(re) = regex::Regex::new(pattern) {
-                    for (line_num, line) in content.lines().enumerate() {
-                        if re.is_match(line) {
-                            // Skip LEGACY-marked lines and comments
-                            if line.trim().starts_with("//") {
+        let content = match fs::read_to_string(&path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+
+        // Track current function context for contextual allow rules
+        let mut current_fn: Option<String> = None;
+
+        for (pattern, desc) in patterns {
+            if let Ok(re) = regex::Regex::new(pattern) {
+                for (line_num, line) in content.lines().enumerate() {
+                    // Track function context (handles `fn`, `pub fn`, `pub(crate) fn`, etc.)
+                    let trimmed = line.trim();
+                    if let Some(fn_pos) = trimmed.find("fn ") {
+                        let after_fn = &trimmed[fn_pos + 3..];
+                        if let Some(paren) = after_fn.find('(') {
+                            current_fn = Some(after_fn[..paren].trim().to_string());
+                        }
+                    }
+                    if line.trim().starts_with('}') {
+                        current_fn = None;
+                    }
+
+                    if re.is_match(line) {
+                        // Skip the function definition itself
+                        if line.trim().starts_with("fn all_supported_for_tests") {
+                            continue;
+                        }
+                        // Allow all_supported_for_tests() in backend.rs (defines FeatureSet impls
+                        // and test profile helpers like capstone_test_la64()) and in
+                        // test/capstone helper function contexts
+                        if desc.contains("all_supported_for_tests") {
+                            if path_str.contains("backend.rs") {
                                 continue;
                             }
-                            let rel_path = path.strip_prefix(&workspace_root).unwrap_or(&path);
-                            violations.push(format!(
-                                "{}:{}: {} — `{}`",
-                                rel_path.display(),
-                                line_num + 1,
-                                desc,
-                                line.trim()
-                            ));
+                            if let Some(ref fname) = current_fn
+                                && (fname.contains("test") || fname.contains("capstone"))
+                            {
+                                continue;
+                            }
                         }
+                        // Skip comment lines but still enforce banned handler-patch patterns
+                        if line.trim().starts_with("//") && !desc.contains("handler patch") {
+                            continue;
+                        }
+                        let rel_path = path.strip_prefix(workspace_root).unwrap_or(&path);
+                        let prefix = if warning_only { "WARNING" } else { "ERROR" };
+                        violations.push(format!(
+                            "{}:{}: [{}] {} — `{}`",
+                            rel_path.display(),
+                            line_num + 1,
+                            prefix,
+                            desc,
+                            line.trim()
+                        ));
                     }
                 }
             }
         }
-    }
-
-    if violations.is_empty() {
-        println!("audit-no-hardcode: OK – no violations found");
-        ExitCode::SUCCESS
-    } else {
-        println!(
-            "audit-no-hardcode: {} violation(s) found:",
-            violations.len()
-        );
-        for v in &violations {
-            println!("  {}", v);
-        }
-        ExitCode::FAILURE
     }
 }

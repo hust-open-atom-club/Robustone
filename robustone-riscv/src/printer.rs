@@ -153,7 +153,10 @@ impl RiscVPrinter {
     /// Render the shared IR into mnemonic and operand text.
     pub fn render_ir_parts(&self, ir: &DecodedInstruction) -> (String, String) {
         let use_compat_aliases = self.compat_aliases
-            && (self.compressed_aliases || !ir.groups.iter().any(|g| g == "compressed"));
+            && (self.compressed_aliases
+                || !ir
+                    .groups
+                    .contains(&robustone_core::ir::InstructionGroup::Compressed));
         let mnemonic = match self.profile {
             RiscVTextProfile::Compat | RiscVTextProfile::VerboseDebug if use_compat_aliases => ir
                 .render_hints
@@ -180,7 +183,9 @@ impl RiscVPrinter {
             .collect::<Vec<_>>();
         let last_visible_index = visible_operands.last().map(|(index, _)| *index);
 
-        let is_atomic = ir.groups.iter().any(|g| g == "atomic");
+        let is_atomic = ir
+            .groups
+            .contains(&robustone_core::ir::InstructionGroup::Atomic);
         let is_lr = is_atomic && is_riscv_lr(&mnemonic);
         let operands = if mnemonic == "jalr" {
             self.format_ir_jalr_operands(&visible_operands, ir.mode.as_str())
@@ -686,7 +691,7 @@ mod tests {
             registers_written: vec![RegisterId::riscv(1)],
             implicit_registers_read: Vec::new(),
             implicit_registers_written: Vec::new(),
-            groups: vec!["arithmetic".to_string()],
+            groups: vec![robustone_core::ir::InstructionGroup::Arithmetic],
             effect: None,
             status: DecodeStatus::Success,
             render_hints: RenderHints {
@@ -765,7 +770,7 @@ mod tests {
             registers_written: vec![RegisterId::riscv(2)],
             implicit_registers_read: Vec::new(),
             implicit_registers_written: Vec::new(),
-            groups: vec!["arithmetic".to_string()],
+            groups: vec![robustone_core::ir::InstructionGroup::Arithmetic],
             effect: None,
             status: DecodeStatus::Success,
             render_hints: RenderHints {

@@ -2,7 +2,40 @@ use std::fs;
 use std::path::PathBuf;
 
 use robustone::dispatcher;
+use robustone::ir::InstructionGroup;
 use serde::Deserialize;
+
+fn deserialize_groups<'de, D>(deserializer: D) -> Result<Vec<InstructionGroup>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let strings: Vec<String> = Vec::deserialize(deserializer)?;
+    strings
+        .into_iter()
+        .map(|s| match s.as_str() {
+            "integer" => Ok(InstructionGroup::Integer),
+            "arithmetic" => Ok(InstructionGroup::Arithmetic),
+            "logical" => Ok(InstructionGroup::Logical),
+            "shift" => Ok(InstructionGroup::Shift),
+            "branch" => Ok(InstructionGroup::Branch),
+            "control_flow" => Ok(InstructionGroup::Jump),
+            "memory" => Ok(InstructionGroup::Memory),
+            "atomic" => Ok(InstructionGroup::Atomic),
+            "floating_point" => Ok(InstructionGroup::Float),
+            "privileged" => Ok(InstructionGroup::Privileged),
+            "barrier" => Ok(InstructionGroup::Barrier),
+            "system" => Ok(InstructionGroup::System),
+            "vector" => Ok(InstructionGroup::Vector),
+            "vector256" => Ok(InstructionGroup::Vector256),
+            "bit_manipulation" => Ok(InstructionGroup::BitManipulation),
+            "compressed" => Ok(InstructionGroup::Compressed),
+            other => Err(serde::de::Error::custom(format!(
+                "unknown instruction group: {}",
+                other
+            ))),
+        })
+        .collect()
+}
 
 #[derive(Debug, Deserialize)]
 struct GoldenCase {
@@ -23,7 +56,8 @@ struct ExpectedIr {
     mnemonic: String,
     render_hint_mnemonic: Option<String>,
     hidden_operands: Vec<usize>,
-    groups: Vec<String>,
+    #[serde(deserialize_with = "deserialize_groups")]
+    groups: Vec<InstructionGroup>,
     operand_kinds: Vec<String>,
 }
 

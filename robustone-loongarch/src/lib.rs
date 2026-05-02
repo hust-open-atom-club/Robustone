@@ -46,7 +46,7 @@ use robustone_core::{
     traits::instruction::Detail,
     types::error::DisasmError,
 };
-use robustone_isa::{AliasPolicy, DecodeProfile, FeatureSet, RenderDialect, decode_one};
+use robustone_isa::{DecodeProfile, decode_one};
 
 /// Architecture handler implementation for LoongArch LA64 targets.
 pub struct LoongArchHandler {
@@ -57,6 +57,17 @@ impl LoongArchHandler {
     /// Creates a new handler.
     pub fn new() -> Self {
         Self { detail: true }
+    }
+}
+
+/// Resolve the production decode profile for an arch name string.
+fn profile_for_arch_name(
+    arch_name: &str,
+) -> Result<DecodeProfile<backend::LoongArchBackend>, DisasmError> {
+    match arch_name {
+        "loongarch" | "loongarch64" => Ok(backend::LoongArchBackend::la64_base()),
+        "loongarch32" => Ok(backend::LoongArchBackend::la32_base()),
+        _ => Err(DisasmError::UnsupportedArchitecture(arch_name.to_string())),
     }
 }
 
@@ -81,16 +92,7 @@ impl ArchitectureHandler for LoongArchHandler {
         arch_name: &str,
         addr: u64,
     ) -> Result<(DecodedInstruction, usize), DisasmError> {
-        if !self.supports(arch_name) {
-            return Err(DisasmError::UnsupportedArchitecture(arch_name.to_string()));
-        }
-
-        let profile = DecodeProfile {
-            mode: backend::LoongArchMode::LA64,
-            features: backend::LoongArchFeature::all_supported_for_tests(),
-            render_dialect: RenderDialect::Assembler,
-            alias_policy: AliasPolicy::PreferPseudo,
-        };
+        let profile = profile_for_arch_name(arch_name)?;
         let decoded = decode_one::<backend::LoongArchBackend>(bytes, addr, &profile)?;
         let size = decoded.size;
 

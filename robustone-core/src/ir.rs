@@ -161,6 +161,85 @@ pub enum EffectSpec {
     None,
 }
 
+/// Instruction functional groups for render and validation decisions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InstructionGroup {
+    Integer,
+    Arithmetic,
+    Logical,
+    Shift,
+    Branch,
+    Jump,
+    Memory,
+    Atomic,
+    Float,
+    Privileged,
+    Barrier,
+    System,
+    Vector,
+    /// 256-bit vector (LASX) — distinct from 128-bit Vector (LSX).
+    Vector256,
+    BitManipulation,
+    Compressed,
+}
+
+impl serde::Serialize for InstructionGroup {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for InstructionGroup {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        match s.as_str() {
+            "integer" => Ok(InstructionGroup::Integer),
+            "arithmetic" => Ok(InstructionGroup::Arithmetic),
+            "logical" => Ok(InstructionGroup::Logical),
+            "shift" => Ok(InstructionGroup::Shift),
+            "branch" => Ok(InstructionGroup::Branch),
+            "control_flow" => Ok(InstructionGroup::Jump),
+            "memory" => Ok(InstructionGroup::Memory),
+            "atomic" => Ok(InstructionGroup::Atomic),
+            "floating_point" => Ok(InstructionGroup::Float),
+            "privileged" => Ok(InstructionGroup::Privileged),
+            "barrier" => Ok(InstructionGroup::Barrier),
+            "system" => Ok(InstructionGroup::System),
+            "vector" => Ok(InstructionGroup::Vector),
+            "vector256" => Ok(InstructionGroup::Vector256),
+            "bit_manipulation" => Ok(InstructionGroup::BitManipulation),
+            "compressed" => Ok(InstructionGroup::Compressed),
+            other => Err(serde::de::Error::custom(format!(
+                "unknown instruction group: {}",
+                other
+            ))),
+        }
+    }
+}
+
+impl InstructionGroup {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            InstructionGroup::Integer => "integer",
+            InstructionGroup::Arithmetic => "arithmetic",
+            InstructionGroup::Logical => "logical",
+            InstructionGroup::Shift => "shift",
+            InstructionGroup::Branch => "branch",
+            InstructionGroup::Jump => "control_flow",
+            InstructionGroup::Memory => "memory",
+            InstructionGroup::Atomic => "atomic",
+            InstructionGroup::Float => "floating_point",
+            InstructionGroup::Privileged => "privileged",
+            InstructionGroup::Barrier => "barrier",
+            InstructionGroup::System => "system",
+            InstructionGroup::Vector => "vector",
+            InstructionGroup::Vector256 => "vector256",
+            InstructionGroup::BitManipulation => "bit_manipulation",
+            InstructionGroup::Compressed => "compressed",
+        }
+    }
+}
+
 /// Shared decoded instruction payload.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[allow(unpredictable_function_pointer_comparisons)]
@@ -181,7 +260,7 @@ pub struct DecodedInstruction {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub implicit_registers_written: Vec<RegisterId>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub groups: Vec<String>,
+    pub groups: Vec<InstructionGroup>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub effect: Option<EffectSpec>,
     pub status: DecodeStatus,

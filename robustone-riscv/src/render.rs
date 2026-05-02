@@ -18,7 +18,10 @@ pub fn render_riscv_text_parts(
     unsigned_immediate: bool,
 ) -> (String, String) {
     let use_compat_aliases = compat_aliases
-        && (compressed_aliases || !instruction.groups.iter().any(|g| g == "compressed"));
+        && (compressed_aliases
+            || !instruction
+                .groups
+                .contains(&robustone_core::ir::InstructionGroup::Compressed));
 
     let mnemonic = if matches!(profile, TextRenderProfile::Canonical) || !use_compat_aliases {
         instruction.mnemonic.clone()
@@ -56,7 +59,10 @@ pub fn render_riscv_text_parts(
         );
     }
 
-    if instruction.groups.iter().any(|g| g == "atomic") {
+    if instruction
+        .groups
+        .contains(&robustone_core::ir::InstructionGroup::Atomic)
+    {
         return (
             mnemonic,
             format_riscv_atomic_operands(

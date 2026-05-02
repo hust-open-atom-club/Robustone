@@ -184,11 +184,33 @@ pub enum AliasPolicy {
 // Instruction specification
 // ============================================================================
 
+/// Seal token that prevents external construction of `InstructionSpec`.
+///
+/// Only proc-macros and sanctioned internal macros may construct this token.
+/// Architecture crates must use `define_instructions!` rather than calling
+/// the constructor directly. The CI audit (`cargo xtask audit-no-hardcode`)
+/// enforces this at the call-site level.
+#[derive(Debug, Clone, Copy)]
+pub struct SpecSeal {
+    _private: (),
+}
+
+impl SpecSeal {
+    /// Internal constructor for the seal token.
+    ///
+    /// This is `#[doc(hidden)]` and named with a leading `__` to discourage
+    /// direct use. Architecture crates must not call this directly.
+    #[doc(hidden)]
+    pub const fn __private_seal_token() -> Self {
+        Self { _private: () }
+    }
+}
+
 /// Static specification of a single instruction.
 ///
-/// Fields are `pub(crate)` — construction is only possible via
-/// `InstructionSpec::new()` (called by proc-macros). Downstream
-/// crates use the public accessor methods for lookup and decode.
+/// Construction is sealed — only possible via `__macro_new()` which is called
+/// by proc-macros (`define_instructions!`) and sanctioned internal macros.
+/// Architecture crates must not call the constructor directly.
 #[derive(Debug)]
 pub struct InstructionSpec<B: ArchitectureBackend + 'static> {
     pub(crate) mnemonic: &'static str,
@@ -202,14 +224,56 @@ pub struct InstructionSpec<B: ArchitectureBackend + 'static> {
     pub(crate) effect: Option<EffectSpec>,
     pub(crate) manual_ref: Option<&'static str>,
     pub(crate) priority: u16,
+    pub(crate) _seal: SpecSeal,
 }
 
 impl<B: ArchitectureBackend + 'static> InstructionSpec<B> {
-    /// Construct a new `InstructionSpec`.
+    /// Sealed constructor for `InstructionSpec`.
     ///
-    /// This is the canonical constructor used by proc-macros.
-    /// Architecture crates should use `define_instructions!` rather
-    /// than calling this directly.
+    /// This is the only way to construct an `InstructionSpec`. It requires a
+    /// `SpecSeal` token which is only obtainable via sanctioned macro paths.
+    /// Architecture crates must use `define_instructions!` and must not call
+    /// this constructor directly. CI auditing enforces this constraint.
+    #[doc(hidden)]
+    #[allow(clippy::too_many_arguments)]
+    pub const fn __macro_new(
+        mnemonic: &'static str,
+        opcode_id: &'static str,
+        pattern: EncodingPattern<B::Word>,
+        format: &'static FormatSpec<B::Field>,
+        operands: &'static [OperandSpec<B>],
+        features: B::Feature,
+        modes: ModeSet<B::Mode>,
+        groups: &'static [InstructionGroup],
+        effect: Option<EffectSpec>,
+        manual_ref: Option<&'static str>,
+        priority: u16,
+        _seal: SpecSeal,
+    ) -> Self {
+        Self {
+            mnemonic,
+            opcode_id,
+            pattern,
+            format,
+            operands,
+            features,
+            modes,
+            groups,
+            effect,
+            manual_ref,
+            priority,
+            _seal,
+        }
+    }
+
+    /// Deprecated public constructor — use `define_instructions!` or
+    /// `__macro_new` with a `SpecSeal` token instead.
+    ///
+    /// This remains available during the transition period but will be
+    /// removed. Architecture crates that call this directly will be
+    /// flagged by `cargo xtask audit-no-hardcode`.
+    #[deprecated(note = "Use define_instructions! or __macro_new with SpecSeal")]
+    #[doc(hidden)]
     #[allow(clippy::too_many_arguments)]
     pub const fn new(
         mnemonic: &'static str,
@@ -224,7 +288,7 @@ impl<B: ArchitectureBackend + 'static> InstructionSpec<B> {
         manual_ref: Option<&'static str>,
         priority: u16,
     ) -> Self {
-        Self {
+        Self::__macro_new(
             mnemonic,
             opcode_id,
             pattern,
@@ -236,7 +300,8 @@ impl<B: ArchitectureBackend + 'static> InstructionSpec<B> {
             effect,
             manual_ref,
             priority,
-        }
+            SpecSeal::__private_seal_token(),
+        )
     }
 
     /// Instruction mnemonic (e.g. "add", "lw").
@@ -684,7 +749,7 @@ impl<'a> InstructionView<'a> {
 
     /// Check if the instruction belongs to a specific group.
     pub fn is_in_group(&self, group: &str) -> bool {
-        self.decoded.groups.iter().any(|g| g == group)
+        self.decoded.groups.iter().any(|g| g.as_str() == group)
     }
 
     /// Semantic effect of this instruction (branch, call, return, etc.).
@@ -704,50 +769,7 @@ pub enum ModeSet<M: Copy + Eq + 'static> {
     Only(&'static [M]),
 }
 
-/// Instruction functional groups.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum InstructionGroup {
-    Integer,
-    Arithmetic,
-    Logical,
-    Shift,
-    Branch,
-    Jump,
-    Memory,
-    Atomic,
-    Float,
-    Privileged,
-    Barrier,
-    System,
-    Vector,
-    /// 256-bit vector (LASX) — distinct from 128-bit Vector (LSX).
-    Vector256,
-    BitManipulation,
-    Compressed,
-}
-
-impl InstructionGroup {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            InstructionGroup::Integer => "integer",
-            InstructionGroup::Arithmetic => "arithmetic",
-            InstructionGroup::Logical => "logical",
-            InstructionGroup::Shift => "shift",
-            InstructionGroup::Branch => "branch",
-            InstructionGroup::Jump => "control_flow",
-            InstructionGroup::Memory => "memory",
-            InstructionGroup::Atomic => "atomic",
-            InstructionGroup::Float => "floating_point",
-            InstructionGroup::Privileged => "privileged",
-            InstructionGroup::Barrier => "barrier",
-            InstructionGroup::System => "system",
-            InstructionGroup::Vector => "vector",
-            InstructionGroup::Vector256 => "vector256",
-            InstructionGroup::BitManipulation => "bit_manipulation",
-            InstructionGroup::Compressed => "compressed",
-        }
-    }
-}
+pub use robustone_core::ir::InstructionGroup;
 
 // ============================================================================
 // Format specification
@@ -1006,7 +1028,7 @@ pub fn decode_one<B: ArchitectureBackend>(
         registers_written: regs_written,
         implicit_registers_read: Vec::new(),
         implicit_registers_written: Vec::new(),
-        groups: spec.groups.iter().map(|g| g.as_str().to_string()).collect(),
+        groups: spec.groups.to_vec(),
         effect: spec.effect,
         status: robustone_core::ir::DecodeStatus::Success,
         render_hints: robustone_core::ir::RenderHints::default(),
@@ -1338,7 +1360,7 @@ macro_rules! isa_specs {
             manual = $manual:expr;
         })*
     ) => {
-        $(pub static $name: $crate::InstructionSpec<$backend> = $crate::InstructionSpec::new(
+        $(pub static $name: $crate::InstructionSpec<$backend> = $crate::InstructionSpec::__macro_new(
             $mnemonic,
             $opcode_id,
             $pattern,
@@ -1350,6 +1372,7 @@ macro_rules! isa_specs {
             None,
             Some($manual),
             0,
+            $crate::SpecSeal::__private_seal_token(),
         );)*
     };
     (
@@ -1365,7 +1388,7 @@ macro_rules! isa_specs {
             groups = $groups:expr;
         })*
     ) => {
-        $(pub static $name: $crate::InstructionSpec<$backend> = $crate::InstructionSpec::new(
+        $(pub static $name: $crate::InstructionSpec<$backend> = $crate::InstructionSpec::__macro_new(
             $mnemonic,
             $opcode_id,
             $pattern,
@@ -1377,6 +1400,7 @@ macro_rules! isa_specs {
             None,
             None,
             0,
+            $crate::SpecSeal::__private_seal_token(),
         );)*
     };
     (
@@ -1394,7 +1418,7 @@ macro_rules! isa_specs {
             priority = $priority:expr;
         })*
     ) => {
-        $(pub static $name: $crate::InstructionSpec<$backend> = $crate::InstructionSpec::new(
+        $(pub static $name: $crate::InstructionSpec<$backend> = $crate::InstructionSpec::__macro_new(
             $mnemonic,
             $opcode_id,
             $pattern,
@@ -1406,6 +1430,7 @@ macro_rules! isa_specs {
             None,
             Some($manual),
             $priority,
+            $crate::SpecSeal::__private_seal_token(),
         );)*
     };
     (
@@ -1422,7 +1447,7 @@ macro_rules! isa_specs {
             priority = $priority:expr;
         })*
     ) => {
-        $(pub static $name: $crate::InstructionSpec<$backend> = $crate::InstructionSpec::new(
+        $(pub static $name: $crate::InstructionSpec<$backend> = $crate::InstructionSpec::__macro_new(
             $mnemonic,
             $opcode_id,
             $pattern,
@@ -1434,6 +1459,7 @@ macro_rules! isa_specs {
             None,
             None,
             $priority,
+            $crate::SpecSeal::__private_seal_token(),
         );)*
     };
 }
@@ -1603,6 +1629,7 @@ mod tests {
                 effect: None,
                 manual_ref: None,
                 priority: 0,
+                _seal: SpecSeal::__private_seal_token(),
             },
             InstructionSpec {
                 mnemonic: "inst_b",
@@ -1619,6 +1646,7 @@ mod tests {
                 effect: None,
                 manual_ref: None,
                 priority: 0,
+                _seal: SpecSeal::__private_seal_token(),
             },
         ];
         let result = validate_no_overlaps(overlapping_specs);

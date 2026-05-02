@@ -2,7 +2,9 @@
 
 //! ARM (AArch64) disassembly module for Robustone.
 //!
-//! Uses the unified `decode_one` pipeline via `ArmBackend`.
+//! Experimental legacy backend. This crate is currently a framework placeholder
+//! and is not yet migrated to the robustone-isa declarative backend model.
+//! Uses the unified `decode_one` pipeline via `ArmBackend` for smoke testing.
 
 pub mod backend;
 pub mod render;

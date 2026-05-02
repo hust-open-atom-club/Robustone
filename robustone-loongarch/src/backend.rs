@@ -3,8 +3,9 @@
 use robustone_core::ir::{ArchitectureId, RegisterId};
 use robustone_core::types::error::{DecodeErrorKind, DisasmError};
 use robustone_isa::{
-    Access, ArchitectureBackend, DecodeProfile, FeatureSet, FormatSpec, ImmediateKind,
-    ImmediateTransform, InstructionGroup, InstructionRead, InstructionSpec, RenderPolicy,
+    Access, AliasPolicy, ArchitectureBackend, DecodeProfile, FeatureSet, FormatSpec, ImmediateKind,
+    ImmediateTransform, InstructionGroup, InstructionRead, InstructionSpec, RenderDialect,
+    RenderPolicy,
 };
 
 // ============================================================================
@@ -44,6 +45,38 @@ impl FeatureSet for LoongArchFeature {
 
     fn contains(self, required: Self) -> bool {
         self.0 & required.0 == required.0
+    }
+}
+
+impl LoongArchBackend {
+    /// Production profile for LA64 (base integer, branch, memory).
+    pub fn la64_base() -> DecodeProfile<Self> {
+        DecodeProfile {
+            mode: LoongArchMode::LA64,
+            features: LoongArchFeature::BASE | LoongArchFeature::LA64,
+            render_dialect: RenderDialect::Canonical,
+            alias_policy: AliasPolicy::None,
+        }
+    }
+
+    /// Production profile for LA32 (base integer).
+    pub fn la32_base() -> DecodeProfile<Self> {
+        DecodeProfile {
+            mode: LoongArchMode::LA32,
+            features: LoongArchFeature::BASE,
+            render_dialect: RenderDialect::Canonical,
+            alias_policy: AliasPolicy::None,
+        }
+    }
+
+    /// Test profile for Capstone compatibility harness (all features, pseudo aliases).
+    pub fn capstone_test_la64() -> DecodeProfile<Self> {
+        DecodeProfile {
+            mode: LoongArchMode::LA64,
+            features: LoongArchFeature::all_supported_for_tests(),
+            render_dialect: RenderDialect::Assembler,
+            alias_policy: AliasPolicy::PreferPseudo,
+        }
     }
 }
 
@@ -720,11 +753,8 @@ impl ArchitectureBackend for LoongArchBackend {
         RegisterId::loongarch(id)
     }
 
-    fn render_policy(_profile: &DecodeProfile<Self>) -> RenderPolicy<Self> {
-        RenderPolicy::new(
-            robustone_isa::RenderDialect::Assembler,
-            robustone_isa::AliasPolicy::PreferPseudo,
-        )
+    fn render_policy(profile: &DecodeProfile<Self>) -> RenderPolicy<Self> {
+        RenderPolicy::new(profile.render_dialect, profile.alias_policy)
     }
 
     fn extract_field(
@@ -739,9 +769,13 @@ impl ArchitectureBackend for LoongArchBackend {
             }
         }
         Err(DisasmError::decode_failure(
-            DecodeErrorKind::InvalidField,
+            DecodeErrorKind::InternalSpecBug,
             Some("loongarch".to_string()),
-            format!("field {:?} not found in format {}", field, format.name()),
+            format!(
+                "field {:?} not found in format {} — spec bug: format missing declared field",
+                field,
+                format.name()
+            ),
         ))
     }
 

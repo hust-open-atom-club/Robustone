@@ -63,7 +63,7 @@ pub fn apply_riscv_aliases(decoded: &mut DecodedInstruction) {
                         }];
                         decoded.registers_read = vec![rs1];
                         decoded.registers_written.clear();
-                        decoded.groups = vec!["load".to_string()];
+                        decoded.groups = vec![robustone_core::ir::InstructionGroup::Memory];
                         decoded.render_hints = Default::default();
                     }
                 }

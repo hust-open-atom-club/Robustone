@@ -2,8 +2,8 @@
 
 use std::path::Path;
 
-use robustone_isa::{ArchitectureBackend, DecodeProfile, FeatureSet};
-use robustone_loongarch::backend::{LoongArchBackend, LoongArchFeature, LoongArchMode};
+use robustone_isa::{ArchitectureBackend, DecodeProfile};
+use robustone_loongarch::backend::LoongArchBackend;
 
 use crate::yaml::{CapstoneYaml, TestCase};
 
@@ -121,12 +121,7 @@ impl CapstoneArchAdapter<LoongArchBackend> for CapstoneLoongArchYaml {
     }
 
     fn profile_for_fixture(_fixture: &Self::Fixture) -> DecodeProfile<LoongArchBackend> {
-        DecodeProfile {
-            mode: LoongArchMode::LA64,
-            features: LoongArchFeature::all_supported_for_tests(),
-            render_dialect: robustone_isa::RenderDialect::Assembler,
-            alias_policy: robustone_isa::AliasPolicy::PreferPseudo,
-        }
+        LoongArchBackend::capstone_test_la64()
     }
 
     fn normalize_expected(text: &str) -> String {

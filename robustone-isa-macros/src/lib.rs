@@ -654,7 +654,7 @@ pub fn define_instructions(input: TokenStream) -> TokenStream {
         };
 
         quote! {
-            pub static #name: ::robustone_isa::InstructionSpec<#backend> = ::robustone_isa::InstructionSpec::new(
+            pub static #name: ::robustone_isa::InstructionSpec<#backend> = ::robustone_isa::InstructionSpec::__macro_new(
                 #mnemonic,
                 #opcode_id,
                 #pattern_expr,
@@ -666,6 +666,7 @@ pub fn define_instructions(input: TokenStream) -> TokenStream {
                 #effect_expr,
                 #manual_ref,
                 #priority,
+                ::robustone_isa::SpecSeal::__private_seal_token(),
             );
         }
     }).collect();

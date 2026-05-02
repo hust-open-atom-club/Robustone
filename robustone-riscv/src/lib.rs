@@ -428,8 +428,18 @@ mod tests {
             .decode_instruction(&[0x2f, 0xb4, 0x02, 0x12], "riscv64", 0)
             .expect("lr.d should decode");
 
-        assert!(decoded.groups.iter().any(|group| group == "atomic"));
-        assert!(!decoded.groups.iter().any(|group| group == "floating_point"));
+        assert!(
+            decoded
+                .groups
+                .iter()
+                .any(|g| *g == robustone_core::ir::InstructionGroup::Atomic)
+        );
+        assert!(
+            !decoded
+                .groups
+                .iter()
+                .any(|g| *g == robustone_core::ir::InstructionGroup::Float)
+        );
     }
 
     #[test]

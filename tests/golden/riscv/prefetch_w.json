@@ -9,7 +9,7 @@
     "mnemonic": "prefetch.w",
     "render_hint_mnemonic": null,
     "hidden_operands": [],
-    "groups": ["load"],
+    "groups": ["memory"],
     "operand_kinds": ["memory"]
   }
 }

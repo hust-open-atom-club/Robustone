@@ -542,7 +542,15 @@ impl<'a> DisassemblyFormatter<'a> {
                 detail_lines.push(format!("\tOpcode ID: {opcode_id}"));
             }
             if !decoded.groups.is_empty() {
-                detail_lines.push(format!("\tGroups: {}", decoded.groups.join(", ")));
+                detail_lines.push(format!(
+                    "\tGroups: {}",
+                    decoded
+                        .groups
+                        .iter()
+                        .map(|g| g.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ));
             }
             detail_lines.push(format!("\tStatus: {:?}", decoded.status));
         }
@@ -725,7 +733,7 @@ mod tests {
             registers_written: vec![RegisterId::riscv(1)],
             implicit_registers_read: Vec::new(),
             implicit_registers_written: Vec::new(),
-            groups: vec!["arithmetic".to_string()],
+            groups: vec![robustone_core::ir::InstructionGroup::Arithmetic],
             effect: None,
             status: DecodeStatus::Success,
             render_hints: RenderHints {
@@ -1062,7 +1070,7 @@ mod tests {
             parsed["instructions"][0]["decoded"]["operands"][0]["base"]["id"],
             10
         );
-        assert_eq!(parsed["instructions"][0]["decoded"]["groups"][0], "load");
+        assert_eq!(parsed["instructions"][0]["decoded"]["groups"][0], "memory");
     }
 
     #[test]
