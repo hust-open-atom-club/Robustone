@@ -447,14 +447,18 @@ impl ArchitectureBackend for {pascal}Backend {{
         word: Self::Word,
         format: &FormatSpec<Self::Field>,
         field: Self::Field,
-    ) -> u32 {{
-        for f in format.fields {{
-            if f.field_type == field {{
-                let mask = ((1u64 << f.length) - 1) as u32;
-                return (word >> f.start) & mask;
+    ) -> Result<u32, DisasmError> {{
+        for f in format.fields() {{
+            if f.field_type() == field {{
+                let mask = ((1u64 << f.length()) - 1) as u32;
+                return Ok((word >> f.start()) & mask);
             }}
         }}
-        0
+        Err(DisasmError::decode_failure(
+            DecodeErrorKind::InvalidField,
+            Some("{name}"),
+            format!("field {{:?}} not found in format {{}}", field, format.name()),
+        ))
     }}
 }}
 
