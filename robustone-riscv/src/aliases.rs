@@ -206,11 +206,11 @@ mod tests {
     }
 
     fn make_decoded(mnemonic: &str, operands: Vec<Operand>) -> DecodedInstruction {
-        let mut registers_read: Vec<RegisterId> = Vec::new();
-        let mut registers_written: Vec<RegisterId> = Vec::new();
+        let _registers_read: Vec<RegisterId> = Vec::new();
+        let _registers_written: Vec<RegisterId> = Vec::new();
         for op in &operands {
             match op {
-                Operand::Register { register } => {
+                Operand::Register { register: _ } => {
                     // heuristic: first register is usually rd (write), rest are rs (read)
                     // tests will override registers_written/registers_read explicitly
                 }
