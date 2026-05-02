@@ -621,6 +621,10 @@ fn compat_report(args: &[String]) -> ExitCode {
 
     match output {
         Ok(out) => {
+            if !out.status.success() {
+                eprintln!("compat-report: cargo test exited with error");
+                return ExitCode::FAILURE;
+            }
             let stdout = String::from_utf8_lossy(&out.stdout);
             let stderr = String::from_utf8_lossy(&out.stderr);
             let combined = format!("{}\n{}", stdout, stderr);
