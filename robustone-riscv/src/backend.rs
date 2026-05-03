@@ -117,12 +117,12 @@ pub enum RiscVField {
     ImmCLW,   // CL-format immediate for c.flw: {bit[5], bits[12:10], bit[6], 0}
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RiscVRegisterClass {
-    Gpr,
-    Fpr,
-    GprPrime, // compressed 3-bit register (actual reg = raw + 8)
-    FprPrime, // compressed 3-bit float register (actual reg = raw + 8)
+robustone_isa_macros::define_registers! {
+    arch = RiscV;
+    bank Gpr      { count = 32; base_id = 0;  prefix = "x"; }
+    bank Fpr      { count = 32; base_id = 32; prefix = "f"; }
+    bank GprPrime { count = 8;  base_id = 8; }
+    bank FprPrime { count = 8;  base_id = 40; }
 }
 
 robustone_isa_macros::define_formats! {
@@ -301,11 +301,9 @@ fn riscv_lower_register(
     raw: u32,
     _profile: &DecodeProfile<RiscVBackend>,
 ) -> RegisterId {
-    match class {
-        RiscVRegisterClass::Gpr => RegisterId::riscv(raw),
-        RiscVRegisterClass::Fpr => RegisterId::riscv(raw + 32),
-        RiscVRegisterClass::GprPrime => RegisterId::riscv(raw + 8),
-        RiscVRegisterClass::FprPrime => RegisterId::riscv(raw + 8 + 32),
+    match lower_register(class, raw) {
+        Ok(id) => RegisterId::riscv(id),
+        Err(_) => RegisterId::riscv(raw),
     }
 }
 

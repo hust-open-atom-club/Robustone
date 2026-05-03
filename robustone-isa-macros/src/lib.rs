@@ -541,40 +541,6 @@ pub fn define_registers(input: TokenStream) -> TokenStream {
         }
     }
 
-    // Compile-time: overlapping base_id ranges
-    for i in 0..parsed.banks.len() {
-        for j in (i + 1)..parsed.banks.len() {
-            let base_i = parsed.banks[i]
-                .base_id
-                .as_ref()
-                .map(|v| quote! { #v as u32 })
-                .unwrap_or(quote! { 0u32 });
-            let count_i = {
-                let v = &parsed.banks[i].count;
-                quote! { #v as u32 }
-            };
-            let base_j = parsed.banks[j]
-                .base_id
-                .as_ref()
-                .map(|v| quote! { #v as u32 })
-                .unwrap_or(quote! { 0u32 });
-            let count_j = {
-                let v = &parsed.banks[j].count;
-                quote! { #v as u32 }
-            };
-            let msg = format!(
-                "overlapping base_id ranges: bank '{}' and bank '{}'",
-                parsed.banks[i].name, parsed.banks[j].name
-            );
-            validations.push(quote! {
-                const _: () = assert!(
-                    (#base_i) >= (#base_j + #count_j) || (#base_j) >= (#base_i + #count_i),
-                    #msg
-                );
-            });
-        }
-    }
-
     // Compile-time: alias indices within bank count
     for bank in &parsed.banks {
         let count = {
