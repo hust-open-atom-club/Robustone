@@ -589,6 +589,8 @@ impl<F: Copy + Eq + 'static> ImmExpr<F> {
 /// - x86: segment:base + index*scale + disp
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MemExpr<B: ArchitectureBackend + 'static> {
+    /// Register class for base and index registers.
+    pub base_class: B::RegisterClass,
     /// Base register field.
     pub base: Option<B::Field>,
     /// Index register field (for scaled indexed addressing).
@@ -887,9 +889,12 @@ pub enum OperandSpec<B: ArchitectureBackend + 'static> {
         transform: ImmediateTransform,
     },
     Memory {
-        base_class: B::RegisterClass,
-        base_field: B::Field,
-        displacement: i64,
+        /// Memory addressing expression.
+        expr: MemExpr<B>,
+        /// Access width in bytes (0 = unspecified).
+        width: u8,
+        /// Read/write direction.
+        access: Access,
     },
 }
 
@@ -1100,15 +1105,19 @@ fn lower_operand<B: ArchitectureBackend>(
             })
         }
         OperandSpec::Memory {
-            base_class,
-            base_field,
-            displacement,
+            expr,
+            width: _,
+            access: _,
         } => {
-            let raw = B::extract_field(word, format, *base_field)?;
-            let reg = B::lower_register(*base_class, raw, profile);
+            let base = if let Some(ref base_field) = expr.base {
+                let raw = B::extract_field(word, format, *base_field)?;
+                Some(B::lower_register(expr.base_class, raw, profile))
+            } else {
+                None
+            };
             Ok(Operand::Memory {
-                base: Some(reg),
-                displacement: *displacement,
+                base,
+                displacement: expr.displacement,
             })
         }
     }
@@ -1276,7 +1285,10 @@ pub fn check_spec_table<B: ArchitectureBackend>(
                 } => *field,
                 OperandSpec::Immediate { .. } => continue,
                 OperandSpec::Text { field, .. } => *field,
-                OperandSpec::Memory { base_field, .. } => *base_field,
+                OperandSpec::Memory { expr, .. } => match expr.base {
+                    Some(f) => f,
+                    None => continue,
+                },
             };
             let found = spec.format.fields.iter().any(|f| f.field_type == field);
             if !found {
@@ -1300,7 +1312,10 @@ pub fn check_spec_table<B: ArchitectureBackend>(
                 } => *field,
                 OperandSpec::Immediate { .. } => continue,
                 OperandSpec::Text { field, .. } => *field,
-                OperandSpec::Memory { base_field, .. } => *base_field,
+                OperandSpec::Memory { expr, .. } => match expr.base {
+                    Some(f) => f,
+                    None => continue,
+                },
             };
             if let Some(field_spec) = spec.format.fields.iter().find(|f| f.field_type == field) {
                 let start = field_spec.start as u64;
@@ -1527,6 +1542,33 @@ macro_rules! imm {
     };
 }
 
+/// Helper to construct a composed immediate operand spec from multiple bit fields.
+///
+/// Used for LoongArch I26 (I26Lo + I26Hi) and RISC-V B-type/J-type composed immediates.
+#[macro_export]
+macro_rules! imm_compose {
+    (parts = [$($part:expr),* $(,)?], transform = $transform:expr, kind = $kind:expr) => {
+        $crate::OperandSpec::Immediate {
+            expr: $crate::ImmExpr::Compose {
+                parts: &[$($part),*],
+                transform: $transform,
+            },
+            kind: $kind,
+            unsigned_mask: 0xFFF,
+        }
+    };
+    (parts = [$($part:expr),* $(,)?], transform = $transform:expr, kind = $kind:expr, mask = $mask:expr) => {
+        $crate::OperandSpec::Immediate {
+            expr: $crate::ImmExpr::Compose {
+                parts: &[$($part),*],
+                transform: $transform,
+            },
+            kind: $kind,
+            unsigned_mask: $mask,
+        }
+    };
+}
+
 /// Helper to construct a text operand spec.
 #[macro_export]
 macro_rules! text {
@@ -1543,9 +1585,18 @@ macro_rules! text {
 macro_rules! mem {
     ($class:expr, $base_field:expr, $displacement:expr) => {
         $crate::OperandSpec::Memory {
-            base_class: $class,
-            base_field: $base_field,
-            displacement: $displacement,
+            expr: $crate::MemExpr {
+                base_class: $class,
+                base: Some($base_field),
+                index: None,
+                scale: 0,
+                displacement: $displacement,
+                segment: None,
+                pre_indexed: false,
+                post_indexed: false,
+            },
+            width: 0,
+            access: $crate::Access::ReadWrite,
         }
     };
 }

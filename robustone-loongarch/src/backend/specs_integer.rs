@@ -793,19 +793,33 @@ loongarch_insn!(
     &[InstructionGroup::Integer, InstructionGroup::Branch]
 );
 
-// B / BL (FMT_BJ) — operand: 16-bit immediate at bits 10..25, shifted left by 2
+// B / BL (FMT_I26) — 26-bit immediate composed from offs[15:0] at bits
+// 10..25 and offs[25:16] at bits 0..9, sign-extended and shifted left by 2.
 loongarch_insn!(
     B,
     "b",
     "B",
     0xFC00_0000,
     0x5000_0000,
-    &FMT_BJ,
-    &[robustone_isa::imm!(
-        LoongArchField::Si16,
-        ImmediateTransform::SignExtendThenShift { bits: 16, shift: 2 },
-        ImmediateKind::PcRelative,
-        mask = 0xFFFF
+    &FMT_I26,
+    &[robustone_isa::imm_compose!(
+        parts = [
+            robustone_isa::ImmComposePart {
+                src_start: 10,
+                src_length: 16,
+                dst_start: 0,
+                field: Some(LoongArchField::I26Lo),
+            },
+            robustone_isa::ImmComposePart {
+                src_start: 0,
+                src_length: 10,
+                dst_start: 16,
+                field: Some(LoongArchField::I26Hi),
+            },
+        ],
+        transform = ImmediateTransform::SignExtendThenShift { bits: 26, shift: 2 },
+        kind = ImmediateKind::PcRelative,
+        mask = 0x0FFF_FFFF
     ),],
     &[InstructionGroup::Integer, InstructionGroup::Branch]
 );
@@ -815,12 +829,25 @@ loongarch_insn!(
     "BL",
     0xFC00_0000,
     0x5400_0000,
-    &FMT_BJ,
-    &[robustone_isa::imm!(
-        LoongArchField::Si16,
-        ImmediateTransform::SignExtendThenShift { bits: 16, shift: 2 },
-        ImmediateKind::PcRelative,
-        mask = 0xFFFF
+    &FMT_I26,
+    &[robustone_isa::imm_compose!(
+        parts = [
+            robustone_isa::ImmComposePart {
+                src_start: 10,
+                src_length: 16,
+                dst_start: 0,
+                field: Some(LoongArchField::I26Lo),
+            },
+            robustone_isa::ImmComposePart {
+                src_start: 0,
+                src_length: 10,
+                dst_start: 16,
+                field: Some(LoongArchField::I26Hi),
+            },
+        ],
+        transform = ImmediateTransform::SignExtendThenShift { bits: 26, shift: 2 },
+        kind = ImmediateKind::PcRelative,
+        mask = 0x0FFF_FFFF
     ),],
     &[InstructionGroup::Integer, InstructionGroup::Branch]
 );
