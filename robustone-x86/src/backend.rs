@@ -15,9 +15,13 @@ pub enum X86Field {
     Modrm,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum X86RegisterClass {
-    Gpr,
+robustone_isa_macros::define_registers! {
+    arch = X86;
+    bank Gpr {
+        count = 16;
+        base_id = 0;
+        prefix = "r";
+    }
 }
 
 robustone_isa_macros::define_arch! {
@@ -69,11 +73,14 @@ fn x86_lookup(
 }
 
 fn x86_lower_register(
-    _class: X86RegisterClass,
+    class: X86RegisterClass,
     raw: u32,
     _profile: &DecodeProfile<X86Backend>,
 ) -> RegisterId {
-    RegisterId::x86(raw)
+    match lower_register(class, raw) {
+        Ok(id) => RegisterId::x86(id),
+        Err(_) => RegisterId::x86(raw),
+    }
 }
 
 fn x86_render_policy(_profile: &DecodeProfile<X86Backend>) -> RenderPolicy<X86Backend> {
