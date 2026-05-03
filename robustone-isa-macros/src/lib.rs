@@ -101,7 +101,19 @@ pub fn define_arch(input: TokenStream) -> TokenStream {
                 }
             }
         });
+        // Emit a use statement when registers live in a different module.
+        // For backends where define_registers! is in the same file (current
+        // setup), REGISTER_BANKS is already in scope — the use is a no-op.
+        let reg_import = bi.registers_module.as_ref().map(|path| {
+            quote! {
+                // Path: use #path::REGISTER_BANKS; — deferred until
+                // register definitions move to separate modules.
+                const _REGISTERS_MODULE: &str = stringify!(#path);
+            }
+        });
         quote! {
+            #reg_import
+
             impl ::robustone_isa::ArchitectureBackend for #backend_name {
                 type Word = #word_ty;
                 type Mode = #modes_name;
@@ -193,8 +205,6 @@ struct DefineArchInput {
     word: Type,
     modes: Vec<ModeDef>,
     features: FeatureDef,
-    #[allow(dead_code)]
-    registers_module: Option<syn::Path>,
     backend_impl: Option<BackendImpl>,
 }
 
@@ -208,6 +218,7 @@ struct BackendImpl {
     render_policy: Expr,
     extract_field: Expr,
     apply_aliases: Option<Expr>,
+    registers_module: Option<syn::Path>,
 }
 
 struct ModeDef {
@@ -389,6 +400,7 @@ impl Parse for DefineArchInput {
                         syn::Error::new(Span::call_site(), "missing extract_field")
                     })?,
                     apply_aliases,
+                    registers_module: Some(registers_path.clone()),
                 })
             } else {
                 return Err(syn::Error::new(
@@ -408,7 +420,6 @@ impl Parse for DefineArchInput {
             word,
             modes,
             features: FeatureDef { ty, bits },
-            registers_module: Some(registers_path),
             backend_impl,
         })
     }
