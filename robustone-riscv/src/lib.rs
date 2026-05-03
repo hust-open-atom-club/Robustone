@@ -241,31 +241,8 @@ impl ArchitectureHandler for RiscVHandler {
             }
             Err(e) => return Err(e),
         };
-        // Validate compressed encoding constraints: rd != x0 for c.addiw/c.lui,
-        // rs1 != x0 for c.jr. Check by opcode_id (stable identifier from spec),
-        // not mnemonic string.
-        if decoded.size == 2 {
-            let opcode = decoded.opcode_id.as_deref().unwrap_or("");
-            let rd_zero = decoded.registers_written.first().is_some_and(|r| r.id == 0);
-            let rs1_zero = decoded.registers_read.first().is_some_and(|r| r.id == 0);
-            match opcode {
-                "C_ADDIW" | "C_LUI" if rd_zero => {
-                    return Err(robustone_core::types::error::DisasmError::decode_failure(
-                        robustone_core::types::error::DecodeErrorKind::InvalidEncoding,
-                        Some("riscv".to_string()),
-                        format!("{} requires rd != x0", decoded.mnemonic),
-                    ));
-                }
-                "C_JR" if rs1_zero => {
-                    return Err(robustone_core::types::error::DisasmError::decode_failure(
-                        robustone_core::types::error::DecodeErrorKind::InvalidEncoding,
-                        Some("riscv".to_string()),
-                        "c.jr requires rs1 != x0".to_string(),
-                    ));
-                }
-                _ => {}
-            }
-        }
+        // Compressed encoding constraints (rd != x0, rs1 != x0) are now
+        // validated in decode_one() via EncodingConstraint on each spec.
         decoded.mode = arch_name.to_string();
         crate::aliases::apply_riscv_aliases(&mut decoded);
         let size = decoded.size;

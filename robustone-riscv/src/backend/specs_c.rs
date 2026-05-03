@@ -13,6 +13,7 @@ robustone_isa_macros::define_instructions! {
         features = RiscVFeature::C;
         modes = ModeSet::Only(&[RiscVMode::RV64]);
         groups = &[robustone_isa::InstructionGroup::Compressed];
+        constraints = &[robustone_isa::EncodingConstraint::RegisterNotZero { field: RiscVField::Rd }];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
     insn C_LUI {
@@ -27,6 +28,7 @@ robustone_isa_macros::define_instructions! {
         features = RiscVFeature::C;
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Compressed];
+        constraints = &[robustone_isa::EncodingConstraint::RegisterNotZero { field: RiscVField::Rd }];
         manual = "RISC-V Unprivileged ISA Vol. I";
     }
     insn C_JR {
@@ -40,6 +42,7 @@ robustone_isa_macros::define_instructions! {
         features = RiscVFeature::C;
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Compressed, robustone_isa::InstructionGroup::Jump];
+        constraints = &[robustone_isa::EncodingConstraint::RegisterNotZero { field: RiscVField::Rs1 }];
         manual = "RISC-V Unprivileged ISA Vol. I";
         effect = Return;
     }

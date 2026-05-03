@@ -222,6 +222,7 @@ pub struct InstructionSpec<B: ArchitectureBackend + 'static> {
     pub(crate) modes: ModeSet<B::Mode>,
     pub(crate) groups: &'static [InstructionGroup],
     pub(crate) effect: Option<EffectSpec>,
+    pub(crate) constraints: &'static [EncodingConstraint<B>],
     pub(crate) manual_ref: Option<&'static str>,
     pub(crate) priority: u16,
     pub(crate) _seal: SpecSeal,
@@ -246,6 +247,7 @@ impl<B: ArchitectureBackend + 'static> InstructionSpec<B> {
         modes: ModeSet<B::Mode>,
         groups: &'static [InstructionGroup],
         effect: Option<EffectSpec>,
+        constraints: &'static [EncodingConstraint<B>],
         manual_ref: Option<&'static str>,
         priority: u16,
         _seal: SpecSeal,
@@ -260,6 +262,7 @@ impl<B: ArchitectureBackend + 'static> InstructionSpec<B> {
             modes,
             groups,
             effect,
+            constraints,
             manual_ref,
             priority,
             _seal,
@@ -298,6 +301,7 @@ impl<B: ArchitectureBackend + 'static> InstructionSpec<B> {
             modes,
             groups,
             effect,
+            &[],
             manual_ref,
             priority,
             SpecSeal::__private_seal_token(),
@@ -1051,6 +1055,24 @@ pub fn decode_one<B: ArchitectureBackend>(
     // Step 7: apply architecture-specific aliases
     B::apply_aliases(&mut decoded);
 
+    // Step 8: validate encoding constraints (RegisterNotZero, etc.)
+    for constraint in spec.constraints {
+        if let EncodingConstraint::RegisterNotZero { field } = constraint {
+            let raw = B::extract_field(instr.raw, spec.format, *field)?;
+            if raw == 0 {
+                return Err(DisasmError::decode_failure(
+                    DecodeErrorKind::InvalidEncoding,
+                    None,
+                    format!(
+                        "{}: register field {:?} must be non-zero",
+                        spec.mnemonic(),
+                        field
+                    ),
+                ));
+            }
+        }
+    }
+
     Ok(decoded)
 }
 
@@ -1409,6 +1431,7 @@ macro_rules! isa_specs {
             $modes,
             $groups,
             None,
+            &[],
             Some($manual),
             0,
             $crate::SpecSeal::__private_seal_token(),
@@ -1437,6 +1460,7 @@ macro_rules! isa_specs {
             $modes,
             $groups,
             None,
+            &[],
             None,
             0,
             $crate::SpecSeal::__private_seal_token(),
@@ -1467,6 +1491,7 @@ macro_rules! isa_specs {
             $modes,
             $groups,
             None,
+            &[],
             Some($manual),
             $priority,
             $crate::SpecSeal::__private_seal_token(),
@@ -1496,6 +1521,7 @@ macro_rules! isa_specs {
             $modes,
             $groups,
             None,
+            &[],
             None,
             $priority,
             $crate::SpecSeal::__private_seal_token(),

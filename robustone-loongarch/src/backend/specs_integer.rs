@@ -16,6 +16,7 @@ macro_rules! loongarch_insn {
             ::robustone_isa::ModeSet::All,
             $groups,
             None,
+            &[],
             Some("LoongArch Reference Manual"),
             $priority,
             ::robustone_isa::SpecSeal::__private_seal_token(),

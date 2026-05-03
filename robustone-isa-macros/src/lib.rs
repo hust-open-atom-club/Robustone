@@ -642,6 +642,10 @@ pub fn define_instructions(input: TokenStream) -> TokenStream {
             }
             None => quote! { None },
         };
+        let constraints_expr = match &insn.constraints {
+            Some(c) => quote! { #c },
+            None => quote! { &[] },
+        };
         let manual_ref = if let Some(manual) = &insn.manual {
             quote! { Some(#manual) }
         } else {
@@ -664,6 +668,7 @@ pub fn define_instructions(input: TokenStream) -> TokenStream {
                 #modes_expr,
                 #groups_expr,
                 #effect_expr,
+                #constraints_expr,
                 #manual_ref,
                 #priority,
                 ::robustone_isa::SpecSeal::__private_seal_token(),
@@ -765,6 +770,7 @@ struct InstructionDef {
     modes: Expr,
     groups: Expr,
     effect: Option<String>,
+    constraints: Option<Expr>,
     manual: Option<LitStr>,
     priority: Option<syn::LitInt>,
 }
@@ -797,6 +803,7 @@ impl Parse for DefineInstructionsInput {
             let mut modes = None;
             let mut groups = None;
             let mut effect = None;
+            let mut constraints = None;
             let mut manual = None;
             let mut priority = None;
 
@@ -816,6 +823,7 @@ impl Parse for DefineInstructionsInput {
                         let ident: Ident = content.parse()?;
                         effect = Some(ident.to_string());
                     }
+                    "constraints" => constraints = Some(content.parse()?),
                     "manual" => manual = Some(content.parse()?),
                     "priority" => priority = Some(content.parse()?),
                     other => {
@@ -847,6 +855,7 @@ impl Parse for DefineInstructionsInput {
                 groups: groups
                     .ok_or_else(|| syn::Error::new(name_clone.span(), "missing groups"))?,
                 effect,
+                constraints,
                 manual,
                 priority,
             });
