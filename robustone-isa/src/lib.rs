@@ -501,20 +501,27 @@ impl EncodingToken for WasmEncoding {
 /// Maps a contiguous source bit field to a destination position
 /// in the final immediate value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ImmComposePart {
+pub struct ImmComposePart<F: Copy + Eq + 'static = ()> {
     /// Source bit field start position in the instruction word.
     pub src_start: u8,
     /// Source bit field length.
     pub src_length: u8,
     /// Destination bit position in the composed immediate.
     pub dst_start: u8,
+    /// Optional named field reference (None = raw bit positions).
+    pub field: Option<F>,
 }
 
 /// Expression describing how an immediate value is constructed from
 /// one or more bit fields in the instruction encoding.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ImmExpr {
-    /// Single contiguous bit field with optional transform.
+pub enum ImmExpr<F: Copy + Eq + 'static> {
+    /// Reference a named field in the format specification.
+    Field {
+        field: F,
+        transform: ImmediateTransform,
+    },
+    /// Single contiguous bit field with optional transform (legacy).
     Simple {
         field_start: u8,
         field_length: u8,
@@ -528,15 +535,16 @@ pub enum ImmExpr {
     /// - RISC-V S-type: imm[11:5|4:0] from bits [31:25],[11:7]
     /// - LoongArch I26: disp[15:0|25:16] from bits [25:10],[9:0]
     Compose {
-        parts: &'static [ImmComposePart],
+        parts: &'static [ImmComposePart<F>],
         transform: ImmediateTransform,
     },
 }
 
-impl ImmExpr {
-    /// Evaluate this expression against a raw instruction word.
-    pub fn evaluate(&self, word: u32) -> i64 {
+impl<F: Copy + Eq + 'static> ImmExpr<F> {
+    /// Evaluate this expression against an extracted field value.
+    pub fn evaluate_with(&self, word: u32, field_value: u32) -> i64 {
         match *self {
+            ImmExpr::Field { transform, .. } => apply_transform(field_value, transform),
             ImmExpr::Simple {
                 field_start,
                 field_length,
@@ -564,6 +572,11 @@ impl ImmExpr {
                 apply_transform(composed, transform)
             }
         }
+    }
+
+    /// Evaluate this expression against a raw instruction word (legacy).
+    pub fn evaluate(&self, word: u32) -> i64 {
+        self.evaluate_with(word, 0)
     }
 }
 
@@ -867,8 +880,6 @@ pub enum OperandSpec<B: ArchitectureBackend + 'static> {
         transform: ImmediateTransform,
         kind: ImmediateKind,
         /// Bit-width mask for unsigned immediate rendering.
-        /// E.g. 0xFFF for 12-bit, 0xFFFF for 16-bit, 0x1F for 5-bit.
-        /// Default (0xFFF) covers the most common LoongArch case.
         unsigned_mask: u64,
     },
     Text {
