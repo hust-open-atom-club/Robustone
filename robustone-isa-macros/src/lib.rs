@@ -38,7 +38,7 @@ pub fn define_arch(input: TokenStream) -> TokenStream {
     let parsed = syn::parse_macro_input!(input as DefineArchInput);
     let vis = &parsed.vis;
     let name = &parsed.name;
-    let _word_ty = &parsed.word;
+    let word_ty = &parsed.word;
     let modes_name = Ident::new(&format!("{}Mode", name), Span::call_site());
     let feature_name = Ident::new(&format!("{}Feature", name), Span::call_site());
     let backend_name = Ident::new(&format!("{}Backend", name), Span::call_site());
@@ -83,6 +83,68 @@ pub fn define_arch(input: TokenStream) -> TokenStream {
         }
     }
 
+    let backend_impl_block = if let Some(ref bi) = parsed.backend_impl {
+        let field_ty = &bi.field;
+        let reg_class_ty = &bi.register_class;
+        let arch_id = &bi.architecture_id;
+        let read_fn = &bi.read_instruction;
+        let lookup_fn = &bi.lookup;
+        let lower_fn = &bi.lower_register;
+        let render_fn = &bi.render_policy;
+        let extract_fn = &bi.extract_field;
+        quote! {
+            impl ::robustone_isa::ArchitectureBackend for #backend_name {
+                type Word = #word_ty;
+                type Mode = #modes_name;
+                type Feature = #feature_name;
+                type Field = #field_ty;
+                type RegisterClass = #reg_class_ty;
+
+                fn architecture_id() -> ::robustone_core::ir::ArchitectureId {
+                    #arch_id
+                }
+
+                fn read_instruction(bytes: &[u8]) -> ::core::result::Result<
+                    ::robustone_isa::InstructionRead<Self::Word>,
+                    ::robustone_core::types::error::DisasmError,
+                > {
+                    #read_fn(bytes)
+                }
+
+                fn lookup(
+                    word: Self::Word,
+                    profile: &::robustone_isa::DecodeProfile<Self>,
+                ) -> ::core::option::Option<&'static ::robustone_isa::InstructionSpec<Self>> {
+                    #lookup_fn(word, profile)
+                }
+
+                fn lower_register(
+                    class: Self::RegisterClass,
+                    raw: u32,
+                    profile: &::robustone_isa::DecodeProfile<Self>,
+                ) -> ::robustone_core::ir::RegisterId {
+                    #lower_fn(class, raw, profile)
+                }
+
+                fn render_policy(
+                    profile: &::robustone_isa::DecodeProfile<Self>,
+                ) -> ::robustone_isa::RenderPolicy<Self> {
+                    #render_fn(profile)
+                }
+
+                fn extract_field(
+                    word: Self::Word,
+                    format: &::robustone_isa::FormatSpec<Self::Field>,
+                    field: Self::Field,
+                ) -> ::core::result::Result<u32, ::robustone_core::types::error::DisasmError> {
+                    #extract_fn(word, format, field)
+                }
+            }
+        }
+    } else {
+        quote! {}
+    };
+
     let output = quote! {
         #(#duplicate_feature_checks)*
 
@@ -105,6 +167,8 @@ pub fn define_arch(input: TokenStream) -> TokenStream {
         }
 
         #vis struct #backend_name;
+
+        #backend_impl_block
     };
 
     output.into()
@@ -118,6 +182,18 @@ struct DefineArchInput {
     word: Type,
     modes: Vec<ModeDef>,
     features: FeatureDef,
+    backend_impl: Option<BackendImpl>,
+}
+
+struct BackendImpl {
+    field: Type,
+    register_class: Type,
+    architecture_id: Expr,
+    read_instruction: Expr,
+    lookup: Expr,
+    lower_register: Expr,
+    render_policy: Expr,
+    extract_field: Expr,
 }
 
 struct ModeDef {
@@ -238,6 +314,75 @@ impl Parse for DefineArchInput {
         let _render_path: syn::Path = content.parse()?;
         let _semi: Token![;] = content.parse()?;
 
+        // Optional backend_impl { ... } block
+        let backend_impl = if !content.is_empty() {
+            let kw: Ident = content.parse()?;
+            if kw == "backend_impl" {
+                let impl_content;
+                braced!(impl_content in content);
+                let mut field = None;
+                let mut register_class = None;
+                let mut architecture_id = None;
+                let mut read_instruction = None;
+                let mut lookup = None;
+                let mut lower_register = None;
+                let mut render_policy = None;
+                let mut extract_field = None;
+                while !impl_content.is_empty() {
+                    let key: Ident = impl_content.parse()?;
+                    let _eq: Token![=] = impl_content.parse()?;
+                    match key.to_string().as_str() {
+                        "field" => field = Some(impl_content.parse()?),
+                        "register_class" => register_class = Some(impl_content.parse()?),
+                        "architecture_id" => architecture_id = Some(impl_content.parse()?),
+                        "read_instruction" => read_instruction = Some(impl_content.parse()?),
+                        "lookup" => lookup = Some(impl_content.parse()?),
+                        "lower_register" => lower_register = Some(impl_content.parse()?),
+                        "render_policy" => render_policy = Some(impl_content.parse()?),
+                        "extract_field" => extract_field = Some(impl_content.parse()?),
+                        other => {
+                            return Err(syn::Error::new(
+                                key.span(),
+                                format!("unknown key: {}", other),
+                            ));
+                        }
+                    }
+                    let _semi: Token![;] = impl_content.parse()?;
+                }
+                Some(BackendImpl {
+                    field: field
+                        .ok_or_else(|| syn::Error::new(Span::call_site(), "missing field"))?,
+                    register_class: register_class.ok_or_else(|| {
+                        syn::Error::new(Span::call_site(), "missing register_class")
+                    })?,
+                    architecture_id: architecture_id.ok_or_else(|| {
+                        syn::Error::new(Span::call_site(), "missing architecture_id")
+                    })?,
+                    read_instruction: read_instruction.ok_or_else(|| {
+                        syn::Error::new(Span::call_site(), "missing read_instruction")
+                    })?,
+                    lookup: lookup
+                        .ok_or_else(|| syn::Error::new(Span::call_site(), "missing lookup"))?,
+                    lower_register: lower_register.ok_or_else(|| {
+                        syn::Error::new(Span::call_site(), "missing lower_register")
+                    })?,
+                    render_policy: render_policy.ok_or_else(|| {
+                        syn::Error::new(Span::call_site(), "missing render_policy")
+                    })?,
+                    extract_field: extract_field.ok_or_else(|| {
+                        syn::Error::new(Span::call_site(), "missing extract_field")
+                    })?,
+                })
+            } else {
+                return Err(syn::Error::new(
+                    kw.span(),
+                    "expected `backend_impl` or end of input",
+                ));
+            }
+        } else {
+            None
+        };
+
         Ok(DefineArchInput {
             vis,
             _arch_token,
@@ -246,6 +391,7 @@ impl Parse for DefineArchInput {
             word,
             modes,
             features: FeatureDef { ty, bits },
+            backend_impl,
         })
     }
 }
