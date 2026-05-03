@@ -499,17 +499,15 @@ impl EncodingToken for WasmEncoding {
 /// A single part of a composed immediate.
 ///
 /// Maps a contiguous source bit field to a destination position
-/// in the final immediate value.
+/// in the final immediate value. Compose operates on raw word bits.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ImmComposePart<F: Copy + Eq + 'static = ()> {
+pub struct ImmComposePart {
     /// Source bit field start position in the instruction word.
     pub src_start: u8,
     /// Source bit field length.
     pub src_length: u8,
     /// Destination bit position in the composed immediate.
     pub dst_start: u8,
-    /// Optional named field reference (None = raw bit positions).
-    pub field: Option<F>,
 }
 
 /// Expression describing how an immediate value is constructed from
@@ -535,7 +533,7 @@ pub enum ImmExpr<F: Copy + Eq + 'static> {
     /// - RISC-V S-type: imm[11:5|4:0] from bits [31:25],[11:7]
     /// - LoongArch I26: disp[15:0|25:16] from bits [25:10],[9:0]
     Compose {
-        parts: &'static [ImmComposePart<F>],
+        parts: &'static [ImmComposePart],
         transform: ImmediateTransform,
     },
 }
@@ -1930,25 +1928,21 @@ mod tests {
                 src_start: 31,
                 src_length: 1,
                 dst_start: 12,
-                field: None,
             },
             ImmComposePart {
                 src_start: 25,
                 src_length: 6,
                 dst_start: 5,
-                field: None,
             },
             ImmComposePart {
                 src_start: 8,
                 src_length: 4,
                 dst_start: 1,
-                field: None,
             },
             ImmComposePart {
                 src_start: 7,
                 src_length: 1,
                 dst_start: 11,
-                field: None,
             },
         ];
         let expr = TestImmExpr::Compose {

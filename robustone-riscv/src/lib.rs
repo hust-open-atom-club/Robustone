@@ -490,7 +490,6 @@ mod tests {
     #[test]
     fn test_thead_requires_feature() {
         let handler = RiscVHandler::rv32();
-        // Same encoding as th.mveqz, but without THEAD feature
         let word: u32 = 0x4000_0000 | (3 << 20) | (2 << 15) | (1 << 7) | (0x1 << 12) | 0x0B;
         let bytes = word.to_le_bytes();
         let result = handler.decode_instruction(&bytes, "riscv32", 0x1000);
@@ -498,6 +497,57 @@ mod tests {
             result.is_err(),
             "th.mveqz should fail without THEAD feature"
         );
+    }
+
+    #[test]
+    fn beq_b_type_compose_positive_offset() {
+        let handler = RiscVHandler::rv64();
+        // beq x0, x0, +0x100: offs=0x80, B-type compose
+        // imm[12]=0, imm[10:5]=0x10 (bits 30:25), imm[4:1]=0 (bits 11:8), imm[11]=0 (bit 7)
+        // word: opcode=0x63, funct3=0x0, rs1=0, rs2=0
+        let offset: u32 = 0x80;
+        let imm12 = (offset >> 12) & 1;
+        let imm105 = (offset >> 5) & 0x3F;
+        let imm41 = (offset >> 1) & 0xF;
+        let imm11 = (offset >> 11) & 1;
+        let word: u32 = (imm12 << 31)
+            | (imm105 << 25)
+            | (0 << 20)
+            | (0 << 15)
+            | (0x0 << 12)
+            | (imm41 << 8)
+            | (imm11 << 7)
+            | 0x63;
+        let bytes = word.to_le_bytes();
+        let (decoded, _) = handler
+            .decode_instruction(&bytes, "riscv64", 0x1000)
+            .expect("beq should decode");
+        assert_eq!(decoded.mnemonic, "beq");
+        match &decoded.operands[2] {
+            robustone_core::ir::Operand::Immediate { value, .. } => {
+                assert_eq!(*value, 0x100); // 0x80 << 1
+            }
+            other => panic!("expected immediate operand, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn jal_j_type_compose_offset() {
+        let handler = RiscVHandler::rv64();
+        // jal x1, -4: offs=-2, J-type compose
+        // imm[20]=1, imm[10:1]=0x3FF (all ones), imm[11]=1, imm[19:12]=0xFF (all ones)
+        let word: u32 = (1u32 << 31) | (0x3FF << 21) | (1 << 20) | (0xFF << 12) | (1 << 7) | 0x6F;
+        let bytes = word.to_le_bytes();
+        let (decoded, _) = handler
+            .decode_instruction(&bytes, "riscv64", 0x1000)
+            .expect("jal should decode");
+        assert_eq!(decoded.mnemonic, "jal");
+        match &decoded.operands[1] {
+            robustone_core::ir::Operand::Immediate { value, .. } => {
+                assert_eq!(*value, -4); // -2 << 1 = -4
+            }
+            other => panic!("expected immediate operand, got {:?}", other),
+        }
     }
 }
 

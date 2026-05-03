@@ -688,6 +688,41 @@ mod tests {
     fn base_specs_have_no_overlaps() {
         assert!(robustone_isa::validate_no_overlaps(LOONGARCH_BASE_SPECS).is_ok());
     }
+
+    #[test]
+    fn bl_i26_compose_positive_offset() {
+        // BL +0xf8: offs=62, opcode=0x15 at bits 26-31
+        let word: u32 = 0x5400_f800;
+        let bytes = word.to_le_bytes();
+        let result = decode_one::<LoongArchBackend>(&bytes, 0x1000, &la64_base_profile());
+        assert!(result.is_ok(), "{:?}", result);
+        let insn = result.unwrap();
+        assert_eq!(insn.mnemonic, "bl");
+        match &insn.operands[0] {
+            robustone_core::ir::Operand::Immediate { value, .. } => {
+                assert_eq!(*value, 248); // 62 << 2 = 0xf8
+            }
+            other => panic!("expected immediate operand, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn bl_i26_compose_match_b_latency() {
+        // BL at address 0: encode a forward branch via I26 compose.
+        // Verify the decoded immediate is the raw offset (before PC add).
+        let bytes: [u8; 4] = [0x00, 0xf8, 0x00, 0x54];
+        let result = decode_one::<LoongArchBackend>(&bytes, 0x1000, &la64_base_profile());
+        assert!(result.is_ok(), "{:?}", result);
+        let insn = result.unwrap();
+        assert_eq!(insn.mnemonic, "bl");
+        match &insn.operands[0] {
+            robustone_core::ir::Operand::Immediate { value, .. } => {
+                // offset=62 encoded at bits 10-25, bits 0-9=0 → 62<<2=248=0xf8
+                assert_eq!(*value, 248);
+            }
+            other => panic!("expected immediate operand, got {:?}", other),
+        }
+    }
 }
 
 // ============================================================================

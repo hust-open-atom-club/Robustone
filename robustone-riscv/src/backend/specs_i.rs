@@ -70,7 +70,16 @@ robustone_isa_macros::define_instructions! {
         operands = &[
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read),
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs2, robustone_isa::Access::Read),
-            robustone_isa::imm!(RiscVField::Imm12B, robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 12, shift: 1 }, robustone_isa::ImmediateKind::PcRelative),
+            robustone_isa::imm_compose!(
+                parts = [
+                    robustone_isa::ImmComposePart { src_start: 31, src_length: 1, dst_start: 12 },
+                    robustone_isa::ImmComposePart { src_start: 25, src_length: 6, dst_start: 5 },
+                    robustone_isa::ImmComposePart { src_start: 8, src_length: 4, dst_start: 1 },
+                    robustone_isa::ImmComposePart { src_start: 7, src_length: 1, dst_start: 11 },
+                ],
+                transform = robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 13, shift: 1 },
+                kind = robustone_isa::ImmediateKind::PcRelative
+            ),
         ];
         features = RiscVFeature::I;
         modes = ModeSet::All;
@@ -86,7 +95,16 @@ robustone_isa_macros::define_instructions! {
         operands = &[
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read),
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs2, robustone_isa::Access::Read),
-            robustone_isa::imm!(RiscVField::Imm12B, robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 12, shift: 1 }, robustone_isa::ImmediateKind::PcRelative),
+            robustone_isa::imm_compose!(
+                parts = [
+                    robustone_isa::ImmComposePart { src_start: 31, src_length: 1, dst_start: 12 },
+                    robustone_isa::ImmComposePart { src_start: 25, src_length: 6, dst_start: 5 },
+                    robustone_isa::ImmComposePart { src_start: 8, src_length: 4, dst_start: 1 },
+                    robustone_isa::ImmComposePart { src_start: 7, src_length: 1, dst_start: 11 },
+                ],
+                transform = robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 13, shift: 1 },
+                kind = robustone_isa::ImmediateKind::PcRelative
+            ),
         ];
         features = RiscVFeature::I;
         modes = ModeSet::All;
@@ -101,7 +119,16 @@ robustone_isa_macros::define_instructions! {
         format = &J_TYPE;
         operands = &[
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write),
-            robustone_isa::imm!(RiscVField::Imm20J, robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 20, shift: 1 }, robustone_isa::ImmediateKind::PcRelative),
+            robustone_isa::imm_compose!(
+                parts = [
+                    robustone_isa::ImmComposePart { src_start: 31, src_length: 1, dst_start: 20 },
+                    robustone_isa::ImmComposePart { src_start: 21, src_length: 10, dst_start: 1 },
+                    robustone_isa::ImmComposePart { src_start: 20, src_length: 1, dst_start: 11 },
+                    robustone_isa::ImmComposePart { src_start: 12, src_length: 8, dst_start: 12 },
+                ],
+                transform = robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 21, shift: 1 },
+                kind = robustone_isa::ImmediateKind::PcRelative
+            ),
         ];
         features = RiscVFeature::I;
         modes = ModeSet::All;
