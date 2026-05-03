@@ -417,11 +417,19 @@ impl Parse for DefineArchInput {
 
 /// Define register banks for an architecture.
 ///
+/// Generates the `RegisterClass` enum, `REGISTER_BANKS` metadata table,
+/// and a `lower_register` helper function. Compile-time validation
+/// checks for duplicate bank names.
+///
 /// Example:
 /// ```ignore
 /// define_registers! {
-///     arch = LoongArch;
-///     bank Gpr { count = 32; prefix = "$r"; aliases { 0 = "$zero"; 1 = "$ra"; } }
+///     arch = Arm;
+///     bank Gpr {
+///         count = 31;
+///         base_id = 0;
+///         canonical = "x{n}";
+///     }
 /// }
 /// ```
 #[proc_macro]
@@ -439,10 +447,63 @@ pub fn define_registers(input: TokenStream) -> TokenStream {
         })
         .collect();
 
+    // Generate static bank metadata entries
+    let bank_entries: Vec<_> = parsed
+        .banks
+        .iter()
+        .map(|b| {
+            let name_str = b.name.to_string();
+            let variant = to_pascal_case_ident(&b.name);
+            let base_id = &b.base_id;
+            let count = &b.count;
+            quote! {
+                ::robustone_isa::RegisterBankSpec {
+                    name: #name_str,
+                    class: #reg_class_enum::#variant,
+                    base_id: #base_id as u32,
+                    count: #count as u32,
+                    prefix: None,
+                    aliases: &[],
+                }
+            }
+        })
+        .collect();
+
+    // Compile-time duplicate name validation
+    let mut dup_checks = Vec::new();
+    for i in 0..parsed.banks.len() {
+        for j in (i + 1)..parsed.banks.len() {
+            if parsed.banks[i].name == parsed.banks[j].name {
+                let msg = format!("duplicate register bank: {}", parsed.banks[i].name);
+                dup_checks.push(quote! {
+                    const _: () = ::core::compile_error!(#msg);
+                });
+            }
+        }
+    }
+
     quote! {
+        #(#dup_checks)*
+
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
         pub enum #reg_class_enum {
             #(#variants),*
+        }
+
+        pub static REGISTER_BANKS: &[::robustone_isa::RegisterBankSpec<#reg_class_enum>] = &[
+            #(#bank_entries),*
+        ];
+
+        pub fn lookup_register(
+            class: #reg_class_enum,
+            raw: u32,
+        ) -> Result<u32, &'static str> {
+            for bank in REGISTER_BANKS {
+                if raw < bank.count {
+                    return Ok(bank.base_id + raw);
+                }
+            }
+            Err("register index out of range")
         }
     }
     .into()
@@ -455,38 +516,59 @@ struct DefineRegistersInput {
 
 struct RegisterBankDef {
     name: Ident,
+    base_id: syn::LitInt,
+    count: syn::LitInt,
 }
 
 impl Parse for DefineRegistersInput {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        // arch = <ident>;
         let _arch_kw: Ident = input.parse()?;
         let _eq: Token![=] = input.parse()?;
         let arch: Ident = input.parse()?;
         let _semi: Token![;] = input.parse()?;
 
-        // Parse bank definitions
         let mut banks = Vec::new();
         while !input.is_empty() {
             let _bank_kw: Ident = input.parse()?;
             let name: Ident = input.parse()?;
             let content;
             braced!(content in input);
-            // Consume bank body (count, prefix, aliases) but don't use yet
+            let mut base_id = None;
+            let mut count = None;
             while !content.is_empty() {
-                let _key: Ident = content.parse()?;
+                let key: Ident = content.parse()?;
                 let _eq: Token![=] = content.parse()?;
-                if content.peek(syn::token::Brace) {
-                    let _nested;
-                    braced!(_nested in content);
-                } else {
-                    let _val: syn::Expr = content.parse()?;
+                match key.to_string().as_str() {
+                    "base_id" => base_id = Some(content.parse()?),
+                    "count" => count = Some(content.parse()?),
+                    "canonical" => {
+                        let _: LitStr = content.parse()?;
+                    }
+                    "aliases" => {
+                        let alias_content;
+                        braced!(alias_content in content);
+                        while !alias_content.is_empty() {
+                            let _idx: syn::LitInt = alias_content.parse()?;
+                            let _eq2: Token![=] = alias_content.parse()?;
+                            let _name: LitStr = alias_content.parse()?;
+                            let _s: Token![;] = alias_content.parse()?;
+                        }
+                    }
+                    other => {
+                        return Err(syn::Error::new(
+                            key.span(),
+                            format!("unknown key: {}", other),
+                        ));
+                    }
                 }
-                if !content.is_empty() {
-                    let _semi: Token![;] = content.parse()?;
-                }
+                let _semi: Token![;] = content.parse()?;
             }
-            banks.push(RegisterBankDef { name });
+            banks.push(RegisterBankDef {
+                name,
+                base_id: base_id
+                    .ok_or_else(|| syn::Error::new(Span::call_site(), "missing base_id"))?,
+                count: count.ok_or_else(|| syn::Error::new(Span::call_site(), "missing count"))?,
+            });
         }
 
         Ok(DefineRegistersInput { arch, banks })

@@ -691,13 +691,15 @@ pub use robustone_core::ir::EffectSpec;
 /// an architecture. Used by `define_registers!` to generate register
 /// metadata and lowering logic.
 #[derive(Debug, Clone, Copy)]
-pub struct RegisterBankSpec<B: ArchitectureBackend + 'static> {
+pub struct RegisterBankSpec<C: Copy + Eq + 'static> {
     /// Human-readable name (e.g. "Gpr", "Float").
     pub name: &'static str,
+    /// First global register id for this bank.
+    pub base_id: u32,
     /// Number of registers in the bank.
     pub count: u32,
     /// Register class this bank maps to.
-    pub class: B::RegisterClass,
+    pub class: C,
     /// Optional prefix for textual rendering (e.g. "$r" → "$r1").
     pub prefix: Option<&'static str>,
     /// Named aliases for specific register indices (e.g. 0 → "$zero").

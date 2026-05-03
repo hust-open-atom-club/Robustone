@@ -20,9 +20,13 @@ pub enum ArmField {
     Imm16,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ArmRegisterClass {
-    Gpr,
+robustone_isa_macros::define_registers! {
+    arch = Arm;
+    bank Gpr {
+        count = 31;
+        base_id = 0;
+        canonical = "x{n}";
+    }
 }
 
 robustone_isa_macros::define_arch! {
