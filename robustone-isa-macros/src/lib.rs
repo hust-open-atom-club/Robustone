@@ -459,14 +459,30 @@ pub fn define_registers(input: TokenStream) -> TokenStream {
                 .as_ref()
                 .map_or(quote! { 0u32 }, |v| quote! { #v as u32 });
             let count = &b.count;
+            let prefix = b
+                .prefix
+                .as_ref()
+                .map_or(quote! { None }, |p| quote! { Some(#p) });
+            let aliases = if b.aliases.is_empty() {
+                quote! { &[] }
+            } else {
+                let alias_tuples: Vec<_> = b
+                    .aliases
+                    .iter()
+                    .map(|(idx, name)| {
+                        quote! { (#name, #idx as u32) }
+                    })
+                    .collect();
+                quote! { &[#(#alias_tuples),*] }
+            };
             quote! {
                 ::robustone_isa::RegisterBankSpec {
                     name: #name_str,
                     class: #reg_class_enum::#variant,
                     base_id: #base_id,
                     count: #count as u32,
-                    prefix: None,
-                    aliases: &[],
+                    prefix: #prefix,
+                    aliases: #aliases,
                 }
             }
         })
@@ -519,10 +535,14 @@ struct DefineRegistersInput {
     banks: Vec<RegisterBankDef>,
 }
 
+#[allow(dead_code)]
 struct RegisterBankDef {
     name: Ident,
     base_id: Option<syn::LitInt>,
     count: syn::LitInt,
+    prefix: Option<LitStr>,
+    canonical: Option<LitStr>,
+    aliases: Vec<(syn::LitInt, LitStr)>,
 }
 
 impl Parse for DefineRegistersInput {
@@ -540,26 +560,26 @@ impl Parse for DefineRegistersInput {
             braced!(content in input);
             let mut base_id = None;
             let mut count = None;
+            let mut prefix = None;
+            let mut canonical = None;
+            let mut aliases = Vec::new();
             while !content.is_empty() {
                 let key: Ident = content.parse()?;
                 let _eq: Token![=] = content.parse()?;
                 match key.to_string().as_str() {
                     "base_id" => base_id = Some(content.parse()?),
                     "count" => count = Some(content.parse()?),
-                    "prefix" => {
-                        let _: LitStr = content.parse()?;
-                    }
-                    "canonical" => {
-                        let _: LitStr = content.parse()?;
-                    }
+                    "prefix" => prefix = Some(content.parse()?),
+                    "canonical" => canonical = Some(content.parse()?),
                     "aliases" => {
                         let alias_content;
                         braced!(alias_content in content);
                         while !alias_content.is_empty() {
-                            let _idx: syn::LitInt = alias_content.parse()?;
+                            let idx: syn::LitInt = alias_content.parse()?;
                             let _eq2: Token![=] = alias_content.parse()?;
-                            let _name: LitStr = alias_content.parse()?;
+                            let name: LitStr = alias_content.parse()?;
                             let _s: Token![;] = alias_content.parse()?;
+                            aliases.push((idx, name));
                         }
                     }
                     other => {
@@ -575,6 +595,9 @@ impl Parse for DefineRegistersInput {
                 name,
                 base_id,
                 count: count.ok_or_else(|| syn::Error::new(Span::call_site(), "missing count"))?,
+                prefix,
+                canonical,
+                aliases,
             });
         }
 

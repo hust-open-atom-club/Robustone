@@ -107,14 +107,14 @@ pub enum LoongArchField {
     Code,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LoongArchRegisterClass {
-    Gpr,
-    Fpr,
-    Xr,
-    Fcc,
-    Scr,
-    Fcsr,
+robustone_isa_macros::define_registers! {
+    arch = LoongArch;
+    bank Gpr  { count = 32; base_id = 0;   prefix = "$r"; }
+    bank Fpr  { count = 32; base_id = 32;  prefix = "$f"; }
+    bank Xr   { count = 32; base_id = 64;  prefix = "$x"; }
+    bank Fcc  { count = 8;  base_id = 96; }
+    bank Scr  { count = 4;  base_id = 104; }
+    bank Fcsr { count = 4;  base_id = 108; }
 }
 
 // ============================================================================
@@ -776,15 +776,10 @@ fn loongarch_lower_register(
     raw: u32,
     _profile: &DecodeProfile<LoongArchBackend>,
 ) -> RegisterId {
-    let id = match class {
-        LoongArchRegisterClass::Gpr => raw,
-        LoongArchRegisterClass::Fpr => raw + 32,
-        LoongArchRegisterClass::Xr => raw + 64,
-        LoongArchRegisterClass::Fcc => raw + 96,
-        LoongArchRegisterClass::Scr => raw + 104,
-        LoongArchRegisterClass::Fcsr => raw + 108,
-    };
-    RegisterId::loongarch(id)
+    match lower_register(class, raw) {
+        Ok(id) => RegisterId::loongarch(id),
+        Err(_) => RegisterId::loongarch(raw),
+    }
 }
 
 fn loongarch_render_policy(
