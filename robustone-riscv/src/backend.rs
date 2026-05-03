@@ -83,9 +83,7 @@ pub enum RiscVField {
     Opcode,
     Imm12,
     Imm12S,
-    Imm12B,
     Imm20U,
-    Imm20J,
     // Compressed fields
     Rs2C,     // rs2 in CR format (bits 2-6)
     RdPrime,  // rd' in CA/CL format (bits 2-4, actual reg = +8)
@@ -108,7 +106,7 @@ robustone_isa_macros::define_formats! {
     arch = RiscV; extern_fields;
     fields {
         Rd; Rs1; Rs2; Funct3; Funct7;
-        Imm12; Imm12S; Imm12B; Imm20U; Imm20J;
+        Imm12; Imm12S; Imm20U;
         Rs2C; RdPrime; Rs2Prime; Rs1Prime; Imm6; ImmCL; ImmCLW;
     };
     format R_TYPE {
@@ -133,7 +131,6 @@ robustone_isa_macros::define_formats! {
     format B_TYPE {
         rs1: bits(15, 5) as Rs1,
         rs2: bits(20, 5) as Rs2,
-        imm12b: bits(0, 12) as Imm12B,
         funct3: bits(12, 3) as Funct3,
     };
     format U_TYPE {
@@ -142,7 +139,6 @@ robustone_isa_macros::define_formats! {
     };
     format J_TYPE {
         rd: bits(7, 5) as Rd,
-        imm20j: bits(0, 20) as Imm20J,
     };
     format CI_TYPE {
         rd: bits(7, 5) as Rd,
@@ -325,21 +321,7 @@ impl ArchitectureBackend for RiscVBackend {
                 let imm40 = (word >> 7) & 0x1F;
                 Ok((imm115 << 5) | imm40)
             }
-            RiscVField::Imm12B => {
-                let imm12 = (word >> 31) & 1;
-                let imm105 = (word >> 25) & 0x3F;
-                let imm41 = (word >> 8) & 0xF;
-                let imm11 = (word >> 7) & 1;
-                Ok((imm12 << 11) | (imm11 << 10) | (imm105 << 4) | imm41)
-            }
             RiscVField::Imm20U => Ok((word >> 12) & 0xFFFFF),
-            RiscVField::Imm20J => {
-                let imm20 = (word >> 31) & 1;
-                let imm101 = (word >> 21) & 0x3FF;
-                let imm11 = (word >> 20) & 1;
-                let imm1912 = (word >> 12) & 0xFF;
-                Ok((imm20 << 19) | (imm1912 << 11) | (imm11 << 10) | imm101)
-            }
             RiscVField::Imm6 => {
                 let high = (word >> 12) & 1;
                 let low = (word >> 2) & 0x1F;
