@@ -627,7 +627,9 @@ pub static LOONGARCH_BASE_SPECS: &[InstructionSpec<LoongArchBackend>] = &[
 #[cfg(test)]
 mod tests {
     use super::*;
-    use robustone_isa::{AliasPolicy, DecodeProfile, RenderDialect, decode_one};
+    use robustone_isa::{
+        AliasPolicy, ArchitectureBackend, DecodeProfile, RenderDialect, decode_one,
+    };
 
     fn la64_base_profile() -> DecodeProfile<LoongArchBackend> {
         DecodeProfile {
