@@ -78,11 +78,14 @@ fn arm_lookup(
 }
 
 fn arm_lower_register(
-    _class: ArmRegisterClass,
+    class: ArmRegisterClass,
     raw: u32,
     _profile: &DecodeProfile<ArmBackend>,
 ) -> RegisterId {
-    RegisterId::arm(raw)
+    match lower_register(class, raw) {
+        Ok(id) => RegisterId::arm(id),
+        Err(_) => RegisterId::arm(raw),
+    }
 }
 
 fn arm_render_policy(_profile: &DecodeProfile<ArmBackend>) -> RenderPolicy<ArmBackend> {

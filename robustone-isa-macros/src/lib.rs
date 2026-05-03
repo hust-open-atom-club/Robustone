@@ -454,13 +454,16 @@ pub fn define_registers(input: TokenStream) -> TokenStream {
         .map(|b| {
             let name_str = b.name.to_string();
             let variant = to_pascal_case_ident(&b.name);
-            let base_id = &b.base_id;
+            let base_id = b
+                .base_id
+                .as_ref()
+                .map_or(quote! { 0u32 }, |v| quote! { #v as u32 });
             let count = &b.count;
             quote! {
                 ::robustone_isa::RegisterBankSpec {
                     name: #name_str,
                     class: #reg_class_enum::#variant,
-                    base_id: #base_id as u32,
+                    base_id: #base_id,
                     count: #count as u32,
                     prefix: None,
                     aliases: &[],
@@ -494,12 +497,14 @@ pub fn define_registers(input: TokenStream) -> TokenStream {
             #(#bank_entries),*
         ];
 
-        pub fn lookup_register(
+        pub fn lower_register(
             class: #reg_class_enum,
             raw: u32,
         ) -> Result<u32, &'static str> {
             for bank in REGISTER_BANKS {
-                if raw < bank.count {
+                if ::core::mem::discriminant(&class) == ::core::mem::discriminant(&bank.class)
+                    && raw < bank.count
+                {
                     return Ok(bank.base_id + raw);
                 }
             }
@@ -516,7 +521,7 @@ struct DefineRegistersInput {
 
 struct RegisterBankDef {
     name: Ident,
-    base_id: syn::LitInt,
+    base_id: Option<syn::LitInt>,
     count: syn::LitInt,
 }
 
@@ -541,6 +546,9 @@ impl Parse for DefineRegistersInput {
                 match key.to_string().as_str() {
                     "base_id" => base_id = Some(content.parse()?),
                     "count" => count = Some(content.parse()?),
+                    "prefix" => {
+                        let _: LitStr = content.parse()?;
+                    }
                     "canonical" => {
                         let _: LitStr = content.parse()?;
                     }
@@ -565,8 +573,7 @@ impl Parse for DefineRegistersInput {
             }
             banks.push(RegisterBankDef {
                 name,
-                base_id: base_id
-                    .ok_or_else(|| syn::Error::new(Span::call_site(), "missing base_id"))?,
+                base_id,
                 count: count.ok_or_else(|| syn::Error::new(Span::call_site(), "missing count"))?,
             });
         }
