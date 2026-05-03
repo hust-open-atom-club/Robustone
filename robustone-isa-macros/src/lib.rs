@@ -193,6 +193,8 @@ struct DefineArchInput {
     word: Type,
     modes: Vec<ModeDef>,
     features: FeatureDef,
+    #[allow(dead_code)]
+    registers_module: Option<syn::Path>,
     backend_impl: Option<BackendImpl>,
 }
 
@@ -305,7 +307,7 @@ impl Parse for DefineArchInput {
         // registers = <path>;
         let _registers_kw: Ident = content.parse()?;
         let _eq: Token![=] = content.parse()?;
-        let _registers_path: syn::Path = content.parse()?;
+        let registers_path: syn::Path = content.parse()?;
         let _semi: Token![;] = content.parse()?;
 
         // formats = <path>;
@@ -406,6 +408,7 @@ impl Parse for DefineArchInput {
             word,
             modes,
             features: FeatureDef { ty, bits },
+            registers_module: Some(registers_path),
             backend_impl,
         })
     }
