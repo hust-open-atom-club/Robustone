@@ -290,10 +290,13 @@ fn riscv_lookup(
         }
         return all_riscv_specs().find(|spec| {
             (word & spec.pattern().mask) == spec.pattern().value
+                && spec.modes().matches(profile.mode)
                 && profile.features.contains(spec.features())
         });
     }
-    all_riscv_specs().find(|spec| (word & spec.pattern().mask) == spec.pattern().value)
+    all_riscv_specs().find(|spec| {
+        (word & spec.pattern().mask) == spec.pattern().value && spec.modes().matches(profile.mode)
+    })
 }
 
 fn riscv_lower_register(

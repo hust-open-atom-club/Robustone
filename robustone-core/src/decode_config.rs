@@ -221,7 +221,6 @@ impl DecodeConfig {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DecodeConfigError {
     ModeArchMismatch { arch: String, mode: String },
-    UnsupportedMode { mode: String, arch: String },
     UnknownArchitecture(String),
     UnknownMode(String),
 }
@@ -231,12 +230,6 @@ impl std::fmt::Display for DecodeConfigError {
         match self {
             DecodeConfigError::ModeArchMismatch { arch, mode } => {
                 write!(f, "mode '{mode}' is not valid for architecture '{arch}'")
-            }
-            DecodeConfigError::UnsupportedMode { mode, arch } => {
-                write!(
-                    f,
-                    "mode '{mode}' is not supported for architecture '{arch}'"
-                )
             }
             DecodeConfigError::UnknownArchitecture(s) => {
                 write!(f, "unknown architecture: {s}")
