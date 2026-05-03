@@ -241,33 +241,26 @@ impl ArchitectureHandler for RiscVHandler {
             }
             Err(e) => return Err(e),
         };
-        // Reject compressed encodings that the spec framework cannot conditionally exclude.
+        // Validate compressed encoding constraints: rd != x0 for c.addiw/c.lui,
+        // rs1 != x0 for c.jr. Check by opcode_id (stable identifier from spec),
+        // not mnemonic string.
         if decoded.size == 2 {
-            match decoded.mnemonic.as_str() {
-                "c.addiw" | "c.lui"
-                    if decoded
-                        .registers_written
-                        .first()
-                        .map(|r| r.id == 0)
-                        .unwrap_or(true) =>
-                {
+            let opcode = decoded.opcode_id.as_deref().unwrap_or("");
+            let rd_zero = decoded.registers_written.first().is_some_and(|r| r.id == 0);
+            let rs1_zero = decoded.registers_read.first().is_some_and(|r| r.id == 0);
+            match opcode {
+                "C_ADDIW" | "C_LUI" if rd_zero => {
                     return Err(robustone_core::types::error::DisasmError::decode_failure(
                         robustone_core::types::error::DecodeErrorKind::InvalidEncoding,
                         Some("riscv".to_string()),
-                        "invalid compressed encoding".to_string(),
+                        format!("{} requires rd != x0", decoded.mnemonic),
                     ));
                 }
-                "c.jr"
-                    if decoded
-                        .registers_read
-                        .first()
-                        .map(|r| r.id == 0)
-                        .unwrap_or(true) =>
-                {
+                "C_JR" if rs1_zero => {
                     return Err(robustone_core::types::error::DisasmError::decode_failure(
                         robustone_core::types::error::DecodeErrorKind::InvalidEncoding,
                         Some("riscv".to_string()),
-                        "invalid compressed encoding".to_string(),
+                        "c.jr requires rs1 != x0".to_string(),
                     ));
                 }
                 _ => {}
