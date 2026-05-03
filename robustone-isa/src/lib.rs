@@ -1152,9 +1152,11 @@ fn apply_transform(raw: u32, transform: ImmediateTransform) -> i64 {
     match transform {
         ImmediateTransform::None => raw as i64,
         ImmediateTransform::SignExtend { bits } => {
+            if bits >= 32 {
+                return raw as i32 as i64;
+            }
             let mask = 1u32 << (bits - 1);
             if raw & mask != 0 {
-                // Sign-extend
                 let sign_extended = raw | !((1u32 << bits) - 1);
                 sign_extended as i32 as i64
             } else {
@@ -1162,6 +1164,9 @@ fn apply_transform(raw: u32, transform: ImmediateTransform) -> i64 {
             }
         }
         ImmediateTransform::SignExtendThenShift { bits, shift } => {
+            if bits >= 32 {
+                return ((raw as i32) << shift) as i64;
+            }
             let mask = 1u32 << (bits - 1);
             let extended = if raw & mask != 0 {
                 raw | !((1u32 << bits) - 1)
@@ -1344,7 +1349,7 @@ pub fn check_spec_table<B: ArchitectureBackend>(
             if let Some(field_spec) = spec.format.fields.iter().find(|f| f.field_type == field) {
                 let start = field_spec.start as u64;
                 let length = field_spec.length as u64;
-                if length == 0 || start + length > 64 {
+                if length == 0 || length >= 64 || start + length > 64 {
                     continue;
                 }
                 let field_mask = ((1u64 << length) - 1) << start;

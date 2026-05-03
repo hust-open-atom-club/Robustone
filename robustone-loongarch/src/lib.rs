@@ -66,7 +66,6 @@ fn profile_for_arch_name(
 ) -> Result<DecodeProfile<backend::LoongArchBackend>, DisasmError> {
     match arch_name {
         "loongarch" | "loongarch64" => Ok(backend::LoongArchBackend::la64_base()),
-        "loongarch32" => Ok(backend::LoongArchBackend::la32_base()),
         _ => Err(DisasmError::UnsupportedArchitecture(arch_name.to_string())),
     }
 }
