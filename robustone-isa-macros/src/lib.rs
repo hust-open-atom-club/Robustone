@@ -92,6 +92,15 @@ pub fn define_arch(input: TokenStream) -> TokenStream {
         let lower_fn = &bi.lower_register;
         let render_fn = &bi.render_policy;
         let extract_fn = &bi.extract_field;
+        let apply_aliases_override = bi.apply_aliases.as_ref().map(|f| {
+            quote! {
+                fn apply_aliases(
+                    decoded: &mut ::robustone_core::ir::DecodedInstruction,
+                ) {
+                    #f(decoded);
+                }
+            }
+        });
         quote! {
             impl ::robustone_isa::ArchitectureBackend for #backend_name {
                 type Word = #word_ty;
@@ -139,6 +148,8 @@ pub fn define_arch(input: TokenStream) -> TokenStream {
                 ) -> ::core::result::Result<u32, ::robustone_core::types::error::DisasmError> {
                     #extract_fn(word, format, field)
                 }
+
+                #apply_aliases_override
             }
         }
     } else {
@@ -194,6 +205,7 @@ struct BackendImpl {
     lower_register: Expr,
     render_policy: Expr,
     extract_field: Expr,
+    apply_aliases: Option<Expr>,
 }
 
 struct ModeDef {
@@ -328,6 +340,7 @@ impl Parse for DefineArchInput {
                 let mut lower_register = None;
                 let mut render_policy = None;
                 let mut extract_field = None;
+                let mut apply_aliases = None;
                 while !impl_content.is_empty() {
                     let key: Ident = impl_content.parse()?;
                     let _eq: Token![=] = impl_content.parse()?;
@@ -340,6 +353,7 @@ impl Parse for DefineArchInput {
                         "lower_register" => lower_register = Some(impl_content.parse()?),
                         "render_policy" => render_policy = Some(impl_content.parse()?),
                         "extract_field" => extract_field = Some(impl_content.parse()?),
+                        "apply_aliases" => apply_aliases = Some(impl_content.parse()?),
                         other => {
                             return Err(syn::Error::new(
                                 key.span(),
@@ -372,6 +386,7 @@ impl Parse for DefineArchInput {
                     extract_field: extract_field.ok_or_else(|| {
                         syn::Error::new(Span::call_site(), "missing extract_field")
                     })?,
+                    apply_aliases,
                 })
             } else {
                 return Err(syn::Error::new(
