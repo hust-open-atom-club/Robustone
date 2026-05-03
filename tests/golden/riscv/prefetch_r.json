@@ -6,8 +6,8 @@
     "operands": "0(a0)"
   },
   "expected_ir": {
-    "mnemonic": "prefetch.r",
-    "render_hint_mnemonic": null,
+    "mnemonic": "ori",
+    "render_hint_mnemonic": "prefetch.r",
     "hidden_operands": [],
     "groups": ["memory"],
     "operand_kinds": ["memory"]

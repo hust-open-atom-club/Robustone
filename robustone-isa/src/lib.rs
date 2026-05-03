@@ -876,8 +876,8 @@ pub enum OperandSpec<B: ArchitectureBackend + 'static> {
         access: Access,
     },
     Immediate {
-        field: B::Field,
-        transform: ImmediateTransform,
+        /// Expression for computing the immediate value from fields.
+        expr: ImmExpr<B::Field>,
         kind: ImmediateKind,
         /// Bit-width mask for unsigned immediate rendering.
         unsigned_mask: u64,
@@ -1069,13 +1069,20 @@ fn lower_operand<B: ArchitectureBackend>(
             Ok(Operand::Register { register: reg })
         }
         OperandSpec::Immediate {
-            field,
-            transform,
+            expr,
             kind,
             unsigned_mask,
         } => {
-            let raw = B::extract_field(word, format, *field)?;
-            let value = apply_transform(raw, *transform);
+            let value = match expr {
+                ImmExpr::Field { field, transform } => {
+                    let raw = B::extract_field(word, format, *field)?;
+                    apply_transform(raw, *transform)
+                }
+                _ => {
+                    let w: u64 = word.into();
+                    expr.evaluate(w as u32)
+                }
+            };
             Ok(match *kind {
                 ImmediateKind::Absolute | ImmediateKind::PcRelative | ImmediateKind::Unsigned => {
                     Operand::Immediate {
@@ -1263,7 +1270,11 @@ pub fn check_spec_table<B: ArchitectureBackend>(
         for op in spec.operands {
             let field = match op {
                 OperandSpec::Register { field, .. } => *field,
-                OperandSpec::Immediate { field, .. } => *field,
+                OperandSpec::Immediate {
+                    expr: ImmExpr::Field { field, .. },
+                    ..
+                } => *field,
+                OperandSpec::Immediate { .. } => continue,
                 OperandSpec::Text { field, .. } => *field,
                 OperandSpec::Memory { base_field, .. } => *base_field,
             };
@@ -1283,7 +1294,11 @@ pub fn check_spec_table<B: ArchitectureBackend>(
         for op in spec.operands {
             let field = match op {
                 OperandSpec::Register { field, .. } => *field,
-                OperandSpec::Immediate { field, .. } => *field,
+                OperandSpec::Immediate {
+                    expr: ImmExpr::Field { field, .. },
+                    ..
+                } => *field,
+                OperandSpec::Immediate { .. } => continue,
                 OperandSpec::Text { field, .. } => *field,
                 OperandSpec::Memory { base_field, .. } => *base_field,
             };
@@ -1487,21 +1502,25 @@ macro_rules! reg {
     };
 }
 
-/// Helper to construct an immediate operand spec.
+/// Helper to construct an immediate operand spec from a single field.
 #[macro_export]
 macro_rules! imm {
     ($field:expr, $transform:expr, $kind:expr) => {
         $crate::OperandSpec::Immediate {
-            field: $field,
-            transform: $transform,
+            expr: $crate::ImmExpr::Field {
+                field: $field,
+                transform: $transform,
+            },
             kind: $kind,
             unsigned_mask: 0xFFF,
         }
     };
     ($field:expr, $transform:expr, $kind:expr, mask = $mask:expr) => {
         $crate::OperandSpec::Immediate {
-            field: $field,
-            transform: $transform,
+            expr: $crate::ImmExpr::Field {
+                field: $field,
+                transform: $transform,
+            },
             kind: $kind,
             unsigned_mask: $mask,
         }
@@ -1835,10 +1854,12 @@ mod tests {
     // T1.2: ImmExpr::Compose evaluation tests
     // ============================================================================
 
+    type TestImmExpr = ImmExpr<()>;
+
     #[test]
     fn imm_expr_simple_evaluate() {
         // Word = 0x1234_5678, extract bits [7:0] = 0x78
-        let expr = ImmExpr::Simple {
+        let expr = TestImmExpr::Simple {
             field_start: 0,
             field_length: 8,
             transform: ImmediateTransform::None,
@@ -1858,24 +1879,28 @@ mod tests {
                 src_start: 31,
                 src_length: 1,
                 dst_start: 12,
+                field: None,
             },
             ImmComposePart {
                 src_start: 25,
                 src_length: 6,
                 dst_start: 5,
+                field: None,
             },
             ImmComposePart {
                 src_start: 8,
                 src_length: 4,
                 dst_start: 1,
+                field: None,
             },
             ImmComposePart {
                 src_start: 7,
                 src_length: 1,
                 dst_start: 11,
+                field: None,
             },
         ];
-        let expr = ImmExpr::Compose {
+        let expr = TestImmExpr::Compose {
             parts: &PARTS,
             transform: ImmediateTransform::SignExtend { bits: 12 },
         };

@@ -1058,10 +1058,7 @@ mod tests {
 
         assert_eq!(parsed["instructions"][0]["mnemonic"], "prefetch.w");
         assert_eq!(parsed["instructions"][0]["operands"], "0(a0)");
-        assert_eq!(
-            parsed["instructions"][0]["decoded"]["mnemonic"],
-            "prefetch.w"
-        );
+        assert_eq!(parsed["instructions"][0]["decoded"]["mnemonic"], "ori");
         assert_eq!(
             parsed["instructions"][0]["decoded"]["operands"][0]["kind"],
             "memory"

@@ -56,7 +56,11 @@ pub fn apply_riscv_aliases(decoded: &mut DecodedInstruction) {
                         _ => None,
                     };
                     if let Some(pf) = prefetch {
-                        decoded.mnemonic = pf.to_string();
+                        // View alias: ori → prefetch.{i,r,w} with memory surface.
+                        // Canonical IR preserves the original ori semantics;
+                        // the compat mnemonic and operand transformation are
+                        // applied at render time via render_hints.
+                        decoded.render_hints.compat_mnemonic = Some(pf.to_string());
                         decoded.operands = vec![Operand::Memory {
                             base: Some(rs1),
                             displacement: 0,
@@ -64,7 +68,6 @@ pub fn apply_riscv_aliases(decoded: &mut DecodedInstruction) {
                         decoded.registers_read = vec![rs1];
                         decoded.registers_written.clear();
                         decoded.groups = vec![robustone_core::ir::InstructionGroup::Memory];
-                        decoded.render_hints = Default::default();
                     }
                 }
             }
@@ -345,7 +348,11 @@ mod tests {
         );
         d.registers_written = vec![rv_reg(0)];
         apply_riscv_aliases(&mut d);
-        assert_eq!(d.mnemonic, "prefetch.i");
+        assert_eq!(
+            d.render_hints.compat_mnemonic.as_deref(),
+            Some("prefetch.i")
+        );
+        assert_eq!(d.mnemonic, "ori");
         assert_eq!(d.operands.len(), 1);
     }
 

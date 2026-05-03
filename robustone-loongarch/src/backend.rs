@@ -730,8 +730,18 @@ impl ArchitectureBackend for LoongArchBackend {
 
     fn lookup(
         word: Self::Word,
-        _profile: &DecodeProfile<Self>,
+        profile: &DecodeProfile<Self>,
     ) -> Option<&'static InstructionSpec<Self>> {
+        // Two-pass lookup: exact mode+features match first, pattern-only fallback.
+        let exact = LOONGARCH_BASE_SPECS.iter().find(|spec| {
+            (word & spec.pattern().mask) == spec.pattern().value
+                && spec.modes().matches(profile.mode)
+                && profile.features.contains(spec.features())
+        });
+        if exact.is_some() {
+            return exact;
+        }
+        // Fallback: pattern-only match (decode_one applies post-hoc mode/feature checks).
         LOONGARCH_BASE_SPECS
             .iter()
             .find(|spec| (word & spec.pattern().mask) == spec.pattern().value)
