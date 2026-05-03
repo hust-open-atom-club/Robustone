@@ -168,6 +168,25 @@ pub fn define_arch(input: TokenStream) -> TokenStream {
         quote! {}
     };
 
+    let feature_block = if parsed.extern_features {
+        quote! {}
+    } else {
+        quote! {
+            ::bitflags::bitflags! {
+                #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+                #vis struct #feature_name: #feature_ty {
+                    #(#feature_bits)*
+                }
+            }
+
+            impl ::robustone_isa::FeatureSet for #feature_name {
+                fn empty() -> Self { Self::empty() }
+                fn all_supported_for_tests() -> Self { Self::all() }
+                fn contains(self, required: Self) -> bool { self.bits() & required.bits() == required.bits() }
+            }
+        }
+    };
+
     let output = quote! {
         #(#duplicate_feature_checks)*
 
@@ -176,18 +195,7 @@ pub fn define_arch(input: TokenStream) -> TokenStream {
             #(#mode_variants),*
         }
 
-        ::bitflags::bitflags! {
-            #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-            #vis struct #feature_name: #feature_ty {
-                #(#feature_bits)*
-            }
-        }
-
-        impl ::robustone_isa::FeatureSet for #feature_name {
-            fn empty() -> Self { Self::empty() }
-            fn all_supported_for_tests() -> Self { Self::all() }
-            fn contains(self, required: Self) -> bool { self.bits() & required.bits() == required.bits() }
-        }
+        #feature_block
 
         #vis struct #backend_name;
 
@@ -205,6 +213,7 @@ struct DefineArchInput {
     word: Type,
     modes: Vec<ModeDef>,
     features: FeatureDef,
+    extern_features: bool,
     backend_impl: Option<BackendImpl>,
 }
 
@@ -295,6 +304,17 @@ impl Parse for DefineArchInput {
             modes.push(ModeDef { name, _eq, _value });
         }
         let _semi: Token![;] = content.parse()?;
+
+        // Optional extern_features flag for hand-written Feature type
+        let extern_features = content.peek(Ident) && {
+            let fork = content.fork();
+            let kw: Ident = fork.parse()?;
+            kw == "extern_features"
+        };
+        if extern_features {
+            let _kw: Ident = content.parse()?; // consume extern_features
+            let _s: Token![;] = content.parse()?;
+        }
 
         // features: <type> { ... }
         let features_kw: Ident = content.parse()?;
@@ -420,6 +440,7 @@ impl Parse for DefineArchInput {
             word,
             modes,
             features: FeatureDef { ty, bits },
+            extern_features,
             backend_impl,
         })
     }

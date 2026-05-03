@@ -9,8 +9,7 @@
 use robustone_core::ir::{ArchitectureId, RegisterId};
 use robustone_core::types::error::{DecodeErrorKind, DisasmError};
 use robustone_isa::{
-    ArchitectureBackend, DecodeProfile, FeatureSet, FormatSpec, InstructionRead, InstructionSpec,
-    RenderPolicy,
+    DecodeProfile, FeatureSet, FormatSpec, InstructionRead, InstructionSpec, RenderPolicy,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,10 +18,34 @@ pub enum Xlen {
     X64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RiscVMode {
-    RV32,
-    RV64,
+robustone_isa_macros::define_arch! {
+    pub arch RiscV {
+        word = u32;
+        endian = little;
+        instruction_length = variable(4);
+        modes {
+            RV32 = "riscv32";
+            RV64 = "riscv64";
+        };
+        extern_features;
+        features: u16 {
+            I = 0; M = 1; A = 2; F = 3; D = 4; C = 5; THEAD = 6;
+        };
+        registers = riscv_registers;
+        formats = riscv_formats;
+        specs = riscv_specs;
+        render = RiscVRenderPolicy;
+        backend_impl {
+            field = RiscVField;
+            register_class = RiscVRegisterClass;
+            architecture_id = ArchitectureId::Riscv;
+            read_instruction = riscv_read_instruction;
+            lookup = riscv_lookup;
+            lower_register = riscv_lower_register;
+            render_policy = riscv_render_policy;
+            extract_field = riscv_extract_field;
+        }
+    }
 }
 
 bitflags::bitflags! {
@@ -222,137 +245,117 @@ fn all_riscv_specs() -> impl Iterator<Item = &'static InstructionSpec<RiscVBacke
     ALL_SPEC_SLICES.iter().flat_map(|s| s.iter())
 }
 
-pub struct RiscVBackend;
-
-impl ArchitectureBackend for RiscVBackend {
-    type Word = u32;
-    type Mode = RiscVMode;
-    type Feature = RiscVFeature;
-    type Field = RiscVField;
-    type RegisterClass = RiscVRegisterClass;
-
-    fn architecture_id() -> ArchitectureId {
-        ArchitectureId::Riscv
+fn riscv_read_instruction(bytes: &[u8]) -> Result<InstructionRead<u32>, DisasmError> {
+    if bytes.len() >= 2 && (bytes[0] & 0x3) != 0x3 {
+        let word = (bytes[0] as u32) | ((bytes[1] as u32) << 8);
+        Ok(InstructionRead {
+            raw: word,
+            length: 2,
+        })
+    } else if bytes.len() >= 4 {
+        let word = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+        Ok(InstructionRead {
+            raw: word,
+            length: 4,
+        })
+    } else {
+        Err(DisasmError::decode_failure(
+            DecodeErrorKind::NeedMoreBytes,
+            Some("riscv".to_string()),
+            "incomplete instruction",
+        ))
     }
+}
 
-    fn read_instruction(bytes: &[u8]) -> Result<InstructionRead<Self::Word>, DisasmError> {
-        if bytes.len() >= 2 && (bytes[0] & 0x3) != 0x3 {
-            let word = (bytes[0] as u32) | ((bytes[1] as u32) << 8);
-            Ok(InstructionRead {
-                raw: word,
-                length: 2,
-            })
-        } else if bytes.len() >= 4 {
-            let word = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
-            Ok(InstructionRead {
-                raw: word,
-                length: 4,
-            })
-        } else {
-            Err(DisasmError::decode_failure(
-                DecodeErrorKind::NeedMoreBytes,
-                Some("riscv".to_string()),
-                "incomplete instruction",
-            ))
-        }
+fn riscv_lookup(
+    word: u32,
+    profile: &DecodeProfile<RiscVBackend>,
+) -> Option<&'static InstructionSpec<RiscVBackend>> {
+    let is_compressed = (word & 0x3) != 0x3;
+    let exact = all_riscv_specs().find(|spec| {
+        (word & spec.pattern().mask) == spec.pattern().value
+            && spec.modes().matches(profile.mode)
+            && profile.features.contains(spec.features())
+    });
+    if exact.is_some() {
+        return exact;
     }
-
-    fn lookup(
-        word: Self::Word,
-        profile: &DecodeProfile<Self>,
-    ) -> Option<&'static InstructionSpec<Self>> {
-        let is_compressed = (word & 0x3) != 0x3;
-
-        // First pass: exact match including mode and features.
-        let exact = all_riscv_specs().find(|spec| {
+    if is_compressed {
+        let mode_match = all_riscv_specs().find(|spec| {
             (word & spec.pattern().mask) == spec.pattern().value
                 && spec.modes().matches(profile.mode)
+        });
+        if mode_match.is_some() {
+            return None;
+        }
+        return all_riscv_specs().find(|spec| {
+            (word & spec.pattern().mask) == spec.pattern().value
                 && profile.features.contains(spec.features())
         });
-        if exact.is_some() {
-            return exact;
-        }
-
-        if is_compressed {
-            let mode_match = all_riscv_specs().find(|spec| {
-                (word & spec.pattern().mask) == spec.pattern().value
-                    && spec.modes().matches(profile.mode)
-            });
-            if mode_match.is_some() {
-                return None;
-            }
-            return all_riscv_specs().find(|spec| {
-                (word & spec.pattern().mask) == spec.pattern().value
-                    && profile.features.contains(spec.features())
-            });
-        }
-
-        all_riscv_specs().find(|spec| (word & spec.pattern().mask) == spec.pattern().value)
     }
+    all_riscv_specs().find(|spec| (word & spec.pattern().mask) == spec.pattern().value)
+}
 
-    fn lower_register(
-        class: Self::RegisterClass,
-        raw: u32,
-        _profile: &DecodeProfile<Self>,
-    ) -> RegisterId {
-        match class {
-            RiscVRegisterClass::Gpr => RegisterId::riscv(raw),
-            RiscVRegisterClass::Fpr => RegisterId::riscv(raw + 32),
-            RiscVRegisterClass::GprPrime => RegisterId::riscv(raw + 8),
-            RiscVRegisterClass::FprPrime => RegisterId::riscv(raw + 8 + 32),
+fn riscv_lower_register(
+    class: RiscVRegisterClass,
+    raw: u32,
+    _profile: &DecodeProfile<RiscVBackend>,
+) -> RegisterId {
+    match class {
+        RiscVRegisterClass::Gpr => RegisterId::riscv(raw),
+        RiscVRegisterClass::Fpr => RegisterId::riscv(raw + 32),
+        RiscVRegisterClass::GprPrime => RegisterId::riscv(raw + 8),
+        RiscVRegisterClass::FprPrime => RegisterId::riscv(raw + 8 + 32),
+    }
+}
+
+fn riscv_render_policy(_profile: &DecodeProfile<RiscVBackend>) -> RenderPolicy<RiscVBackend> {
+    RenderPolicy::new(
+        robustone_isa::RenderDialect::Canonical,
+        robustone_isa::AliasPolicy::None,
+    )
+}
+
+fn riscv_extract_field(
+    word: u32,
+    format: &FormatSpec<RiscVField>,
+    field: RiscVField,
+) -> Result<u32, DisasmError> {
+    match field {
+        RiscVField::Imm12S => {
+            let imm115 = (word >> 25) & 0x7F;
+            let imm40 = (word >> 7) & 0x1F;
+            Ok((imm115 << 5) | imm40)
         }
-    }
-
-    fn render_policy(_profile: &DecodeProfile<Self>) -> RenderPolicy<Self> {
-        RenderPolicy::new(
-            robustone_isa::RenderDialect::Canonical,
-            robustone_isa::AliasPolicy::None,
-        )
-    }
-
-    fn extract_field(
-        word: Self::Word,
-        format: &FormatSpec<Self::Field>,
-        field: Self::Field,
-    ) -> Result<u32, DisasmError> {
-        match field {
-            RiscVField::Imm12S => {
-                let imm115 = (word >> 25) & 0x7F;
-                let imm40 = (word >> 7) & 0x1F;
-                Ok((imm115 << 5) | imm40)
-            }
-            RiscVField::Imm20U => Ok((word >> 12) & 0xFFFFF),
-            RiscVField::Imm6 => {
-                let high = (word >> 12) & 1;
-                let low = (word >> 2) & 0x1F;
-                Ok((high << 5) | low)
-            }
-            RiscVField::ImmCL => {
-                // CL-format immediate for c.ld: {bits[6:5], bits[12:10]} << 3
-                let low = (word >> 5) & 0x3;
-                let high = (word >> 8) & 0x1C;
-                Ok((low | high) << 3)
-            }
-            RiscVField::ImmCLW => {
-                // CL-format immediate for c.flw: {bit[5], bits[12:10], bit[6], 0}
-                let bit5 = (word >> 5) & 1;
-                let bits12_10 = (word >> 10) & 0x7;
-                let bit6 = (word >> 6) & 1;
-                Ok((bit5 << 6) | (bits12_10 << 3) | (bit6 << 2))
-            }
-            _ => {
-                for f in format.fields() {
-                    if f.field_type() == field {
-                        let mask = ((1u64 << f.length()) - 1) as u32;
-                        return Ok((word >> f.start()) & mask);
-                    }
+        RiscVField::Imm20U => Ok((word >> 12) & 0xFFFFF),
+        RiscVField::Imm6 => {
+            let high = (word >> 12) & 1;
+            let low = (word >> 2) & 0x1F;
+            Ok((high << 5) | low)
+        }
+        RiscVField::ImmCL => {
+            let low = (word >> 5) & 0x3;
+            let high = (word >> 8) & 0x1C;
+            Ok((low | high) << 3)
+        }
+        RiscVField::ImmCLW => {
+            let bit5 = (word >> 5) & 1;
+            let bits12_10 = (word >> 10) & 0x7;
+            let bit6 = (word >> 6) & 1;
+            Ok((bit5 << 6) | (bits12_10 << 3) | (bit6 << 2))
+        }
+        _ => {
+            for f in format.fields() {
+                if f.field_type() == field {
+                    let mask = ((1u64 << f.length()) - 1) as u32;
+                    return Ok((word >> f.start()) & mask);
                 }
-                Err(DisasmError::decode_failure(
-                    DecodeErrorKind::InvalidField,
-                    Some("riscv".to_string()),
-                    format!("field {:?} not found in format {}", field, format.name()),
-                ))
             }
+            Err(DisasmError::decode_failure(
+                DecodeErrorKind::InvalidField,
+                Some("riscv".to_string()),
+                format!("field {:?} not found in format {}", field, format.name()),
+            ))
         }
     }
 }
