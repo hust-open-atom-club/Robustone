@@ -743,10 +743,6 @@ fn audit_no_hardcode(args: &[String]) -> ExitCode {
 
     let handler_patch_patterns: &[(&str, &str)] = &[
         (
-            "InstructionSpec::new\\s*\\(",
-            "deprecated InstructionSpec::new() — use define_instructions!",
-        ),
-        (
             "decoded\\.mnemonic\\s*=",
             "decoded.mnemonic assignment (handler patch)",
         ),

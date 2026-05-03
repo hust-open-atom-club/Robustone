@@ -4,9 +4,8 @@ use robustone_core::ir::{ArchitectureId, RegisterId};
 use robustone_core::types::error::{DecodeErrorKind, DisasmError};
 
 use crate::{
-    Access, ArchitectureBackend, DecodeProfile, FeatureSet, FormatSpec, ImmediateKind,
-    ImmediateTransform, InstructionGroup, InstructionRead, InstructionSpec, ModeSet, RenderPolicy,
-    field,
+    Access, ArchitectureBackend, DecodeProfile, FeatureSet, ImmediateKind, ImmediateTransform,
+    InstructionGroup, InstructionRead, InstructionSpec, ModeSet, field,
 };
 
 // ============================================================================
@@ -170,27 +169,5 @@ impl ArchitectureBackend for MockBackend {
         _profile: &DecodeProfile<Self>,
     ) -> RegisterId {
         RegisterId::riscv(raw)
-    }
-
-    fn render_policy(_profile: &DecodeProfile<Self>) -> RenderPolicy<Self> {
-        RenderPolicy::new(crate::RenderDialect::Canonical, crate::AliasPolicy::None)
-    }
-
-    fn extract_field(
-        word: Self::Word,
-        format: &FormatSpec<Self::Field>,
-        field: Self::Field,
-    ) -> Result<u32, DisasmError> {
-        for f in format.fields() {
-            if f.field_type() == field {
-                let mask = ((1u64 << f.length()) - 1) as u32;
-                return Ok((word >> f.start()) & mask);
-            }
-        }
-        Err(DisasmError::decode_failure(
-            DecodeErrorKind::InvalidField,
-            Some("mock".to_string()),
-            format!("field {:?} not found in format {}", field, format.name()),
-        ))
     }
 }

@@ -103,18 +103,42 @@ pub trait ArchitectureBackend: Sized + Sync + 'static {
         profile: &DecodeProfile<Self>,
     ) -> RegisterId;
 
-    /// Return the render policy for this profile.
-    fn render_policy(profile: &DecodeProfile<Self>) -> RenderPolicy<Self>;
-
     /// Extract a field value from the raw instruction word.
     ///
     /// Returns `Err` when the field is not found in the format or when
     /// the word does not contain valid data for the field.
+    ///
+    /// The default implementation performs a standard linear search over
+    /// the format's field list. Backends with non-standard field layouts
+    /// (e.g. RISC-V composed immediates) must override this method.
     fn extract_field(
         word: Self::Word,
         format: &FormatSpec<Self::Field>,
         field: Self::Field,
-    ) -> Result<u32, DisasmError>;
+    ) -> Result<u32, DisasmError> {
+        for f in format.fields() {
+            if f.field_type() == field {
+                let w: u64 = word.into();
+                let mask = ((1u64 << f.length()) - 1) as u32;
+                return Ok(((w >> f.start()) as u32) & mask);
+            }
+        }
+        Err(DisasmError::decode_failure(
+            DecodeErrorKind::InvalidField,
+            Some(Self::architecture_id().as_str().to_string()),
+            format!("field {:?} not found in format {}", field, format.name()),
+        ))
+    }
+
+    /// Return the render policy for this profile.
+    ///
+    /// The default implementation returns a canonical dialect policy
+    /// with no aliasing. Backends that support non-canonical rendering
+    /// or pseudo-instruction aliasing must override this method.
+    fn render_policy(profile: &DecodeProfile<Self>) -> RenderPolicy<Self> {
+        let _ = profile;
+        RenderPolicy::new(RenderDialect::Canonical, AliasPolicy::None)
+    }
 
     /// Apply architecture-specific aliases to a decoded instruction.
     ///
@@ -269,45 +293,6 @@ impl<B: ArchitectureBackend + 'static> InstructionSpec<B> {
         }
     }
 
-    /// Deprecated public constructor — use `define_instructions!` or
-    /// `__macro_new` with a `SpecSeal` token instead.
-    ///
-    /// This remains available during the transition period but will be
-    /// removed. Architecture crates that call this directly will be
-    /// flagged by `cargo xtask audit-no-hardcode`.
-    #[deprecated(note = "Use define_instructions! or __macro_new with SpecSeal")]
-    #[doc(hidden)]
-    #[allow(clippy::too_many_arguments)]
-    pub const fn new(
-        mnemonic: &'static str,
-        opcode_id: &'static str,
-        pattern: EncodingPattern<B::Word>,
-        format: &'static FormatSpec<B::Field>,
-        operands: &'static [OperandSpec<B>],
-        features: B::Feature,
-        modes: ModeSet<B::Mode>,
-        groups: &'static [InstructionGroup],
-        effect: Option<EffectSpec>,
-        manual_ref: Option<&'static str>,
-        priority: u16,
-    ) -> Self {
-        Self::__macro_new(
-            mnemonic,
-            opcode_id,
-            pattern,
-            format,
-            operands,
-            features,
-            modes,
-            groups,
-            effect,
-            &[],
-            manual_ref,
-            priority,
-            SpecSeal::__private_seal_token(),
-        )
-    }
-
     /// Instruction mnemonic (e.g. "add", "lw").
     pub fn mnemonic(&self) -> &'static str {
         self.mnemonic
@@ -377,127 +362,6 @@ impl<B: ArchitectureBackend + 'static> Copy for InstructionSpec<B> {}
 pub struct EncodingPattern<W> {
     pub mask: W,
     pub value: W,
-}
-
-// ============================================================================
-// Phase 1: Core abstractions (T1.1–T1.3)
-// ============================================================================
-
-/// Trait for instruction encoding tokens.
-///
-/// Represents the raw encoding of an instruction before decoding.
-/// Different ISAs use different encoding schemes:
-/// - Fixed-width 32-bit words (RISC-V, LoongArch, AArch64)
-/// - Variable-length prefix-based (x86)
-/// - Bytecode (WebAssembly)
-pub trait EncodingToken: Copy + Eq + core::fmt::Debug + 'static {
-    /// The fixed-width word type for bit-field extraction.
-    /// For variable-length encodings, this is the primary opcode word.
-    type Word: Copy + Eq + core::fmt::Debug + Into<u64>;
-
-    /// Total size of the encoded instruction in bytes.
-    fn size(&self) -> u8;
-
-    /// Extract a bit field from the primary word.
-    fn extract(&self, start: u8, length: u8) -> u32;
-}
-
-/// Fixed 32-bit instruction word encoding.
-/// Used by RISC-V, LoongArch, AArch64, and ARM (Thumb-2).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct FixedWord32(pub u32);
-
-impl EncodingToken for FixedWord32 {
-    type Word = u32;
-
-    fn size(&self) -> u8 {
-        4
-    }
-
-    fn extract(&self, start: u8, length: u8) -> u32 {
-        if length == 0 || start >= 32 {
-            return 0;
-        }
-        let effective_len = length.min(32 - start);
-        let mask = if effective_len >= 32 {
-            0xFFFF_FFFF
-        } else {
-            (1u32 << effective_len) - 1
-        };
-        (self.0 >> start) & mask
-    }
-}
-
-/// x86 variable-length instruction encoding.
-///
-/// Placeholder for the full prefix + opcode + ModRM + SIB + disp + imm
-/// encoding used by x86/x86-64. Phase 6 will flesh out the complete
-/// structure; for now this stub proves the `EncodingToken` trait is
-/// generic enough to handle non-fixed-width encodings.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct X86Encoding {
-    /// Total instruction size in bytes.
-    pub size: u8,
-    /// Primary opcode byte.
-    pub opcode: u8,
-    /// ModRM byte (if present).
-    pub modrm: Option<u8>,
-}
-
-impl EncodingToken for X86Encoding {
-    type Word = u8;
-
-    fn size(&self) -> u8 {
-        self.size
-    }
-
-    fn extract(&self, start: u8, length: u8) -> u32 {
-        if length == 0 || start >= 8 {
-            return 0;
-        }
-        let effective_len = length.min(8 - start);
-        let mask = if effective_len >= 8 {
-            0xFF
-        } else {
-            (1u8 << effective_len) - 1
-        };
-        ((self.opcode >> start) & mask) as u32
-    }
-}
-
-/// WebAssembly bytecode instruction encoding.
-///
-/// WebAssembly uses a variable-length LEB128-based encoding for its
-/// bytecode instructions. This stub proves the `EncodingToken` trait
-/// handles fundamentally different encoding schemes beyond machine-code
-/// ISAs. Phase 6+ will flesh out the complete structure.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct WasmEncoding {
-    /// Total instruction size in bytes (including LEB128 operands).
-    pub size: u8,
-    /// Primary opcode byte.
-    pub opcode: u8,
-}
-
-impl EncodingToken for WasmEncoding {
-    type Word = u8;
-
-    fn size(&self) -> u8 {
-        self.size
-    }
-
-    fn extract(&self, start: u8, length: u8) -> u32 {
-        if length == 0 || start >= 8 {
-            return 0;
-        }
-        let effective_len = length.min(8 - start);
-        let mask = if effective_len >= 8 {
-            0xFF
-        } else {
-            (1u8 << effective_len) - 1
-        };
-        ((self.opcode >> start) & mask) as u32
-    }
 }
 
 /// A single part of a composed immediate.
@@ -1882,58 +1746,6 @@ mod tests {
             "got {}",
             err.stable_kind()
         );
-    }
-
-    // ============================================================================
-    // T1.6: EncodingToken tests for all encoding types
-    // ============================================================================
-
-    #[test]
-    fn encoding_token_fixed_word_32_extract() {
-        let token = FixedWord32(0x1234_5678);
-        assert_eq!(token.size(), 4);
-        // Extract bits [7:0]
-        assert_eq!(token.extract(0, 8), 0x78);
-        // Extract bits [15:8]
-        assert_eq!(token.extract(8, 8), 0x56);
-        // Extract bits [31:16]
-        assert_eq!(token.extract(16, 16), 0x1234);
-        // Edge cases
-        assert_eq!(token.extract(0, 0), 0);
-        assert_eq!(token.extract(32, 8), 0);
-    }
-
-    #[test]
-    fn encoding_token_x86_extract() {
-        let token = X86Encoding {
-            size: 3,
-            opcode: 0x8B,
-            modrm: Some(0xC3),
-        };
-        assert_eq!(token.size(), 3);
-        // Extract bits [7:0] from opcode
-        assert_eq!(token.extract(0, 8), 0x8B);
-        // Extract bits [3:0] (lower nibble)
-        assert_eq!(token.extract(0, 4), 0x0B);
-        // Edge cases
-        assert_eq!(token.extract(0, 0), 0);
-        assert_eq!(token.extract(8, 8), 0);
-    }
-
-    #[test]
-    fn encoding_token_wasm_extract() {
-        let token = WasmEncoding {
-            size: 2,
-            opcode: 0x20, // local.get
-        };
-        assert_eq!(token.size(), 2);
-        // Extract bits [7:0] from opcode
-        assert_eq!(token.extract(0, 8), 0x20);
-        // Extract bits [5:0]
-        assert_eq!(token.extract(0, 6), 0x20);
-        // Edge cases
-        assert_eq!(token.extract(0, 0), 0);
-        assert_eq!(token.extract(8, 8), 0);
     }
 
     // ============================================================================

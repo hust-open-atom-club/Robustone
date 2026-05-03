@@ -90,8 +90,26 @@ pub fn define_arch(input: TokenStream) -> TokenStream {
         let read_fn = &bi.read_instruction;
         let lookup_fn = &bi.lookup;
         let lower_fn = &bi.lower_register;
-        let render_fn = &bi.render_policy;
-        let extract_fn = &bi.extract_field;
+        let render_policy_override = bi.render_policy.as_ref().map(|f| {
+            quote! {
+                fn render_policy(
+                    profile: &::robustone_isa::DecodeProfile<Self>,
+                ) -> ::robustone_isa::RenderPolicy<Self> {
+                    #f(profile)
+                }
+            }
+        });
+        let extract_field_override = bi.extract_field.as_ref().map(|f| {
+            quote! {
+                fn extract_field(
+                    word: Self::Word,
+                    format: &::robustone_isa::FormatSpec<Self::Field>,
+                    field: Self::Field,
+                ) -> ::core::result::Result<u32, ::robustone_core::types::error::DisasmError> {
+                    #f(word, format, field)
+                }
+            }
+        });
         let apply_aliases_override = bi.apply_aliases.as_ref().map(|f| {
             quote! {
                 fn apply_aliases(
@@ -147,19 +165,9 @@ pub fn define_arch(input: TokenStream) -> TokenStream {
                     #lower_fn(class, raw, profile)
                 }
 
-                fn render_policy(
-                    profile: &::robustone_isa::DecodeProfile<Self>,
-                ) -> ::robustone_isa::RenderPolicy<Self> {
-                    #render_fn(profile)
-                }
+                #render_policy_override
 
-                fn extract_field(
-                    word: Self::Word,
-                    format: &::robustone_isa::FormatSpec<Self::Field>,
-                    field: Self::Field,
-                ) -> ::core::result::Result<u32, ::robustone_core::types::error::DisasmError> {
-                    #extract_fn(word, format, field)
-                }
+                #extract_field_override
 
                 #apply_aliases_override
             }
@@ -224,8 +232,8 @@ struct BackendImpl {
     read_instruction: Expr,
     lookup: Expr,
     lower_register: Expr,
-    render_policy: Expr,
-    extract_field: Expr,
+    render_policy: Option<Expr>,
+    extract_field: Option<Expr>,
     apply_aliases: Option<Expr>,
     registers_module: Option<syn::Path>,
 }
@@ -413,12 +421,8 @@ impl Parse for DefineArchInput {
                     lower_register: lower_register.ok_or_else(|| {
                         syn::Error::new(Span::call_site(), "missing lower_register")
                     })?,
-                    render_policy: render_policy.ok_or_else(|| {
-                        syn::Error::new(Span::call_site(), "missing render_policy")
-                    })?,
-                    extract_field: extract_field.ok_or_else(|| {
-                        syn::Error::new(Span::call_site(), "missing extract_field")
-                    })?,
+                    render_policy,
+                    extract_field,
                     apply_aliases,
                     registers_module: Some(registers_path.clone()),
                 })

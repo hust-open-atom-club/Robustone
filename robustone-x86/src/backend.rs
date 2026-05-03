@@ -6,9 +6,7 @@
 
 use robustone_core::ir::{ArchitectureId, RegisterId};
 use robustone_core::types::error::{DecodeErrorKind, DisasmError};
-use robustone_isa::{
-    DecodeProfile, FormatSpec, InstructionRead, InstructionSpec, ModeSet, RenderPolicy,
-};
+use robustone_isa::{DecodeProfile, InstructionRead, InstructionSpec, ModeSet};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum X86Field {
@@ -42,8 +40,6 @@ robustone_isa_macros::define_arch! {
             read_instruction = x86_read_instruction;
             lookup = x86_lookup;
             lower_register = x86_lower_register;
-            render_policy = x86_render_policy;
-            extract_field = x86_extract_field;
         }
     }
 }
@@ -81,31 +77,6 @@ fn x86_lower_register(
         Ok(id) => RegisterId::x86(id),
         Err(_) => RegisterId::x86(raw),
     }
-}
-
-fn x86_render_policy(_profile: &DecodeProfile<X86Backend>) -> RenderPolicy<X86Backend> {
-    RenderPolicy::new(
-        robustone_isa::RenderDialect::Canonical,
-        robustone_isa::AliasPolicy::None,
-    )
-}
-
-fn x86_extract_field(
-    word: u32,
-    format: &FormatSpec<X86Field>,
-    field: X86Field,
-) -> Result<u32, DisasmError> {
-    for f in format.fields() {
-        if f.field_type() == field {
-            let mask = ((1u64 << f.length()) - 1) as u32;
-            return Ok((word >> f.start()) & mask);
-        }
-    }
-    Err(DisasmError::decode_failure(
-        DecodeErrorKind::InternalSpecBug,
-        Some("x86".to_string()),
-        format!("field {:?} not found in format {}", field, format.name()),
-    ))
 }
 
 robustone_isa_macros::define_formats! {

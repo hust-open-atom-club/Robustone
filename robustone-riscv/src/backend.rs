@@ -8,9 +8,7 @@
 
 use robustone_core::ir::{ArchitectureId, RegisterId};
 use robustone_core::types::error::{DecodeErrorKind, DisasmError};
-use robustone_isa::{
-    DecodeProfile, FeatureSet, FormatSpec, InstructionRead, InstructionSpec, RenderPolicy,
-};
+use robustone_isa::{DecodeProfile, FeatureSet, FormatSpec, InstructionRead, InstructionSpec};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Xlen {
@@ -42,7 +40,6 @@ robustone_isa_macros::define_arch! {
             read_instruction = riscv_read_instruction;
             lookup = riscv_lookup;
             lower_register = riscv_lower_register;
-            render_policy = riscv_render_policy;
             extract_field = riscv_extract_field;
         }
     }
@@ -290,13 +287,10 @@ fn riscv_lookup(
         }
         return all_riscv_specs().find(|spec| {
             (word & spec.pattern().mask) == spec.pattern().value
-                && spec.modes().matches(profile.mode)
                 && profile.features.contains(spec.features())
         });
     }
-    all_riscv_specs().find(|spec| {
-        (word & spec.pattern().mask) == spec.pattern().value && spec.modes().matches(profile.mode)
-    })
+    all_riscv_specs().find(|spec| (word & spec.pattern().mask) == spec.pattern().value)
 }
 
 fn riscv_lower_register(
@@ -308,13 +302,6 @@ fn riscv_lower_register(
         Ok(id) => RegisterId::riscv(id),
         Err(_) => RegisterId::riscv(raw),
     }
-}
-
-fn riscv_render_policy(_profile: &DecodeProfile<RiscVBackend>) -> RenderPolicy<RiscVBackend> {
-    RenderPolicy::new(
-        robustone_isa::RenderDialect::Canonical,
-        robustone_isa::AliasPolicy::None,
-    )
 }
 
 fn riscv_extract_field(

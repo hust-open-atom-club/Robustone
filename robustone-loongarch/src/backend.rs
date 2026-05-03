@@ -1,9 +1,9 @@
 //! LoongArch backend implementing the `robustone-isa` `ArchitectureBackend` trait.
 
 use robustone_core::ir::{ArchitectureId, RegisterId};
-use robustone_core::types::error::{DecodeErrorKind, DisasmError};
+use robustone_core::types::error::DisasmError;
 use robustone_isa::{
-    Access, AliasPolicy, DecodeProfile, FeatureSet, FormatSpec, ImmediateKind, ImmediateTransform,
+    Access, AliasPolicy, DecodeProfile, FeatureSet, ImmediateKind, ImmediateTransform,
     InstructionGroup, InstructionRead, InstructionSpec, RenderDialect, RenderPolicy,
 };
 
@@ -44,7 +44,6 @@ robustone_isa_macros::define_arch! {
             lookup = loongarch_lookup;
             lower_register = loongarch_lower_register;
             render_policy = loongarch_render_policy;
-            extract_field = loongarch_extract_field;
             apply_aliases = crate::backend::aliases::apply_aliases;
         }
     }
@@ -786,26 +785,4 @@ fn loongarch_render_policy(
     profile: &DecodeProfile<LoongArchBackend>,
 ) -> RenderPolicy<LoongArchBackend> {
     RenderPolicy::new(profile.render_dialect, profile.alias_policy)
-}
-
-fn loongarch_extract_field(
-    word: u32,
-    format: &FormatSpec<LoongArchField>,
-    field: LoongArchField,
-) -> Result<u32, DisasmError> {
-    for f in format.fields() {
-        if f.field_type() == field {
-            let mask = ((1u64 << f.length()) - 1) as u32;
-            return Ok((word >> f.start()) & mask);
-        }
-    }
-    Err(DisasmError::decode_failure(
-        DecodeErrorKind::InternalSpecBug,
-        Some("loongarch".to_string()),
-        format!(
-            "field {:?} not found in format {} — spec bug: format missing declared field",
-            field,
-            format.name()
-        ),
-    ))
 }
