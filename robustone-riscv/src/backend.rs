@@ -332,9 +332,11 @@ fn riscv_extract_field(
             Ok((high << 5) | low)
         }
         RiscVField::ImmCL => {
-            let low = (word >> 5) & 0x3;
-            let high = (word >> 8) & 0x1C;
-            Ok((low | high) << 3)
+            // CL-format immediate for c.ld: uimm[7:6] at bits[6:5],
+            // uimm[5:3] at bits[12:10], assembled as {uimm[7:6], uimm[5:3]} << 3
+            let uimm_76 = (word >> 5) & 0x3;
+            let uimm_53 = (word >> 10) & 0x7;
+            Ok(((uimm_76 << 3) | uimm_53) << 3)
         }
         RiscVField::ImmCLW => {
             let bit5 = (word >> 5) & 1;
