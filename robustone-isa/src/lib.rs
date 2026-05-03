@@ -702,6 +702,8 @@ pub struct RegisterBankSpec<C: Copy + Eq + 'static> {
     pub class: C,
     /// Optional prefix for textual rendering (e.g. "$r" → "$r1").
     pub prefix: Option<&'static str>,
+    /// Optional canonical format string (e.g. "x{n}" → "x0", "x1").
+    pub canonical: Option<&'static str>,
     /// Named aliases for specific register indices (e.g. 0 → "$zero").
     pub aliases: &'static [(&'static str, u32)],
 }

@@ -463,6 +463,10 @@ pub fn define_registers(input: TokenStream) -> TokenStream {
                 .prefix
                 .as_ref()
                 .map_or(quote! { None }, |p| quote! { Some(#p) });
+            let canonical = b
+                .canonical
+                .as_ref()
+                .map_or(quote! { None }, |c| quote! { Some(#c) });
             let aliases = if b.aliases.is_empty() {
                 quote! { &[] }
             } else {
@@ -482,6 +486,7 @@ pub fn define_registers(input: TokenStream) -> TokenStream {
                     base_id: #base_id,
                     count: #count as u32,
                     prefix: #prefix,
+                    canonical: #canonical,
                     aliases: #aliases,
                 }
             }
@@ -489,20 +494,73 @@ pub fn define_registers(input: TokenStream) -> TokenStream {
         .collect();
 
     // Compile-time duplicate name validation
-    let mut dup_checks = Vec::new();
+    let mut validations = Vec::new();
     for i in 0..parsed.banks.len() {
         for j in (i + 1)..parsed.banks.len() {
             if parsed.banks[i].name == parsed.banks[j].name {
                 let msg = format!("duplicate register bank: {}", parsed.banks[i].name);
-                dup_checks.push(quote! {
+                validations.push(quote! {
                     const _: () = ::core::compile_error!(#msg);
                 });
             }
         }
     }
 
+    // Compile-time: overlapping base_id ranges
+    for i in 0..parsed.banks.len() {
+        for j in (i + 1)..parsed.banks.len() {
+            let base_i = parsed.banks[i]
+                .base_id
+                .as_ref()
+                .map(|v| quote! { #v as u32 })
+                .unwrap_or(quote! { 0u32 });
+            let count_i = {
+                let v = &parsed.banks[i].count;
+                quote! { #v as u32 }
+            };
+            let base_j = parsed.banks[j]
+                .base_id
+                .as_ref()
+                .map(|v| quote! { #v as u32 })
+                .unwrap_or(quote! { 0u32 });
+            let count_j = {
+                let v = &parsed.banks[j].count;
+                quote! { #v as u32 }
+            };
+            let msg = format!(
+                "overlapping base_id ranges: bank '{}' and bank '{}'",
+                parsed.banks[i].name, parsed.banks[j].name
+            );
+            validations.push(quote! {
+                const _: () = assert!(
+                    (#base_i) >= (#base_j + #count_j) || (#base_j) >= (#base_i + #count_i),
+                    #msg
+                );
+            });
+        }
+    }
+
+    // Compile-time: alias indices within bank count
+    for bank in &parsed.banks {
+        let count = {
+            let v = &bank.count;
+            quote! { #v as u32 }
+        };
+        for (idx, name) in &bank.aliases {
+            let idx_val = quote! { #idx as u32 };
+            let msg = format!(
+                "alias '{}' in bank '{}' has index >= count",
+                name.value(),
+                bank.name
+            );
+            validations.push(quote! {
+                const _: () = assert!(#idx_val < #count, #msg);
+            });
+        }
+    }
+
     quote! {
-        #(#dup_checks)*
+        #(#validations)*
 
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
         pub enum #reg_class_enum {
@@ -535,7 +593,6 @@ struct DefineRegistersInput {
     banks: Vec<RegisterBankDef>,
 }
 
-#[allow(dead_code)]
 struct RegisterBankDef {
     name: Ident,
     base_id: Option<syn::LitInt>,
