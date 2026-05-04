@@ -212,12 +212,9 @@ mod tests {
         let _registers_read: Vec<RegisterId> = Vec::new();
         let _registers_written: Vec<RegisterId> = Vec::new();
         for op in &operands {
-            match op {
-                Operand::Register { register: _ } => {
-                    // heuristic: first register is usually rd (write), rest are rs (read)
-                    // tests will override registers_written/registers_read explicitly
-                }
-                _ => {}
+            if let Operand::Register { register: _ } = op {
+                // heuristic: first register is usually rd (write), rest are rs (read)
+                // tests will override registers_written/registers_read explicitly
             }
         }
         DecodedInstruction {

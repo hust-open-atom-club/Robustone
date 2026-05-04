@@ -121,7 +121,7 @@ impl ArchitectureBackend for MacroBackend {
         Err(DisasmError::decode_failure(
             DecodeErrorKind::InvalidField,
             None::<String>,
-            format!("field not found"),
+            "field not found".to_string(),
         ))
     }
 }

@@ -365,6 +365,14 @@ impl CliExecutor {
     }
 }
 
+fn guess_architecture_argument(args: &[OsString]) -> Option<String> {
+    args.iter()
+        .skip(1)
+        .filter_map(|arg| arg.to_str())
+        .find(|arg| !arg.starts_with('-'))
+        .map(str::to_string)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -572,12 +580,4 @@ mod tests {
         assert!(output.contains("parser-only"));
         assert!(output.contains("--capabilities"));
     }
-}
-
-fn guess_architecture_argument(args: &[OsString]) -> Option<String> {
-    args.iter()
-        .skip(1)
-        .filter_map(|arg| arg.to_str())
-        .find(|arg| !arg.starts_with('-'))
-        .map(str::to_string)
 }

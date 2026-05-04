@@ -228,8 +228,8 @@ fn test_ir_rendering_covers_control_flow_and_atomic_variants() {
         ),
     ];
 
-    for (_name, arch, bytes, expected_capstone, expected_canonical) in cases {
-        let (decoded, _) = dispatcher
+    for (_name, arch, bytes, expected_capstone, _expected_canonical) in cases {
+        let (_decoded, _) = dispatcher
             .decode_instruction(&bytes, arch, 0)
             .expect("decode should succeed");
         let (instruction, _) = dispatcher

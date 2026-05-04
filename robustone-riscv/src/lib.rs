@@ -401,14 +401,12 @@ mod tests {
         assert!(
             decoded
                 .groups
-                .iter()
-                .any(|g| *g == robustone_core::ir::InstructionGroup::Atomic)
+                .contains(&robustone_core::ir::InstructionGroup::Atomic)
         );
         assert!(
             !decoded
                 .groups
-                .iter()
-                .any(|g| *g == robustone_core::ir::InstructionGroup::Float)
+                .contains(&robustone_core::ir::InstructionGroup::Float)
         );
     }
 
@@ -480,14 +478,7 @@ mod tests {
         let imm105 = (offset >> 5) & 0x3F;
         let imm41 = (offset >> 1) & 0xF;
         let imm11 = (offset >> 11) & 1;
-        let word: u32 = (imm12 << 31)
-            | (imm105 << 25)
-            | (0 << 20)
-            | (0 << 15)
-            | (0x0 << 12)
-            | (imm41 << 8)
-            | (imm11 << 7)
-            | 0x63;
+        let word: u32 = ((imm12 << 31) | (imm105 << 25)) | (imm41 << 8) | (imm11 << 7) | 0x63;
         let bytes = word.to_le_bytes();
         let (decoded, _) = handler
             .decode_instruction(&bytes, "riscv64", 0x1000)

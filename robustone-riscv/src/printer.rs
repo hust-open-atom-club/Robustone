@@ -541,6 +541,10 @@ pub mod format {
     }
 }
 
+fn is_riscv_lr(mnemonic: &str) -> bool {
+    matches!(mnemonic, "lr.w" | "lr.d")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -804,8 +808,4 @@ mod tests {
 
         assert_eq!(printer.print_basic(&instruction), "addi x2, x2, -16");
     }
-}
-
-fn is_riscv_lr(mnemonic: &str) -> bool {
-    matches!(mnemonic, "lr.w" | "lr.d")
 }

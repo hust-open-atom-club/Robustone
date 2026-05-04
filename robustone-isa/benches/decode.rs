@@ -94,7 +94,7 @@ impl ArchitectureBackend for BenchBackend {
     ) -> Option<&'static robustone_isa::InstructionSpec<Self>> {
         SPECS
             .iter()
-            .find(|spec| (word & spec.pattern.mask) == spec.pattern.value)
+            .find(|spec| (word & spec.pattern().mask) == spec.pattern().value)
     }
 
     fn lower_register(
@@ -122,7 +122,7 @@ impl ArchitectureBackend for BenchBackend {
         }
         Err(DisasmError::decode_failure(
             DecodeErrorKind::InvalidField,
-            Some("bench"),
+            Some("bench".to_string()),
             format!("field {:?} not found in format {}", field, format.name()),
         ))
     }

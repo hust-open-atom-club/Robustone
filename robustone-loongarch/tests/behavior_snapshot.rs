@@ -23,8 +23,8 @@ fn decode(bytes: &[u8], addr: u64) -> robustone_core::ir::DecodedInstruction {
         render_dialect: RenderDialect::Assembler,
         alias_policy: AliasPolicy::PreferPseudo,
     };
-    let decoded = decode_one::<LoongArchBackend>(bytes, addr, &profile).unwrap();
-    decoded
+
+    decode_one::<LoongArchBackend>(bytes, addr, &profile).unwrap()
 }
 
 // ============================================================================
@@ -55,11 +55,11 @@ fn snapshot_nop_alias_from_andi() {
             &decoded.operands[0],
             &decoded.operands[1],
             &decoded.operands[2],
-        ) {
-            if rd.id == 0 && rj.id == 0 {
-                decoded.mnemonic = "nop".to_string();
-                decoded.operands.clear();
-            }
+        ) && rd.id == 0
+            && rj.id == 0
+        {
+            decoded.mnemonic = "nop".to_string();
+            decoded.operands.clear();
         }
     }
     assert_eq!(decoded.mnemonic, "nop", "handler should produce nop alias");
@@ -220,7 +220,7 @@ fn snapshot_vector_register_alias_rule() {
     }
     for m in &lasx_mnemonics {
         assert!(
-            !(m.starts_with('v') && !m.contains("xv")),
+            !m.starts_with('v') || m.contains("xv"),
             "{} should NOT trigger LSX alias",
             m
         );
