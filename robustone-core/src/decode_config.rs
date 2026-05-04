@@ -262,7 +262,6 @@ pub fn parse_decode_config(token: &str) -> Result<DecodeConfig, DecodeConfigErro
         "aarch64" | "arm64" => Mode::AArch64,
         "aarch64be" => Mode::AArch64BE,
         "loongarch" | "loongarch64" => Mode::La64,
-        "loongarch32" => Mode::La32,
         _ => return Err(DecodeConfigError::UnknownArchitecture(token.to_string())),
     };
 

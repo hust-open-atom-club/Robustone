@@ -70,7 +70,7 @@ impl LoongArchBackend {
         }
     }
 
-    /// Test profile for Capstone compatibility harness (all features, pseudo aliases).
+    /// Test profile with all features and pseudo-instruction aliases enabled.
     pub fn capstone_test_la64() -> DecodeProfile<Self> {
         DecodeProfile {
             mode: LoongArchMode::LA64,

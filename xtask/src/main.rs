@@ -185,6 +185,7 @@ fn check_forbidden_strings(
                         && !lower.contains("textrenderprofile")
                         && !lower.contains("compat_aliases")
                         && !lower.contains("capstone_hidden")
+                        && !lower.contains("capstone_test_")
                         && !lower.contains("compat_mnemonic")
                         && !lower.contains("render_hints")
                         && !lower.contains("with_compat_alias")

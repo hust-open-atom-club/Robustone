@@ -86,6 +86,60 @@ impl ArchitectureProfile {
     }
 }
 
+impl<'a> From<&'a crate::decode_config::DecodeConfig> for ArchitectureProfile {
+    fn from(config: &'a crate::decode_config::DecodeConfig) -> Self {
+        use crate::architecture::Architecture;
+        let mode_name = config.mode_name();
+        let architecture = match config.arch {
+            crate::decode_config::Arch::RiscV => {
+                if mode_name.starts_with("riscv64") {
+                    Architecture::RiscV64
+                } else {
+                    Architecture::RiscV32
+                }
+            }
+            crate::decode_config::Arch::LoongArch => Architecture::LoongArch64,
+            crate::decode_config::Arch::Arm => Architecture::Arm,
+            crate::decode_config::Arch::AArch64 => Architecture::AArch64,
+            crate::decode_config::Arch::X86 => Architecture::X86,
+        };
+        let bit_width = match config.mode {
+            crate::decode_config::Mode::X16 => 16,
+            crate::decode_config::Mode::X32
+            | crate::decode_config::Mode::Rv32
+            | crate::decode_config::Mode::Rv32E
+            | crate::decode_config::Mode::Arm
+            | crate::decode_config::Mode::ArmLE
+            | crate::decode_config::Mode::ArmBE
+            | crate::decode_config::Mode::Thumb => 32,
+            crate::decode_config::Mode::X64
+            | crate::decode_config::Mode::Rv64
+            | crate::decode_config::Mode::AArch64
+            | crate::decode_config::Mode::AArch64BE
+            | crate::decode_config::Mode::La32
+            | crate::decode_config::Mode::La64 => 64,
+        };
+        let extensions: Vec<&'static str> = config
+            .features
+            .extensions()
+            .iter()
+            .map(|s| {
+                // Leak the string to get a &'static str for the profile.
+                // The profile is consumed immediately in the decode path so this
+                // is safe in practice.
+                Box::leak(s.clone().into_boxed_str()) as &'static str
+            })
+            .collect();
+        ArchitectureProfile {
+            architecture,
+            mode_name,
+            bit_width,
+            endianness: config.endianness,
+            enabled_extensions: extensions,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
