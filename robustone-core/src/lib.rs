@@ -313,13 +313,15 @@ impl ArchitectureDispatcher {
         config
             .validate()
             .map_err(|e| DisasmError::Configuration(e.to_string()))?;
-        let arch_name = config.mode_name();
+        let profile = crate::common::ArchitectureProfile::from(config);
         for handler in &self.handlers {
-            if handler.supports(arch_name) {
-                return handler.disassemble(bytes, arch_name, address);
+            if handler.supports(profile.mode_name) {
+                return handler.disassemble_with_profile(bytes, &profile, address);
             }
         }
-        Err(DisasmError::UnsupportedArchitecture(arch_name.to_string()))
+        Err(DisasmError::UnsupportedArchitecture(
+            profile.mode_name.to_string(),
+        ))
     }
 
     /// Decode bytes using an explicit architecture profile.

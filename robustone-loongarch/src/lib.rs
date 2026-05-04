@@ -46,7 +46,7 @@ use robustone_core::{
     traits::instruction::Detail,
     types::error::DisasmError,
 };
-use robustone_isa::{DecodeProfile, decode_one};
+use robustone_isa::{DecodeProfile, FeatureSet, decode_one};
 
 /// Architecture handler implementation for LoongArch LA64 targets.
 pub struct LoongArchHandler {
@@ -65,7 +65,7 @@ fn profile_for_arch_name(
     arch_name: &str,
 ) -> Result<DecodeProfile<backend::LoongArchBackend>, DisasmError> {
     match arch_name {
-        "loongarch" | "loongarch64" => Ok(backend::LoongArchBackend::la64_base()),
+        "loongarch" | "loongarch64" => Ok(backend::LoongArchBackend::capstone_test_la64()),
         _ => Err(DisasmError::UnsupportedArchitecture(arch_name.to_string())),
     }
 }
@@ -113,7 +113,37 @@ impl ArchitectureHandler for LoongArchHandler {
         profile: &ArchitectureProfile,
         addr: u64,
     ) -> Result<(DecodedInstruction, usize), DisasmError> {
-        self.decode_instruction(bytes, profile.mode_name, addr)
+        // Map profile extensions to feature bits, defaulting to all features
+        // for backward compatibility when no extensions are specified.
+        let features = if profile.enabled_extensions.is_empty() {
+            backend::LoongArchFeature::all_supported_for_tests()
+        } else {
+            let mut feats = backend::LoongArchFeature::BASE;
+            for ext in &profile.enabled_extensions {
+                match *ext {
+                    "la64" => feats |= backend::LoongArchFeature::LA64,
+                    "f32" | "float32" => feats |= backend::LoongArchFeature::FLOAT32,
+                    "f64" | "float64" => feats |= backend::LoongArchFeature::FLOAT64,
+                    "lsx" => feats |= backend::LoongArchFeature::LSX,
+                    "lasx" => feats |= backend::LoongArchFeature::LASX,
+                    "lvz" => feats |= backend::LoongArchFeature::LVZ,
+                    "lbt" => feats |= backend::LoongArchFeature::LBT,
+                    "priv" => feats |= backend::LoongArchFeature::PRIVILEGED,
+                    "atomic" => feats |= backend::LoongArchFeature::ATOMIC,
+                    _ => {}
+                }
+            }
+            feats
+        };
+        let decode_profile = DecodeProfile {
+            mode: backend::LoongArchMode::LA64,
+            features,
+            render_dialect: robustone_isa::RenderDialect::Assembler,
+            alias_policy: robustone_isa::AliasPolicy::PreferPseudo,
+        };
+        let decoded = decode_one::<backend::LoongArchBackend>(bytes, addr, &decode_profile)?;
+        let size = decoded.size;
+        Ok((decoded, size))
     }
 
     fn disassemble(
@@ -167,7 +197,41 @@ impl ArchitectureHandler for LoongArchHandler {
         profile: &ArchitectureProfile,
         addr: u64,
     ) -> Result<(Instruction, usize), DisasmError> {
-        self.disassemble(bytes, profile.mode_name, addr)
+        let (decoded, size) = self.decode_instruction_with_profile(bytes, profile, addr)?;
+        let (mnemonic, operands) = render::render_loongarch_text_parts(
+            &decoded,
+            TextRenderProfile::Compat,
+            true,
+            true,
+            true,
+            false,
+        );
+        let detail: Option<Box<dyn Detail>> = if self.detail {
+            let mut la_detail = LoongArchInstructionDetail::new();
+            for register in decoded
+                .registers_read
+                .iter()
+                .chain(decoded.implicit_registers_read.iter())
+            {
+                if !la_detail.regs_read.contains(&register.id) {
+                    la_detail = la_detail.reads_register(register.id);
+                }
+            }
+            for register in decoded
+                .registers_written
+                .iter()
+                .chain(decoded.implicit_registers_written.iter())
+            {
+                if !la_detail.regs_write.contains(&register.id) {
+                    la_detail = la_detail.writes_register(register.id);
+                }
+            }
+            Some(Box::new(la_detail))
+        } else {
+            None
+        };
+        let instruction = Instruction::from_decoded(decoded, mnemonic, operands, detail);
+        Ok((instruction, size))
     }
 
     fn name(&self) -> &'static str {
