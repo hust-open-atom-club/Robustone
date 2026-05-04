@@ -2,6 +2,7 @@
   "name": "capstone-loongarch-mc",
   "robustone_arch": "loongarch64",
   "cstool_arch": "loongarch64",
+  "robustone_flags": ["--skip-data"],
   "yaml_source": "../../../third_party/capstone/tests/MC/LoongArch",
   "yaml_filter": {
     "arch": "CS_ARCH_LOONGARCH",
