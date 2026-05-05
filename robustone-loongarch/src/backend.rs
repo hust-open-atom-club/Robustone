@@ -265,6 +265,7 @@ include!("backend/specs_float_arith.rs");
 include!("backend/specs_float_cmp.rs");
 include!("backend/specs_float_mem.rs");
 include!("backend/specs_system.rs");
+include!("backend/specs_vector.rs");
 
 pub static LOONGARCH_BASE_SPECS: &[InstructionSpec<LoongArchBackend>] = &[
     BSTRINS_W,
@@ -757,7 +758,8 @@ fn loongarch_lookup(
     word: u32,
     profile: &DecodeProfile<LoongArchBackend>,
 ) -> Option<&'static InstructionSpec<LoongArchBackend>> {
-    let exact = LOONGARCH_BASE_SPECS.iter().find(|spec| {
+    let tables: &[&[InstructionSpec<LoongArchBackend>]] = &[LOONGARCH_BASE_SPECS, VECTOR_SPECS];
+    let exact = tables.iter().flat_map(|t| t.iter()).find(|spec| {
         (word & spec.pattern().mask) == spec.pattern().value
             && spec.modes().matches(profile.mode)
             && profile.features.contains(spec.features())
