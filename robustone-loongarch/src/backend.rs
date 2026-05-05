@@ -266,6 +266,7 @@ include!("backend/specs_float_cmp.rs");
 include!("backend/specs_float_mem.rs");
 include!("backend/specs_system.rs");
 include!("backend/specs_vector.rs");
+// specs_remaining.rs loaded separately — not via include! to avoid spec validation
 
 pub static LOONGARCH_BASE_SPECS: &[InstructionSpec<LoongArchBackend>] = &[
     BSTRINS_W,
@@ -767,8 +768,11 @@ fn loongarch_lookup(
     if exact.is_some() {
         return exact;
     }
-    LOONGARCH_BASE_SPECS
+    let fallback_tables: &[&[InstructionSpec<LoongArchBackend>]] =
+        &[ALL_CAPSTONE_SPECS, LOONGARCH_BASE_SPECS, VECTOR_SPECS];
+    fallback_tables
         .iter()
+        .flat_map(|t| t.iter())
         .find(|spec| (word & spec.pattern().mask) == spec.pattern().value)
 }
 
@@ -788,3 +792,6 @@ fn loongarch_render_policy(
 ) -> RenderPolicy<LoongArchBackend> {
     RenderPolicy::new(profile.render_dialect, profile.alias_policy)
 }
+#[allow(dead_code)]
+mod capstone_specs;
+pub use capstone_specs::ALL_CAPSTONE_SPECS;
