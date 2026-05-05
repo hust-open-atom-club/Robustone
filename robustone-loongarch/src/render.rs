@@ -9,13 +9,12 @@ use robustone_core::ir::{DecodedInstruction, Operand, TextRenderProfile};
 use crate::shared::registers::RegisterManager;
 
 /// Helper: format a raw register id with or without ABI aliases.
-fn format_register(id: u32, alias_regs: bool) -> String {
+fn format_register(id: u32, _alias_regs: bool) -> String {
+    // LoongArch always uses ABI names ($zero, $ra, $a0, etc.) in both
+    // canonical and compatibility modes — raw names ($r0-$r31) are not
+    // part of the standard LoongArch assembly syntax.
     let mgr = RegisterManager::instance();
-    if alias_regs {
-        mgr.format_raw_id(id).to_string()
-    } else {
-        mgr.format_raw_id_unaliased(id).to_string()
-    }
+    mgr.format_raw_id(id).to_string()
 }
 
 /// Return the unsigned bit-mask for the instruction's immediate field,
