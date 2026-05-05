@@ -98,7 +98,17 @@ fn verify_boundary() -> ExitCode {
         for entry in fs::read_dir(&scripts_dir)
             .unwrap_or_else(|_| panic!("read_dir {}", scripts_dir.display()))
         {
-            let entry = entry.unwrap();
+            let entry = match entry {
+                Ok(e) => e,
+                Err(e) => {
+                    eprintln!(
+                        "warning: skipping unreadable dir entry in {}: {}",
+                        scripts_dir.display(),
+                        e
+                    );
+                    continue;
+                }
+            };
             let name = entry.file_name().to_string_lossy().to_string();
             if name.starts_with("generate_") && name.ends_with(".py") {
                 violations.push(format!(
@@ -563,6 +573,7 @@ fn compat(args: &[String]) -> ExitCode {
             "--lib",
             "--quiet",
         ])
+        .env("ROBUSTONE_ENABLE_CAPSTONE_TESTS", "1")
         .output();
 
     match output {
@@ -616,6 +627,7 @@ fn compat_report(args: &[String]) -> ExitCode {
             "--nocapture",
             "--test-threads=1",
         ])
+        .env("ROBUSTONE_ENABLE_CAPSTONE_TESTS", "1")
         .output();
 
     match output {
@@ -865,57 +877,56 @@ fn scan_crate(
             Err(_) => continue,
         };
 
-        // Track current function context for contextual allow rules
-        let mut current_fn: Option<String> = None;
-
         for (pattern, desc) in patterns {
-            if let Ok(re) = regex::Regex::new(pattern) {
-                for (line_num, line) in content.lines().enumerate() {
-                    // Track function context (handles `fn`, `pub fn`, `pub(crate) fn`, etc.)
-                    let trimmed = line.trim();
-                    if let Some(fn_pos) = trimmed.find("fn ") {
-                        let after_fn = &trimmed[fn_pos + 3..];
-                        if let Some(paren) = after_fn.find('(') {
-                            current_fn = Some(after_fn[..paren].trim().to_string());
-                        }
+            // Track current function context for contextual allow rules
+            let mut current_fn: Option<String> = None;
+            let re = regex::Regex::new(pattern)
+                .unwrap_or_else(|e| panic!("invalid regex pattern '{}': {}", pattern, e));
+            for (line_num, line) in content.lines().enumerate() {
+                // Track function context (handles `fn`, `pub fn`, `pub(crate) fn`, etc.)
+                let trimmed = line.trim();
+                if let Some(fn_pos) = trimmed.find("fn ") {
+                    let after_fn = &trimmed[fn_pos + 3..];
+                    if let Some(paren) = after_fn.find('(') {
+                        current_fn = Some(after_fn[..paren].trim().to_string());
                     }
-                    if line.trim().starts_with('}') {
-                        current_fn = None;
-                    }
+                }
+                if line.trim().starts_with('}') {
+                    current_fn = None;
+                }
 
-                    if re.is_match(line) {
-                        // Skip the function definition itself
-                        if line.trim().starts_with("fn all_supported_for_tests") {
-                            continue;
-                        }
-                        // Allow all_supported_for_tests() in backend.rs (defines FeatureSet impls
-                        // and test profile helpers like capstone_test_la64()) and in
-                        // test/capstone helper function contexts
-                        if desc.contains("all_supported_for_tests") {
-                            if path_str.contains("backend.rs") {
-                                continue;
-                            }
-                            if let Some(ref fname) = current_fn
-                                && (fname.contains("test") || fname.contains("capstone"))
-                            {
-                                continue;
-                            }
-                        }
-                        // Skip comment lines but still enforce banned handler-patch patterns
-                        if line.trim().starts_with("//") && !desc.contains("handler patch") {
-                            continue;
-                        }
-                        let rel_path = path.strip_prefix(workspace_root).unwrap_or(&path);
-                        let prefix = if warning_only { "WARNING" } else { "ERROR" };
-                        violations.push(format!(
-                            "{}:{}: [{}] {} — `{}`",
-                            rel_path.display(),
-                            line_num + 1,
-                            prefix,
-                            desc,
-                            line.trim()
-                        ));
+                if re.is_match(line) {
+                    // Skip the function definition itself
+                    if line.trim().starts_with("fn all_supported_for_tests") {
+                        continue;
                     }
+                    // Allow all_supported_for_tests() in backend.rs (defines FeatureSet impls
+                    // and test profile helpers like capstone_test_la64()) and in
+                    // test/capstone helper function contexts
+                    if desc.contains("all_supported_for_tests") {
+                        if path_str.contains("backend.rs") {
+                            continue;
+                        }
+                        if let Some(ref fname) = current_fn
+                            && (fname.contains("test") || fname.contains("capstone"))
+                        {
+                            continue;
+                        }
+                    }
+                    // Skip comment lines but still enforce banned handler-patch patterns
+                    if line.trim().starts_with("//") && !desc.contains("handler patch") {
+                        continue;
+                    }
+                    let rel_path = path.strip_prefix(workspace_root).unwrap_or(&path);
+                    let prefix = if warning_only { "WARNING" } else { "ERROR" };
+                    violations.push(format!(
+                        "{}:{}: [{}] {} — `{}`",
+                        rel_path.display(),
+                        line_num + 1,
+                        prefix,
+                        desc,
+                        line.trim()
+                    ));
                 }
             }
         }

@@ -1,6 +1,7 @@
 use criterion::{Criterion, criterion_group, criterion_main};
-use robustone::ir::TextRenderProfile;
-use robustone::{ArchitectureDispatcher, common::ArchitectureProfile, riscv::RiscVHandler};
+use robustone_core::ir::TextRenderProfile;
+use robustone_core::{ArchitectureDispatcher, common::ArchitectureProfile};
+use robustone_riscv::RiscVHandler;
 use std::hint::black_box;
 
 fn bench_riscv_decode(c: &mut Criterion) {

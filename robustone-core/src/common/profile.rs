@@ -25,11 +25,11 @@ impl ArchitectureProfile {
         }
     }
 
-    /// Create a canonical RV32E profile (embedded base integer).
+    /// Create a canonical RV32E profile (embedded base integer, 16 registers).
     pub fn riscv32e() -> Self {
         Self {
-            architecture: Architecture::RiscV32,
-            mode_name: "riscv32",
+            architecture: Architecture::RiscV32E,
+            mode_name: "riscv32e",
             bit_width: 32,
             endianness: Endianness::Little,
             enabled_extensions: vec!["I"],
@@ -91,13 +91,11 @@ impl<'a> From<&'a crate::decode_config::DecodeConfig> for ArchitectureProfile {
         use crate::architecture::Architecture;
         let mode_name = config.mode_name();
         let architecture = match config.arch {
-            crate::decode_config::Arch::RiscV => {
-                if mode_name.starts_with("riscv64") {
-                    Architecture::RiscV64
-                } else {
-                    Architecture::RiscV32
-                }
-            }
+            crate::decode_config::Arch::RiscV => match config.mode {
+                crate::decode_config::Mode::Rv32E => Architecture::RiscV32E,
+                _ if mode_name.starts_with("riscv64") => Architecture::RiscV64,
+                _ => Architecture::RiscV32,
+            },
             crate::decode_config::Arch::LoongArch => Architecture::LoongArch64,
             crate::decode_config::Arch::Arm => Architecture::Arm,
             crate::decode_config::Arch::AArch64 => Architecture::AArch64,
@@ -111,12 +109,12 @@ impl<'a> From<&'a crate::decode_config::DecodeConfig> for ArchitectureProfile {
             | crate::decode_config::Mode::Arm
             | crate::decode_config::Mode::ArmLE
             | crate::decode_config::Mode::ArmBE
-            | crate::decode_config::Mode::Thumb => 32,
+            | crate::decode_config::Mode::Thumb
+            | crate::decode_config::Mode::La32 => 32,
             crate::decode_config::Mode::X64
             | crate::decode_config::Mode::Rv64
             | crate::decode_config::Mode::AArch64
             | crate::decode_config::Mode::AArch64BE
-            | crate::decode_config::Mode::La32
             | crate::decode_config::Mode::La64 => 64,
         };
         let extensions: Vec<&'static str> = config

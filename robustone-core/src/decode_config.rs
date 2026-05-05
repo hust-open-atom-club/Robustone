@@ -156,7 +156,6 @@ pub struct DecodeConfig {
     pub mode: Mode,
     pub endianness: Endianness,
     pub features: FeatureSet,
-    pub detail: DetailLevel,
 }
 
 impl DecodeConfig {
@@ -170,19 +169,12 @@ impl DecodeConfig {
             mode,
             endianness,
             features: FeatureSet::new(),
-            detail: DetailLevel::Full,
         }
     }
 
     /// Builder-style method to set features.
     pub fn with_features(mut self, features: FeatureSet) -> Self {
         self.features = features;
-        self
-    }
-
-    /// Builder-style method to set detail level.
-    pub fn with_detail(mut self, detail: DetailLevel) -> Self {
-        self.detail = detail;
         self
     }
 

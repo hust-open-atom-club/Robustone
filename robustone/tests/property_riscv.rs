@@ -1,10 +1,10 @@
 use proptest::prelude::*;
 use robustone as rt;
-use robustone_core::ir::{
+use robustone::ir::{
     ArchitectureId, DecodeStatus, DecodedInstruction, Operand, RegisterId, RenderHints,
     TextRenderProfile,
 };
-use robustone_core::{Instruction, RenderOptions, render_instruction_text};
+use robustone::{Instruction, RenderOptions, render_instruction_text};
 use std::panic::AssertUnwindSafe;
 
 fn dispatcher_with_riscv() -> rt::ArchitectureDispatcher {

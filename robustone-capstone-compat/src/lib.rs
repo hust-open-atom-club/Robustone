@@ -9,8 +9,39 @@ pub mod xfail;
 pub mod yaml;
 
 #[cfg(test)]
+fn capstone_yaml_enabled() -> bool {
+    std::env::var_os("ROBUSTONE_ENABLE_CAPSTONE_TESTS").is_some()
+}
+
+#[cfg(test)]
+fn capstone_yaml_dir() -> std::path::PathBuf {
+    if let Some(dir) = std::env::var_os("CAPSTONE_TEST_DIR") {
+        return std::path::PathBuf::from(dir);
+    }
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../third_party/capstone/tests/MC/LoongArch")
+}
+
+#[cfg(test)]
+fn require_capstone_yaml(yaml_path: &str) -> bool {
+    if !capstone_yaml_enabled() {
+        eprintln!(
+            "skip: ROBUSTONE_ENABLE_CAPSTONE_TESTS not set — {}",
+            yaml_path
+        );
+        return false;
+    }
+    let resolved = capstone_yaml_dir().join(yaml_path);
+    if !resolved.exists() {
+        panic!("Capstone YAML fixture missing: {}", resolved.display());
+    }
+    true
+}
+
+#[cfg(test)]
 mod tests {
     use super::harness::{self, TestResult};
+    use super::require_capstone_yaml;
     use super::xfail;
     use robustone_core::ArchitectureDispatcher;
     use robustone_loongarch::LoongArchHandler;
@@ -45,6 +76,9 @@ mod tests {
 
     #[test]
     fn test_arith_yaml_smoke() {
+        if !require_capstone_yaml("arith.s.yaml") {
+            return;
+        }
         let path = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../third_party/capstone/tests/MC/LoongArch/arith.s.yaml"
@@ -59,6 +93,9 @@ mod tests {
 
     #[test]
     fn test_bit_shift_yaml() {
+        if !require_capstone_yaml("bit-shift.s.yaml") {
+            return;
+        }
         let path = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../third_party/capstone/tests/MC/LoongArch/bit-shift.s.yaml"
@@ -73,6 +110,9 @@ mod tests {
 
     #[test]
     fn test_bit_manipu_yaml() {
+        if !require_capstone_yaml("bit-manipu.s.yaml") {
+            return;
+        }
         let path = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../third_party/capstone/tests/MC/LoongArch/bit-manipu.s.yaml"
@@ -87,6 +127,9 @@ mod tests {
 
     #[test]
     fn test_branch_yaml() {
+        if !require_capstone_yaml("branch.s.yaml") {
+            return;
+        }
         let path = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../third_party/capstone/tests/MC/LoongArch/branch.s.yaml"
@@ -101,6 +144,9 @@ mod tests {
 
     #[test]
     fn test_memory_yaml() {
+        if !require_capstone_yaml("memory.s.yaml") {
+            return;
+        }
         let path = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../third_party/capstone/tests/MC/LoongArch/memory.s.yaml"
@@ -115,6 +161,9 @@ mod tests {
 
     #[test]
     fn test_atomic_yaml() {
+        if !require_capstone_yaml("atomic.s.yaml") {
+            return;
+        }
         let path = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../third_party/capstone/tests/MC/LoongArch/atomic.s.yaml"
@@ -129,6 +178,9 @@ mod tests {
 
     #[test]
     fn test_barrier_yaml() {
+        if !require_capstone_yaml("barrier.s.yaml") {
+            return;
+        }
         let path = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../third_party/capstone/tests/MC/LoongArch/barrier.s.yaml"
@@ -143,6 +195,9 @@ mod tests {
 
     #[test]
     fn test_base_yaml() {
+        if !require_capstone_yaml("base.s.yaml") {
+            return;
+        }
         let path = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../third_party/capstone/tests/MC/LoongArch/base.s.yaml"
@@ -157,6 +212,9 @@ mod tests {
 
     #[test]
     fn test_pseudos_yaml() {
+        if !require_capstone_yaml("pseudos.s.yaml") {
+            return;
+        }
         let path = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../third_party/capstone/tests/MC/LoongArch/pseudos.s.yaml"
@@ -171,6 +229,9 @@ mod tests {
 
     #[test]
     fn test_valid_yaml() {
+        if !require_capstone_yaml("valid.s.yaml") {
+            return;
+        }
         let path = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../third_party/capstone/tests/MC/LoongArch/valid.s.yaml"
@@ -185,6 +246,9 @@ mod tests {
 
     #[test]
     fn test_f_move_yaml() {
+        if !require_capstone_yaml("f-move.s.yaml") {
+            return;
+        }
         let path = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../third_party/capstone/tests/MC/LoongArch/f-move.s.yaml"
@@ -199,6 +263,9 @@ mod tests {
 
     #[test]
     fn test_f_memory_yaml() {
+        if !require_capstone_yaml("f-memory.s.yaml") {
+            return;
+        }
         let path = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../third_party/capstone/tests/MC/LoongArch/f-memory.s.yaml"
@@ -213,6 +280,9 @@ mod tests {
 
     #[test]
     fn test_f_arith_yaml() {
+        if !require_capstone_yaml("f-arith.s.yaml") {
+            return;
+        }
         let path = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../third_party/capstone/tests/MC/LoongArch/f-arith.s.yaml"
@@ -227,6 +297,9 @@ mod tests {
 
     #[test]
     fn test_d_arith_yaml() {
+        if !require_capstone_yaml("d-arith.s.yaml") {
+            return;
+        }
         let path = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../third_party/capstone/tests/MC/LoongArch/d-arith.s.yaml"
@@ -241,6 +314,9 @@ mod tests {
 
     #[test]
     fn test_d_move_yaml() {
+        if !require_capstone_yaml("d-move.s.yaml") {
+            return;
+        }
         let path = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../third_party/capstone/tests/MC/LoongArch/d-move.s.yaml"
@@ -255,6 +331,9 @@ mod tests {
 
     #[test]
     fn test_lvz_yaml() {
+        if !require_capstone_yaml("lvz.s.yaml") {
+            return;
+        }
         let path = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../third_party/capstone/tests/MC/LoongArch/lvz.s.yaml"
@@ -269,6 +348,9 @@ mod tests {
 
     #[test]
     fn test_shuf_yaml() {
+        if !require_capstone_yaml("shuf.s.yaml") {
+            return;
+        }
         let path = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../third_party/capstone/tests/MC/LoongArch/shuf.s.yaml"
@@ -283,6 +365,9 @@ mod tests {
 
     #[test]
     fn test_misc_yaml() {
+        if !require_capstone_yaml("misc.s.yaml") {
+            return;
+        }
         let path = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../third_party/capstone/tests/MC/LoongArch/misc.s.yaml"
@@ -298,7 +383,9 @@ mod tests {
 
 #[cfg(test)]
 mod bulk_tests {
+    use super::capstone_yaml_dir;
     use super::harness::{self, TestResult};
+    use super::require_capstone_yaml;
     use super::xfail;
     use robustone_core::ArchitectureDispatcher;
     use robustone_loongarch::LoongArchHandler;
@@ -312,12 +399,13 @@ mod bulk_tests {
     #[test]
     #[ignore]
     fn bulk_run_all_loongarch_yaml() {
+        if !require_capstone_yaml(".") {
+            return;
+        }
         let dispatcher = loongarch_dispatcher();
         let xfail = xfail::loongarch_default_xfails();
-        let dir = std::path::Path::new(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../third_party/capstone/tests/MC/LoongArch"
-        ));
+        let dir = capstone_yaml_dir();
+        let dir: &std::path::Path = dir.as_ref();
         let results = harness::run_yaml_dir::<
             crate::adapter::CapstoneLoongArchYaml,
             robustone_loongarch::backend::LoongArchBackend,

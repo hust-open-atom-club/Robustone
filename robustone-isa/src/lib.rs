@@ -119,7 +119,16 @@ pub trait ArchitectureBackend: Sized + Sync + 'static {
         for f in format.fields() {
             if f.field_type() == field {
                 let w: u64 = word.into();
-                let mask = ((1u64 << f.length()) - 1) as u32;
+                debug_assert!(
+                    f.length() < 64,
+                    "field length {} exceeds max supported (63)",
+                    f.length()
+                );
+                let mask = if f.length() >= 64 {
+                    u32::MAX
+                } else {
+                    ((1u64 << f.length()) - 1) as u32
+                };
                 return Ok(((w >> f.start()) as u32) & mask);
             }
         }
@@ -923,20 +932,33 @@ pub fn decode_one<B: ArchitectureBackend>(
     // Step 7: apply architecture-specific aliases
     B::apply_aliases(&mut decoded);
 
-    // Step 8: validate encoding constraints (RegisterNotZero, etc.)
+    // Step 8: validate encoding constraints
     for constraint in spec.constraints {
-        if let EncodingConstraint::RegisterNotZero { field } = constraint {
-            let raw = B::extract_field(instr.raw, spec.format, *field)?;
-            if raw == 0 {
-                return Err(DisasmError::decode_failure(
-                    DecodeErrorKind::InvalidEncoding,
-                    None,
-                    format!(
-                        "{}: register field {:?} must be non-zero",
-                        spec.mnemonic(),
-                        field
-                    ),
-                ));
+        match *constraint {
+            EncodingConstraint::RegisterNotZero { field } => {
+                let raw = B::extract_field(instr.raw, spec.format, field)?;
+                if raw == 0 {
+                    return Err(DisasmError::decode_failure(
+                        DecodeErrorKind::InvalidEncoding,
+                        None,
+                        format!(
+                            "{}: register field {:?} must be non-zero",
+                            spec.mnemonic(),
+                            field
+                        ),
+                    ));
+                }
+            }
+            EncodingConstraint::RegisterEquals { .. }
+            | EncodingConstraint::ModeRequired { .. }
+            | EncodingConstraint::FeatureRequired { .. }
+            | EncodingConstraint::RegistersDistinct { .. }
+            | EncodingConstraint::RegistersAlias { .. }
+            | EncodingConstraint::FeatureDepends { .. }
+            | EncodingConstraint::RegisterRole { .. } => {
+                // Defined but not yet enforced — no current specs use these variants.
+                // Full enforcement will be added as part of the Alt-4 Classified
+                // Lookup Outcomes plan.
             }
         }
     }
@@ -973,7 +995,14 @@ fn lower_operand<B: ArchitectureBackend>(
                 }
                 _ => {
                     let w: u64 = word.into();
-                    expr.evaluate(w as u32)
+                    let lo: u32 = w.try_into().unwrap_or_else(|_| {
+                        panic!(
+                            "instruction word {:#x} exceeds u32 range — \
+                             Word=u64 backends require ImmExpr::evaluate signature change",
+                            w
+                        )
+                    });
+                    expr.evaluate(lo)
                 }
             };
             Ok(match *kind {
@@ -1016,6 +1045,7 @@ fn apply_transform(raw: u32, transform: ImmediateTransform) -> i64 {
     match transform {
         ImmediateTransform::None => raw as i64,
         ImmediateTransform::SignExtend { bits } => {
+            debug_assert!(bits > 0, "SignExtend bits must be > 0");
             if bits >= 32 {
                 return raw as i32 as i64;
             }

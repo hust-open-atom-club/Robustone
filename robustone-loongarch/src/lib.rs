@@ -61,11 +61,14 @@ impl LoongArchHandler {
 }
 
 /// Resolve the production decode profile for an arch name string.
+/// Uses the restricted base profile for production use; tests that need
+/// all features enabled should use `LoongArchBackend::capstone_test_la64()`
+/// directly when building their own dispatcher.
 fn profile_for_arch_name(
     arch_name: &str,
 ) -> Result<DecodeProfile<backend::LoongArchBackend>, DisasmError> {
     match arch_name {
-        "loongarch" | "loongarch64" => Ok(backend::LoongArchBackend::capstone_test_la64()),
+        "loongarch" | "loongarch64" => Ok(backend::LoongArchBackend::la64_base()),
         _ => Err(DisasmError::UnsupportedArchitecture(arch_name.to_string())),
     }
 }
@@ -92,17 +95,10 @@ impl ArchitectureHandler for LoongArchHandler {
         addr: u64,
     ) -> Result<(DecodedInstruction, usize), DisasmError> {
         let profile = profile_for_arch_name(arch_name)?;
-        let decoded = decode_one::<backend::LoongArchBackend>(bytes, addr, &profile)?;
+        let mut decoded = decode_one::<backend::LoongArchBackend>(bytes, addr, &profile)?;
         let size = decoded.size;
 
-        // ------------------------------------------------------------------
-        // All handler patches migrated to render hints (Round 14):
-        // - nop/move aliases: aliases.rs (Round 7)
-        // - .xs suffix: removed (dead code, Round 13-14)
-        // - CSR/vector dedup: render-stage operand deduplication (Round 14)
-        // - invtlb reorder: alias render_hints (visible_operands, operand_order) in aliases.rs (Round 21)
-        // Do NOT add new patches here.
-        // ------------------------------------------------------------------
+        decoded.mode = arch_name.to_string();
 
         Ok((decoded, size))
     }
