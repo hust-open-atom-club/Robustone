@@ -6,6 +6,7 @@
 //! - `cargo xtask compat [--strict]` – run Capstone compatibility tests
 //! - `cargo xtask compat-report [--deny-xfail-increase]` – generate compatibility report
 //! - `cargo xtask audit-no-hardcode` – detect mnemonic-based hardcode
+//! - `cargo xtask audit-no-capstone-generated-specs` – detect Capstone-generated spec artifacts
 //! - `cargo xtask new-arch <name>` – scaffold a new architecture crate
 
 use std::env;
@@ -33,6 +34,7 @@ fn main() -> ExitCode {
         "compat" => compat(&args[1..]),
         "compat-report" => compat_report(&args[1..]),
         "audit-no-hardcode" => audit_no_hardcode(&args[1..]),
+        "audit-no-capstone-generated-specs" => audit_no_capstone_generated_specs(),
         "new-arch" => new_arch(&args[1..]),
         other => {
             eprintln!("Unknown command: {}", other);
@@ -842,6 +844,101 @@ fn audit_no_hardcode(args: &[String]) -> ExitCode {
         println!("audit-no-hardcode: {} violation(s) found:", errors.len());
         for v in &errors {
             println!("  ERROR: {}", v);
+        }
+        ExitCode::FAILURE
+    }
+}
+
+// ============================================================================
+// audit-no-capstone-generated-specs
+// ============================================================================
+
+fn audit_no_capstone_generated_specs() -> ExitCode {
+    let workspace_root = find_workspace_root();
+    let arch_crates = [
+        "robustone-loongarch",
+        "robustone-riscv",
+        "robustone-arm",
+        "robustone-x86",
+    ];
+
+    let forbidden_patterns: &[(&str, &str)] = &[
+        ("capstone_specs", "Capstone spec module/file reference"),
+        ("ALL_CAPSTONE_SPECS", "Capstone spec table export"),
+        ("Auto-generated comprehensive", "Auto-generated Capstone header"),
+        ("from Capstone YAML", "Capstone YAML derivation marker"),
+        ("generated from Capstone", "Capstone generation marker"),
+        ("G_0000", "Anonymous generated spec symbol"),
+        ("G_0001", "Anonymous generated spec symbol"),
+    ];
+
+    let mut violations = Vec::new();
+
+    for crate_name in &arch_crates {
+        let src_dir = workspace_root.join(crate_name).join("src");
+        if !src_dir.exists() {
+            continue;
+        }
+        for entry in walk_dir(&src_dir) {
+            let path = entry.path();
+            if path.extension().and_then(|s| s.to_str()) != Some("rs") {
+                continue;
+            }
+            let content = match fs::read_to_string(&path) {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
+            for (pattern, desc) in forbidden_patterns {
+                if content.contains(pattern) {
+                    for (line_no, line) in content.lines().enumerate() {
+                        if line.contains(pattern) {
+                            let rel_path = path.strip_prefix(&workspace_root).unwrap_or(&path);
+                            violations.push(format!(
+                                "{}:{}: [ERROR] {} — `{}`",
+                                rel_path.display(),
+                                line_no + 1,
+                                desc,
+                                line.trim()
+                            ));
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Also check scripts/ for leftover generators
+    let scripts_dir = workspace_root.join("scripts");
+    if scripts_dir.exists() {
+        for entry in fs::read_dir(&scripts_dir).unwrap_or_else(|_| panic!("read_dir {}", scripts_dir.display())) {
+            let entry = match entry {
+                Ok(e) => e,
+                Err(_) => continue,
+            };
+            let name = entry.file_name().to_string_lossy().to_string();
+            if (name.starts_with("generate_") && name.ends_with(".py"))
+                || name == "capstone_to_specs.rs"
+                || name == "yaml_to_specs.rs"
+            {
+                violations.push(format!(
+                    "scripts/{}: [ERROR] Capstone spec generator script still exists",
+                    name
+                ));
+            }
+        }
+    }
+
+    if violations.is_empty() {
+        println!("audit-no-capstone-generated-specs: OK – no violations found");
+        ExitCode::SUCCESS
+    } else {
+        eprintln!(
+            "audit-no-capstone-generated-specs: FAILED – {} violation(s) found",
+            violations.len()
+        );
+        for v in &violations {
+            eprintln!("  - {}", v);
         }
         ExitCode::FAILURE
     }

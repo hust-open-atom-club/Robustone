@@ -46,6 +46,10 @@ jobs:
         id: spec_checks
         run: cargo xtask check-spec --all
 
+      - name: Run Capstone-generated spec audit
+        id: capstone_audit
+        run: cargo xtask audit-no-capstone-generated-specs
+
       - name: Summarize repository checks
         if: always()
         run: |
@@ -55,6 +59,7 @@ jobs:
             echo "- \`make check\`: ${{ steps.repo_checks.outcome }}"
             echo "- \`cargo xtask verify-boundary\`: ${{ steps.boundary_checks.outcome }}"
             echo "- \`cargo xtask check-spec --all\`: ${{ steps.spec_checks.outcome }}"
+            echo "- \`cargo xtask audit-no-capstone-generated-specs\`: ${{ steps.capstone_audit.outcome }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
   test:
