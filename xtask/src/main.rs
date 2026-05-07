@@ -865,7 +865,10 @@ fn audit_no_capstone_generated_specs() -> ExitCode {
     let forbidden_patterns: &[(&str, &str)] = &[
         ("capstone_specs", "Capstone spec module/file reference"),
         ("ALL_CAPSTONE_SPECS", "Capstone spec table export"),
-        ("Auto-generated comprehensive", "Auto-generated Capstone header"),
+        (
+            "Auto-generated comprehensive",
+            "Auto-generated Capstone header",
+        ),
         ("from Capstone YAML", "Capstone YAML derivation marker"),
         ("generated from Capstone", "Capstone generation marker"),
         ("G_0000", "Anonymous generated spec symbol"),
@@ -911,7 +914,9 @@ fn audit_no_capstone_generated_specs() -> ExitCode {
     // Also check scripts/ for leftover generators
     let scripts_dir = workspace_root.join("scripts");
     if scripts_dir.exists() {
-        for entry in fs::read_dir(&scripts_dir).unwrap_or_else(|_| panic!("read_dir {}", scripts_dir.display())) {
+        for entry in fs::read_dir(&scripts_dir)
+            .unwrap_or_else(|_| panic!("read_dir {}", scripts_dir.display()))
+        {
             let entry = match entry {
                 Ok(e) => e,
                 Err(_) => continue,

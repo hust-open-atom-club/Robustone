@@ -760,14 +760,11 @@ fn loongarch_lookup(
     profile: &DecodeProfile<LoongArchBackend>,
 ) -> Option<&'static InstructionSpec<LoongArchBackend>> {
     let tables: &[&[InstructionSpec<LoongArchBackend>]] = &[LOONGARCH_BASE_SPECS, VECTOR_SPECS];
-    tables
-        .iter()
-        .flat_map(|t| t.iter())
-        .find(|spec| {
-            (word & spec.pattern().mask) == spec.pattern().value
-                && spec.modes().matches(profile.mode)
-                && profile.features.contains(spec.features())
-        })
+    tables.iter().flat_map(|t| t.iter()).find(|spec| {
+        (word & spec.pattern().mask) == spec.pattern().value
+            && spec.modes().matches(profile.mode)
+            && profile.features.contains(spec.features())
+    })
 }
 
 fn loongarch_lower_register(
@@ -786,4 +783,3 @@ fn loongarch_render_policy(
 ) -> RenderPolicy<LoongArchBackend> {
     RenderPolicy::new(profile.render_dialect, profile.alias_policy)
 }
-
