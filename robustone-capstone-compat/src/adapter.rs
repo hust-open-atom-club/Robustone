@@ -121,7 +121,7 @@ impl CapstoneArchAdapter<LoongArchBackend> for CapstoneLoongArchYaml {
     }
 
     fn profile_for_fixture(_fixture: &Self::Fixture) -> DecodeProfile<LoongArchBackend> {
-        LoongArchBackend::capstone_test_la64()
+        LoongArchBackend::compat_test_la64()
     }
 
     fn normalize_expected(text: &str) -> String {

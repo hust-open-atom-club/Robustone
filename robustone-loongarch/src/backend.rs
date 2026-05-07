@@ -71,7 +71,7 @@ impl LoongArchBackend {
     }
 
     /// Test profile with all features and pseudo-instruction aliases enabled.
-    pub fn capstone_test_la64() -> DecodeProfile<Self> {
+    pub fn compat_test_la64() -> DecodeProfile<Self> {
         DecodeProfile {
             mode: LoongArchMode::LA64,
             features: LoongArchFeature::all_supported_for_tests(),

@@ -62,7 +62,7 @@ impl LoongArchHandler {
 
 /// Resolve the production decode profile for an arch name string.
 /// Uses the restricted base profile for production use; tests that need
-/// all features enabled should use `LoongArchBackend::capstone_test_la64()`
+/// all features enabled should use `LoongArchBackend::compat_test_la64()`
 /// directly when building their own dispatcher.
 fn profile_for_arch_name(
     arch_name: &str,

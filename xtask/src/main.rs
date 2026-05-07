@@ -998,7 +998,7 @@ fn scan_crate(
                         continue;
                     }
                     // Allow all_supported_for_tests() in backend.rs (defines FeatureSet impls
-                    // and test profile helpers like capstone_test_la64()) and in
+                    // and test profile helpers like compat_test_la64()) and in
                     // test/capstone helper function contexts
                     if desc.contains("all_supported_for_tests") {
                         if path_str.contains("backend.rs") {
