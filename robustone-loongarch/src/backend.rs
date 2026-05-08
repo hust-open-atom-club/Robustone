@@ -111,6 +111,7 @@ robustone_isa_macros::define_registers! {
     bank Gpr  { count = 32; base_id = 0;   prefix = "$r"; }
     bank Fpr  { count = 32; base_id = 32;  prefix = "$f"; }
     bank Xr   { count = 32; base_id = 64;  prefix = "$x"; }
+    bank Vr   { count = 32; base_id = 112; prefix = "$v"; }
     bank Fcc  { count = 8;  base_id = 96; }
     bank Scr  { count = 4;  base_id = 104; }
     bank Fcsr { count = 4;  base_id = 108; }
@@ -174,6 +175,45 @@ robustone_isa_macros::define_formats! {
         rj: bits(5, 5) as Rj,
         i8: bits(10, 8) as I8,
     };
+    format FMT_R2I9 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        ui9: bits(10, 9) as Ui5,
+    };
+    format FMT_R2I10 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        ui10: bits(10, 10) as Ui5,
+    };
+    format FMT_R2I11 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        ui11: bits(10, 11) as Ui5,
+    };
+    format FMT_R2I8I2 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        si8: bits(10, 8) as I8,
+        ui2: bits(18, 2) as Ui5,
+    };
+    format FMT_R2I8I3 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        si8: bits(10, 8) as I8,
+        ui3: bits(18, 3) as Ui5,
+    };
+    format FMT_R2I8I4 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        si8: bits(10, 8) as I8,
+        ui4: bits(18, 4) as Ui5,
+    };
+    format FMT_R2I8I5 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        si8: bits(10, 8) as I8,
+        ui5: bits(18, 5) as Ui5,
+    };
     format FMT_R2I12 {
         rd: bits(0, 5) as Rd,
         rj: bits(5, 5) as Rj,
@@ -208,6 +248,10 @@ robustone_isa_macros::define_formats! {
         rj: bits(5, 5) as Rj,
         si16: bits(10, 16) as Si16,
     };
+    format FMT_C1I16_BJ {
+        cj: bits(5, 3) as Cd,
+        si16: bits(10, 16) as Si16,
+    };
     format FMT_I15 {
         code: bits(0, 15) as Code,
     };
@@ -220,6 +264,21 @@ robustone_isa_macros::define_formats! {
         rd: bits(0, 5) as Rd,
         rj: bits(5, 5) as Rj,
         ui6: bits(10, 6) as Ui6,
+    };
+    format FMT_R2I7 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        ui7: bits(10, 7) as Ui5,
+    };
+    format FMT_R2I1 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        ui1: bits(10, 1) as Ui5,
+    };
+    format FMT_R2I2 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        ui2: bits(10, 2) as Ui5,
     };
     format FMT_R2I3 {
         rd: bits(0, 5) as Rd,
@@ -255,7 +314,65 @@ robustone_isa_macros::define_formats! {
     format FMT_LDPTE {
         rj: bits(5, 5) as Rj,
         seq: bits(10, 8) as I8,
-    }
+    };
+    // LBT formats
+    format FMT_R1_H {
+        rj: bits(5, 5) as Rj,
+    };
+    format FMT_I3 {
+        ui3: bits(5, 3) as Ui5,
+    };
+    format FMT_R2_HI5 {
+        rj: bits(5, 5) as Rj,
+        rk: bits(10, 5) as Rk,
+    };
+    format FMT_R2I3_H {
+        rj: bits(5, 5) as Rj,
+        ui3: bits(10, 3) as Ui5,
+    };
+    format FMT_R2I4_H {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        ui4: bits(0, 4) as Ui5,
+    };
+    format FMT_R2I5_H {
+        rj: bits(5, 5) as Rj,
+        ui5: bits(10, 5) as Ui5,
+    };
+    format FMT_R2I5I4 {
+        rj: bits(5, 5) as Rj,
+        ui5: bits(10, 5) as Ui5,
+        ui4: bits(0, 4) as Ui5,
+    };
+    format FMT_R1I4 {
+        rj: bits(5, 5) as Rj,
+        ui4: bits(10, 4) as Ui5,
+    };
+    format FMT_R1I5I8 {
+        rd: bits(0, 5) as Rd,
+        ui5: bits(5, 5) as Ui5,
+        i8: bits(10, 8) as I8,
+    };
+    format FMT_R1I4_H {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        ui1: bits(10, 1) as Ui5,
+    };
+    format FMT_R1I8 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        ui8: bits(10, 8) as I8,
+    };
+    format FMT_R2I6_H {
+        rj: bits(5, 5) as Rj,
+        ui6: bits(10, 6) as Ui6,
+    };
+    format FMT_R2RKI4 {
+        rd: bits(0, 5) as Rd,
+        rj: bits(5, 5) as Rj,
+        rk: bits(10, 5) as Rk,
+        ui4: bits(0, 4) as Ui5,
+    };
 }
 
 // ============================================================================
@@ -266,6 +383,7 @@ include!("backend/specs_float_cmp.rs");
 include!("backend/specs_float_mem.rs");
 include!("backend/specs_system.rs");
 include!("backend/specs_vector.rs");
+include!("backend/specs_lbt.rs");
 // specs_remaining.rs loaded separately — not via include! to avoid spec validation
 
 pub static LOONGARCH_BASE_SPECS: &[InstructionSpec<LoongArchBackend>] = &[
@@ -619,6 +737,37 @@ pub static LOONGARCH_BASE_SPECS: &[InstructionSpec<LoongArchBackend>] = &[
     FCVT_LD_D,
     FCVT_S_D,
     FCVT_UD_D,
+    BCEQZ,
+    BCNEZ,
+    CRC_W_B_W,
+    CRC_W_D_W,
+    CRC_W_H_W,
+    CRC_W_W_W,
+    CRCC_W_B_W,
+    CRCC_W_D_W,
+    CRCC_W_H_W,
+    CRCC_W_W_W,
+    JISCR0,
+    JISCR1,
+    LDGT_B,
+    LDGT_D,
+    LDGT_H,
+    LDGT_W,
+    LDLE_B,
+    LDLE_D,
+    LDLE_H,
+    LDLE_W,
+    MOVGR2SCR,
+    MOVSCR2GR,
+    NOP,
+    STGT_B,
+    STGT_D,
+    STGT_H,
+    STGT_W,
+    STLE_B,
+    STLE_D,
+    STLE_H,
+    STLE_W,
 ];
 
 // ============================================================================
@@ -759,7 +908,8 @@ fn loongarch_lookup(
     word: u32,
     profile: &DecodeProfile<LoongArchBackend>,
 ) -> Option<&'static InstructionSpec<LoongArchBackend>> {
-    let tables: &[&[InstructionSpec<LoongArchBackend>]] = &[LOONGARCH_BASE_SPECS, VECTOR_SPECS];
+    let tables: &[&[InstructionSpec<LoongArchBackend>]] =
+        &[LOONGARCH_BASE_SPECS, VECTOR_SPECS, LBT_SPECS];
     tables.iter().flat_map(|t| t.iter()).find(|spec| {
         (word & spec.pattern().mask) == spec.pattern().value
             && spec.modes().matches(profile.mode)

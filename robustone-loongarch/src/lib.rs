@@ -341,6 +341,25 @@ mod debug_tests {
             Err(e) => println!("Error: {:?}", e),
         }
     }
+
+    #[test]
+    fn test_armnot() {
+        let arch = LoongArchHandler::new();
+        let bytes = [0x9c, 0xc4, 0x3f, 0x00];
+        let result = arch.disassemble(&bytes, "loongarch64", 0);
+        match result {
+            Ok((insn, _)) => {
+                println!("mnemonic: {}", insn.mnemonic);
+                println!("operands: {}", insn.operands);
+                if let Some(decoded) = insn.decoded {
+                    for (i, op) in decoded.operands.iter().enumerate() {
+                        println!("op {}: {:?}", i, op);
+                    }
+                }
+            }
+            Err(e) => println!("Error: {:?}", e),
+        }
+    }
 }
 
 // Register the LoongArch handler with the global inventory.

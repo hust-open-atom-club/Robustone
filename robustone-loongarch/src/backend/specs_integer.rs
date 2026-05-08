@@ -1196,3 +1196,478 @@ macro_rules! upper_imm_insn {
 }
 
 // Float arithmetic
+
+loongarch_insn!(
+    BCEQZ,
+    "bceqz",
+    "BCEQZ",
+    0xfc000300,
+    0x48000000,
+    &FMT_C1I16_BJ,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Fcc, LoongArchField::Cd, Access::Read),
+        robustone_isa::imm!(
+            LoongArchField::Si16,
+            ImmediateTransform::SignExtendThenShift { bits: 16, shift: 2 },
+            ImmediateKind::PcRelative,
+            mask = 0xFFFF
+        ),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    BCNEZ,
+    "bcnez",
+    "BCNEZ",
+    0xfc000300,
+    0x48000100,
+    &FMT_C1I16_BJ,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Fcc, LoongArchField::Cd, Access::Read),
+        robustone_isa::imm!(
+            LoongArchField::Si16,
+            ImmediateTransform::SignExtendThenShift { bits: 16, shift: 2 },
+            ImmediateKind::PcRelative,
+            mask = 0xFFFF
+        ),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    CRC_W_B_W,
+    "crc.w.b.w",
+    "CRC_W_B_W",
+    0xffff8000,
+    0x00240000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    CRC_W_D_W,
+    "crc.w.d.w",
+    "CRC_W_D_W",
+    0xffff8000,
+    0x00258000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    CRC_W_H_W,
+    "crc.w.h.w",
+    "CRC_W_H_W",
+    0xffff8000,
+    0x00248000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    CRC_W_W_W,
+    "crc.w.w.w",
+    "CRC_W_W_W",
+    0xffff8000,
+    0x00250000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    CRCC_W_B_W,
+    "crcc.w.b.w",
+    "CRCC_W_B_W",
+    0xffff8000,
+    0x00260000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    CRCC_W_D_W,
+    "crcc.w.d.w",
+    "CRCC_W_D_W",
+    0xffff8000,
+    0x00278000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    CRCC_W_H_W,
+    "crcc.w.h.w",
+    "CRCC_W_H_W",
+    0xffff8000,
+    0x00268000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    CRCC_W_W_W,
+    "crcc.w.w.w",
+    "CRCC_W_W_W",
+    0xffff8000,
+    0x00270000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    JISCR0,
+    "jiscr0",
+    "JISCR0",
+    0xfc0003e0,
+    0x48000200,
+    &FMT_BJ,
+    &[
+        robustone_isa::imm!(
+            LoongArchField::Si16,
+            ImmediateTransform::SignExtendThenShift { bits: 16, shift: 2 },
+            ImmediateKind::PcRelative,
+            mask = 0xFFFF
+        ),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    JISCR1,
+    "jiscr1",
+    "JISCR1",
+    0xfc0003e0,
+    0x48000300,
+    &FMT_BJ,
+    &[
+        robustone_isa::imm!(
+            LoongArchField::Si16,
+            ImmediateTransform::SignExtendThenShift { bits: 16, shift: 2 },
+            ImmediateKind::PcRelative,
+            mask = 0xFFFF
+        ),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    LDGT_B,
+    "ldgt.b",
+    "LDGT_B",
+    0xffff8000,
+    0x38780000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    LDGT_D,
+    "ldgt.d",
+    "LDGT_D",
+    0xffff8000,
+    0x38798000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    LDGT_H,
+    "ldgt.h",
+    "LDGT_H",
+    0xffff8000,
+    0x38788000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    LDGT_W,
+    "ldgt.w",
+    "LDGT_W",
+    0xffff8000,
+    0x38790000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    LDLE_B,
+    "ldle.b",
+    "LDLE_B",
+    0xffff8000,
+    0x387a0000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    LDLE_D,
+    "ldle.d",
+    "LDLE_D",
+    0xffff8000,
+    0x387b8000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    LDLE_H,
+    "ldle.h",
+    "LDLE_H",
+    0xffff8000,
+    0x387a8000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    LDLE_W,
+    "ldle.w",
+    "LDLE_W",
+    0xffff8000,
+    0x387b0000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    MOVGR2SCR,
+    "movgr2scr",
+    "MOVGR2SCR",
+    0xfffffc00,
+    0x00000800,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Scr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    MOVSCR2GR,
+    "movscr2gr",
+    "MOVSCR2GR",
+    0xfffffc00,
+    0x00000c00,
+    &FMT_R2,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Scr, LoongArchField::Rj, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    NOP,
+    "nop",
+    "NOP",
+    0xffffffff,
+    0x03400000,
+    &FMT_NONE,
+    &[],
+    &[InstructionGroup::Integer],
+    1
+);
+
+loongarch_insn!(
+    STGT_B,
+    "stgt.b",
+    "STGT_B",
+    0xffff8000,
+    0x387c0000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    STGT_D,
+    "stgt.d",
+    "STGT_D",
+    0xffff8000,
+    0x387d8000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    STGT_H,
+    "stgt.h",
+    "STGT_H",
+    0xffff8000,
+    0x387c8000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    STGT_W,
+    "stgt.w",
+    "STGT_W",
+    0xffff8000,
+    0x387d0000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    STLE_B,
+    "stle.b",
+    "STLE_B",
+    0xffff8000,
+    0x387e0000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    STLE_D,
+    "stle.d",
+    "STLE_D",
+    0xffff8000,
+    0x387f8000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    STLE_H,
+    "stle.h",
+    "STLE_H",
+    0xffff8000,
+    0x387e8000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+
+loongarch_insn!(
+    STLE_W,
+    "stle.w",
+    "STLE_W",
+    0xffff8000,
+    0x387f0000,
+    &FMT_R3,
+    &[
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rd, Access::Write),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rj, Access::Read),
+        robustone_isa::reg!(LoongArchRegisterClass::Gpr, LoongArchField::Rk, Access::Read),
+    ],
+    &[InstructionGroup::Integer]
+);
+

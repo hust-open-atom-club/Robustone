@@ -80,14 +80,12 @@ pub fn render_loongarch_text_parts(
         }
     }
 
-    // Deduplicate equal register operands for CSR and vector instructions.
-    // Uses InstructionGroup to identify relevant instructions (replaces
-    // opcode_id string prefix checks).
+    // Deduplicate equal register operands for CSR instructions only.
+    // Vector instructions are excluded to match reference decoder output,
+    // which always prints all operands including duplicates.
     let needs_csr_dedup = instruction.groups.iter().any(|g| {
         *g == robustone_core::ir::InstructionGroup::Privileged
             || *g == robustone_core::ir::InstructionGroup::System
-            || *g == robustone_core::ir::InstructionGroup::Vector
-            || *g == robustone_core::ir::InstructionGroup::Vector256
     });
     if needs_csr_dedup {
         let mut dedup_indices: Vec<usize> = Vec::new();
