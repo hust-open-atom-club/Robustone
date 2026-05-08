@@ -61,6 +61,7 @@ pub fn apply_riscv_aliases(decoded: &mut DecodedInstruction) {
                         // the compat mnemonic and operand transformation are
                         // applied at render time via render_hints.
                         decoded.render_hints.compat_mnemonic = Some(pf.to_string());
+                        decoded.opcode_id = Some(pf.to_string());
                         decoded.operands = vec![Operand::Memory {
                             base: Some(rs1),
                             displacement: 0,
@@ -182,16 +183,29 @@ pub fn apply_riscv_aliases(decoded: &mut DecodedInstruction) {
         "c.addw" => {
             decoded.render_hints.compat_mnemonic = Some("addw".to_string());
         }
-        "fadd.s" | "fsub.s" | "fmul.s" | "fdiv.s" => {
-            if let Some(Operand::Text { value }) = decoded.operands.last_mut() {
-                *value = match value.as_str() {
-                    "0" => "rne".to_string(),
-                    "1" => "rtz".to_string(),
-                    "2" => "rdn".to_string(),
-                    "3" => "rup".to_string(),
-                    "4" => "rmm".to_string(),
-                    "7" => "dyn".to_string(),
-                    _ => value.clone(),
+        "fadd.s" | "fsub.s" | "fmul.s" | "fdiv.s" | "fsqrt.s" | "fmadd.s" | "fmsub.s"
+        | "fnmadd.s" | "fnmsub.s" | "fcvt.w.s" | "fcvt.wu.s" | "fcvt.s.w" | "fcvt.s.wu"
+        | "fadd.d" | "fsub.d" | "fmul.d" | "fdiv.d" | "fsqrt.d" | "fmadd.d" | "fmsub.d"
+        | "fnmadd.d" | "fnmsub.d" | "fcvt.w.d" | "fcvt.wu.d" | "fcvt.d.w" | "fcvt.d.wu"
+        | "fcvt.s.d" | "fcvt.d.s" => {
+            if let Some(Operand::Text { value }) = decoded.operands.last() {
+                match value.as_str() {
+                    "7" => {
+                        // Reference decoder omits the rounding mode when it is dyn (7).
+                        decoded.operands.pop();
+                    }
+                    _ => {
+                        if let Some(Operand::Text { value }) = decoded.operands.last_mut() {
+                            *value = match value.as_str() {
+                                "0" => "rne".to_string(),
+                                "1" => "rtz".to_string(),
+                                "2" => "rdn".to_string(),
+                                "3" => "rup".to_string(),
+                                "4" => "rmm".to_string(),
+                                _ => value.clone(),
+                            };
+                        }
+                    }
                 };
             }
         }

@@ -37,8 +37,7 @@ robustone_isa_macros::define_instructions! {
         format = &I_TYPE;
         operands = &[
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write),
-            robustone_isa::imm!(RiscVField::Imm12, robustone_isa::ImmediateTransform::SignExtend { bits: 12 }, robustone_isa::ImmediateKind::Absolute),
-            robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read),
+            robustone_isa::mem_imm!(RiscVRegisterClass::Gpr, RiscVField::Rs1, RiscVField::Imm12, robustone_isa::ImmediateTransform::SignExtend { bits: 12 }, robustone_isa::Access::Read),
         ];
         features = RiscVFeature::I;
         modes = ModeSet::All;
@@ -53,8 +52,7 @@ robustone_isa_macros::define_instructions! {
         format = &S_TYPE;
         operands = &[
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs2, robustone_isa::Access::Read),
-            robustone_isa::imm!(RiscVField::Imm12S, robustone_isa::ImmediateTransform::SignExtend { bits: 12 }, robustone_isa::ImmediateKind::Absolute),
-            robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read),
+            robustone_isa::mem_imm!(RiscVRegisterClass::Gpr, RiscVField::Rs1, RiscVField::Imm12S, robustone_isa::ImmediateTransform::SignExtend { bits: 12 }, robustone_isa::Access::Write),
         ];
         features = RiscVFeature::I;
         modes = ModeSet::All;
@@ -77,7 +75,7 @@ robustone_isa_macros::define_instructions! {
                     robustone_isa::ImmComposePart { src_start: 8, src_length: 4, dst_start: 1 },
                     robustone_isa::ImmComposePart { src_start: 7, src_length: 1, dst_start: 11 },
                 ],
-                transform = robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 13, shift: 1 },
+                transform = robustone_isa::ImmediateTransform::SignExtend { bits: 13 },
                 kind = robustone_isa::ImmediateKind::PcRelative
             ),
         ];
@@ -102,7 +100,7 @@ robustone_isa_macros::define_instructions! {
                     robustone_isa::ImmComposePart { src_start: 8, src_length: 4, dst_start: 1 },
                     robustone_isa::ImmComposePart { src_start: 7, src_length: 1, dst_start: 11 },
                 ],
-                transform = robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 13, shift: 1 },
+                transform = robustone_isa::ImmediateTransform::SignExtend { bits: 13 },
                 kind = robustone_isa::ImmediateKind::PcRelative
             ),
         ];
@@ -126,7 +124,7 @@ robustone_isa_macros::define_instructions! {
                     robustone_isa::ImmComposePart { src_start: 20, src_length: 1, dst_start: 11 },
                     robustone_isa::ImmComposePart { src_start: 12, src_length: 8, dst_start: 12 },
                 ],
-                transform = robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 21, shift: 1 },
+                transform = robustone_isa::ImmediateTransform::SignExtend { bits: 21 },
                 kind = robustone_isa::ImmediateKind::PcRelative
             ),
         ];
@@ -159,7 +157,7 @@ robustone_isa_macros::define_instructions! {
         format = &U_TYPE;
         operands = &[
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write),
-            robustone_isa::imm!(RiscVField::Imm20U, robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 20, shift: 12 }, robustone_isa::ImmediateKind::Absolute),
+            robustone_isa::imm!(RiscVField::Imm20U, robustone_isa::ImmediateTransform::SignExtend { bits: 20 }, robustone_isa::ImmediateKind::Absolute),
         ];
         features = RiscVFeature::I;
         modes = ModeSet::All;
@@ -173,7 +171,7 @@ robustone_isa_macros::define_instructions! {
         format = &U_TYPE;
         operands = &[
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write),
-            robustone_isa::imm!(RiscVField::Imm20U, robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 20, shift: 12 }, robustone_isa::ImmediateKind::PcRelative),
+            robustone_isa::imm!(RiscVField::Imm20U, robustone_isa::ImmediateTransform::SignExtend { bits: 20 }, robustone_isa::ImmediateKind::PcRelative),
         ];
         features = RiscVFeature::I;
         modes = ModeSet::All;
@@ -202,8 +200,7 @@ robustone_isa_macros::define_instructions! {
         format = &I_TYPE;
         operands = &[
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write),
-            robustone_isa::imm!(RiscVField::Imm12, robustone_isa::ImmediateTransform::SignExtend { bits: 12 }, robustone_isa::ImmediateKind::Absolute),
-            robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read),
+            robustone_isa::mem_imm!(RiscVRegisterClass::Gpr, RiscVField::Rs1, RiscVField::Imm12, robustone_isa::ImmediateTransform::SignExtend { bits: 12 }, robustone_isa::Access::Read),
         ];
         features = RiscVFeature::I;
         modes = ModeSet::Only(&[RiscVMode::RV64]);
@@ -359,7 +356,7 @@ robustone_isa_macros::define_instructions! {
         opcode_id = "SLLI";
         pattern = robustone_isa::mask_value!(0xFC00_707F, 0x0000_1013);
         format = &I_TYPE;
-        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write), robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read), robustone_isa::imm!(RiscVField::Imm12, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::Absolute)];
+        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write), robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read), robustone_isa::imm!(RiscVField::Shamtw, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::Absolute)];
         features = RiscVFeature::I;
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Arithmetic];
@@ -370,7 +367,7 @@ robustone_isa_macros::define_instructions! {
         opcode_id = "SRLI";
         pattern = robustone_isa::mask_value!(0xFC00_707F, 0x0000_5013);
         format = &I_TYPE;
-        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write), robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read), robustone_isa::imm!(RiscVField::Imm12, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::Absolute)];
+        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write), robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read), robustone_isa::imm!(RiscVField::Shamtw, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::Absolute)];
         features = RiscVFeature::I;
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Arithmetic];
@@ -381,7 +378,7 @@ robustone_isa_macros::define_instructions! {
         opcode_id = "SRAI";
         pattern = robustone_isa::mask_value!(0xFC00_707F, 0x4000_5013);
         format = &I_TYPE;
-        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write), robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read), robustone_isa::imm!(RiscVField::Imm12, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::Absolute)];
+        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write), robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read), robustone_isa::imm!(RiscVField::Shamtw, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::Absolute)];
         features = RiscVFeature::I;
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Arithmetic];
@@ -392,7 +389,7 @@ robustone_isa_macros::define_instructions! {
         opcode_id = "LB";
         pattern = robustone_isa::mask_value!(0x0000_707F, 0x0000_0003);
         format = &I_TYPE;
-        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write), robustone_isa::imm!(RiscVField::Imm12, robustone_isa::ImmediateTransform::SignExtend { bits: 12 }, robustone_isa::ImmediateKind::Absolute), robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read)];
+        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write), robustone_isa::mem_imm!(RiscVRegisterClass::Gpr, RiscVField::Rs1, RiscVField::Imm12, robustone_isa::ImmediateTransform::SignExtend { bits: 12 }, robustone_isa::Access::Read)];
         features = RiscVFeature::I;
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Memory];
@@ -404,7 +401,7 @@ robustone_isa_macros::define_instructions! {
         opcode_id = "LH";
         pattern = robustone_isa::mask_value!(0x0000_707F, 0x0000_1003);
         format = &I_TYPE;
-        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write), robustone_isa::imm!(RiscVField::Imm12, robustone_isa::ImmediateTransform::SignExtend { bits: 12 }, robustone_isa::ImmediateKind::Absolute), robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read)];
+        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write), robustone_isa::mem_imm!(RiscVRegisterClass::Gpr, RiscVField::Rs1, RiscVField::Imm12, robustone_isa::ImmediateTransform::SignExtend { bits: 12 }, robustone_isa::Access::Read)];
         features = RiscVFeature::I;
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Memory];
@@ -416,7 +413,7 @@ robustone_isa_macros::define_instructions! {
         opcode_id = "LBU";
         pattern = robustone_isa::mask_value!(0x0000_707F, 0x0000_4003);
         format = &I_TYPE;
-        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write), robustone_isa::imm!(RiscVField::Imm12, robustone_isa::ImmediateTransform::SignExtend { bits: 12 }, robustone_isa::ImmediateKind::Absolute), robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read)];
+        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write), robustone_isa::mem_imm!(RiscVRegisterClass::Gpr, RiscVField::Rs1, RiscVField::Imm12, robustone_isa::ImmediateTransform::SignExtend { bits: 12 }, robustone_isa::Access::Read)];
         features = RiscVFeature::I;
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Memory];
@@ -428,7 +425,7 @@ robustone_isa_macros::define_instructions! {
         opcode_id = "LHU";
         pattern = robustone_isa::mask_value!(0x0000_707F, 0x0000_5003);
         format = &I_TYPE;
-        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write), robustone_isa::imm!(RiscVField::Imm12, robustone_isa::ImmediateTransform::SignExtend { bits: 12 }, robustone_isa::ImmediateKind::Absolute), robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read)];
+        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write), robustone_isa::mem_imm!(RiscVRegisterClass::Gpr, RiscVField::Rs1, RiscVField::Imm12, robustone_isa::ImmediateTransform::SignExtend { bits: 12 }, robustone_isa::Access::Read)];
         features = RiscVFeature::I;
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Memory];
@@ -440,7 +437,7 @@ robustone_isa_macros::define_instructions! {
         opcode_id = "SB";
         pattern = robustone_isa::mask_value!(0x0000_707F, 0x0000_0023);
         format = &S_TYPE;
-        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs2, robustone_isa::Access::Read), robustone_isa::imm!(RiscVField::Imm12S, robustone_isa::ImmediateTransform::SignExtend { bits: 12 }, robustone_isa::ImmediateKind::Absolute), robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read)];
+        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs2, robustone_isa::Access::Read), robustone_isa::mem_imm!(RiscVRegisterClass::Gpr, RiscVField::Rs1, RiscVField::Imm12S, robustone_isa::ImmediateTransform::SignExtend { bits: 12 }, robustone_isa::Access::Write)];
         features = RiscVFeature::I;
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Memory];
@@ -452,7 +449,7 @@ robustone_isa_macros::define_instructions! {
         opcode_id = "SH";
         pattern = robustone_isa::mask_value!(0x0000_707F, 0x0000_1023);
         format = &S_TYPE;
-        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs2, robustone_isa::Access::Read), robustone_isa::imm!(RiscVField::Imm12S, robustone_isa::ImmediateTransform::SignExtend { bits: 12 }, robustone_isa::ImmediateKind::Absolute), robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read)];
+        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs2, robustone_isa::Access::Read), robustone_isa::mem_imm!(RiscVRegisterClass::Gpr, RiscVField::Rs1, RiscVField::Imm12S, robustone_isa::ImmediateTransform::SignExtend { bits: 12 }, robustone_isa::Access::Write)];
         features = RiscVFeature::I;
         modes = ModeSet::All;
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Memory];
@@ -471,7 +468,7 @@ robustone_isa_macros::define_instructions! {
                     robustone_isa::ImmComposePart { src_start: 8, src_length: 4, dst_start: 1 },
                     robustone_isa::ImmComposePart { src_start: 7, src_length: 1, dst_start: 11 },
                 ],
-                transform = robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 13, shift: 1 },
+                transform = robustone_isa::ImmediateTransform::SignExtend { bits: 13 },
                 kind = robustone_isa::ImmediateKind::PcRelative
             )];
         features = RiscVFeature::I;
@@ -492,7 +489,7 @@ robustone_isa_macros::define_instructions! {
                     robustone_isa::ImmComposePart { src_start: 8, src_length: 4, dst_start: 1 },
                     robustone_isa::ImmComposePart { src_start: 7, src_length: 1, dst_start: 11 },
                 ],
-                transform = robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 13, shift: 1 },
+                transform = robustone_isa::ImmediateTransform::SignExtend { bits: 13 },
                 kind = robustone_isa::ImmediateKind::PcRelative
             )];
         features = RiscVFeature::I;
@@ -513,7 +510,7 @@ robustone_isa_macros::define_instructions! {
                     robustone_isa::ImmComposePart { src_start: 8, src_length: 4, dst_start: 1 },
                     robustone_isa::ImmComposePart { src_start: 7, src_length: 1, dst_start: 11 },
                 ],
-                transform = robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 13, shift: 1 },
+                transform = robustone_isa::ImmediateTransform::SignExtend { bits: 13 },
                 kind = robustone_isa::ImmediateKind::PcRelative
             )];
         features = RiscVFeature::I;
@@ -534,7 +531,7 @@ robustone_isa_macros::define_instructions! {
                     robustone_isa::ImmComposePart { src_start: 8, src_length: 4, dst_start: 1 },
                     robustone_isa::ImmComposePart { src_start: 7, src_length: 1, dst_start: 11 },
                 ],
-                transform = robustone_isa::ImmediateTransform::SignExtendThenShift { bits: 13, shift: 1 },
+                transform = robustone_isa::ImmediateTransform::SignExtend { bits: 13 },
                 kind = robustone_isa::ImmediateKind::PcRelative
             )];
         features = RiscVFeature::I;
@@ -592,7 +589,7 @@ robustone_isa_macros::define_instructions! {
         opcode_id = "SLLIW";
         pattern = robustone_isa::mask_value!(0xFE00_707F, 0x0000_101B);
         format = &I_TYPE;
-        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write), robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read), robustone_isa::imm!(RiscVField::Imm12, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::Absolute)];
+        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write), robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read), robustone_isa::imm!(RiscVField::Shamtw, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::Absolute)];
         features = RiscVFeature::I;
         modes = ModeSet::Only(&[RiscVMode::RV64]);
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Arithmetic];
@@ -603,7 +600,7 @@ robustone_isa_macros::define_instructions! {
         opcode_id = "SRLIW";
         pattern = robustone_isa::mask_value!(0xFE00_707F, 0x0000_501B);
         format = &I_TYPE;
-        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write), robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read), robustone_isa::imm!(RiscVField::Imm12, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::Absolute)];
+        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write), robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read), robustone_isa::imm!(RiscVField::Shamtw, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::Absolute)];
         features = RiscVFeature::I;
         modes = ModeSet::Only(&[RiscVMode::RV64]);
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Arithmetic];
@@ -614,7 +611,7 @@ robustone_isa_macros::define_instructions! {
         opcode_id = "SRAIW";
         pattern = robustone_isa::mask_value!(0xFE00_707F, 0x4000_501B);
         format = &I_TYPE;
-        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write), robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read), robustone_isa::imm!(RiscVField::Imm12, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::Absolute)];
+        operands = &[robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write), robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs1, robustone_isa::Access::Read), robustone_isa::imm!(RiscVField::Shamtw, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::Absolute)];
         features = RiscVFeature::I;
         modes = ModeSet::Only(&[RiscVMode::RV64]);
         groups = &[robustone_isa::InstructionGroup::Integer, robustone_isa::InstructionGroup::Arithmetic];

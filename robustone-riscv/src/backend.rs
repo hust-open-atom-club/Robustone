@@ -104,6 +104,9 @@ pub enum RiscVField {
     Imm12,
     Imm12S,
     Imm20U,
+    // R4-type fields
+    Rs3, // rs3 in R4 format (bits 27-31)
+    Fmt, // format for R4-type (bits 25-26): 00=S, 01=D
     // Compressed fields
     Rs2C,     // rs2 in CR format (bits 2-6)
     RdPrime,  // rd' in CA/CL format (bits 2-4, actual reg = +8)
@@ -112,6 +115,9 @@ pub enum RiscVField {
     Imm6,     // 6-bit CI immediate (bit12 << 5 | bits2-6)
     ImmCL,    // CL-format immediate for c.ld: {bits[6:5], bits[12:10]} << 3
     ImmCLW,   // CL-format immediate for c.flw: {bit[5], bits[12:10], bit[6], 0}
+    // Shift amount fields
+    Shamtw, // 5-bit shift amount for RV32 (bits[24:20])
+    Shamtd, // 6-bit shift amount for RV64 (bits[25:20])
 }
 
 robustone_isa_macros::define_registers! {
@@ -127,7 +133,7 @@ robustone_isa_macros::define_formats! {
     fields {
         Rd; Rs1; Rs2; Funct3; Funct7;
         Imm12; Imm12S; Imm20U;
-        Rs2C; RdPrime; Rs2Prime; Rs1Prime; Imm6; ImmCL; ImmCLW;
+        Rs3; Fmt; Rs2C; RdPrime; Rs2Prime; Rs1Prime; Imm6; ImmCL; ImmCLW; Shamtw; Shamtd;
     };
     format R_TYPE {
         rd: bits(7, 5) as Rd,
@@ -140,6 +146,8 @@ robustone_isa_macros::define_formats! {
         rd: bits(7, 5) as Rd,
         rs1: bits(15, 5) as Rs1,
         imm12: bits(20, 12) as Imm12,
+        shamtw: bits(20, 5) as Shamtw,
+        shamtd: bits(20, 6) as Shamtd,
         funct3: bits(12, 3) as Funct3,
     };
     format S_TYPE {
@@ -183,6 +191,14 @@ robustone_isa_macros::define_formats! {
         rs2_prime: bits(2, 3) as Rs2Prime,
         imm_csd: bits(5, 5) as ImmCL,
         imm_csw: bits(5, 5) as ImmCLW,
+    };
+    format R4_TYPE {
+        rd: bits(7, 5) as Rd,
+        rs1: bits(15, 5) as Rs1,
+        rs2: bits(20, 5) as Rs2,
+        rs3: bits(27, 5) as Rs3,
+        fmt: bits(25, 2) as Fmt,
+        funct3: bits(12, 3) as Funct3,
     }
 }
 

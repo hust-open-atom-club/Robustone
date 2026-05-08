@@ -74,6 +74,18 @@ pub fn render_riscv_text_parts(
         );
     }
 
+    if is_riscv_load_store_mnemonic(&mnemonic) {
+        return (
+            mnemonic,
+            format_riscv_load_store_operands(
+                &visible_operands,
+                &instruction.mode,
+                alias_regs,
+                unsigned_immediate,
+            ),
+        );
+    }
+
     let last_visible_index = visible_operands.last().map(|(index, _)| *index);
     let operands = visible_operands
         .iter()
@@ -127,6 +139,35 @@ fn format_riscv_jalr_operands(
             .iter()
             .map(|(_, operand)| {
                 format_riscv_basic_operand(operand, mode, alias_regs, false, unsigned_immediate)
+            })
+            .collect::<Vec<_>>()
+            .join(", "),
+    }
+}
+
+fn format_riscv_load_store_operands(
+    operands: &[(usize, &Operand)],
+    mode: &str,
+    alias_regs: bool,
+    unsigned_immediate: bool,
+) -> String {
+    let mut visible = operands.iter().map(|(_, operand)| *operand);
+    match (visible.next(), visible.next(), visible.next()) {
+        (
+            Some(first),
+            Some(Operand::Immediate { value: imm, .. }),
+            Some(Operand::Register { register: base }),
+        ) => {
+            let first_str =
+                format_riscv_basic_operand(first, mode, alias_regs, true, unsigned_immediate);
+            let disp = format_riscv_immediate(*imm, mode, unsigned_immediate);
+            let base_str = format_riscv_register(base.id, alias_regs);
+            format!("{first_str}, {disp}({base_str})")
+        }
+        _ => operands
+            .iter()
+            .map(|(_, operand)| {
+                format_riscv_basic_operand(operand, mode, alias_regs, true, unsigned_immediate)
             })
             .collect::<Vec<_>>()
             .join(", "),
@@ -354,6 +395,45 @@ fn format_riscv_unsigned_immediate(value: i64, mode: &str) -> String {
         "riscv32" => format!("0x{:x}", value as u32),
         _ => format!("0x{:x}", value as u64),
     }
+}
+
+fn is_riscv_load_store_mnemonic(mnemonic: &str) -> bool {
+    matches!(
+        mnemonic,
+        "lb" | "lh"
+            | "lw"
+            | "lbu"
+            | "lhu"
+            | "ld"
+            | "sb"
+            | "sh"
+            | "sw"
+            | "sd"
+            | "flw"
+            | "fsw"
+            | "fld"
+            | "fsd"
+            | "prefetch.i"
+            | "prefetch.r"
+            | "prefetch.t"
+            | "prefetch.w"
+            | "c.lw"
+            | "c.sw"
+            | "c.ld"
+            | "c.sd"
+            | "c.lwsp"
+            | "c.swsp"
+            | "c.ldsp"
+            | "c.sdsp"
+            | "c.flw"
+            | "c.fsw"
+            | "c.fld"
+            | "c.fsd"
+            | "c.flwsp"
+            | "c.fswsp"
+            | "c.fldsp"
+            | "c.fsdsp"
+    )
 }
 
 // LEGACY: Phase 5 will replace mnemonic-based control-flow detection with InstructionGroup membership.

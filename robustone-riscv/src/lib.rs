@@ -486,7 +486,7 @@ mod tests {
         assert_eq!(decoded.mnemonic, "beq");
         match &decoded.operands[2] {
             robustone_core::ir::Operand::Immediate { value, .. } => {
-                assert_eq!(*value, 0x100); // 0x80 << 1
+                assert_eq!(*value, 0x80); // raw composed immediate value (no shift)
             }
             other => panic!("expected immediate operand, got {:?}", other),
         }
@@ -505,7 +505,7 @@ mod tests {
         assert_eq!(decoded.mnemonic, "jal");
         match &decoded.operands[1] {
             robustone_core::ir::Operand::Immediate { value, .. } => {
-                assert_eq!(*value, -4); // -2 << 1 = -4
+                assert_eq!(*value, -2); // raw composed immediate value (no shift)
             }
             other => panic!("expected immediate operand, got {:?}", other),
         }

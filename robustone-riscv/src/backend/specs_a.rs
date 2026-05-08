@@ -7,7 +7,7 @@ robustone_isa_macros::define_instructions! {
         format = &R_TYPE;
         operands = &[
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write),
-            robustone_isa::mem!(RiscVRegisterClass::Gpr, RiscVField::Rs1, 0),
+            robustone_isa::mem!(RiscVRegisterClass::Gpr, RiscVField::Rs1, 0, robustone_isa::Access::Read),
         ];
         features = RiscVFeature::A;
         modes = ModeSet::All;
@@ -22,7 +22,7 @@ robustone_isa_macros::define_instructions! {
         format = &R_TYPE;
         operands = &[
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write),
-            robustone_isa::mem!(RiscVRegisterClass::Gpr, RiscVField::Rs1, 0),
+            robustone_isa::mem!(RiscVRegisterClass::Gpr, RiscVField::Rs1, 0, robustone_isa::Access::ReadWrite),
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs2, robustone_isa::Access::Read),
         ];
         features = RiscVFeature::A;
@@ -38,7 +38,7 @@ robustone_isa_macros::define_instructions! {
         format = &R_TYPE;
         operands = &[
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write),
-            robustone_isa::mem!(RiscVRegisterClass::Gpr, RiscVField::Rs1, 0),
+            robustone_isa::mem!(RiscVRegisterClass::Gpr, RiscVField::Rs1, 0, robustone_isa::Access::ReadWrite),
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rs2, robustone_isa::Access::Read),
         ];
         features = RiscVFeature::A;
@@ -54,7 +54,7 @@ robustone_isa_macros::define_instructions! {
         format = &R_TYPE;
         operands = &[
             robustone_isa::reg!(RiscVRegisterClass::Gpr, RiscVField::Rd, robustone_isa::Access::Write),
-            robustone_isa::mem!(RiscVRegisterClass::Gpr, RiscVField::Rs1, 0),
+            robustone_isa::mem!(RiscVRegisterClass::Gpr, RiscVField::Rs1, 0, robustone_isa::Access::Read),
         ];
         features = RiscVFeature::A;
         modes = ModeSet::Only(&[RiscVMode::RV64]);
