@@ -319,8 +319,20 @@ Output must match Capstone's `cstool` format:
 
 ---
 
-## 10. Open Questions
+## 10. Design Decisions (Resolved)
 
-1. Should we implement Capstone-style alias expansion (`mov` → `orr`, `cmp` → `subs`, `neg` → `sub`)? Or stick to ARM ARM canonical forms?
-2. SVE predicate register rendering: Capstone uses `p0.b`, `p1.h` etc. with element size suffix — confirm format.
-3. Should `ArchitectureProfile` for AArch64 support explicit extension gating (e.g., "+sve", "+neon") similar to RISC-V's profile system?
+1. **Capstone-style alias expansion**: **Implement**. The decoder will emit canonical ARM ARM mnemonics internally, but the renderer will perform alias expansion to match Capstone output:
+   - `orr Rd, XZR, Rm` → `mov Rd, Rm`
+   - `subs Rn, Rm, #0` → `cmp Rn, Rm`
+   - `sub Rd, XZR, Rm` → `neg Rd, Rm`
+   - (And other standard aliases per ARM ARM section C1.2.4)
+
+2. **SVE predicate register rendering**: Confirmed — Capstone uses `p0.b`, `p1.h`, `p2.s`, `p3.d` format with element size suffix.
+
+3. **ArchitectureProfile extension gating**: **Support**. AArch64 `ArchitectureProfile` will accept extension flags similar to RISC-V:
+   - `"base"` (default): Base integer only
+   - `"+fp"`: Scalar floating-point
+   - `"+simd"` or `"+neon"`: Advanced SIMD
+   - `"+sve"`: Scalable Vector Extension
+   - `"+sve2"`: SVE2
+   - Instructions requiring an un-enabled extension will return `DisasmError::UnsupportedExtension`.
