@@ -1,147 +1,99 @@
 //! ARM (AArch64) disassembly module for Robustone.
-//!
-//! Provides instruction decoding for ARM AArch64 targets.
 
+pub mod arch;
 pub mod decoder;
 pub mod extensions;
+pub mod printer;
 pub mod render;
 pub mod shared;
 pub mod types;
 
-use decoder::AArch64Decoder;
-use robustone_core::{
-    Instruction, common::ArchitectureProfile, ir::DecodedInstruction, traits::ArchitectureHandler,
-    types::error::DisasmError,
-};
-
-/// Architecture handler implementation for ARM AArch64 targets.
-pub struct ArmHandler {
-    decoder: AArch64Decoder,
-}
-
-impl ArmHandler {
-    /// Creates a new handler.
-    pub fn new() -> Self {
-        Self {
-            decoder: AArch64Decoder::new(),
-        }
-    }
-}
-
-impl Default for ArmHandler {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ArchitectureHandler for ArmHandler {
-    fn set_detail(&mut self, _detail: bool) {}
-
-    fn decode_instruction(
-        &self,
-        bytes: &[u8],
-        arch_name: &str,
-        addr: u64,
-    ) -> Result<(DecodedInstruction, usize), DisasmError> {
-        if !self.supports(arch_name) {
-            return Err(DisasmError::UnsupportedArchitecture(arch_name.to_string()));
-        }
-        let decoded = self.decoder.decode(bytes, arch_name, addr)?;
-        let size = decoded.size;
-        Ok((decoded, size))
-    }
-
-    fn decode_instruction_with_profile(
-        &self,
-        bytes: &[u8],
-        profile: &ArchitectureProfile,
-        addr: u64,
-    ) -> Result<(DecodedInstruction, usize), DisasmError> {
-        self.decode_instruction(bytes, profile.mode_name, addr)
-    }
-
-    fn disassemble(
-        &self,
-        bytes: &[u8],
-        arch_name: &str,
-        addr: u64,
-    ) -> Result<(Instruction, usize), DisasmError> {
-        let (decoded, size) = self.decode_instruction(bytes, arch_name, addr)?;
-        let (mnemonic, operands) = render::render_aarch64_text_parts(
-            &decoded,
-            robustone_core::ir::TextRenderProfile::Capstone,
-            true,
-            true,
-            true,
-            false,
-        );
-        let instruction = Instruction::from_decoded(decoded, mnemonic, operands, None);
-        Ok((instruction, size))
-    }
-
-    fn disassemble_with_profile(
-        &self,
-        bytes: &[u8],
-        profile: &ArchitectureProfile,
-        addr: u64,
-    ) -> Result<(Instruction, usize), DisasmError> {
-        self.disassemble(bytes, profile.mode_name, addr)
-    }
-
-    fn name(&self) -> &'static str {
-        "arm"
-    }
-
-    fn supports(&self, arch_name: &str) -> bool {
-        matches!(arch_name, "arm" | "aarch64" | "arm64" | "aarch64be")
-    }
-}
+pub use arch::AArch64Handler;
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use robustone_core::traits::ArchitectureHandler;
 
-    #[test]
-    fn test_nop_decode() {
-        let handler = ArmHandler::new();
-        let (instr, size) = handler
-            .disassemble(&[0x1F, 0x20, 0x03, 0xD5], "aarch64", 0)
-            .unwrap();
-        assert_eq!(size, 4);
-        assert_eq!(instr.mnemonic, "nop");
+    fn disasm(bytes: &[u8]) -> (String, String) {
+        let handler = AArch64Handler::new();
+        let (instr, _) = handler.disassemble(bytes, "aarch64", 0).unwrap();
+        (instr.mnemonic, instr.operands)
     }
 
     #[test]
-    fn test_add_imm_decode() {
-        let handler = ArmHandler::new();
-        // add x0, x1, #2  => 0x91000820
-        let (instr, size) = handler
-            .disassemble(&[0x20, 0x08, 0x00, 0x91], "aarch64", 0)
-            .unwrap();
-        assert_eq!(size, 4);
-        assert_eq!(instr.mnemonic, "add");
-        assert_eq!(instr.operands, "x0, x1, 2");
+    fn test_nop() {
+        let (mnemonic, ops) = disasm(&[0x1F, 0x20, 0x03, 0xD5]);
+        assert_eq!(mnemonic, "nop");
+        assert_eq!(ops, "");
     }
 
     #[test]
-    fn test_movz_decode() {
-        let handler = ArmHandler::new();
-        // mov x0, #0x1234  => 0xD2824680
-        let (instr, size) = handler
-            .disassemble(&[0x80, 0x46, 0x82, 0xD2], "aarch64", 0)
-            .unwrap();
-        assert_eq!(size, 4);
-        assert_eq!(instr.mnemonic, "mov");
-        assert_eq!(instr.operands, "x0, 0x1234");
+    fn test_add_imm() {
+        // add x0, x1, #2  (Data Processing — Immediate, add/sub)
+        let (mnemonic, ops) = disasm(&[0x20, 0x08, 0x00, 0x91]);
+        assert_eq!(mnemonic, "add");
+        assert_eq!(ops, "x0, x1, #2");
     }
 
     #[test]
-    fn test_ret_decode() {
-        let handler = ArmHandler::new();
-        let (instr, size) = handler
-            .disassemble(&[0xC0, 0x03, 0x5F, 0xD6], "aarch64", 0)
-            .unwrap();
-        assert_eq!(size, 4);
-        assert_eq!(instr.mnemonic, "ret");
+    fn test_sub_imm() {
+        // sub x0, x1, #2  (Data Processing — Immediate, add/sub)
+        let (mnemonic, ops) = disasm(&[0x20, 0x08, 0x00, 0xD1]);
+        assert_eq!(mnemonic, "sub");
+        assert_eq!(ops, "x0, x1, #2");
+    }
+
+    #[test]
+    fn test_cmp_alias() {
+        // cmp x1, #2 = subs xzr, x1, #2  (Data Processing — Immediate, add/sub)
+        let (mnemonic, ops) = disasm(&[0x3F, 0x08, 0x00, 0xF1]);
+        assert_eq!(mnemonic, "cmp");
+        assert_eq!(ops, "x1, #2");
+    }
+
+    #[test]
+    fn test_movz() {
+        // movz x0, #0x1234  (Data Processing — Immediate, move wide)
+        let (mnemonic, ops) = disasm(&[0x80, 0x46, 0x82, 0xD2]);
+        assert_eq!(mnemonic, "mov");
+        assert_eq!(ops, "x0, #0x1234");
+    }
+
+    #[test]
+    fn test_ret() {
+        let (mnemonic, ops) = disasm(&[0xC0, 0x03, 0x5F, 0xD6]);
+        assert_eq!(mnemonic, "ret");
+        assert_eq!(ops, "");
+    }
+
+    #[test]
+    fn test_b_cond() {
+        let (mnemonic, ops) = disasm(&[0x00, 0x04, 0x00, 0x54]);
+        assert_eq!(mnemonic, "b.eq");
+        assert!(ops.contains("0x"));
+    }
+
+    #[test]
+    fn test_cbz() {
+        let (mnemonic, ops) = disasm(&[0x00, 0x00, 0x5F, 0xB4]);
+        assert_eq!(mnemonic, "cbz");
+        assert!(ops.starts_with("x0"));
+    }
+
+    #[test]
+    fn test_mov_alias_orr() {
+        // mov x0, x2 = orr x0, xzr, x2
+        let (mnemonic, ops) = disasm(&[0x40, 0x00, 0x1F, 0xAA]);
+        assert_eq!(mnemonic, "mov");
+        assert_eq!(ops, "x0, x2");
+    }
+
+    #[test]
+    fn test_neg_alias() {
+        // neg x0, x1 = sub x0, xzr, x1 (shifted register)
+        let (mnemonic, ops) = disasm(&[0xE0, 0x03, 0x01, 0xCB]);
+        assert_eq!(mnemonic, "neg");
+        assert_eq!(ops, "x0, x1");
     }
 }

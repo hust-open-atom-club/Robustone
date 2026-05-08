@@ -15,13 +15,21 @@ pub mod system;
 pub type DecodeResult = Result<(Mnemonic, Vec<Operand>), DisasmError>;
 
 /// Decode dispatch table: maps `op0` value to the appropriate decoder function.
+///
+/// Follows ARM ARM Table C4-1 classification:
+/// - `00xx` (0x0-0x3): Unallocated
+/// - `100x` (0x8, 0x9): Data Processing — Immediate
+/// - `101x` (0xA, 0xB): Branches, Exception Generating and System
+/// - `x1x0` (0x4, 0x6, 0xC, 0xE): Loads and Stores
+/// - `x101` (0x5, 0xD): Data Processing — Register
+/// - `x111` (0x7, 0xF): SIMD/FP
 pub fn decode_by_op0(word: u32, addr: u64, _extensions: &AArch64Extensions) -> DecodeResult {
     use crate::shared::encoding::op0;
     match op0(word) {
-        0x0 | 0x1 => base::decode_data_proc_imm(word, addr),
-        0x2 | 0xA | 0xB => branch::decode_branch_system(word, addr),
-        0x4 | 0x8 | 0x9 => base::decode_data_proc_reg(word, addr),
-        0x3 | 0xC | 0xD => {
+        0x8 | 0x9 => base::decode_data_proc_imm(word, addr),
+        0xA | 0xB => branch::decode_branch_system(word, addr),
+        0x5 | 0xD => base::decode_data_proc_reg(word, addr),
+        0x4 | 0x6 | 0xC | 0xE => {
             // Loads and stores — Stage 2
             Err(DisasmError::decode_failure(
                 robustone_core::types::error::DecodeErrorKind::UnimplementedInstruction,
@@ -29,20 +37,20 @@ pub fn decode_by_op0(word: u32, addr: u64, _extensions: &AArch64Extensions) -> D
                 "loads/stores not yet implemented in stage 1",
             ))
         }
-        0x5 | 0x6 | 0xE => {
-            // SIMD/FP — Stage 3
+        0x7 | 0xF => {
+            // SIMD/FP / Scalar FP — Stage 3
             Err(DisasmError::decode_failure(
                 robustone_core::types::error::DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
                 "SIMD/FP not yet implemented in stage 1",
             ))
         }
-        0x7 | 0xF => {
-            // SVE / reserved
+        0x0..=0x3 => {
+            // UNALLOCATED
             Err(DisasmError::decode_failure(
-                robustone_core::types::error::DecodeErrorKind::UnimplementedInstruction,
+                robustone_core::types::error::DecodeErrorKind::InvalidEncoding,
                 Some("aarch64".to_string()),
-                "SVE not yet implemented",
+                "unallocated encoding",
             ))
         }
         _ => Err(DisasmError::decode_failure(

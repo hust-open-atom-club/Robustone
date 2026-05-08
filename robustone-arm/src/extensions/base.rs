@@ -17,11 +17,16 @@ use robustone_core::types::error::{DecodeErrorKind, DisasmError};
 // ---------------------------------------------------------------------------
 
 pub fn decode_data_proc_imm(word: u32, addr: u64) -> DecodeResult {
-    match op1(word) {
-        0b00 => decode_pc_rel_addressing(word, addr),
-        0b01 => decode_add_sub_imm(word),
-        0b10 => decode_logical_imm(word),
-        0b11 => decode_move_wide(word),
+    match op1_3bit(word) {
+        0b000 | 0b001 => decode_pc_rel_addressing(word, addr),
+        0b010 | 0b011 => decode_add_sub_imm(word),
+        0b100 => decode_logical_imm(word),
+        0b101 => decode_move_wide(word),
+        0b110 | 0b111 => Err(DisasmError::decode_failure(
+            DecodeErrorKind::UnimplementedInstruction,
+            Some("aarch64".to_string()),
+            "bitfield/extract not in stage 1",
+        )),
         _ => unreachable!(),
     }
 }
@@ -36,13 +41,14 @@ fn decode_pc_rel_addressing(word: u32, addr: u64) -> DecodeResult {
         decode_adr_imm(word)
     };
     let target = (addr as i64).wrapping_add(imm);
-    let mnemonic = if is_adrp { Mnemonic::Adrp } else { Mnemonic::Adr };
+    let mnemonic = if is_adrp {
+        Mnemonic::Adrp
+    } else {
+        Mnemonic::Adr
+    };
     Ok((
         mnemonic,
-        vec![
-            reg_operand(rd_val),
-            operands::label(target as u64),
-        ],
+        vec![reg_operand(rd_val), operands::label(target as u64)],
     ))
 }
 
@@ -92,12 +98,13 @@ fn decode_logical_imm(word: u32) -> DecodeResult {
     let rd_val = rd(word);
     let rn_val = rn(word);
 
-    let _bitmask = decode_bitmask_imm(n, immr_val, imms_val, !is_32bit)
-        .ok_or_else(|| DisasmError::decode_failure(
+    let _bitmask = decode_bitmask_imm(n, immr_val, imms_val, !is_32bit).ok_or_else(|| {
+        DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
             "reserved bitmask immediate encoding",
-        ))?;
+        )
+    })?;
 
     let mnemonic = match opc_val {
         0b00 => {
@@ -117,7 +124,9 @@ fn decode_logical_imm(word: u32) -> DecodeResult {
         reg_operand(rd_val),
         reg_operand(rn_val),
         // TODO: render bitmask as hex immediate
-        Operand::Immediate { value: _bitmask as i64 },
+        Operand::Immediate {
+            value: _bitmask as i64,
+        },
     ];
 
     if mnemonic == Mnemonic::Tst {
@@ -148,10 +157,7 @@ fn decode_move_wide(word: u32) -> DecodeResult {
         _ => unreachable!(),
     };
 
-    let mut ops = vec![
-        reg_operand(rd_val),
-        Operand::Immediate { value: imm },
-    ];
+    let mut ops = vec![reg_operand(rd_val), Operand::Immediate { value: imm }];
 
     if shift > 0 {
         ops.push(Operand::Text {
@@ -168,18 +174,39 @@ fn decode_move_wide(word: u32) -> DecodeResult {
 
 pub fn decode_data_proc_reg(word: u32, _addr: u64) -> DecodeResult {
     let _is_32bit = sf(word) == 0;
-    match op1(word) {
-        0b00 => decode_logical_shifted_reg(word),
-        0b01 => decode_add_sub_shifted_reg(word),
-        0b10 => {
-            if bit(word, 30) == 0 {
-                decode_add_sub_extended_reg(word)
-            } else {
-                decode_add_sub_with_carry(word)
+    let b28 = bit28(word);
+    let op2 = op2_4bit(word);
+
+    if b28 == 0 {
+        // Logical / Add-subtract group
+        match op2 {
+            0b0000..=0b0111 => decode_logical_shifted_reg(word),
+            0b1000 | 0b1010 | 0b1100 | 0b1110 => decode_add_sub_shifted_reg(word),
+            0b1001 | 0b1011 | 0b1101 | 0b1111 => decode_add_sub_extended_reg(word),
+            _ => unreachable!(),
+        }
+    } else {
+        // Carry / Conditional / 2-source / 1-source / 3-source group
+        match op2 {
+            0b0000 => decode_add_sub_with_carry(word),
+            0b0010 => decode_conditional_compare(word),
+            0b0100 => decode_conditional_select(word),
+            0b0110 => {
+                if bit(word, 30) == 0 {
+                    decode_data_proc_2source(word)
+                } else {
+                    decode_data_proc_1source(word)
+                }
+            }
+            0b1000..=0b1111 => decode_data_proc_3source(word),
+            _ => {
+                Err(DisasmError::decode_failure(
+                    DecodeErrorKind::InvalidEncoding,
+                    Some("aarch64".to_string()),
+                    "reserved Data Processing -- Register encoding",
+                ))
             }
         }
-        0b11 => decode_conditional_select(word),
-        _ => unreachable!(),
     }
 }
 
@@ -249,7 +276,7 @@ fn decode_logical_shifted_reg(word: u32) -> DecodeResult {
     Ok((mnemonic, ops))
 }
 
-/// Add/subtract (shifted register): ADD, ADDS, SUB, SUBS.
+/// Add/subtract (shifted register): ADD, ADDS, SUB, SUBS, NEG.
 fn decode_add_sub_shifted_reg(word: u32) -> DecodeResult {
     let _is_32bit = sf(word) == 0;
     let is_sub = bit(word, 30) == 1;
@@ -260,11 +287,17 @@ fn decode_add_sub_shifted_reg(word: u32) -> DecodeResult {
     let shift_val = shift(word);
     let imm6 = bits(word, 15, 10) as u8;
 
-    let mnemonic = match (is_sub, set_flags) {
-        (false, false) => Mnemonic::Add,
-        (false, true) => Mnemonic::Adds,
-        (true, false) => Mnemonic::Sub,
-        (true, true) => Mnemonic::Subs,
+    // NEG = SUB (with XZR as first source)
+    let (mnemonic, omit_rn) = if is_sub && !set_flags && rn_val == 31 {
+        (Mnemonic::Neg, true)
+    } else {
+        let m = match (is_sub, set_flags) {
+            (false, false) => Mnemonic::Add,
+            (false, true) => Mnemonic::Adds,
+            (true, false) => Mnemonic::Sub,
+            (true, true) => Mnemonic::Subs,
+        };
+        (m, false)
     };
 
     let mut ops = vec![
@@ -272,6 +305,10 @@ fn decode_add_sub_shifted_reg(word: u32) -> DecodeResult {
         reg_operand(rn_val),
         reg_operand(rm_val),
     ];
+
+    if omit_rn {
+        ops.remove(1); // Remove XZR Rn
+    }
 
     if imm6 != 0 {
         let shift_type = ShiftType::from_bits(shift_val)
@@ -343,12 +380,13 @@ fn decode_conditional_select(word: u32) -> DecodeResult {
     let rn_val = rn(word);
     let rm_val = rm(word);
     let cond_val = cond(word);
-    let cond = ConditionCode::from_bits(cond_val)
-        .ok_or_else(|| DisasmError::decode_failure(
+    let cond = ConditionCode::from_bits(cond_val).ok_or_else(|| {
+        DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
             "invalid condition code",
-        ))?;
+        )
+    })?;
 
     if s == 1 {
         return Err(DisasmError::decode_failure(
@@ -391,15 +429,125 @@ fn decode_conditional_select(word: u32) -> DecodeResult {
         reg_operand(rd_val),
         reg_operand(rn_val),
         reg_operand(rm_val),
-        Operand::Text { value: cond.as_str().to_string() },
+        Operand::Text {
+            value: cond.as_str().to_string(),
+        },
     ];
 
     // For aliases, simplify operands
     if mnemonic == Mnemonic::Cset || mnemonic == Mnemonic::Csetm {
         ops.truncate(2); // Keep only Rd and condition
-    } else if mnemonic == Mnemonic::Cinc || mnemonic == Mnemonic::Cinv || mnemonic == Mnemonic::Cneg {
+    } else if mnemonic == Mnemonic::Cinc || mnemonic == Mnemonic::Cinv || mnemonic == Mnemonic::Cneg
+    {
         ops.remove(2); // Remove ZR Rm
     }
 
     Ok((mnemonic, ops))
+}
+
+/// Conditional compare: CCMN, CCMP.
+fn decode_conditional_compare(_word: u32) -> DecodeResult {
+    Err(DisasmError::decode_failure(
+        DecodeErrorKind::UnimplementedInstruction,
+        Some("aarch64".to_string()),
+        "conditional compare not in stage 1",
+    ))
+}
+
+/// Data-processing (2 source): LSL, LSR, ASR, ROR, CLS, CLZ, RBIT, REV, REV16, REV32.
+fn decode_data_proc_2source(word: u32) -> DecodeResult {
+    let _is_32bit = sf(word) == 0;
+    let opcode = bits(word, 15, 10);
+    let rd_val = rd(word);
+    let rn_val = rn(word);
+    let rm_val = rm(word);
+
+    let mnemonic = match opcode {
+        0b000000 => Mnemonic::Lsl,
+        0b000001 => Mnemonic::Lsr,
+        0b000010 => Mnemonic::Asr,
+        0b000011 => {
+            return Err(DisasmError::decode_failure(
+                DecodeErrorKind::UnimplementedInstruction,
+                Some("aarch64".to_string()),
+                "ROR not in stage 1",
+            ))
+        }
+        0b000100 => {
+            return Err(DisasmError::decode_failure(
+                DecodeErrorKind::UnimplementedInstruction,
+                Some("aarch64".to_string()),
+                "CLZ/CLS not in stage 1",
+            ))
+        }
+        _ => {
+            return Err(DisasmError::decode_failure(
+                DecodeErrorKind::InvalidEncoding,
+                Some("aarch64".to_string()),
+                "reserved 2-source encoding",
+            ))
+        }
+    };
+
+    Ok((
+        mnemonic,
+        vec![reg_operand(rd_val), reg_operand(rn_val), reg_operand(rm_val)],
+    ))
+}
+
+/// Data-processing (1 source): not in stage 1.
+fn decode_data_proc_1source(_word: u32) -> DecodeResult {
+    Err(DisasmError::decode_failure(
+        DecodeErrorKind::UnimplementedInstruction,
+        Some("aarch64".to_string()),
+        "data-processing (1 source) not in stage 1",
+    ))
+}
+
+/// Data-processing (3 source): MADD, MSUB, SMADDL, SMSUBL, UMADDL, UMSUBL.
+fn decode_data_proc_3source(word: u32) -> DecodeResult {
+    let _is_32bit = sf(word) == 0;
+    let op54 = bits(word, 30, 29);
+    // Capstone checks bits 23:21 (not 24:21) for 3-source sub-classification.
+    let op31_3bit = bits(word, 23, 21);
+    let rd_val = rd(word);
+    let rn_val = rn(word);
+    let rm_val = rm(word);
+    let ra_val = ra(word);
+
+    let mnemonic = match (op54, op31_3bit) {
+        (0b00, 0b000) => Mnemonic::Madd,
+        (0b00, 0b001) => Mnemonic::Msub,
+        (0b01, 0b000) | (0b01, 0b001) => {
+            return Err(DisasmError::decode_failure(
+                DecodeErrorKind::UnimplementedInstruction,
+                Some("aarch64".to_string()),
+                "SMADDL/SMSUBL not in stage 1",
+            ))
+        }
+        (0b10, 0b000) | (0b10, 0b001) => {
+            return Err(DisasmError::decode_failure(
+                DecodeErrorKind::UnimplementedInstruction,
+                Some("aarch64".to_string()),
+                "UMADDL/UMSUBL not in stage 1",
+            ))
+        }
+        _ => {
+            return Err(DisasmError::decode_failure(
+                DecodeErrorKind::InvalidEncoding,
+                Some("aarch64".to_string()),
+                "reserved 3-source encoding",
+            ))
+        }
+    };
+
+    Ok((
+        mnemonic,
+        vec![
+            reg_operand(rd_val),
+            reg_operand(rn_val),
+            reg_operand(rm_val),
+            reg_operand(ra_val),
+        ],
+    ))
 }

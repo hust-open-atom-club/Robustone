@@ -4,60 +4,139 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mnemonic {
     // Data Processing — Immediate
-    Adr, Adrp,
-    Add, Adds, Sub, Subs,
-    Movz, Movn, Movk,
-    And, Orr, Eor, Ands,
-    Cmp, Cmn, Tst,
+    Adr,
+    Adrp,
+    Add,
+    Adds,
+    Sub,
+    Subs,
+    Movz,
+    Movn,
+    Movk,
+    And,
+    Orr,
+    Eor,
+    Ands,
+    Cmp,
+    Cmn,
+    Tst,
     // Data Processing — Register
-    Lsl, Lsr, Asr, Ror,
-    Csel, Csinc, Csinv, Csneg,
-    Cset, Csetm, Cinc, Cinv, Cneg,
-    Madd, Msub, Smaddl, Smsubl, Umaddl, Umsubl,
-    Sdiv, Udiv,
+    Lsl,
+    Lsr,
+    Asr,
+    Ror,
+    Csel,
+    Csinc,
+    Csinv,
+    Csneg,
+    Cset,
+    Csetm,
+    Cinc,
+    Cinv,
+    Cneg,
+    Madd,
+    Msub,
+    Smaddl,
+    Smsubl,
+    Umaddl,
+    Umsubl,
+    Sdiv,
+    Udiv,
     // Branches
-    B, Bl, Br, Blr, Ret,
-    Cbz, Cbnz, Tbz, Tbnz,
+    B,
+    Bl,
+    Br,
+    Blr,
+    Ret,
+    Cbz,
+    Cbnz,
+    Tbz,
+    Tbnz,
     BCond,
     // System / Hints
-    Nop,Svc, Hvc, Smc, Brk,
-    Isb, Dsb, Dmb,
-    Msr, Mrs,
+    Nop,
+    Svc,
+    Hvc,
+    Smc,
+    Brk,
+    Isb,
+    Dsb,
+    Dmb,
+    Msr,
+    Mrs,
     // Aliases (render-time only)
-    Mov, Neg, Mvn, Mul, Mulh,
+    Mov,
+    Neg,
+    Mvn,
+    Mul,
+    Mulh,
 }
 
 impl Mnemonic {
     pub const fn as_str(&self) -> &'static str {
         match self {
-            Mnemonic::Adr => "adr", Mnemonic::Adrp => "adrp",
-            Mnemonic::Add => "add", Mnemonic::Adds => "adds",
-            Mnemonic::Sub => "sub", Mnemonic::Subs => "subs",
-            Mnemonic::Movz => "movz", Mnemonic::Movn => "movn", Mnemonic::Movk => "movk",
-            Mnemonic::And => "and", Mnemonic::Orr => "orr",
-            Mnemonic::Eor => "eor", Mnemonic::Ands => "ands",
-            Mnemonic::Cmp => "cmp", Mnemonic::Cmn => "cmn", Mnemonic::Tst => "tst",
-            Mnemonic::Lsl => "lsl", Mnemonic::Lsr => "lsr",
-            Mnemonic::Asr => "asr", Mnemonic::Ror => "ror",
-            Mnemonic::Csel => "csel", Mnemonic::Csinc => "csinc",
-            Mnemonic::Csinv => "csinv", Mnemonic::Csneg => "csneg",
-            Mnemonic::Cset => "cset", Mnemonic::Csetm => "csetm",
-            Mnemonic::Cinc => "cinc", Mnemonic::Cinv => "cinv", Mnemonic::Cneg => "cneg",
-            Mnemonic::Madd => "madd", Mnemonic::Msub => "msub",
-            Mnemonic::Smaddl => "smaddl", Mnemonic::Smsubl => "smsubl",
-            Mnemonic::Umaddl => "umaddl", Mnemonic::Umsubl => "umsubl",
-            Mnemonic::Sdiv => "sdiv", Mnemonic::Udiv => "udiv",
-            Mnemonic::B => "b", Mnemonic::Bl => "bl",
-            Mnemonic::Br => "br", Mnemonic::Blr => "blr", Mnemonic::Ret => "ret",
-            Mnemonic::Cbz => "cbz", Mnemonic::Cbnz => "cbnz",
-            Mnemonic::Tbz => "tbz", Mnemonic::Tbnz => "tbnz",
+            Mnemonic::Adr => "adr",
+            Mnemonic::Adrp => "adrp",
+            Mnemonic::Add => "add",
+            Mnemonic::Adds => "adds",
+            Mnemonic::Sub => "sub",
+            Mnemonic::Subs => "subs",
+            Mnemonic::Movz => "movz",
+            Mnemonic::Movn => "movn",
+            Mnemonic::Movk => "movk",
+            Mnemonic::And => "and",
+            Mnemonic::Orr => "orr",
+            Mnemonic::Eor => "eor",
+            Mnemonic::Ands => "ands",
+            Mnemonic::Cmp => "cmp",
+            Mnemonic::Cmn => "cmn",
+            Mnemonic::Tst => "tst",
+            Mnemonic::Lsl => "lsl",
+            Mnemonic::Lsr => "lsr",
+            Mnemonic::Asr => "asr",
+            Mnemonic::Ror => "ror",
+            Mnemonic::Csel => "csel",
+            Mnemonic::Csinc => "csinc",
+            Mnemonic::Csinv => "csinv",
+            Mnemonic::Csneg => "csneg",
+            Mnemonic::Cset => "cset",
+            Mnemonic::Csetm => "csetm",
+            Mnemonic::Cinc => "cinc",
+            Mnemonic::Cinv => "cinv",
+            Mnemonic::Cneg => "cneg",
+            Mnemonic::Madd => "madd",
+            Mnemonic::Msub => "msub",
+            Mnemonic::Smaddl => "smaddl",
+            Mnemonic::Smsubl => "smsubl",
+            Mnemonic::Umaddl => "umaddl",
+            Mnemonic::Umsubl => "umsubl",
+            Mnemonic::Sdiv => "sdiv",
+            Mnemonic::Udiv => "udiv",
+            Mnemonic::B => "b",
+            Mnemonic::Bl => "bl",
+            Mnemonic::Br => "br",
+            Mnemonic::Blr => "blr",
+            Mnemonic::Ret => "ret",
+            Mnemonic::Cbz => "cbz",
+            Mnemonic::Cbnz => "cbnz",
+            Mnemonic::Tbz => "tbz",
+            Mnemonic::Tbnz => "tbnz",
             Mnemonic::BCond => "b",
-            Mnemonic::Nop => "nop", Mnemonic::Svc => "svc",
-            Mnemonic::Hvc => "hvc", Mnemonic::Smc => "smc", Mnemonic::Brk => "brk",
-            Mnemonic::Isb => "isb", Mnemonic::Dsb => "dsb", Mnemonic::Dmb => "dmb",
-            Mnemonic::Msr => "msr", Mnemonic::Mrs => "mrs",
-            Mnemonic::Mov => "mov", Mnemonic::Neg => "neg",
-            Mnemonic::Mvn => "mvn", Mnemonic::Mul => "mul", Mnemonic::Mulh => "mulh",
+            Mnemonic::Nop => "nop",
+            Mnemonic::Svc => "svc",
+            Mnemonic::Hvc => "hvc",
+            Mnemonic::Smc => "smc",
+            Mnemonic::Brk => "brk",
+            Mnemonic::Isb => "isb",
+            Mnemonic::Dsb => "dsb",
+            Mnemonic::Dmb => "dmb",
+            Mnemonic::Msr => "msr",
+            Mnemonic::Mrs => "mrs",
+            Mnemonic::Mov => "mov",
+            Mnemonic::Neg => "neg",
+            Mnemonic::Mvn => "mvn",
+            Mnemonic::Mul => "mul",
+            Mnemonic::Mulh => "mulh",
         }
     }
 }
@@ -65,41 +144,73 @@ impl Mnemonic {
 /// Condition codes for `b.cond` and conditional selects.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConditionCode {
-    Eq, Ne, Cs, Cc, Mi, Pl, Vs, Vc, Hi, Ls, Ge, Lt, Gt, Le, Al, Nv,
+    Eq,
+    Ne,
+    Cs,
+    Cc,
+    Mi,
+    Pl,
+    Vs,
+    Vc,
+    Hi,
+    Ls,
+    Ge,
+    Lt,
+    Gt,
+    Le,
+    Al,
+    Nv,
 }
 
 impl ConditionCode {
     pub fn from_bits(cond: u8) -> Option<Self> {
         match cond & 0xF {
-            0x0 => Some(ConditionCode::Eq), 0x1 => Some(ConditionCode::Ne),
-            0x2 => Some(ConditionCode::Cs), 0x3 => Some(ConditionCode::Cc),
-            0x4 => Some(ConditionCode::Mi), 0x5 => Some(ConditionCode::Pl),
-            0x6 => Some(ConditionCode::Vs), 0x7 => Some(ConditionCode::Vc),
-            0x8 => Some(ConditionCode::Hi), 0x9 => Some(ConditionCode::Ls),
-            0xA => Some(ConditionCode::Ge), 0xB => Some(ConditionCode::Lt),
-            0xC => Some(ConditionCode::Gt), 0xD => Some(ConditionCode::Le),
-            0xE => Some(ConditionCode::Al), 0xF => Some(ConditionCode::Nv),
+            0x0 => Some(ConditionCode::Eq),
+            0x1 => Some(ConditionCode::Ne),
+            0x2 => Some(ConditionCode::Cs),
+            0x3 => Some(ConditionCode::Cc),
+            0x4 => Some(ConditionCode::Mi),
+            0x5 => Some(ConditionCode::Pl),
+            0x6 => Some(ConditionCode::Vs),
+            0x7 => Some(ConditionCode::Vc),
+            0x8 => Some(ConditionCode::Hi),
+            0x9 => Some(ConditionCode::Ls),
+            0xA => Some(ConditionCode::Ge),
+            0xB => Some(ConditionCode::Lt),
+            0xC => Some(ConditionCode::Gt),
+            0xD => Some(ConditionCode::Le),
+            0xE => Some(ConditionCode::Al),
+            0xF => Some(ConditionCode::Nv),
             _ => unreachable!(),
         }
     }
 
     pub const fn as_str(&self) -> &'static str {
         match self {
-            ConditionCode::Eq => "eq", ConditionCode::Ne => "ne",
-            ConditionCode::Cs => "cs", ConditionCode::Cc => "cc",
-            ConditionCode::Mi => "mi", ConditionCode::Pl => "pl",
-            ConditionCode::Vs => "vs", ConditionCode::Vc => "vc",
-            ConditionCode::Hi => "hi", ConditionCode::Ls => "ls",
-            ConditionCode::Ge => "ge", ConditionCode::Lt => "lt",
-            ConditionCode::Gt => "gt", ConditionCode::Le => "le",
-            ConditionCode::Al => "al", ConditionCode::Nv => "nv",
+            ConditionCode::Eq => "eq",
+            ConditionCode::Ne => "ne",
+            ConditionCode::Cs => "cs",
+            ConditionCode::Cc => "cc",
+            ConditionCode::Mi => "mi",
+            ConditionCode::Pl => "pl",
+            ConditionCode::Vs => "vs",
+            ConditionCode::Vc => "vc",
+            ConditionCode::Hi => "hi",
+            ConditionCode::Ls => "ls",
+            ConditionCode::Ge => "ge",
+            ConditionCode::Lt => "lt",
+            ConditionCode::Gt => "gt",
+            ConditionCode::Le => "le",
+            ConditionCode::Al => "al",
+            ConditionCode::Nv => "nv",
         }
     }
 
     pub const fn as_str_capstone(&self) -> &'static str {
         // Capstone uses hs/lo aliases for cs/cc
         match self {
-            ConditionCode::Cs => "hs", ConditionCode::Cc => "lo",
+            ConditionCode::Cs => "hs",
+            ConditionCode::Cc => "lo",
             other => other.as_str(),
         }
     }
@@ -108,7 +219,10 @@ impl ConditionCode {
 /// Shift types for register-shifted operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShiftType {
-    Lsl, Lsr, Asr, Ror,
+    Lsl,
+    Lsr,
+    Asr,
+    Ror,
 }
 
 impl ShiftType {
@@ -124,8 +238,10 @@ impl ShiftType {
 
     pub const fn as_str(&self) -> &'static str {
         match self {
-            ShiftType::Lsl => "lsl", ShiftType::Lsr => "lsr",
-            ShiftType::Asr => "asr", ShiftType::Ror => "ror",
+            ShiftType::Lsl => "lsl",
+            ShiftType::Lsr => "lsr",
+            ShiftType::Asr => "asr",
+            ShiftType::Ror => "ror",
         }
     }
 }
@@ -133,27 +249,41 @@ impl ShiftType {
 /// Extend types for extended register operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExtendType {
-    Uxtb, Uxth, Uxtw, Uxtx,
-    Sxtb, Sxth, Sxtw, Sxtx,
+    Uxtb,
+    Uxth,
+    Uxtw,
+    Uxtx,
+    Sxtb,
+    Sxth,
+    Sxtw,
+    Sxtx,
 }
 
 impl ExtendType {
     pub fn from_bits(ext: u8) -> Option<Self> {
         match ext & 0x7 {
-            0b000 => Some(ExtendType::Uxtb), 0b001 => Some(ExtendType::Uxth),
-            0b010 => Some(ExtendType::Uxtw), 0b011 => Some(ExtendType::Uxtx),
-            0b100 => Some(ExtendType::Sxtb), 0b101 => Some(ExtendType::Sxth),
-            0b110 => Some(ExtendType::Sxtw), 0b111 => Some(ExtendType::Sxtx),
+            0b000 => Some(ExtendType::Uxtb),
+            0b001 => Some(ExtendType::Uxth),
+            0b010 => Some(ExtendType::Uxtw),
+            0b011 => Some(ExtendType::Uxtx),
+            0b100 => Some(ExtendType::Sxtb),
+            0b101 => Some(ExtendType::Sxth),
+            0b110 => Some(ExtendType::Sxtw),
+            0b111 => Some(ExtendType::Sxtx),
             _ => unreachable!(),
         }
     }
 
     pub const fn as_str(&self) -> &'static str {
         match self {
-            ExtendType::Uxtb => "uxtb", ExtendType::Uxth => "uxth",
-            ExtendType::Uxtw => "uxtw", ExtendType::Uxtx => "uxtx",
-            ExtendType::Sxtb => "sxtb", ExtendType::Sxth => "sxth",
-            ExtendType::Sxtw => "sxtw", ExtendType::Sxtx => "sxtx",
+            ExtendType::Uxtb => "uxtb",
+            ExtendType::Uxth => "uxth",
+            ExtendType::Uxtw => "uxtw",
+            ExtendType::Uxtx => "uxtx",
+            ExtendType::Sxtb => "sxtb",
+            ExtendType::Sxth => "sxth",
+            ExtendType::Sxtw => "sxtw",
+            ExtendType::Sxtx => "sxtx",
         }
     }
 }
@@ -171,18 +301,24 @@ impl AArch64Extensions {
     pub const SVE: Self = Self { bits: 1 << 3 };
     pub const SVE2: Self = Self { bits: 1 << 4 };
 
-    pub const fn empty() -> Self { Self { bits: 0 } }
-    pub const fn all() -> Self { Self { bits: 0xFFFFFFFF } }
+    pub const fn empty() -> Self {
+        Self { bits: 0 }
+    }
+    pub const fn all() -> Self {
+        Self { bits: 0xFFFFFFFF }
+    }
 
     pub const fn contains(&self, other: Self) -> bool {
         (self.bits & other.bits) == other.bits
     }
 
-    pub fn from_profile(extensions: &[String]) -> Result<Self, robustone_core::types::error::DisasmError> {
+    pub fn from_profile(
+        extensions: &[&str],
+    ) -> Result<Self, robustone_core::types::error::DisasmError> {
         use robustone_core::types::error::{DecodeErrorKind, DisasmError};
         let mut result = Self::empty();
         for ext in extensions {
-            match ext.as_str() {
+            match *ext {
                 "base" => result.bits |= Self::BASE.bits,
                 "+fp" => result.bits |= Self::FP.bits,
                 "+simd" | "+neon" => result.bits |= Self::SIMD.bits,
@@ -204,7 +340,9 @@ impl AArch64Extensions {
 impl core::ops::BitOr for AArch64Extensions {
     type Output = Self;
     fn bitor(self, rhs: Self) -> Self::Output {
-        Self { bits: self.bits | rhs.bits }
+        Self {
+            bits: self.bits | rhs.bits,
+        }
     }
 }
 
@@ -219,7 +357,11 @@ impl core::ops::BitOrAssign for AArch64Extensions {
 pub fn decode_imm12(word: u32) -> (i64, bool) {
     let imm = ((word >> 10) & 0xFFF) as i64;
     let shift = ((word >> 22) & 0x1) != 0;
-    if shift { (imm << 12, true) } else { (imm, false) }
+    if shift {
+        (imm << 12, true)
+    } else {
+        (imm, false)
+    }
 }
 
 /// Decode a 16-bit shifted immediate (hw:imm16 for movz/movn/movk).
@@ -415,11 +557,7 @@ mod tests {
 
     #[test]
     fn test_extension_parsing() {
-        let ext = AArch64Extensions::from_profile(&[
-            "base".to_string(),
-            "+fp".to_string(),
-            "+neon".to_string(),
-        ]).unwrap();
+        let ext = AArch64Extensions::from_profile(&["base", "+fp", "+neon"]).unwrap();
         assert!(ext.contains(AArch64Extensions::BASE));
         assert!(ext.contains(AArch64Extensions::FP));
         assert!(ext.contains(AArch64Extensions::SIMD));

@@ -9,7 +9,9 @@ pub fn imm(value: i64) -> Operand {
 
 /// Create a text operand (for condition codes, shift types, etc.).
 pub fn text(value: impl Into<String>) -> Operand {
-    Operand::Text { value: value.into() }
+    Operand::Text {
+        value: value.into(),
+    }
 }
 
 /// Create a memory operand with base register and displacement.
@@ -23,10 +25,26 @@ pub fn mem_base_displ(base: Option<u8>, displacement: i64) -> Operand {
 
 /// Create a PC-relative address operand.
 pub fn pcrel_addr(offset: i64) -> Operand {
-    Operand::Immediate { value: offset }
+    if offset == 0 {
+        Operand::Text {
+            value: "0".to_string(),
+        }
+    } else {
+        Operand::Text {
+            value: format!("0x{offset:x}"),
+        }
+    }
 }
 
 /// Create a label operand for branch targets.
 pub fn label(addr: u64) -> Operand {
-    Operand::Immediate { value: addr as i64 }
+    if addr == 0 {
+        Operand::Text {
+            value: "0".to_string(),
+        }
+    } else {
+        Operand::Text {
+            value: format!("0x{addr:x}"),
+        }
+    }
 }

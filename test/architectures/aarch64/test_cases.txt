@@ -1,0 +1,37 @@
+# AArch64 Stage 1 test cases
+# Format: <hex_bytes> [| <cstool_output>] [| <note>]
+
+# Data Processing -- Immediate
+20080091
+200800d1
+3f0800f1
+804682d2
+04000010
+01000090
+
+# Data Processing -- Register
+2002008a
+200200aa
+200200ca
+2002008b
+200200cb
+e00301cb
+2000039b
+
+# Branches
+04000014
+04000094
+c0035fd6
+00001fd6
+00003fd6
+40040034
+40040035
+40040036
+40040037
+40040054
+
+# System/Hints
+1f2003d5
+010000d4
+9f3f03d5
+bf3003d5

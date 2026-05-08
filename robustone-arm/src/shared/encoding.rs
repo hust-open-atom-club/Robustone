@@ -26,6 +26,21 @@ pub fn op1(word: u32) -> u8 {
     bits(word, 24, 23) as u8
 }
 
+/// Extract the `op1_3bit` field (bits 25:23) for sub-group decode.
+pub fn op1_3bit(word: u32) -> u8 {
+    bits(word, 25, 23) as u8
+}
+
+/// Extract bit 28 (op1 in Data Processing — Register table).
+pub fn bit28(word: u32) -> u8 {
+    bit(word, 28)
+}
+
+/// Extract bits 24:21 (op2 in Data Processing — Register table).
+pub fn op2_4bit(word: u32) -> u8 {
+    bits(word, 24, 21) as u8
+}
+
 /// Extract the `op2` field (bits 22:20).
 pub fn op2(word: u32) -> u8 {
     bits(word, 22, 20) as u8

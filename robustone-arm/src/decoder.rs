@@ -1,14 +1,19 @@
-//! Minimal AArch64 decoder for Robustone.
+//! AArch64 instruction decoder for Robustone.
 //!
-//! Handles a small set of common AArch64 instructions.
+//! Top-level decoder: extracts the 32-bit instruction word, validates size,
+//! and dispatches to extension modules via `op0[28:25]`.
 
+use crate::extensions;
+use crate::types::{AArch64Extensions, Mnemonic};
 use robustone_core::{
     ir::{ArchitectureId, DecodeStatus, DecodedInstruction, Operand, RegisterId, RenderHints},
     types::error::{DecodeErrorKind, DisasmError},
 };
 
-/// Minimal AArch64 decoder.
-pub struct AArch64Decoder;
+/// AArch64 decoder with extension gating.
+pub struct AArch64Decoder {
+    extensions: AArch64Extensions,
+}
 
 impl Default for AArch64Decoder {
     fn default() -> Self {
@@ -17,10 +22,19 @@ impl Default for AArch64Decoder {
 }
 
 impl AArch64Decoder {
+    /// Creates a new decoder with all extensions enabled.
     pub fn new() -> Self {
-        Self
+        Self {
+            extensions: AArch64Extensions::all(),
+        }
     }
 
+    /// Creates a new decoder with the given extensions.
+    pub fn with_extensions(extensions: AArch64Extensions) -> Self {
+        Self { extensions }
+    }
+
+    /// Decodes a single AArch64 instruction from the given bytes.
     pub fn decode(
         &self,
         bytes: &[u8],
@@ -36,87 +50,240 @@ impl AArch64Decoder {
         }
 
         let word = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
-        let (mnemonic, operands, size) = decode_aarch64_word(word)?;
+        let (mnemonic, operands) = extensions::decode_by_op0(word, addr, &self.extensions)?;
+
+        let mnemonic_str = mnemonic.as_str().to_string();
+
+        // Compute metadata
+        let (registers_read, registers_written, implicit_regs_read, implicit_regs_written, groups) =
+            compute_metadata(mnemonic, &operands);
+
+        // Compute render hints for alias expansion
+        let render_hints = compute_render_hints(mnemonic, &operands);
 
         Ok(DecodedInstruction {
             architecture: ArchitectureId::Arm,
             address: addr,
             mode: "aarch64".to_string(),
-            mnemonic: mnemonic.to_string(),
-            opcode_id: Some(mnemonic.to_string()),
-            size,
-            raw_bytes: bytes[..size].to_vec(),
+            mnemonic: mnemonic_str.clone(),
+            opcode_id: Some(mnemonic_str),
+            size: 4,
+            raw_bytes: bytes[..4].to_vec(),
             operands,
-            registers_read: Vec::new(),
-            registers_written: Vec::new(),
-            implicit_registers_read: Vec::new(),
-            implicit_registers_written: Vec::new(),
-            groups: Vec::new(),
+            registers_read,
+            registers_written,
+            implicit_registers_read: implicit_regs_read,
+            implicit_registers_written: implicit_regs_written,
+            groups,
             status: DecodeStatus::Success,
-            render_hints: RenderHints::default(),
+            render_hints,
             render: Some(crate::render::render_aarch64_text_parts),
         })
     }
 }
 
-fn decode_aarch64_word(word: u32) -> Result<(&'static str, Vec<Operand>, usize), DisasmError> {
-    // NOP: 0xD503201F
-    if word == 0xD503201F {
-        return Ok(("nop", vec![], 4));
+type Metadata = (
+    Vec<RegisterId>,
+    Vec<RegisterId>,
+    Vec<RegisterId>,
+    Vec<RegisterId>,
+    Vec<String>,
+);
+
+fn compute_metadata(mnemonic: Mnemonic, operands: &[Operand]) -> Metadata {
+    use crate::types::Mnemonic::*;
+
+    let mut read = Vec::new();
+    let mut written = Vec::new();
+    let mut implicit_read = Vec::new();
+    let implicit_written = Vec::new();
+    let mut groups = Vec::new();
+
+    // Extract register IDs from operands
+    let mut operand_regs = Vec::new();
+    for op in operands {
+        if let Operand::Register { register } = op {
+            operand_regs.push(*register);
+        }
     }
 
-    // ADD (immediate): sf=1, op=0, S=0, shift=00, opcode=100010
-    // Pattern: 1 00 10001 << 23 | imm12 << 10 | Rn << 5 | Rd
-    if (word & 0xFF000000) == 0x91000000 {
-        let rd = word & 0x1F;
-        let rn = (word >> 5) & 0x1F;
-        let imm12 = ((word >> 10) & 0xFFF) as i64;
-        return Ok((
-            "add",
-            vec![
-                Operand::Register {
-                    register: aarch64_reg(rd),
-                },
-                Operand::Register {
-                    register: aarch64_reg(rn),
-                },
-                Operand::Immediate { value: imm12 },
-            ],
-            4,
-        ));
+    match mnemonic {
+        Add | Adds | Sub | Subs | And | Orr | Eor | Ands | Lsl | Lsr | Asr | Ror | Movz | Movn
+        | Movk | Csel | Csinc | Csinv | Csneg | Madd | Msub | Smaddl | Smsubl | Umaddl | Umsubl
+        | Sdiv | Udiv | Neg | Mvn | Mul | Mulh => {
+            if !operand_regs.is_empty() {
+                written.push(operand_regs[0]);
+            }
+            for reg in &operand_regs[1..] {
+                read.push(*reg);
+            }
+            groups.push("data".to_string());
+        }
+        Cmp | Cmn | Tst => {
+            for reg in &operand_regs {
+                read.push(*reg);
+            }
+            written.push(RegisterId {
+                architecture: ArchitectureId::Arm,
+                id: 33,
+            }); // NZCV (PSTATE flags) — pseudo-register
+            groups.push("data".to_string());
+        }
+        Adr | Adrp | Mov => {
+            if !operand_regs.is_empty() {
+                written.push(operand_regs[0]);
+            }
+            groups.push("data".to_string());
+        }
+        B | Bl => {
+            groups.push("branch".to_string());
+            if mnemonic == Bl {
+                written.push(RegisterId {
+                    architecture: ArchitectureId::Arm,
+                    id: 30,
+                }); // LR (x30)
+            }
+        }
+        Br | Blr | Ret => {
+            groups.push("branch".to_string());
+            if !operand_regs.is_empty() {
+                read.push(operand_regs[0]);
+            }
+            if mnemonic == Ret {
+                implicit_read.push(RegisterId {
+                    architecture: ArchitectureId::Arm,
+                    id: 30,
+                }); // LR
+            }
+        }
+        BCond => {
+            groups.push("branch".to_string());
+            implicit_read.push(RegisterId {
+                architecture: ArchitectureId::Arm,
+                id: 33,
+            }); // NZCV
+        }
+        Cbz | Cbnz | Tbz | Tbnz => {
+            groups.push("branch".to_string());
+            if !operand_regs.is_empty() {
+                read.push(operand_regs[0]);
+            }
+        }
+        Cset | Csetm | Cinc | Cinv | Cneg => {
+            if !operand_regs.is_empty() {
+                written.push(operand_regs[0]);
+            }
+            implicit_read.push(RegisterId {
+                architecture: ArchitectureId::Arm,
+                id: 33,
+            }); // NZCV
+            groups.push("data".to_string());
+        }
+        Nop | Svc | Hvc | Smc | Brk | Isb | Dsb | Dmb => {
+            if matches!(mnemonic, Svc | Hvc | Smc | Brk) {
+                groups.push("interrupt".to_string());
+            } else {
+                groups.push("system".to_string());
+            }
+        }
+        Msr | Mrs => {
+            groups.push("system".to_string());
+        }
     }
 
-    // MOVZ: 0xD2800000 | (hw << 21) | (imm16 << 5) | Rd
-    if (word & 0xFFE00000) == 0xD2800000 {
-        let rd = word & 0x1F;
-        let imm16 = ((word >> 5) & 0xFFFF) as i64;
-        return Ok((
-            "mov",
-            vec![
-                Operand::Register {
-                    register: aarch64_reg(rd),
-                },
-                Operand::Immediate { value: imm16 },
-            ],
-            4,
-        ));
-    }
-
-    // RET: 0xD65F03C0
-    if word == 0xD65F03C0 {
-        return Ok(("ret", vec![], 4));
-    }
-
-    Err(DisasmError::DecodeFailure {
-        kind: DecodeErrorKind::InvalidEncoding,
-        architecture: Some("aarch64".to_string()),
-        detail: format!("unrecognized AArch64 encoding 0x{word:08x}"),
-    })
+    (read, written, implicit_read, implicit_written, groups)
 }
 
-fn aarch64_reg(id: u32) -> RegisterId {
-    RegisterId {
-        architecture: ArchitectureId::Arm,
-        id,
+fn compute_render_hints(mnemonic: Mnemonic, operands: &[Operand]) -> RenderHints {
+    use crate::types::Mnemonic::*;
+
+    let mut hints = RenderHints::default();
+
+    // Capstone alias expansion
+    let capstone_mnemonic = match mnemonic {
+        Orr => {
+            // MOV = ORR (immediate) or ORR (register) with XZR
+            if is_zero_reg_operand(operands.get(2)) || is_zero_reg_operand(operands.get(1)) {
+                Some("mov".to_string())
+            } else {
+                None
+            }
+        }
+        Sub => {
+            // NEG = SUB with XZR as first source
+            if is_zero_reg_operand(operands.get(1)) {
+                Some("neg".to_string())
+            } else {
+                None
+            }
+        }
+        Eor => {
+            // MVN = EOR with -1 immediate (all ones)
+            if is_all_ones_immediate(operands.get(2)) {
+                Some("mvn".to_string())
+            } else {
+                None
+            }
+        }
+        Madd => {
+            // MUL = MADD with XZR as accumulator
+            if is_zero_reg_operand(operands.get(3)) {
+                Some("mul".to_string())
+            } else {
+                None
+            }
+        }
+        Movz => {
+            // MOV = MOVZ with no shift
+            if operands.len() == 2 {
+                Some("mov".to_string())
+            } else {
+                None
+            }
+        }
+        _ => None,
+    };
+
+    if let Some(mnemonic) = capstone_mnemonic {
+        hints.capstone_mnemonic = Some(mnemonic.clone());
+        // Hide operands that are implied by the alias
+        match mnemonic.as_str() {
+            "mov" => {
+                if let Some(Operand::Register { register }) = operands.get(2)
+                    && register.id == 31
+                {
+                    hints.capstone_hidden_operands.push(2); // Hide XZR
+                }
+            }
+            "neg" => {
+                hints.capstone_hidden_operands.push(1); // Hide XZR
+            }
+            "mvn" => {
+                hints.capstone_hidden_operands.push(2); // Hide all-ones imm
+            }
+            "mul" => {
+                hints.capstone_hidden_operands.push(3); // Hide XZR accumulator
+            }
+            _ => {}
+        }
     }
+
+    // For B.cond, set capstone mnemonic to b.<cond> and hide the condition code operand
+    if mnemonic == BCond
+        && !operands.is_empty()
+        && let Some(Operand::Text { value }) = operands.first()
+    {
+        hints.capstone_mnemonic = Some(format!("b.{}", value));
+        hints.capstone_hidden_operands.push(0);
+    }
+
+    hints
+}
+
+fn is_zero_reg_operand(op: Option<&Operand>) -> bool {
+    matches!(op, Some(Operand::Register { register }) if register.id == 31)
+}
+
+fn is_all_ones_immediate(op: Option<&Operand>) -> bool {
+    matches!(op, Some(Operand::Immediate { value }) if *value == -1)
 }

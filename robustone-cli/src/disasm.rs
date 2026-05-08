@@ -1,5 +1,5 @@
 use crate::config::{DisasmConfig, OutputConfig};
-use robustone_arm::ArmHandler;
+use robustone_arm::AArch64Handler;
 use robustone_core::ir::TextRenderProfile;
 use robustone_core::{
     ArchitectureDispatcher, DisasmError, Instruction, render_disassembly, render_instruction_text,
@@ -14,7 +14,7 @@ use std::cell::RefCell;
 fn create_dispatcher(_arch: &str) -> ArchitectureDispatcher {
     let mut dispatcher = ArchitectureDispatcher::new();
     dispatcher.register(Box::new(RiscVHandler::new()));
-    dispatcher.register(Box::new(ArmHandler::new()));
+    dispatcher.register(Box::new(AArch64Handler::new()));
     dispatcher.register(Box::new(X86Handler::new()));
     dispatcher.register(Box::new(LoongArchHandler::new()));
     dispatcher

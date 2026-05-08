@@ -9,42 +9,46 @@ use robustone_core::ir::Operand;
 use robustone_core::types::error::{DecodeErrorKind, DisasmError};
 
 pub fn decode_branch_system(word: u32, addr: u64) -> DecodeResult {
-    let op0_val = bits(word, 30, 29);
-    let op1_val = bits(word, 28, 25);
-    let _op2_val = bits(word, 24, 22);
-
-    // Conditional branch, Exception generating, System
-    if op0_val == 0b00 {
-        match op1_val {
-            0b0100 => decode_conditional_branch(word, addr),
-            0b0101 => decode_exception_generating(word),
-            0b0110 | 0b0111 => decode_system(word),
-            _ => Err(DisasmError::decode_failure(
-                DecodeErrorKind::InvalidEncoding,
-                Some("aarch64".to_string()),
-                "unrecognized branch/system encoding",
-            )),
-        }
-    } else if op0_val == 0b01 {
-        // Compare & branch, Test & branch
-        match op1_val {
-            0b0100 | 0b0101 => decode_compare_branch(word, addr),
-            0b0110 | 0b0111 => decode_test_branch(word, addr),
-            _ => Err(DisasmError::decode_failure(
-                DecodeErrorKind::InvalidEncoding,
-                Some("aarch64".to_string()),
-                "unrecognized compare/test branch encoding",
-            )),
-        }
-    } else if op0_val == 0b10 {
-        // Unconditional branch (register)
-        decode_unconditional_branch_reg(word)
-    } else if op0_val == 0b11 {
-        // Unconditional branch (immediate)
-        decode_unconditional_branch_imm(word, addr)
-    } else {
-        unreachable!()
+    // System instructions: 1101_0101_00xx_xxxx_xxxx_xxxx_xxxx_xxxx
+    if (word & 0xFFC00000) == 0xD5000000 {
+        return decode_system(word);
     }
+
+    // Exception generating: 1101_0100_00xx_xxxx_xxxx_xxxx_xxxx_xxxx
+    if (word & 0xFFC00000) == 0xD4000000 {
+        return decode_exception_generating(word);
+    }
+
+    // Unconditional branch immediate: x_00101_xxxxxxxx_xxxx_xxxx_xxxx_xxxx
+    if (word & 0x7C000000) == 0x14000000 {
+        return decode_unconditional_branch_imm(word, addr);
+    }
+
+    // Conditional branch: x_01010_xxxxxxxx_xxxx_xxxx_xxxx_xxxx
+    if (word & 0x7E000000) == 0x54000000 {
+        return decode_conditional_branch(word, addr);
+    }
+
+    // Compare & branch: x_011010_xxxxxxx_xxxx_xxxx_xxxx_xxxx
+    if (word & 0x7E000000) == 0x34000000 {
+        return decode_compare_branch(word, addr);
+    }
+
+    // Test & branch: x_011011_xxxxxxx_xxxx_xxxx_xxxx_xxxx
+    if (word & 0x7E000000) == 0x36000000 {
+        return decode_test_branch(word, addr);
+    }
+
+    // Unconditional branch register: 1101_0110_0xxxxxxxx_xxxx_xxxx_xxxx
+    if (word & 0xFF800000) == 0xD6000000 {
+        return decode_unconditional_branch_reg(word);
+    }
+
+    Err(DisasmError::decode_failure(
+        DecodeErrorKind::InvalidEncoding,
+        Some("aarch64".to_string()),
+        "unrecognized branch/system encoding",
+    ))
 }
 
 /// Conditional branch: B.cond.
@@ -52,17 +56,20 @@ fn decode_conditional_branch(word: u32, addr: u64) -> DecodeResult {
     let cond_val = cond(word);
     let imm = decode_bcond_imm(word);
     let target = (addr as i64).wrapping_add(imm) as u64;
-    let cond = ConditionCode::from_bits(cond_val)
-        .ok_or_else(|| DisasmError::decode_failure(
+    let cond = ConditionCode::from_bits(cond_val).ok_or_else(|| {
+        DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
             "invalid condition code",
-        ))?;
+        )
+    })?;
 
     Ok((
         Mnemonic::BCond,
         vec![
-            Operand::Text { value: cond.as_str_capstone().to_string() },
+            Operand::Text {
+                value: cond.as_str_capstone().to_string(),
+            },
             operands::label(target),
         ],
     ))
@@ -94,43 +101,46 @@ fn decode_exception_generating(word: u32) -> DecodeResult {
         }
     };
 
-    Ok((
-        mnemonic,
-        vec![Operand::Immediate { value: imm16 }],
-    ))
+    Ok((mnemonic, vec![Operand::Immediate { value: imm16 }]))
 }
 
 /// System instructions: NOP, YIELD, WFE, WFI, SEV, SEVL, ISB, DSB, DMB, MSR, MRS.
 fn decode_system(word: u32) -> DecodeResult {
     let l = bit(word, 21);
-    let op0 = bits(word, 19, 16);
-    let _op1 = bits(word, 15, 12);
-    let crn = bits(word, 11, 8);
-    let crm = bits(word, 7, 4);
-    let op2 = bits(word, 3, 1);
-    let _rt = bits(word, 4, 0);
+    let _op1 = bits(word, 19, 16);
+    let crn = bits(word, 15, 12);
+    let crm = bits(word, 11, 8);
+    let _op2 = bits(word, 7, 5);
+    let rt = bits(word, 4, 0);
 
     if l == 0 {
-        // MSR (system register move) or hints/barriers
-        if op0 == 0b0100 {
-            match crn {
-                0b0010 => decode_hints(crm),
-                0b0011 => decode_barriers(crm, op2),
-                _ => Err(DisasmError::decode_failure(
+        // System instructions with CRn determine the category.
+        match crn {
+            0b0010 => decode_hints(crm),
+            0b0011 => decode_barriers(word),
+            0b0100 => {
+                // MSR (system register move) — stage 1 skip
+                Err(DisasmError::decode_failure(
                     DecodeErrorKind::UnimplementedInstruction,
                     Some("aarch64".to_string()),
                     "MSR system register not in stage 1",
-                )),
+                ))
             }
-        } else {
-            Err(DisasmError::decode_failure(
+            _ => Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
                 "system instruction not in stage 1",
-            ))
+            )),
         }
     } else {
-        // MRS
+        // MRS — only valid when Rt != 31
+        if rt == 31 {
+            return Err(DisasmError::decode_failure(
+                DecodeErrorKind::InvalidEncoding,
+                Some("aarch64".to_string()),
+                "reserved system encoding",
+            ));
+        }
         Err(DisasmError::decode_failure(
             DecodeErrorKind::UnimplementedInstruction,
             Some("aarch64".to_string()),
@@ -174,19 +184,25 @@ fn decode_hints(crm: u32) -> DecodeResult {
     Ok((mnemonic, vec![]))
 }
 
-fn decode_barriers(crm: u32, op2: u32) -> DecodeResult {
-    let mnemonic = match (crm, op2) {
-        (0b0010, 0b001) => {
-            // CLREX — not in Mnemonic enum for stage 1
-            return Err(DisasmError::decode_failure(
-                DecodeErrorKind::UnimplementedInstruction,
-                Some("aarch64".to_string()),
-                "CLREX not in stage 1",
-            ));
+fn decode_barriers(word: u32) -> DecodeResult {
+    // Capstone matches barriers by the full bits 7:0 value.
+    // These all require Rt=31 (bits 4:0 = 0b11111).
+    let bottom_byte = word & 0xFF;
+    let crm = bits(word, 11, 8);
+
+    let (mnemonic, domain) = match bottom_byte {
+        0x9F => {
+            let domain = dsb_domain(crm);
+            (Mnemonic::Dsb, domain)
         }
-        (_, 0b011) => Mnemonic::Dsb,
-        (_, 0b101) => Mnemonic::Dmb,
-        (_, 0b110) => Mnemonic::Isb,
+        0xBF => {
+            let domain = dmb_domain(crm);
+            (Mnemonic::Dmb, domain)
+        }
+        0xDF => {
+            let domain = isb_domain(crm);
+            (Mnemonic::Isb, domain)
+        }
         _ => {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::InvalidEncoding,
@@ -195,7 +211,62 @@ fn decode_barriers(crm: u32, op2: u32) -> DecodeResult {
             ));
         }
     };
-    Ok((mnemonic, vec![]))
+
+    if domain.is_empty() {
+        Ok((mnemonic, vec![]))
+    } else {
+        Ok((mnemonic, vec![Operand::Text {
+            value: domain.to_string(),
+        }]))
+    }
+}
+
+fn dsb_domain(crm: u32) -> &'static str {
+    match crm {
+        0x1 => "oshld",
+        0x2 => "oshst",
+        0x3 => "osh",
+        0x5 => "nshld",
+        0x6 => "nshst",
+        0x7 => "nsh",
+        0x8 => "#8",
+        0x9 => "ishld",
+        0xA => "ishst",
+        0xB => "ish",
+        0xD => "ld",
+        0xE => "st",
+        0xF => "sy",
+        _ => "",
+    }
+}
+
+fn dmb_domain(crm: u32) -> &'static str {
+    match crm {
+        0x0 => "#0",
+        0x1 => "oshld",
+        0x2 => "oshst",
+        0x3 => "osh",
+        0x4 => "#4",
+        0x5 => "nshld",
+        0x6 => "nshst",
+        0x7 => "nsh",
+        0x8 => "#8",
+        0x9 => "ishld",
+        0xA => "ishst",
+        0xB => "ish",
+        0xC => "#0xc",
+        0xD => "ld",
+        0xE => "st",
+        0xF => "sy",
+        _ => "",
+    }
+}
+
+fn isb_domain(crm: u32) -> &'static str {
+    match crm {
+        0x0 => "#0",
+        _ => "",
+    }
 }
 
 /// Unconditional branch (register): BR, BLR, RET.
@@ -242,14 +313,12 @@ fn decode_compare_branch(word: u32, addr: u64) -> DecodeResult {
     let rt_val = rt(word);
     let target = (addr as i64).wrapping_add(imm) as u64;
 
-    let mnemonic = if is_cbnz { Mnemonic::Cbnz } else { Mnemonic::Cbz };
-    Ok((
-        mnemonic,
-        vec![
-            reg_operand(rt_val),
-            operands::label(target),
-        ],
-    ))
+    let mnemonic = if is_cbnz {
+        Mnemonic::Cbnz
+    } else {
+        Mnemonic::Cbz
+    };
+    Ok((mnemonic, vec![reg_operand(rt_val), operands::label(target)]))
 }
 
 /// Test & branch: TBZ, TBNZ.
@@ -262,12 +331,18 @@ fn decode_test_branch(word: u32, addr: u64) -> DecodeResult {
     let bit_pos = b40 | (b5 << 5);
     let target = (addr as i64).wrapping_add(imm) as u64;
 
-    let mnemonic = if is_tbnz { Mnemonic::Tbnz } else { Mnemonic::Tbz };
+    let mnemonic = if is_tbnz {
+        Mnemonic::Tbnz
+    } else {
+        Mnemonic::Tbz
+    };
     Ok((
         mnemonic,
         vec![
             reg_operand(rt_val),
-            Operand::Immediate { value: bit_pos as i64 },
+            Operand::Immediate {
+                value: bit_pos as i64,
+            },
             operands::label(target),
         ],
     ))

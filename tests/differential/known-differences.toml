@@ -9,3 +9,47 @@
 # - active = true|false
 # - owner
 # - expires_on
+
+# AArch64 Stage 1: Branch targets encoded as text operands for Capstone-compatible
+# rendering (e.g., "b 0x10" not "b #16"). Capstone's -r mode reports them as
+# immediate values, causing semantic_detail surface divergence while text matches.
+[[difference]]
+arch = "aarch64"
+hex = "04000014"
+surface = "semantic_detail"
+reason = "Branch target rendered as text (0x10) for Capstone text compatibility; semantic uses immediate type"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+[[difference]]
+arch = "aarch64"
+hex = "40040054"
+surface = "semantic_detail"
+reason = "Branch target rendered as text (0x88) for Capstone text compatibility; semantic uses immediate type"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+# AArch64 Stage 1: RET with default XZP/X30 omits the register operand for
+# Capstone-compatible rendering ("ret" not "ret x30"). Capstone's -r mode
+# includes x30 as an explicit operand.
+[[difference]]
+arch = "aarch64"
+hex = "c0035fd6"
+surface = "semantic_detail"
+reason = "RET omits default x30 operand for Capstone text compatibility; semantic differs in -r mode"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+# AArch64 Stage 1: NOP decoded directly as mnemonic "nop". Capstone's -r mode
+# reports underlying "hint" opcode with alias to "nop". Text output matches.
+[[difference]]
+arch = "aarch64"
+hex = "1f2003d5"
+surface = "semantic_detail"
+reason = "NOP decoded as direct mnemonic; Capstone -r mode reports underlying hint opcode"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
