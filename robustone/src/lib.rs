@@ -13,10 +13,5 @@ pub use robustone_riscv as riscv;
 pub use robustone_x86 as x86;
 
 pub fn dispatcher() -> ArchitectureDispatcher {
-    let mut dispatcher = ArchitectureDispatcher::new();
-    dispatcher.register(Box::new(riscv::RiscVHandler::new()));
-    dispatcher.register(Box::new(arm::ArmHandler::new()));
-    dispatcher.register(Box::new(x86::X86Handler::new()));
-    dispatcher.register(Box::new(loongarch::LoongArchHandler::new()));
-    dispatcher
+    ArchitectureDispatcher::default()
 }

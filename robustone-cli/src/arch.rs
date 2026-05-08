@@ -145,7 +145,7 @@ impl FromStr for Architecture {
 #[derive(Clone)]
 pub struct ArchitectureSpec {
     pub arch: Architecture,
-    pub mode: u32,            // Capstone mode bitmask
+    pub mode: u32,            // Compatible mode bitmask
     pub options: Vec<String>, // Architecture-specific option modifiers
 }
 
@@ -202,7 +202,7 @@ impl ArchitectureSpec {
 
         if !has_extension_modifier {
             // No extension modifiers: use the default GC profile for backward
-            // compatibility and parity with Capstone's default RISC-V behavior.
+            // compatibility and parity with the default RISC-V behavior.
             return Some(match arch_name {
                 "riscv32" => ArchitectureProfile::riscv32gc(),
                 "riscv64" => ArchitectureProfile::riscv64gc(),
@@ -212,7 +212,7 @@ impl ArchitectureSpec {
 
         // When explicit extension modifiers are present, build the profile
         // incrementally from a base RV32I/RV64I + M baseline.
-        // Capstone's RISC-V target treats M as part of the default baseline.
+        // The RISC-V target treats M as part of the default baseline.
         let mut profile = match arch_name {
             "riscv32" | "riscv32e" => ArchitectureProfile::riscv32i(),
             "riscv64" => ArchitectureProfile::riscv64i(),

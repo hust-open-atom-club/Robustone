@@ -13,6 +13,7 @@ cargo-fuzz = true
 libfuzzer-sys = "0.4"
 robustone-core = { path = "../robustone-core" }
 robustone-cli = { path = "../robustone-cli" }
+robustone-loongarch = { path = "../robustone-loongarch" }
 clap = { version = "4.5.50", features = ["cargo", "derive"] }
 
 [[bin]]
@@ -46,6 +47,13 @@ bench = false
 [[bin]]
 name = "cli_argument_combinations"
 path = "fuzz_targets/cli_argument_combinations.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "decode_loongarch"
+path = "fuzz_targets/decode_loongarch.rs"
 test = false
 doc = false
 bench = false

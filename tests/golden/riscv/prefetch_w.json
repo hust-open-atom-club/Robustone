@@ -6,10 +6,10 @@
     "operands": "0(a0)"
   },
   "expected_ir": {
-    "mnemonic": "prefetch.w",
-    "render_hint_mnemonic": null,
+    "mnemonic": "ori",
+    "render_hint_mnemonic": "prefetch.w",
     "hidden_operands": [],
-    "groups": ["load"],
+    "groups": ["memory"],
     "operand_kinds": ["memory"]
   }
 }

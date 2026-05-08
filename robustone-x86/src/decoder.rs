@@ -84,7 +84,10 @@ impl X86Decoder {
                         Operand::Register {
                             register: x86_reg(reg),
                         },
-                        Operand::Immediate { value: imm },
+                        Operand::Immediate {
+                            value: imm,
+                            unsigned_mask: 0xFFF,
+                        },
                     ],
                     5,
                 )
@@ -115,9 +118,9 @@ impl X86Decoder {
             implicit_registers_read: Vec::new(),
             implicit_registers_written: Vec::new(),
             groups: Vec::new(),
+            effect: None,
             status: DecodeStatus::Success,
             render_hints: RenderHints::default(),
-            render: Some(crate::render::render_x86_text_parts),
         })
     }
 }

@@ -1,6 +1,6 @@
 //! RISC-V data types used by the transfer crate.
 //!
-//! These structures mirror Capstone's RISC-V bindings to ease interoperability.
+//! These structures mirror RISC-V reference decoder RISC-V bindings to ease interoperability.
 
 pub mod error {
     pub use robustone_core::types::error::*;

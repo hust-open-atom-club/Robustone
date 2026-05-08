@@ -6,13 +6,35 @@
 use serde::Serialize;
 
 /// Architectures that can currently populate the shared IR.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ArchitectureId {
     Riscv,
     Arm,
     X86,
     LoongArch,
+    /// Architecture identifier for dynamically added or experimental backends.
+    Other(&'static str),
+}
+
+impl ArchitectureId {
+    pub fn as_str(&self) -> &str {
+        match self {
+            ArchitectureId::Riscv => "riscv",
+            ArchitectureId::Arm => "arm",
+            ArchitectureId::X86 => "x86",
+            ArchitectureId::LoongArch => "loongarch",
+            ArchitectureId::Other(name) => name,
+        }
+    }
+}
+
+impl Serialize for ArchitectureId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
 }
 
 /// Machine-readable decode status.
@@ -29,23 +51,10 @@ pub enum DecodeStatus {
 /// Text output profiles derived from the shared IR.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TextRenderProfile {
-    Capstone,
+    Compat,
     Canonical,
     VerboseDebug,
 }
-
-/// Function signature for architecture-specific instruction text rendering.
-/// Per-architecture crates provide an implementation and attach it to
-/// `DecodedInstruction::render` so that `robustone-core` remains free of
-/// architecture-specific formatting code.
-pub type RenderFn = fn(
-    instruction: &DecodedInstruction,
-    profile: TextRenderProfile,
-    alias_regs: bool,
-    capstone_aliases: bool,
-    compressed_aliases: bool,
-    unsigned_immediate: bool,
-) -> (String, String);
 
 /// Shared register identifier.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -55,6 +64,11 @@ pub struct RegisterId {
 }
 
 impl RegisterId {
+    /// Create a register identifier with an arbitrary architecture.
+    pub const fn new(architecture: ArchitectureId, id: u32) -> Self {
+        Self { architecture, id }
+    }
+
     /// Create a register identifier for the RISC-V backend.
     pub const fn riscv(id: u32) -> Self {
         Self {
@@ -70,6 +84,22 @@ impl RegisterId {
             id,
         }
     }
+
+    /// Create a register identifier for the ARM backend.
+    pub const fn arm(id: u32) -> Self {
+        Self {
+            architecture: ArchitectureId::Arm,
+            id,
+        }
+    }
+
+    /// Create a register identifier for the x86 backend.
+    pub const fn x86(id: u32) -> Self {
+        Self {
+            architecture: ArchitectureId::X86,
+            id,
+        }
+    }
 }
 
 /// Shared operand representation.
@@ -81,6 +111,8 @@ pub enum Operand {
     },
     Immediate {
         value: i64,
+        /// Bit-width mask for unsigned immediate rendering.
+        unsigned_mask: u64,
     },
     Text {
         value: String,
@@ -95,9 +127,117 @@ pub enum Operand {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
 pub struct RenderHints {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub capstone_mnemonic: Option<String>,
+    pub compat_mnemonic: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub capstone_hidden_operands: Vec<usize>,
+    pub compat_hidden_operands: Vec<usize>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub compat_operand_order: Vec<usize>,
+}
+
+/// Semantic effect of an instruction.
+///
+/// Describes what the instruction does at the architecture level,
+/// independent of mnemonic or encoding details.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EffectSpec {
+    /// Unconditional or conditional branch.
+    Branch,
+    /// Function call (saves return address).
+    Call,
+    /// Function return (restores PC from link register).
+    Return,
+    /// Memory load or store.
+    Memory,
+    /// Memory barrier / fence.
+    Barrier,
+    /// Supervisor call / trap / exception.
+    Trap,
+    /// Privileged instruction (requires elevated privilege level).
+    Privileged,
+    /// Stack operation (push, pop, or stack pointer adjustment).
+    Stack,
+    /// No-architectural-effect (e.g., nop).
+    None,
+}
+
+/// Instruction functional groups for render and validation decisions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InstructionGroup {
+    Integer,
+    Arithmetic,
+    Logical,
+    Shift,
+    Branch,
+    Jump,
+    Memory,
+    Atomic,
+    Float,
+    Privileged,
+    Barrier,
+    System,
+    Vector,
+    /// 256-bit vector (LASX) — distinct from 128-bit Vector (LSX).
+    Vector256,
+    BitManipulation,
+    Compressed,
+}
+
+impl serde::Serialize for InstructionGroup {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for InstructionGroup {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        match s.as_str() {
+            "integer" => Ok(InstructionGroup::Integer),
+            "arithmetic" => Ok(InstructionGroup::Arithmetic),
+            "logical" => Ok(InstructionGroup::Logical),
+            "shift" => Ok(InstructionGroup::Shift),
+            "branch" => Ok(InstructionGroup::Branch),
+            "control_flow" => Ok(InstructionGroup::Jump),
+            "memory" => Ok(InstructionGroup::Memory),
+            "atomic" => Ok(InstructionGroup::Atomic),
+            "floating_point" => Ok(InstructionGroup::Float),
+            "privileged" => Ok(InstructionGroup::Privileged),
+            "barrier" => Ok(InstructionGroup::Barrier),
+            "system" => Ok(InstructionGroup::System),
+            "vector" => Ok(InstructionGroup::Vector),
+            "vector256" => Ok(InstructionGroup::Vector256),
+            "bit_manipulation" => Ok(InstructionGroup::BitManipulation),
+            "compressed" => Ok(InstructionGroup::Compressed),
+            other => Err(serde::de::Error::custom(format!(
+                "unknown instruction group: {}",
+                other
+            ))),
+        }
+    }
+}
+
+impl InstructionGroup {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            InstructionGroup::Integer => "integer",
+            InstructionGroup::Arithmetic => "arithmetic",
+            InstructionGroup::Logical => "logical",
+            InstructionGroup::Shift => "shift",
+            InstructionGroup::Branch => "branch",
+            InstructionGroup::Jump => "control_flow",
+            InstructionGroup::Memory => "memory",
+            InstructionGroup::Atomic => "atomic",
+            InstructionGroup::Float => "floating_point",
+            InstructionGroup::Privileged => "privileged",
+            InstructionGroup::Barrier => "barrier",
+            InstructionGroup::System => "system",
+            InstructionGroup::Vector => "vector",
+            InstructionGroup::Vector256 => "vector256",
+            InstructionGroup::BitManipulation => "bit_manipulation",
+            InstructionGroup::Compressed => "compressed",
+        }
+    }
 }
 
 /// Shared decoded instruction payload.
@@ -120,15 +260,12 @@ pub struct DecodedInstruction {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub implicit_registers_written: Vec<RegisterId>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub groups: Vec<String>,
+    pub groups: Vec<InstructionGroup>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effect: Option<EffectSpec>,
     pub status: DecodeStatus,
     #[serde(default)]
     pub render_hints: RenderHints,
-    /// Optional architecture-specific renderer. Set by architecture crates
-    /// (e.g. `robustone-riscv`) so that text rendering can happen outside
-    /// `robustone-core`.
-    #[serde(skip)]
-    pub render: Option<RenderFn>,
 }
 
 impl DecodedInstruction {
@@ -145,20 +282,20 @@ impl DecodedInstruction {
         self
     }
 
-    /// Set a Capstone-facing alias mnemonic and optional hidden operands.
-    pub fn with_capstone_alias(
+    /// Set a decoder-facing alias mnemonic and optional hidden operands.
+    pub fn with_compat_alias(
         mut self,
-        capstone_mnemonic: impl Into<String>,
+        compat_mnemonic: impl Into<String>,
         hidden_operands: Vec<usize>,
     ) -> Self {
-        self.render_hints.capstone_mnemonic = Some(capstone_mnemonic.into());
-        self.render_hints.capstone_hidden_operands = hidden_operands;
+        self.render_hints.compat_mnemonic = Some(compat_mnemonic.into());
+        self.render_hints.compat_hidden_operands = hidden_operands;
         self
     }
 
-    /// Hide the specified operands in the Capstone-facing outward view.
+    /// Hide the specified operands in the decoder-facing outward view.
     pub fn with_hidden_operands(mut self, hidden_operands: Vec<usize>) -> Self {
-        self.render_hints.capstone_hidden_operands = hidden_operands;
+        self.render_hints.compat_hidden_operands = hidden_operands;
         self
     }
 
@@ -175,22 +312,12 @@ impl DecodedInstruction {
 
     pub fn render_text_parts_with_options(
         &self,
-        profile: TextRenderProfile,
-        alias_regs: bool,
-        capstone_aliases: bool,
-        compressed_aliases: bool,
-        unsigned_immediate: bool,
+        _profile: TextRenderProfile,
+        _alias_regs: bool,
+        _compat_aliases: bool,
+        _compressed_aliases: bool,
+        _unsigned_immediate: bool,
     ) -> (String, String) {
-        if let Some(render) = self.render {
-            return render(
-                self,
-                profile,
-                alias_regs,
-                capstone_aliases,
-                compressed_aliases,
-                unsigned_immediate,
-            );
-        }
         // Generic fallback for architectures without a custom renderer.
         let operands = self
             .operands
@@ -201,9 +328,9 @@ impl DecodedInstruction {
         (self.mnemonic.clone(), operands)
     }
 
-    /// Render the instruction using the Capstone-compatible text profile.
-    pub fn render_capstone_text_parts(&self) -> (String, String) {
-        self.render_text_parts(TextRenderProfile::Capstone)
+    /// Render the instruction using the decoder-compatible text profile.
+    pub fn render_compat_text_parts(&self) -> (String, String) {
+        self.render_text_parts(TextRenderProfile::Compat)
     }
 
     /// Render the instruction using the canonical text profile.
@@ -223,12 +350,13 @@ fn format_generic_operand(operand: &Operand) -> String {
         ArchitectureId::Arm => "arm",
         ArchitectureId::X86 => "x86",
         ArchitectureId::LoongArch => "loongarch",
+        ArchitectureId::Other(name) => name,
     };
     match operand {
         Operand::Register { register } => {
             format!("{}:{}", arch_str(register.architecture), register.id)
         }
-        Operand::Immediate { value } => value.to_string(),
+        Operand::Immediate { value, .. } => value.to_string(),
         Operand::Text { value } => value.clone(),
         Operand::Memory {
             base: Some(base),
@@ -267,9 +395,9 @@ mod tests {
             implicit_registers_read: Vec::new(),
             implicit_registers_written: Vec::new(),
             groups: Vec::new(),
+            effect: None,
             status: DecodeStatus::Success,
             render_hints: RenderHints::default(),
-            render: None,
         }
     }
 
@@ -284,10 +412,13 @@ mod tests {
                 Operand::Register {
                     register: RegisterId::riscv(2),
                 },
-                Operand::Immediate { value: 42 },
+                Operand::Immediate {
+                    value: 42,
+                    unsigned_mask: 0xFFF,
+                },
             ],
         );
-        let (mnemonic, operands) = instruction.render_capstone_text_parts();
+        let (mnemonic, operands) = instruction.render_compat_text_parts();
         assert_eq!(mnemonic, "addi");
         assert_eq!(operands, "riscv:1, riscv:2, 42");
     }
@@ -306,48 +437,54 @@ mod tests {
                 },
             ],
         );
-        let (_, operands) = instruction.render_capstone_text_parts();
+        let (_, operands) = instruction.render_compat_text_parts();
         assert_eq!(operands, "riscv:5, 8(riscv:2)");
     }
 
     #[test]
     fn generic_renderer_uses_stored_mnemonic() {
         let instruction = sample_instruction("c.addi", vec![]);
-        let (mnemonic, _) = instruction.render_capstone_text_parts();
+        let (mnemonic, _) = instruction.render_compat_text_parts();
         assert_eq!(mnemonic, "c.addi");
     }
 
     #[test]
-    fn capstone_hidden_operands_are_ignored_by_generic_renderer() {
+    fn compat_hidden_operands_are_ignored_by_generic_renderer() {
         let mut instruction = sample_instruction(
             "jal",
             vec![
                 Operand::Register {
                     register: RegisterId::riscv(1),
                 },
-                Operand::Immediate { value: 0x1000 },
+                Operand::Immediate {
+                    value: 0x1000,
+                    unsigned_mask: 0xFFF,
+                },
             ],
         );
-        instruction.render_hints.capstone_hidden_operands = vec![0];
-        let (_, operands) = instruction.render_capstone_text_parts();
+        instruction.render_hints.compat_hidden_operands = vec![0];
+        let (_, operands) = instruction.render_compat_text_parts();
         // Generic renderer does not apply hidden operands
         assert_eq!(operands, "riscv:1, 4096");
     }
 
     #[test]
-    fn render_hints_capstone_mnemonic_is_ignored_by_generic_renderer() {
+    fn render_hints_compat_mnemonic_is_ignored_by_generic_renderer() {
         let mut instruction = sample_instruction(
             "addi",
             vec![
                 Operand::Register {
                     register: RegisterId::riscv(1),
                 },
-                Operand::Immediate { value: 1 },
+                Operand::Immediate {
+                    value: 1,
+                    unsigned_mask: 0xFFF,
+                },
             ],
         );
-        instruction.render_hints.capstone_mnemonic = Some("li".to_string());
-        let (mnemonic, _) = instruction.render_capstone_text_parts();
-        // Generic renderer does not apply capstone mnemonic aliases
+        instruction.render_hints.compat_mnemonic = Some("li".to_string());
+        let (mnemonic, _) = instruction.render_compat_text_parts();
+        // Generic renderer does not apply compat mnemonic aliases
         assert_eq!(mnemonic, "addi");
     }
 }

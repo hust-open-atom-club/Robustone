@@ -62,7 +62,7 @@ impl OperandFormatter for DefaultOperandFormatter {
     }
 
     fn format_control_offset(&self, value: i64) -> String {
-        // LoongArch branch offsets in Capstone are displayed as absolute targets.
+        // LoongArch branch offsets as displayed by upstream as absolute targets.
         // The decoder pre-computes target = addr + sign_extend(offset) * 4,
         // so the value passed here is already the target address.
         if value >= 0 {

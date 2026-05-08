@@ -7,7 +7,7 @@ pub fn render_x86_text_parts(
     instruction: &DecodedInstruction,
     _profile: TextRenderProfile,
     _alias_regs: bool,
-    _capstone_aliases: bool,
+    _compat_aliases: bool,
     _compressed_aliases: bool,
     _unsigned_immediate: bool,
 ) -> (String, String) {
@@ -24,7 +24,7 @@ fn format_x86_operand(operand: &robustone_core::ir::Operand) -> String {
     use robustone_core::ir::Operand;
     match operand {
         Operand::Register { register } => x86_register_name(register.id),
-        Operand::Immediate { value } => format!("0x{value:x}"),
+        Operand::Immediate { value, .. } => format!("0x{value:x}"),
         Operand::Text { value } => value.clone(),
         Operand::Memory { base, displacement } => {
             if let Some(base) = base {
@@ -63,4 +63,23 @@ fn x86_register_name(id: u32) -> String {
         _ => "unknown",
     }
     .to_string()
+}
+
+use robustone_core::render::RenderOptions;
+use robustone_core::renderer::Renderer;
+
+/// x86-specific instruction renderer.
+pub struct X86Renderer;
+
+impl Renderer for X86Renderer {
+    fn render(&self, instruction: &DecodedInstruction, options: RenderOptions) -> (String, String) {
+        render_x86_text_parts(
+            instruction,
+            options.text_profile,
+            options.alias_regs,
+            options.compat_aliases,
+            options.compressed_aliases,
+            options.unsigned_immediate,
+        )
+    }
 }

@@ -12,9 +12,12 @@ Robustone tracks Capstone compatibility in three separate layers:
 
 Current repository status:
 
-- Implemented decode backends: `riscv`, `riscv32`, and `riscv64`
 - Public support matrix: [docs/support-matrix.md](docs/support-matrix.md)
-- Current `0.0.0` scope: a RISC-V-mainline experimental release, not a multi-ISA Capstone replacement
+- Backend stability levels:
+  - **Beta**: `riscv32`, `riscv64` — parity-tested, fuzz-covered, suitable for controlled internal use.
+  - **ExperimentalDecode**: `aarch64`, `x32`, `x64`, `loongarch64` — decode backends exist but coverage is limited; `loongarch64` relies on corpus exact-word matching and does not yet generalize to arbitrary valid encodings.
+  - **ParserOnly**: all remaining tokens — accepted by the CLI for capability discovery, but no decode backend is registered.
+- This is a multi-ISA framework in active development, not yet a drop-in Capstone replacement.
 
 ## Requirements
 

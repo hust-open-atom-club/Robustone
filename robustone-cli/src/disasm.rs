@@ -1,23 +1,15 @@
 use crate::config::{DisasmConfig, OutputConfig};
-use robustone_arm::ArmHandler;
 use robustone_core::ir::TextRenderProfile;
 use robustone_core::{
     ArchitectureDispatcher, DisasmError, Instruction, render_disassembly, render_instruction_text,
 };
 use robustone_core::{RenderOptions, RenderedIssue};
-use robustone_loongarch::LoongArchHandler;
-use robustone_riscv::{RiscVHandler, types::RiscVRegister};
-use robustone_x86::X86Handler;
+use robustone_riscv::types::RiscVRegister;
 use serde::Serialize;
 use std::cell::RefCell;
 
 fn create_dispatcher(_arch: &str) -> ArchitectureDispatcher {
-    let mut dispatcher = ArchitectureDispatcher::new();
-    dispatcher.register(Box::new(RiscVHandler::new()));
-    dispatcher.register(Box::new(ArmHandler::new()));
-    dispatcher.register(Box::new(X86Handler::new()));
-    dispatcher.register(Box::new(LoongArchHandler::new()));
-    dispatcher
+    ArchitectureDispatcher::default()
 }
 
 /// Structured error information captured during disassembly.
@@ -272,7 +264,7 @@ impl DisassemblyEngine {
 
     /// Enable or disable decode-time detail generation.
     ///
-    /// This mirrors Capstone's `CS_OPT_DETAIL` option.
+    /// This mirrors the traditional `CS_OPT_DETAIL` option.
     pub fn with_detail(mut self, detail: bool) -> Self {
         self.detail = detail;
         self.dispatcher.borrow_mut().set_detail(detail);
@@ -295,6 +287,10 @@ impl DisassemblyEngine {
         let detail = config.display_options.detailed || config.display_options.real_detail;
         self.dispatcher.borrow_mut().set_detail(detail);
 
+        let decode_config = config
+            .decode_config()
+            .map_err(|e| DisasmError::Configuration(e.to_string()))?;
+
         let mut result =
             DisassemblyResult::new(config.start_address, config.arch_name().to_string());
         let mut offset = 0;
@@ -310,9 +306,11 @@ impl DisassemblyEngine {
                     .borrow()
                     .disassemble_with_profile(slice, profile, current_address)
             } else {
-                self.dispatcher
-                    .borrow()
-                    .disassemble_bytes(slice, arch_name, current_address)
+                self.dispatcher.borrow().disassemble_bytes_with_config(
+                    slice,
+                    &decode_config,
+                    current_address,
+                )
             };
 
             match disassembly {
@@ -367,7 +365,31 @@ impl DisassemblyEngine {
         Ok(result)
     }
 
+    /// Format a disassembly result using the architecture-specific renderer.
+    pub fn format_result(&self, result: &DisassemblyResult, config: OutputConfig) -> String {
+        let dispatcher = self.dispatcher.borrow();
+        let renderer = dispatcher.get_renderer(&result.architecture);
+        let formatter = DisassemblyFormatter::with_renderer(config, renderer);
+        formatter.format(result)
+    }
+
+    /// Disassemble a single instruction at the given address using typed config.
+    pub fn disassemble_single_with_config(
+        &self,
+        bytes: &[u8],
+        config: &robustone_core::DecodeConfig,
+        address: u64,
+    ) -> Result<(Instruction, usize), DisasmError> {
+        self.dispatcher
+            .borrow()
+            .disassemble_bytes_with_config(bytes, config, address)
+    }
+
     /// Disassemble a single instruction at the given address.
+    #[deprecated(
+        since = "0.0.1",
+        note = "Use disassemble_single_with_config() which accepts DecodeConfig"
+    )]
     pub fn disassemble_single(
         &self,
         bytes: &[u8],
@@ -381,14 +403,29 @@ impl DisassemblyEngine {
 }
 
 /// Formatter for disassembly output with multiple display modes.
-pub struct DisassemblyFormatter {
+pub struct DisassemblyFormatter<'a> {
     output_config: OutputConfig,
+    renderer: Option<&'a dyn robustone_core::renderer::Renderer>,
 }
 
-impl DisassemblyFormatter {
+impl<'a> DisassemblyFormatter<'a> {
     /// Create a new formatter with the given output configuration.
     pub fn new(output_config: OutputConfig) -> Self {
-        Self { output_config }
+        Self {
+            output_config,
+            renderer: None,
+        }
+    }
+
+    /// Create a new formatter with an explicit renderer.
+    pub fn with_renderer(
+        output_config: OutputConfig,
+        renderer: &'a dyn robustone_core::renderer::Renderer,
+    ) -> Self {
+        Self {
+            output_config,
+            renderer: Some(renderer),
+        }
     }
 
     /// Format the disassembly result for display.
@@ -435,6 +472,7 @@ impl DisassemblyFormatter {
             result.bytes_processed,
             errors,
             &result.instructions,
+            self.renderer,
             self.render_options(),
         ))
         .expect("JSON serialization should not fail")
@@ -489,7 +527,7 @@ impl DisassemblyFormatter {
         };
 
         let mut detail_lines = Vec::new();
-        let detail_alias_regs = self.output_config.capstone_aliases
+        let detail_alias_regs = self.output_config.compat_aliases
             && (self.output_config.alias_regs
                 || !matches!(
                     self.output_config.text_profile,
@@ -504,7 +542,15 @@ impl DisassemblyFormatter {
                 detail_lines.push(format!("\tOpcode ID: {opcode_id}"));
             }
             if !decoded.groups.is_empty() {
-                detail_lines.push(format!("\tGroups: {}", decoded.groups.join(", ")));
+                detail_lines.push(format!(
+                    "\tGroups: {}",
+                    decoded
+                        .groups
+                        .iter()
+                        .map(|g| g.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ));
             }
             detail_lines.push(format!("\tStatus: {:?}", decoded.status));
         }
@@ -541,14 +587,14 @@ impl DisassemblyFormatter {
     }
 
     fn render_instruction_text(&self, instr: &Instruction) -> (String, String) {
-        render_instruction_text(instr, self.render_options())
+        render_instruction_text(instr, self.renderer, self.render_options())
     }
 
     fn render_options(&self) -> RenderOptions {
         RenderOptions {
             text_profile: self.output_config.text_profile,
             alias_regs: self.output_config.alias_regs,
-            capstone_aliases: self.output_config.capstone_aliases,
+            compat_aliases: self.output_config.compat_aliases,
             compressed_aliases: self.output_config.compressed_aliases,
             unsigned_immediate: self.output_config.unsigned_immediate,
         }
@@ -644,9 +690,9 @@ mod tests {
         };
         let result = engine.disassemble(&config).unwrap();
         let formatter = DisassemblyFormatter::new(OutputConfig {
-            text_profile: robustone_core::ir::TextRenderProfile::Capstone,
+            text_profile: robustone_core::ir::TextRenderProfile::Compat,
             alias_regs: false,
-            capstone_aliases: true,
+            compat_aliases: true,
             compressed_aliases: true,
             unsigned_immediate: false,
             show_hex: false,
@@ -678,19 +724,23 @@ mod tests {
                 Operand::Register {
                     register: RegisterId::riscv(0),
                 },
-                Operand::Immediate { value: 1 },
+                Operand::Immediate {
+                    value: 1,
+                    unsigned_mask: 0xFFF,
+                },
             ],
             registers_read: vec![RegisterId::riscv(0)],
             registers_written: vec![RegisterId::riscv(1)],
             implicit_registers_read: Vec::new(),
             implicit_registers_written: Vec::new(),
-            groups: vec!["arithmetic".to_string()],
+            groups: vec![robustone_core::ir::InstructionGroup::Arithmetic],
+            effect: None,
             status: DecodeStatus::Success,
             render_hints: RenderHints {
-                capstone_mnemonic: Some("li".to_string()),
-                capstone_hidden_operands: vec![1],
+                compat_mnemonic: Some("li".to_string()),
+                compat_hidden_operands: vec![1],
+                compat_operand_order: Vec::new(),
             },
-            render: Some(robustone_riscv::render::render_riscv_text_parts),
         };
         let instruction =
             Instruction::from_decoded(decoded, "legacy".to_string(), "legacy".to_string(), None);
@@ -701,7 +751,8 @@ mod tests {
             bytes_processed: 4,
             errors: Vec::new(),
         };
-        let formatter = DisassemblyFormatter::new(OutputConfig::minimal());
+        let renderer = robustone_riscv::render::RiscVRenderer;
+        let formatter = DisassemblyFormatter::with_renderer(OutputConfig::minimal(), &renderer);
         let output = formatter.format(&result);
 
         assert!(output.contains("li\t"));
@@ -727,9 +778,9 @@ mod tests {
         };
         let result = engine.disassemble(&config).unwrap();
         let formatter = DisassemblyFormatter::new(OutputConfig {
-            text_profile: robustone_core::ir::TextRenderProfile::Capstone,
+            text_profile: robustone_core::ir::TextRenderProfile::Compat,
             alias_regs: false,
-            capstone_aliases: true,
+            compat_aliases: true,
             compressed_aliases: true,
             unsigned_immediate: false,
             show_hex: false,
@@ -765,9 +816,9 @@ mod tests {
         };
         let result = engine.disassemble(&config).unwrap();
         let formatter = DisassemblyFormatter::new(OutputConfig {
-            text_profile: robustone_core::ir::TextRenderProfile::Capstone,
+            text_profile: robustone_core::ir::TextRenderProfile::Compat,
             alias_regs: false,
-            capstone_aliases: true,
+            compat_aliases: true,
             compressed_aliases: true,
             unsigned_immediate: false,
             show_hex: false,
@@ -801,9 +852,9 @@ mod tests {
         };
         let result = engine.disassemble(&config).unwrap();
         let formatter = DisassemblyFormatter::new(OutputConfig {
-            text_profile: robustone_core::ir::TextRenderProfile::Capstone,
+            text_profile: robustone_core::ir::TextRenderProfile::Compat,
             alias_regs: false,
-            capstone_aliases: true,
+            compat_aliases: true,
             compressed_aliases: true,
             unsigned_immediate: false,
             show_hex: false,
@@ -864,9 +915,9 @@ mod tests {
         };
         let result = engine.disassemble(&config).unwrap();
         let formatter = DisassemblyFormatter::new(OutputConfig {
-            text_profile: robustone_core::ir::TextRenderProfile::Capstone,
+            text_profile: robustone_core::ir::TextRenderProfile::Compat,
             alias_regs: false,
-            capstone_aliases: true,
+            compat_aliases: true,
             compressed_aliases: true,
             unsigned_immediate: false,
             show_hex: false,
@@ -903,8 +954,7 @@ mod tests {
             skip_data: false,
         };
         let result = engine.disassemble(&config).unwrap();
-        let formatter = DisassemblyFormatter::new(OutputConfig::minimal());
-        let output = formatter.format(&result);
+        let output = engine.format_result(&result, OutputConfig::minimal());
 
         assert!(output.contains("subw\ts0, s0, s1"));
     }
@@ -926,8 +976,8 @@ mod tests {
             skip_data: false,
         };
         let result = engine.disassemble(&config).unwrap();
-        let formatter = DisassemblyFormatter::new(OutputConfig::canonical_json());
-        let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
+        let output = engine.format_result(&result, OutputConfig::canonical_json());
+        let parsed: Value = serde_json::from_str(&output).unwrap();
 
         assert_eq!(parsed["instructions"][0]["mnemonic"], "c.addiw");
         assert_eq!(parsed["instructions"][0]["decoded"]["mnemonic"], "c.addiw");
@@ -951,8 +1001,8 @@ mod tests {
             skip_data: false,
         };
         let result = engine.disassemble(&config).unwrap();
-        let formatter = DisassemblyFormatter::new(OutputConfig::canonical_json());
-        let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
+        let output = engine.format_result(&result, OutputConfig::canonical_json());
+        let parsed: Value = serde_json::from_str(&output).unwrap();
 
         assert_eq!(parsed["instructions"][0]["mnemonic"], "addi");
         assert_eq!(parsed["instructions"][0]["kind"], "instruction");
@@ -976,9 +1026,11 @@ mod tests {
             skip_data: false,
         };
         let result = engine.disassemble(&config).unwrap();
-        let formatter =
-            DisassemblyFormatter::new(OutputConfig::from_display_options(&config.display_options));
-        let parsed: Value = serde_json::from_str(&formatter.format(&result)).unwrap();
+        let output = engine.format_result(
+            &result,
+            OutputConfig::from_display_options(&config.display_options),
+        );
+        let parsed: Value = serde_json::from_str(&output).unwrap();
 
         assert_eq!(parsed["instructions"][0]["operands"], "sp, sp, 0xfffffff0");
     }
@@ -1006,10 +1058,7 @@ mod tests {
 
         assert_eq!(parsed["instructions"][0]["mnemonic"], "prefetch.w");
         assert_eq!(parsed["instructions"][0]["operands"], "0(a0)");
-        assert_eq!(
-            parsed["instructions"][0]["decoded"]["mnemonic"],
-            "prefetch.w"
-        );
+        assert_eq!(parsed["instructions"][0]["decoded"]["mnemonic"], "ori");
         assert_eq!(
             parsed["instructions"][0]["decoded"]["operands"][0]["kind"],
             "memory"
@@ -1018,7 +1067,7 @@ mod tests {
             parsed["instructions"][0]["decoded"]["operands"][0]["base"]["id"],
             10
         );
-        assert_eq!(parsed["instructions"][0]["decoded"]["groups"][0], "load");
+        assert_eq!(parsed["instructions"][0]["decoded"]["groups"][0], "memory");
     }
 
     #[test]
@@ -1136,20 +1185,22 @@ mod tests {
         };
         let result = engine.disassemble(&config).unwrap();
 
-        let text_formatter = DisassemblyFormatter::new(OutputConfig {
-            text_profile: robustone_core::ir::TextRenderProfile::Canonical,
-            alias_regs: false,
-            capstone_aliases: false,
-            compressed_aliases: false,
-            unsigned_immediate: false,
-            show_hex: false,
-            show_detail_sections: false,
-            json: false,
-        });
-        let json_formatter = DisassemblyFormatter::new(OutputConfig::canonical_json());
+        let text_output = engine.format_result(
+            &result,
+            OutputConfig {
+                text_profile: robustone_core::ir::TextRenderProfile::Canonical,
+                alias_regs: false,
+                compat_aliases: false,
+                compressed_aliases: false,
+                unsigned_immediate: false,
+                show_hex: false,
+                show_detail_sections: false,
+                json: false,
+            },
+        );
+        let json_output = engine.format_result(&result, OutputConfig::canonical_json());
 
-        let text_output = text_formatter.format(&result);
-        let parsed: Value = serde_json::from_str(&json_formatter.format(&result)).unwrap();
+        let parsed: Value = serde_json::from_str(&json_output).unwrap();
 
         assert!(text_output.contains("addi\tx1, x0, 1"));
         assert_eq!(parsed["instructions"][0]["mnemonic"], "addi");

@@ -4,6 +4,25 @@
 //! repository capabilities so CLI parsing, docs, and version output can share
 //! the same source of truth.
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Stability {
+    ParserOnly,
+    ExperimentalDecode,
+    Beta,
+    Production,
+}
+
+impl Stability {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Stability::ParserOnly => "ParserOnly",
+            Stability::ExperimentalDecode => "ExperimentalDecode",
+            Stability::Beta => "Beta",
+            Stability::Production => "Production",
+        }
+    }
+}
+
 use std::fmt;
 use std::fmt::Display;
 
@@ -16,6 +35,7 @@ pub struct ArchitectureCapability {
     pub decode_supported: bool,
     pub detail_supported: bool,
     pub json_supported: bool,
+    pub stability: Stability,
 }
 
 impl ArchitectureCapability {
@@ -70,6 +90,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: true,
         detail_supported: true,
         json_supported: true,
+        stability: Stability::Beta,
     },
     ArchitectureCapability {
         canonical_name: "riscv64",
@@ -79,6 +100,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: true,
         detail_supported: true,
         json_supported: true,
+        stability: Stability::Beta,
     },
     ArchitectureCapability {
         canonical_name: "riscv32e",
@@ -88,6 +110,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "arm",
@@ -97,6 +120,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "armle",
@@ -106,6 +130,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "armbe",
@@ -115,6 +140,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "thumb",
@@ -124,6 +150,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "aarch64",
@@ -133,6 +160,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: true,
         detail_supported: false,
         json_supported: true,
+        stability: Stability::ExperimentalDecode,
     },
     ArchitectureCapability {
         canonical_name: "aarch64be",
@@ -142,6 +170,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "x16",
@@ -151,6 +180,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "x32",
@@ -160,6 +190,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: true,
         detail_supported: false,
         json_supported: true,
+        stability: Stability::ExperimentalDecode,
     },
     ArchitectureCapability {
         canonical_name: "x64",
@@ -169,6 +200,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: true,
         detail_supported: false,
         json_supported: true,
+        stability: Stability::ExperimentalDecode,
     },
     ArchitectureCapability {
         canonical_name: "mips",
@@ -178,6 +210,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "mipsel",
@@ -187,6 +220,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "mips64",
@@ -196,6 +230,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "mips64el",
@@ -205,6 +240,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "powerpc32",
@@ -214,6 +250,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "powerpc32be",
@@ -223,6 +260,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "powerpc64",
@@ -232,6 +270,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "powerpc64be",
@@ -241,6 +280,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "sparc",
@@ -250,6 +290,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "sparcle",
@@ -259,6 +300,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "sparc64",
@@ -268,6 +310,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "systemz",
@@ -277,6 +320,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "xcore",
@@ -286,6 +330,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "m68k",
@@ -295,6 +340,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "tms320c64x",
@@ -304,6 +350,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "m680x",
@@ -313,6 +360,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "evm",
@@ -322,6 +370,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "bpf",
@@ -331,6 +380,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: false,
         detail_supported: false,
         json_supported: false,
+        stability: Stability::ParserOnly,
     },
     ArchitectureCapability {
         canonical_name: "loongarch64",
@@ -340,6 +390,7 @@ const ARCHITECTURE_CAPABILITIES: &[ArchitectureCapability] = &[
         decode_supported: true,
         detail_supported: false,
         json_supported: true,
+        stability: Stability::ExperimentalDecode,
     },
 ];
 

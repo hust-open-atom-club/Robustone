@@ -6,6 +6,7 @@ use crate::utils::parse_hex_to_bytes;
 
 use robustone_core::ir::TextRenderProfile;
 use robustone_core::lookup_architecture_capability;
+use robustone_core::parse_decode_config;
 
 /// High-level disassembly configuration that unifies all options.
 #[derive(Debug, Clone)]
@@ -64,6 +65,17 @@ impl DisasmConfig {
     /// Get the architecture name as a string.
     pub fn arch_name(&self) -> &str {
         self.arch_spec.arch.name()
+    }
+
+    /// Build a strongly-typed `DecodeConfig` from the parsed CLI input.
+    ///
+    /// This is the canonical entry point for the typed decode pipeline.
+    /// It re-uses the validated arch/mode string and converts it once at the
+    /// CLI/core boundary.
+    pub fn decode_config(
+        &self,
+    ) -> std::result::Result<robustone_core::DecodeConfig, robustone_core::DecodeConfigError> {
+        parse_decode_config(self.arch_name())
     }
 
     /// Check if detailed output is enabled.
@@ -137,7 +149,7 @@ impl DisasmConfig {
 pub struct OutputConfig {
     pub text_profile: TextRenderProfile,
     pub alias_regs: bool,
-    pub capstone_aliases: bool,
+    pub compat_aliases: bool,
     pub compressed_aliases: bool,
     pub unsigned_immediate: bool,
     pub show_hex: bool,
@@ -152,10 +164,10 @@ impl OutputConfig {
             text_profile: if display.real_detail {
                 TextRenderProfile::VerboseDebug
             } else {
-                TextRenderProfile::Capstone
+                TextRenderProfile::Compat
             },
             alias_regs: display.alias_regs,
-            capstone_aliases: true,
+            compat_aliases: true,
             compressed_aliases: true,
             unsigned_immediate: display.unsigned_immediate,
             show_hex: display.detailed || display.real_detail,
@@ -167,9 +179,9 @@ impl OutputConfig {
     /// Create minimal output configuration for brief display.
     pub fn minimal() -> Self {
         Self {
-            text_profile: TextRenderProfile::Capstone,
+            text_profile: TextRenderProfile::Compat,
             alias_regs: false,
-            capstone_aliases: true,
+            compat_aliases: true,
             compressed_aliases: true,
             unsigned_immediate: false,
             show_hex: false,
@@ -183,7 +195,7 @@ impl OutputConfig {
         Self {
             text_profile: TextRenderProfile::Canonical,
             alias_regs: false,
-            capstone_aliases: false,
+            compat_aliases: false,
             compressed_aliases: false,
             unsigned_immediate: false,
             show_hex: false,
@@ -204,7 +216,7 @@ impl DisasmConfig {
 
         if self.arch_spec.has_option("noalias") {
             output.alias_regs = false;
-            output.capstone_aliases = false;
+            output.compat_aliases = false;
             output.compressed_aliases = false;
         } else if self.arch_spec.has_option("noaliascompressed") {
             output.compressed_aliases = false;
@@ -252,9 +264,9 @@ mod tests {
         };
 
         let output = OutputConfig::from_display_options(&display);
-        assert_eq!(output.text_profile, TextRenderProfile::Capstone);
+        assert_eq!(output.text_profile, TextRenderProfile::Compat);
         assert!(!output.alias_regs);
-        assert!(output.capstone_aliases);
+        assert!(output.compat_aliases);
         assert!(output.compressed_aliases);
         assert!(!output.unsigned_immediate);
         assert!(output.show_hex);
@@ -279,7 +291,7 @@ mod tests {
         };
         let output = config.output_config();
 
-        assert!(output.capstone_aliases);
+        assert!(output.compat_aliases);
         assert!(!output.compressed_aliases);
 
         let noalias = DisasmConfig {
@@ -289,7 +301,7 @@ mod tests {
         let output = noalias.output_config();
 
         assert!(!output.alias_regs);
-        assert!(!output.capstone_aliases);
+        assert!(!output.compat_aliases);
         assert!(!output.compressed_aliases);
     }
 

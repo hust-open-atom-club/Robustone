@@ -1,6 +1,6 @@
 //! RISC-V instruction formatting helpers.
 //!
-//! Inspired by Capstone's printer to maintain compatible output formatting.
+//! Inspired by reference decoder printer to maintain compatible output formatting.
 
 use super::shared::operands::csr_name_lookup;
 use super::shared::{OperandFormatter, operands::DefaultOperandFactory};
@@ -11,7 +11,7 @@ use robustone_core::ir::{DecodedInstruction, Operand, RegisterId, TextRenderProf
 /// Text formatting profiles for the RISC-V formatter.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RiscVTextProfile {
-    Capstone,
+    Compat,
     Canonical,
     VerboseDebug,
 }
@@ -22,8 +22,8 @@ pub struct RiscVPrinter {
     alias_regs: bool,
     /// Whether alias register behavior was explicitly chosen by the caller.
     alias_regs_explicit: bool,
-    /// Whether Capstone-facing aliases should be emitted instead of canonical mnemonics.
-    capstone_aliases: bool,
+    /// Whether decoder-facing aliases should be emitted instead of canonical mnemonics.
+    compat_aliases: bool,
     /// Whether compressed instruction aliases should be emitted.
     compressed_aliases: bool,
     /// Whether immediates should be rendered as unsigned values when possible.
@@ -35,7 +35,7 @@ pub struct RiscVPrinter {
 impl RiscVPrinter {
     fn text_render_profile(&self) -> TextRenderProfile {
         match self.profile {
-            RiscVTextProfile::Capstone => TextRenderProfile::Capstone,
+            RiscVTextProfile::Compat => TextRenderProfile::Compat,
             RiscVTextProfile::Canonical => TextRenderProfile::Canonical,
             RiscVTextProfile::VerboseDebug => TextRenderProfile::VerboseDebug,
         }
@@ -46,10 +46,10 @@ impl RiscVPrinter {
         Self {
             alias_regs: true,
             alias_regs_explicit: false,
-            capstone_aliases: true,
+            compat_aliases: true,
             compressed_aliases: true,
             unsigned_immediate: false,
-            profile: RiscVTextProfile::Capstone,
+            profile: RiscVTextProfile::Compat,
         }
     }
 
@@ -60,8 +60,8 @@ impl RiscVPrinter {
         self
     }
 
-    pub fn with_capstone_aliases(mut self, capstone_aliases: bool) -> Self {
-        self.capstone_aliases = capstone_aliases;
+    pub fn with_compat_aliases(mut self, compat_aliases: bool) -> Self {
+        self.compat_aliases = compat_aliases;
         self
     }
 
@@ -82,11 +82,11 @@ impl RiscVPrinter {
         if !self.alias_regs_explicit {
             self.alias_regs = matches!(
                 profile,
-                RiscVTextProfile::Capstone | RiscVTextProfile::VerboseDebug
+                RiscVTextProfile::Compat | RiscVTextProfile::VerboseDebug
             );
         }
-        self.capstone_aliases = !matches!(profile, RiscVTextProfile::Canonical);
-        self.compressed_aliases = self.capstone_aliases;
+        self.compat_aliases = !matches!(profile, RiscVTextProfile::Canonical);
+        self.compressed_aliases = self.compat_aliases;
         self
     }
 
@@ -152,24 +152,26 @@ impl RiscVPrinter {
 
     /// Render the shared IR into mnemonic and operand text.
     pub fn render_ir_parts(&self, ir: &DecodedInstruction) -> (String, String) {
-        let use_capstone_aliases =
-            self.capstone_aliases && (self.compressed_aliases || !ir.mnemonic.starts_with("c."));
+        let use_compat_aliases = self.compat_aliases
+            && (self.compressed_aliases
+                || !ir
+                    .groups
+                    .contains(&robustone_core::ir::InstructionGroup::Compressed));
         let mnemonic = match self.profile {
-            RiscVTextProfile::Capstone | RiscVTextProfile::VerboseDebug if use_capstone_aliases => {
-                ir.render_hints
-                    .capstone_mnemonic
-                    .clone()
-                    .unwrap_or_else(|| ir.mnemonic.clone())
-            }
+            RiscVTextProfile::Compat | RiscVTextProfile::VerboseDebug if use_compat_aliases => ir
+                .render_hints
+                .compat_mnemonic
+                .clone()
+                .unwrap_or_else(|| ir.mnemonic.clone()),
             _ => ir.mnemonic.clone(),
         };
 
         let hidden_operands = if matches!(
             self.profile,
-            RiscVTextProfile::Capstone | RiscVTextProfile::VerboseDebug
-        ) && use_capstone_aliases
+            RiscVTextProfile::Compat | RiscVTextProfile::VerboseDebug
+        ) && use_compat_aliases
         {
-            ir.render_hints.capstone_hidden_operands.as_slice()
+            ir.render_hints.compat_hidden_operands.as_slice()
         } else {
             &[]
         };
@@ -181,11 +183,15 @@ impl RiscVPrinter {
             .collect::<Vec<_>>();
         let last_visible_index = visible_operands.last().map(|(index, _)| *index);
 
+        let is_atomic = ir
+            .groups
+            .contains(&robustone_core::ir::InstructionGroup::Atomic);
+        let is_lr = is_atomic && is_riscv_lr(&mnemonic);
         let operands = if mnemonic == "jalr" {
             self.format_ir_jalr_operands(&visible_operands, ir.mode.as_str())
-        } else if mnemonic.starts_with("lr.") {
+        } else if is_lr {
             self.format_ir_load_reserved_operands(&visible_operands, ir.mode.as_str())
-        } else if mnemonic.starts_with("sc.") || mnemonic.starts_with("amo") {
+        } else if is_atomic {
             self.format_ir_atomic_operands(&visible_operands, ir.mode.as_str())
         } else {
             visible_operands
@@ -213,7 +219,7 @@ impl RiscVPrinter {
     fn format_ir_basic_operand(&self, operand: &Operand, mode: &str) -> String {
         match operand {
             Operand::Register { register } => self.format_ir_register(register),
-            Operand::Immediate { value } => {
+            Operand::Immediate { value, .. } => {
                 if self.unsigned_immediate && *value < 0 {
                     self.format_mode_unsigned_immediate(*value, mode)
                 } else {
@@ -244,12 +250,12 @@ impl RiscVPrinter {
         last_visible_index: Option<usize>,
     ) -> String {
         match operand {
-            Operand::Immediate { value } if self.is_csr_operand(mnemonic, index) => {
+            Operand::Immediate { value, .. } if self.is_csr_operand(mnemonic, index) => {
                 csr_name_lookup(*value as u16)
                     .map(str::to_string)
                     .unwrap_or_else(|| self.format_ir_basic_operand(operand, mode))
             }
-            Operand::Immediate { value }
+            Operand::Immediate { value, .. }
                 if last_visible_index == Some(index) && self.is_control_flow_mnemonic(mnemonic) =>
             {
                 if self.unsigned_immediate {
@@ -268,7 +274,10 @@ impl RiscVPrinter {
             (
                 Some(Operand::Register { register: rd }),
                 Some(Operand::Register { register: rs1 }),
-                Some(Operand::Immediate { value: imm }),
+                Some(Operand::Immediate {
+                    value: imm,
+                    unsigned_mask: 0xFFF,
+                }),
             ) => {
                 let disp = if self.unsigned_immediate && *imm < 0 {
                     self.format_mode_unsigned_immediate(*imm, mode)
@@ -280,7 +289,10 @@ impl RiscVPrinter {
             }
             (
                 Some(Operand::Register { register: rs1 }),
-                Some(Operand::Immediate { value: imm }),
+                Some(Operand::Immediate {
+                    value: imm,
+                    unsigned_mask: 0xFFF,
+                }),
                 None,
             ) => {
                 let disp = if self.unsigned_immediate && *imm < 0 {
@@ -375,6 +387,7 @@ impl RiscVPrinter {
         }
     }
 
+    // LEGACY: Phase 5 will migrate CSR operand detection to spec-level operand metadata.
     fn is_csr_operand(&self, mnemonic: &str, index: usize) -> bool {
         let csr_mnemonics = [
             "csrrw", "csrrs", "csrrc", "csrrwi", "csrrsi", "csrrci", "csrr", "csrc", "csrw",
@@ -382,6 +395,8 @@ impl RiscVPrinter {
         csr_mnemonics.contains(&mnemonic) && index == 1
     }
 
+    // LEGACY: Phase 5 will replace mnemonic-based control-flow detection with
+    // InstructionGroup membership. Note: duplicates render.rs logic — consolidate in Phase 5.
     fn is_control_flow_mnemonic(&self, mnemonic: &str) -> bool {
         matches!(
             mnemonic,
@@ -526,11 +541,16 @@ pub mod format {
     }
 }
 
+fn is_riscv_lr(mnemonic: &str) -> bool {
+    matches!(mnemonic, "lr.w" | "lr.d")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::RiscVHandler;
     use crate::ir::{ArchitectureId, DecodeStatus, Operand, RegisterId, RenderHints};
-    use crate::riscv::decoder::RiscVDecoder;
+    use robustone_core::traits::ArchitectureHandler;
 
     #[test]
     fn test_printer_creation() {
@@ -624,9 +644,9 @@ mod tests {
 
     #[test]
     fn test_canonical_profile_renders_full_operands() {
-        let decoder = RiscVDecoder::rv32gc();
-        let decoded = decoder
-            .decode(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
+        let handler = RiscVHandler::new();
+        let (decoded, _size) = handler
+            .decode_instruction(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
             .unwrap();
         let printer = RiscVPrinter::new().with_profile(RiscVTextProfile::Canonical);
         let (mnemonic, operands) = printer.render_ir_parts(&decoded);
@@ -637,9 +657,9 @@ mod tests {
 
     #[test]
     fn test_canonical_profile_renders_fp_registers_without_aliases() {
-        let decoder = RiscVDecoder::rv64gc();
-        let decoded = decoder
-            .decode(&[0xd3, 0x02, 0x73, 0x00], "riscv64", 0)
+        let handler = RiscVHandler::new();
+        let (decoded, _size) = handler
+            .decode_instruction(&[0xd3, 0x02, 0x73, 0x00], "riscv64", 0)
             .unwrap();
         let printer = RiscVPrinter::new().with_profile(RiscVTextProfile::Canonical);
         let (mnemonic, operands) = printer.render_ir_parts(&decoded);
@@ -650,7 +670,7 @@ mod tests {
 
     #[test]
     fn test_render_ir_parts_uses_shared_ir() {
-        let printer = RiscVPrinter::new().with_profile(RiscVTextProfile::Capstone);
+        let printer = RiscVPrinter::new().with_profile(RiscVTextProfile::Compat);
         let decoded = DecodedInstruction {
             architecture: ArchitectureId::Riscv,
             address: 0,
@@ -666,19 +686,23 @@ mod tests {
                 Operand::Register {
                     register: RegisterId::riscv(0),
                 },
-                Operand::Immediate { value: 1 },
+                Operand::Immediate {
+                    value: 1,
+                    unsigned_mask: 0xFFF,
+                },
             ],
             registers_read: vec![RegisterId::riscv(0)],
             registers_written: vec![RegisterId::riscv(1)],
             implicit_registers_read: Vec::new(),
             implicit_registers_written: Vec::new(),
-            groups: vec!["arithmetic".to_string()],
+            groups: vec![robustone_core::ir::InstructionGroup::Arithmetic],
+            effect: None,
             status: DecodeStatus::Success,
             render_hints: RenderHints {
-                capstone_mnemonic: Some("li".to_string()),
-                capstone_hidden_operands: vec![1],
+                compat_mnemonic: Some("li".to_string()),
+                compat_hidden_operands: vec![1],
+                compat_operand_order: Vec::new(),
             },
-            render: Some(crate::render::render_riscv_text_parts),
         };
 
         let (mnemonic, operands) = printer.render_ir_parts(&decoded);
@@ -688,9 +712,9 @@ mod tests {
 
     #[test]
     fn test_print_basic_honors_canonical_profile() {
-        let decoder = RiscVDecoder::rv32gc();
-        let decoded = decoder
-            .decode(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
+        let handler = RiscVHandler::new();
+        let (decoded, _size) = handler
+            .decode_instruction(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
             .unwrap();
         let instruction =
             Instruction::from_decoded(decoded, "li".to_string(), "ra, 1".to_string(), None);
@@ -700,10 +724,10 @@ mod tests {
     }
 
     #[test]
-    fn test_default_printer_keeps_capstone_aliases_for_decoded_instructions() {
-        let decoder = RiscVDecoder::rv32gc();
-        let decoded = decoder
-            .decode(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
+    fn test_default_printer_keeps_compat_aliases_for_decoded_instructions() {
+        let handler = RiscVHandler::new();
+        let (decoded, _size) = handler
+            .decode_instruction(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
             .unwrap();
         let instruction =
             Instruction::from_decoded(decoded, "li".to_string(), "ra, 1".to_string(), None);
@@ -713,9 +737,9 @@ mod tests {
 
     #[test]
     fn test_with_alias_regs_false_is_honored_for_decoded_instructions() {
-        let decoder = RiscVDecoder::rv32gc();
-        let decoded = decoder
-            .decode(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
+        let handler = RiscVHandler::new();
+        let (decoded, _size) = handler
+            .decode_instruction(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
             .unwrap();
         let instruction =
             Instruction::from_decoded(decoded, "li".to_string(), "ra, 1".to_string(), None);
@@ -741,19 +765,23 @@ mod tests {
                 Operand::Register {
                     register: RegisterId::riscv(2),
                 },
-                Operand::Immediate { value: -16 },
+                Operand::Immediate {
+                    value: -16,
+                    unsigned_mask: 0xFFF,
+                },
             ],
             registers_read: vec![RegisterId::riscv(2)],
             registers_written: vec![RegisterId::riscv(2)],
             implicit_registers_read: Vec::new(),
             implicit_registers_written: Vec::new(),
-            groups: vec!["arithmetic".to_string()],
+            groups: vec![robustone_core::ir::InstructionGroup::Arithmetic],
+            effect: None,
             status: DecodeStatus::Success,
             render_hints: RenderHints {
-                capstone_mnemonic: None,
-                capstone_hidden_operands: Vec::new(),
+                compat_mnemonic: None,
+                compat_hidden_operands: Vec::new(),
+                compat_operand_order: Vec::new(),
             },
-            render: Some(crate::render::render_riscv_text_parts),
         };
         let instruction = Instruction::from_decoded(
             decoded,

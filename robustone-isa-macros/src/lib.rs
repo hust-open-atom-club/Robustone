@@ -1,0 +1,1470 @@
+#![forbid(unsafe_code)]
+
+//! Proc-macro crate for the Robustone ISA backend framework.
+//!
+//! Provides declarative macros that architecture crates use to define
+//! their instruction sets, register banks, formats, and aliases.
+
+use proc_macro::TokenStream;
+use proc_macro2::Span;
+use quote::quote;
+use syn::parse::{Parse, ParseStream};
+use syn::{Expr, Ident, LitInt, LitStr, Token, Type, braced};
+
+// ============================================================================
+// define_arch!
+// ============================================================================
+
+/// Define architecture-level facts (word type, modes, features, profiles).
+///
+/// Example:
+/// ```ignore
+/// define_arch! {
+///     pub arch LoongArch {
+///         word = u32;
+///         endian = little;
+///         instruction_length = fixed(4);
+///         modes { LA32 = "loongarch32"; LA64 = "loongarch64"; }
+///         features: u128 { BASE = 0; LA64 = 1; FLOAT32 = 2; }
+///         registers = loongarch_registers;
+///         formats = loongarch_formats;
+///         specs = loongarch_specs;
+///         render = LoongArchRenderPolicy;
+///     }
+/// }
+/// ```
+#[proc_macro]
+pub fn define_arch(input: TokenStream) -> TokenStream {
+    let parsed = syn::parse_macro_input!(input as DefineArchInput);
+    let vis = &parsed.vis;
+    let name = &parsed.name;
+    let word_ty = &parsed.word;
+    let modes_name = Ident::new(&format!("{}Mode", name), Span::call_site());
+    let feature_name = Ident::new(&format!("{}Feature", name), Span::call_site());
+    let backend_name = Ident::new(&format!("{}Backend", name), Span::call_site());
+
+    let mode_variants: Vec<_> = parsed
+        .modes
+        .iter()
+        .map(|m| {
+            let variant = &m.name;
+            quote! { #variant }
+        })
+        .collect();
+
+    let feature_bits: Vec<_> = parsed
+        .features
+        .bits
+        .iter()
+        .map(|b| {
+            let name = &b.name;
+            let value = &b.value;
+            quote! { const #name = 1 << #value; }
+        })
+        .collect();
+
+    let feature_ty = &parsed.features.ty;
+
+    // Compile-time validation: duplicate feature bit values
+    let mut duplicate_feature_checks = Vec::new();
+    for i in 0..parsed.features.bits.len() {
+        for j in (i + 1)..parsed.features.bits.len() {
+            let a = &parsed.features.bits[i];
+            let b = &parsed.features.bits[j];
+            if a.value.base10_digits() == b.value.base10_digits() {
+                let msg = format!(
+                    "duplicate feature bit: {} and {} both use bit {}",
+                    a.name, b.name, a.value
+                );
+                duplicate_feature_checks.push(quote! {
+                    const _: () = ::core::compile_error!(#msg);
+                });
+            }
+        }
+    }
+
+    let backend_impl_block = if let Some(ref bi) = parsed.backend_impl {
+        let field_ty = &bi.field;
+        let reg_class_ty = &bi.register_class;
+        let arch_id = &bi.architecture_id;
+        let read_fn = &bi.read_instruction;
+        let lookup_fn = &bi.lookup;
+        let lower_fn = &bi.lower_register;
+        let render_policy_override = bi.render_policy.as_ref().map(|f| {
+            quote! {
+                fn render_policy(
+                    profile: &::robustone_isa::DecodeProfile<Self>,
+                ) -> ::robustone_isa::RenderPolicy<Self> {
+                    #f(profile)
+                }
+            }
+        });
+        let extract_field_override = bi.extract_field.as_ref().map(|f| {
+            quote! {
+                fn extract_field(
+                    word: Self::Word,
+                    format: &::robustone_isa::FormatSpec<Self::Field>,
+                    field: Self::Field,
+                ) -> ::core::result::Result<u32, ::robustone_core::types::error::DisasmError> {
+                    #f(word, format, field)
+                }
+            }
+        });
+        let apply_aliases_override = bi.apply_aliases.as_ref().map(|f| {
+            quote! {
+                fn apply_aliases(
+                    decoded: &mut ::robustone_core::ir::DecodedInstruction,
+                ) {
+                    #f(decoded);
+                }
+            }
+        });
+        // Emit a use statement when registers live in a different module.
+        // For backends where define_registers! is in the same file (current
+        // setup), REGISTER_BANKS is already in scope — the use is a no-op.
+        let reg_import = bi.registers_module.as_ref().map(|path| {
+            quote! {
+                // Path: use #path::REGISTER_BANKS; — deferred until
+                // register definitions move to separate modules.
+                const _REGISTERS_MODULE: &str = stringify!(#path);
+            }
+        });
+        quote! {
+            #reg_import
+
+            impl ::robustone_isa::ArchitectureBackend for #backend_name {
+                type Word = #word_ty;
+                type Mode = #modes_name;
+                type Feature = #feature_name;
+                type Field = #field_ty;
+                type RegisterClass = #reg_class_ty;
+
+                fn architecture_id() -> ::robustone_core::ir::ArchitectureId {
+                    #arch_id
+                }
+
+                fn read_instruction(bytes: &[u8]) -> ::core::result::Result<
+                    ::robustone_isa::InstructionRead<Self::Word>,
+                    ::robustone_core::types::error::DisasmError,
+                > {
+                    #read_fn(bytes)
+                }
+
+                fn lookup(
+                    word: Self::Word,
+                    profile: &::robustone_isa::DecodeProfile<Self>,
+                ) -> ::core::option::Option<&'static ::robustone_isa::InstructionSpec<Self>> {
+                    #lookup_fn(word, profile)
+                }
+
+                fn lower_register(
+                    class: Self::RegisterClass,
+                    raw: u32,
+                    profile: &::robustone_isa::DecodeProfile<Self>,
+                ) -> ::robustone_core::ir::RegisterId {
+                    #lower_fn(class, raw, profile)
+                }
+
+                #render_policy_override
+
+                #extract_field_override
+
+                #apply_aliases_override
+            }
+        }
+    } else {
+        quote! {}
+    };
+
+    let feature_block = if parsed.extern_features {
+        quote! {}
+    } else {
+        quote! {
+            ::bitflags::bitflags! {
+                #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+                #vis struct #feature_name: #feature_ty {
+                    #(#feature_bits)*
+                }
+            }
+
+            impl ::robustone_isa::FeatureSet for #feature_name {
+                fn empty() -> Self { Self::empty() }
+                fn all_supported_for_tests() -> Self { Self::all() }
+                fn contains(self, required: Self) -> bool { self.bits() & required.bits() == required.bits() }
+            }
+        }
+    };
+
+    let output = quote! {
+        #(#duplicate_feature_checks)*
+
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        #vis enum #modes_name {
+            #(#mode_variants),*
+        }
+
+        #feature_block
+
+        #vis struct #backend_name;
+
+        #backend_impl_block
+    };
+
+    output.into()
+}
+
+struct DefineArchInput {
+    vis: syn::Visibility,
+    _arch_token: Ident,
+    name: Ident,
+    _brace: syn::token::Brace,
+    word: Type,
+    modes: Vec<ModeDef>,
+    features: FeatureDef,
+    extern_features: bool,
+    backend_impl: Option<BackendImpl>,
+}
+
+struct BackendImpl {
+    field: Type,
+    register_class: Type,
+    architecture_id: Expr,
+    read_instruction: Expr,
+    lookup: Expr,
+    lower_register: Expr,
+    render_policy: Option<Expr>,
+    extract_field: Option<Expr>,
+    apply_aliases: Option<Expr>,
+    registers_module: Option<syn::Path>,
+}
+
+struct ModeDef {
+    name: Ident,
+    _eq: Token![=],
+    _value: LitStr,
+}
+
+struct FeatureDef {
+    ty: Type,
+    bits: Vec<FeatureBit>,
+}
+
+struct FeatureBit {
+    name: Ident,
+    _eq: Token![=],
+    value: syn::LitInt,
+}
+
+impl Parse for DefineArchInput {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let vis: syn::Visibility = input.parse()?;
+        let _arch_token: Ident = input.parse()?;
+        let name: Ident = input.parse()?;
+        let content;
+        let _brace = braced!(content in input);
+
+        // word = <type>;
+        let word_kw: Ident = content.parse()?;
+        if word_kw != "word" {
+            return Err(syn::Error::new(word_kw.span(), "expected `word`"));
+        }
+        let _eq: Token![=] = content.parse()?;
+        let word: Type = content.parse()?;
+        let _semi: Token![;] = content.parse()?;
+
+        // endian = <ident>;
+        let endian_kw: Ident = content.parse()?;
+        if endian_kw != "endian" {
+            return Err(syn::Error::new(endian_kw.span(), "expected `endian`"));
+        }
+        let _eq: Token![=] = content.parse()?;
+        let _endian: Ident = content.parse()?;
+        let _semi: Token![;] = content.parse()?;
+
+        // instruction_length = <ident>(<lit>);
+        let ilen_kw: Ident = content.parse()?;
+        if ilen_kw != "instruction_length" {
+            return Err(syn::Error::new(
+                ilen_kw.span(),
+                "expected `instruction_length`",
+            ));
+        }
+        let _eq: Token![=] = content.parse()?;
+        let _ilen_kind: Ident = content.parse()?;
+        let _paren;
+        syn::parenthesized!(_paren in content);
+        let _ilen_val: syn::LitInt = _paren.parse()?;
+        let _semi: Token![;] = content.parse()?;
+
+        // modes { ... }
+        let modes_kw: Ident = content.parse()?;
+        if modes_kw != "modes" {
+            return Err(syn::Error::new(modes_kw.span(), "expected `modes`"));
+        }
+        let modes_content;
+        braced!(modes_content in content);
+        let mut modes = Vec::new();
+        while !modes_content.is_empty() {
+            let name: Ident = modes_content.parse()?;
+            let _eq: Token![=] = modes_content.parse()?;
+            let _value: LitStr = modes_content.parse()?;
+            let _semi: Token![;] = modes_content.parse()?;
+            modes.push(ModeDef { name, _eq, _value });
+        }
+        let _semi: Token![;] = content.parse()?;
+
+        // Optional extern_features flag for hand-written Feature type
+        let extern_features = content.peek(Ident) && {
+            let fork = content.fork();
+            let kw: Ident = fork.parse()?;
+            kw == "extern_features"
+        };
+        if extern_features {
+            let _kw: Ident = content.parse()?; // consume extern_features
+            let _s: Token![;] = content.parse()?;
+        }
+
+        // features: <type> { ... }
+        let features_kw: Ident = content.parse()?;
+        if features_kw != "features" {
+            return Err(syn::Error::new(features_kw.span(), "expected `features`"));
+        }
+        let _colon: Token![:] = content.parse()?;
+        let ty: Type = content.parse()?;
+        let bits_content;
+        braced!(bits_content in content);
+        let mut bits = Vec::new();
+        while !bits_content.is_empty() {
+            let name: Ident = bits_content.parse()?;
+            let _eq: Token![=] = bits_content.parse()?;
+            let value: syn::LitInt = bits_content.parse()?;
+            let _semi: Token![;] = bits_content.parse()?;
+            bits.push(FeatureBit { name, _eq, value });
+        }
+        let _semi: Token![;] = content.parse()?;
+
+        // registers = <path>;
+        let _registers_kw: Ident = content.parse()?;
+        let _eq: Token![=] = content.parse()?;
+        let registers_path: syn::Path = content.parse()?;
+        let _semi: Token![;] = content.parse()?;
+
+        // formats = <path>;
+        let _formats_kw: Ident = content.parse()?;
+        let _eq: Token![=] = content.parse()?;
+        let _formats_path: syn::Path = content.parse()?;
+        let _semi: Token![;] = content.parse()?;
+
+        // specs = <path>;
+        let _specs_kw: Ident = content.parse()?;
+        let _eq: Token![=] = content.parse()?;
+        let _specs_path: syn::Path = content.parse()?;
+        let _semi: Token![;] = content.parse()?;
+
+        // render = <path>;
+        let _render_kw: Ident = content.parse()?;
+        let _eq: Token![=] = content.parse()?;
+        let _render_path: syn::Path = content.parse()?;
+        let _semi: Token![;] = content.parse()?;
+
+        // Optional backend_impl { ... } block
+        let backend_impl = if !content.is_empty() {
+            let kw: Ident = content.parse()?;
+            if kw == "backend_impl" {
+                let impl_content;
+                braced!(impl_content in content);
+                let mut field = None;
+                let mut register_class = None;
+                let mut architecture_id = None;
+                let mut read_instruction = None;
+                let mut lookup = None;
+                let mut lower_register = None;
+                let mut render_policy = None;
+                let mut extract_field = None;
+                let mut apply_aliases = None;
+                while !impl_content.is_empty() {
+                    let key: Ident = impl_content.parse()?;
+                    let _eq: Token![=] = impl_content.parse()?;
+                    match key.to_string().as_str() {
+                        "field" => field = Some(impl_content.parse()?),
+                        "register_class" => register_class = Some(impl_content.parse()?),
+                        "architecture_id" => architecture_id = Some(impl_content.parse()?),
+                        "read_instruction" => read_instruction = Some(impl_content.parse()?),
+                        "lookup" => lookup = Some(impl_content.parse()?),
+                        "lower_register" => lower_register = Some(impl_content.parse()?),
+                        "render_policy" => render_policy = Some(impl_content.parse()?),
+                        "extract_field" => extract_field = Some(impl_content.parse()?),
+                        "apply_aliases" => apply_aliases = Some(impl_content.parse()?),
+                        other => {
+                            return Err(syn::Error::new(
+                                key.span(),
+                                format!("unknown key: {}", other),
+                            ));
+                        }
+                    }
+                    let _semi: Token![;] = impl_content.parse()?;
+                }
+                Some(BackendImpl {
+                    field: field
+                        .ok_or_else(|| syn::Error::new(Span::call_site(), "missing field"))?,
+                    register_class: register_class.ok_or_else(|| {
+                        syn::Error::new(Span::call_site(), "missing register_class")
+                    })?,
+                    architecture_id: architecture_id.ok_or_else(|| {
+                        syn::Error::new(Span::call_site(), "missing architecture_id")
+                    })?,
+                    read_instruction: read_instruction.ok_or_else(|| {
+                        syn::Error::new(Span::call_site(), "missing read_instruction")
+                    })?,
+                    lookup: lookup
+                        .ok_or_else(|| syn::Error::new(Span::call_site(), "missing lookup"))?,
+                    lower_register: lower_register.ok_or_else(|| {
+                        syn::Error::new(Span::call_site(), "missing lower_register")
+                    })?,
+                    render_policy,
+                    extract_field,
+                    apply_aliases,
+                    registers_module: Some(registers_path.clone()),
+                })
+            } else {
+                return Err(syn::Error::new(
+                    kw.span(),
+                    "expected `backend_impl` or end of input",
+                ));
+            }
+        } else {
+            None
+        };
+
+        Ok(DefineArchInput {
+            vis,
+            _arch_token,
+            name,
+            _brace,
+            word,
+            modes,
+            features: FeatureDef { ty, bits },
+            extern_features,
+            backend_impl,
+        })
+    }
+}
+
+// ============================================================================
+// define_registers!
+// ============================================================================
+
+/// Define register banks for an architecture.
+///
+/// Generates the `RegisterClass` enum, `REGISTER_BANKS` metadata table,
+/// and a `lower_register` helper function. Compile-time validation
+/// checks for duplicate bank names.
+///
+/// Example:
+/// ```ignore
+/// define_registers! {
+///     arch = Arm;
+///     bank Gpr {
+///         count = 31;
+///         base_id = 0;
+///         canonical = "x{n}";
+///     }
+/// }
+/// ```
+#[proc_macro]
+pub fn define_registers(input: TokenStream) -> TokenStream {
+    let parsed = syn::parse_macro_input!(input as DefineRegistersInput);
+    let arch = &parsed.arch;
+    let reg_class_enum = Ident::new(&format!("{}RegisterClass", arch), Span::call_site());
+
+    let variants: Vec<_> = parsed
+        .banks
+        .iter()
+        .map(|b| {
+            let variant = to_pascal_case_ident(&b.name);
+            quote! { #variant }
+        })
+        .collect();
+
+    // Generate static bank metadata entries
+    let bank_entries: Vec<_> = parsed
+        .banks
+        .iter()
+        .map(|b| {
+            let name_str = b.name.to_string();
+            let variant = to_pascal_case_ident(&b.name);
+            let base_id = b
+                .base_id
+                .as_ref()
+                .map_or(quote! { 0u32 }, |v| quote! { #v as u32 });
+            let count = &b.count;
+            let prefix = b
+                .prefix
+                .as_ref()
+                .map_or(quote! { None }, |p| quote! { Some(#p) });
+            let canonical = b
+                .canonical
+                .as_ref()
+                .map_or(quote! { None }, |c| quote! { Some(#c) });
+            let aliases = if b.aliases.is_empty() {
+                quote! { &[] }
+            } else {
+                let alias_tuples: Vec<_> = b
+                    .aliases
+                    .iter()
+                    .map(|(idx, name)| {
+                        quote! { (#name, #idx as u32) }
+                    })
+                    .collect();
+                quote! { &[#(#alias_tuples),*] }
+            };
+            quote! {
+                ::robustone_isa::RegisterBankSpec {
+                    name: #name_str,
+                    class: #reg_class_enum::#variant,
+                    base_id: #base_id,
+                    count: #count as u32,
+                    prefix: #prefix,
+                    canonical: #canonical,
+                    aliases: #aliases,
+                }
+            }
+        })
+        .collect();
+
+    // Compile-time duplicate name validation
+    let mut validations = Vec::new();
+    for i in 0..parsed.banks.len() {
+        for j in (i + 1)..parsed.banks.len() {
+            if parsed.banks[i].name == parsed.banks[j].name {
+                let msg = format!("duplicate register bank: {}", parsed.banks[i].name);
+                validations.push(quote! {
+                    const _: () = ::core::compile_error!(#msg);
+                });
+            }
+        }
+    }
+
+    // Compile-time: alias indices within bank count
+    for bank in &parsed.banks {
+        let count = {
+            let v = &bank.count;
+            quote! { #v as u32 }
+        };
+        for (idx, name) in &bank.aliases {
+            let idx_val = quote! { #idx as u32 };
+            let msg = format!(
+                "alias '{}' in bank '{}' has index >= count",
+                name.value(),
+                bank.name
+            );
+            validations.push(quote! {
+                const _: () = assert!(#idx_val < #count, #msg);
+            });
+        }
+    }
+
+    quote! {
+        #(#validations)*
+
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        pub enum #reg_class_enum {
+            #(#variants),*
+        }
+
+        pub static REGISTER_BANKS: &[::robustone_isa::RegisterBankSpec<#reg_class_enum>] = &[
+            #(#bank_entries),*
+        ];
+
+        pub fn lower_register(
+            class: #reg_class_enum,
+            raw: u32,
+        ) -> Result<u32, &'static str> {
+            for bank in REGISTER_BANKS {
+                if ::core::mem::discriminant(&class) == ::core::mem::discriminant(&bank.class)
+                    && raw < bank.count
+                {
+                    return Ok(bank.base_id + raw);
+                }
+            }
+            Err("register index out of range")
+        }
+    }
+    .into()
+}
+
+struct DefineRegistersInput {
+    arch: Ident,
+    banks: Vec<RegisterBankDef>,
+}
+
+struct RegisterBankDef {
+    name: Ident,
+    base_id: Option<syn::LitInt>,
+    count: syn::LitInt,
+    prefix: Option<LitStr>,
+    canonical: Option<LitStr>,
+    aliases: Vec<(syn::LitInt, LitStr)>,
+}
+
+impl Parse for DefineRegistersInput {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let _arch_kw: Ident = input.parse()?;
+        let _eq: Token![=] = input.parse()?;
+        let arch: Ident = input.parse()?;
+        let _semi: Token![;] = input.parse()?;
+
+        let mut banks = Vec::new();
+        while !input.is_empty() {
+            let _bank_kw: Ident = input.parse()?;
+            let name: Ident = input.parse()?;
+            let content;
+            braced!(content in input);
+            let mut base_id = None;
+            let mut count = None;
+            let mut prefix = None;
+            let mut canonical = None;
+            let mut aliases = Vec::new();
+            while !content.is_empty() {
+                let key: Ident = content.parse()?;
+                let _eq: Token![=] = content.parse()?;
+                match key.to_string().as_str() {
+                    "base_id" => base_id = Some(content.parse()?),
+                    "count" => count = Some(content.parse()?),
+                    "prefix" => prefix = Some(content.parse()?),
+                    "canonical" => canonical = Some(content.parse()?),
+                    "aliases" => {
+                        let alias_content;
+                        braced!(alias_content in content);
+                        while !alias_content.is_empty() {
+                            let idx: syn::LitInt = alias_content.parse()?;
+                            let _eq2: Token![=] = alias_content.parse()?;
+                            let name: LitStr = alias_content.parse()?;
+                            let _s: Token![;] = alias_content.parse()?;
+                            aliases.push((idx, name));
+                        }
+                    }
+                    other => {
+                        return Err(syn::Error::new(
+                            key.span(),
+                            format!("unknown key: {}", other),
+                        ));
+                    }
+                }
+                let _semi: Token![;] = content.parse()?;
+            }
+            banks.push(RegisterBankDef {
+                name,
+                base_id,
+                count: count.ok_or_else(|| syn::Error::new(Span::call_site(), "missing count"))?,
+                prefix,
+                canonical,
+                aliases,
+            });
+        }
+
+        Ok(DefineRegistersInput { arch, banks })
+    }
+}
+
+// ============================================================================
+// define_formats!
+// ============================================================================
+
+/// Define instruction formats and field layouts.
+///
+/// Example:
+/// ```ignore
+/// define_formats! {
+///     arch = LoongArch;
+///     fields { rd; rj; rk; si12; }
+///     format R3 { rd: bits(0, 5), rj: bits(5, 5), rk: bits(10, 5) }
+/// }
+/// ```
+#[proc_macro]
+pub fn define_formats(input: TokenStream) -> TokenStream {
+    let parsed = syn::parse_macro_input!(input as DefineFormatsInput);
+    let arch = &parsed.arch;
+    let field_enum = Ident::new(&format!("{}Field", arch), Span::call_site());
+
+    // Generate field enum variants from the fields block
+    let field_variants: Vec<_> = parsed
+        .fields
+        .iter()
+        .map(|f| {
+            let variant = to_pascal_case_ident(f);
+            quote! { #variant }
+        })
+        .collect();
+
+    // Validate that all fields used in formats are declared in the fields block.
+    // Skip in extern_fields mode — the fields block declares type variants, not
+    // format field labels (which use lowercase names with `as Variant` overrides).
+    if !parsed.extern_fields {
+        let declared_fields: std::collections::HashSet<String> =
+            parsed.fields.iter().map(|f| f.to_string()).collect();
+        for format in &parsed.formats {
+            for field in &format.fields {
+                if !declared_fields.contains(&field.name.to_string()) {
+                    let msg = format!(
+                        "field '{}' used in format '{}' but not declared in fields block",
+                        field.name, format.name
+                    );
+                    return syn::Error::new(field.name.span(), msg)
+                        .to_compile_error()
+                        .into();
+                }
+            }
+        }
+    }
+
+    let format_statics: Vec<_> = parsed.formats.iter().map(|f| {
+        let name = &f.name;
+        let field_specs: Vec<_> = f.fields.iter().map(|field| {
+            let fname = &field.name;
+            let start = &field.start;
+            let length = &field.length;
+            if let Some(ref v) = field.variant_override {
+                // Explicit variant override: `rd: bits(0, 5) as Rd`
+                quote! {
+                    ::robustone_isa::field(stringify!(#fname), #start, #length, #field_enum::#v)
+                }
+            } else if parsed.extern_fields {
+                // extern_fields mode: field name is PascalCase matching enum variant
+                quote! {
+                    ::robustone_isa::field(stringify!(#fname), #start, #length, #field_enum::#fname)
+                }
+            } else {
+                let field_type = to_pascal_case_ident(fname);
+                quote! {
+                    ::robustone_isa::field(stringify!(#fname), #start, #length, #field_enum::#field_type)
+                }
+            }
+        }).collect();
+
+        quote! {
+            pub static #name: ::robustone_isa::FormatSpec<#field_enum> = ::robustone_isa::FormatSpec::new(
+                stringify!(#name),
+                &[#(#field_specs),*],
+            );
+        }
+    }).collect();
+
+    let enum_def = if parsed.extern_fields {
+        quote! {}
+    } else {
+        quote! {
+            #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+            pub enum #field_enum {
+                #(#field_variants),*
+            }
+        }
+    };
+
+    quote! {
+        #enum_def
+
+        #(#format_statics)*
+    }
+    .into()
+}
+
+struct DefineFormatsInput {
+    arch: Ident,
+    extern_fields: bool,
+    fields: Vec<Ident>,
+    formats: Vec<FormatDef>,
+}
+
+struct FormatDef {
+    name: Ident,
+    fields: Vec<FormatFieldDef>,
+}
+
+struct FormatFieldDef {
+    name: Ident,
+    _colon: Token![:],
+    _bits_fn: Ident,
+    start: syn::LitInt,
+    _comma: Token![,],
+    length: syn::LitInt,
+    variant_override: Option<Ident>,
+}
+
+fn to_pascal_case_ident(ident: &Ident) -> Ident {
+    let s = ident.to_string();
+    // Convert snake_case or lowercase to PascalCase:
+    // strip underscores, capitalize first char and each char after '_'
+    let mut pascal = String::with_capacity(s.len());
+    let mut capitalize = true;
+    for ch in s.chars() {
+        if ch == '_' {
+            capitalize = true;
+        } else if capitalize {
+            pascal.push(ch.to_ascii_uppercase());
+            capitalize = false;
+        } else {
+            pascal.push(ch);
+        }
+    }
+    Ident::new(&pascal, ident.span())
+}
+
+impl Parse for DefineFormatsInput {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        // arch = <ident>;
+        let _arch_kw: Ident = input.parse()?;
+        let _eq: Token![=] = input.parse()?;
+        let arch: Ident = input.parse()?;
+        let _semi: Token![;] = input.parse()?;
+
+        // Optional: extern_fields;
+        let extern_fields;
+        if input.peek(Ident) {
+            let fork = input.fork();
+            let kw: Ident = fork.parse()?;
+            if kw == "extern_fields" {
+                input.parse::<Ident>()?; // consume extern_fields
+                input.parse::<Token![;]>()?; // consume ;
+                extern_fields = true;
+            } else {
+                extern_fields = false;
+            }
+        } else {
+            extern_fields = false;
+        }
+
+        // fields { rd; rj; rk; si12; }
+        let _fields_kw: Ident = input.parse()?;
+        let fields_content;
+        braced!(fields_content in input);
+        let mut fields = Vec::new();
+        while !fields_content.is_empty() {
+            let field_name: Ident = fields_content.parse()?;
+            fields.push(field_name);
+            if !fields_content.is_empty() {
+                let _semi: Token![;] = fields_content.parse()?;
+            }
+        }
+        let _semi: Token![;] = input.parse()?;
+
+        // Parse format definitions
+        let mut formats = Vec::new();
+        while !input.is_empty() {
+            let _format_kw: Ident = input.parse()?;
+            let name: Ident = input.parse()?;
+            let content;
+            braced!(content in input);
+
+            let mut format_fields = Vec::new();
+            while !content.is_empty() {
+                let field_name: Ident = content.parse()?;
+                let _colon: Token![:] = content.parse()?;
+                let bits_fn: Ident = content.parse()?;
+                if bits_fn != "bits" {
+                    return Err(syn::Error::new(bits_fn.span(), "expected `bits`"));
+                }
+                let paren;
+                syn::parenthesized!(paren in content);
+                let start: syn::LitInt = paren.parse()?;
+                let _comma: Token![,] = paren.parse()?;
+                let length: syn::LitInt = paren.parse()?;
+                // Optional: as Variant
+                let variant_override = if content.peek(Token![as]) {
+                    content.parse::<Token![as]>()?;
+                    Some(content.parse::<Ident>()?)
+                } else {
+                    None
+                };
+                if !content.is_empty() {
+                    let _comma: Token![,] = content.parse()?;
+                }
+                format_fields.push(FormatFieldDef {
+                    name: field_name,
+                    _colon,
+                    _bits_fn: bits_fn,
+                    start,
+                    _comma,
+                    length,
+                    variant_override,
+                });
+            }
+
+            formats.push(FormatDef {
+                name,
+                fields: format_fields,
+            });
+
+            if !input.is_empty() {
+                let _semi: Token![;] = input.parse()?;
+            }
+        }
+
+        Ok(DefineFormatsInput {
+            arch,
+            extern_fields,
+            fields,
+            formats,
+        })
+    }
+}
+
+// ============================================================================
+// define_instructions!
+// ============================================================================
+
+/// Define instruction specifications for an architecture.
+///
+/// Example:
+/// ```ignore
+/// define_instructions! {
+///     arch = LoongArch; module = base;
+///     insn add_w {
+///         mnemonic = "add.w"; opcode_id = ADD_W;
+///         pattern = mask_value(0xFF00_0000, 0x0100_0000);
+///         format = R3;
+///         operands = [reg(Gpr, rd, Write), reg(Gpr, rj, Read), reg(Gpr, rk, Read)];
+///         modes = [LA32, LA64]; features = [BASE];
+///         groups = [Integer, Arithmetic];
+///         manual = "LoongArch Vol.1";
+///     }
+/// }
+/// ```
+fn is_exact_word_mask(expr: &Expr) -> bool {
+    if let Expr::Macro(mac) = expr {
+        let last = mac.mac.path.segments.last().map(|s| s.ident.to_string());
+        if last.as_deref() == Some("mask_value") {
+            let tokens = quote::quote!(#mac.mac.tokens)
+                .to_string()
+                .replace([' ', '\n'], "");
+            if tokens.starts_with("(0xFFFF_FFFF,") || tokens.starts_with("(0xFFFFFFFFFFFFFFFF,") {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn is_non_empty_operands(expr: &Expr) -> bool {
+    let tokens = quote::quote!(#expr).to_string().replace([' ', '\n'], "");
+    tokens != "&[]"
+}
+
+#[proc_macro]
+pub fn define_instructions(input: TokenStream) -> TokenStream {
+    let parsed = syn::parse_macro_input!(input as DefineInstructionsInput);
+    let arch = &parsed.arch;
+    let backend = Ident::new(&format!("{}Backend", arch), Span::call_site());
+    let _feature = Ident::new(&format!("{}Feature", arch), Span::call_site());
+    let _mode = Ident::new(&format!("{}Mode", arch), Span::call_site());
+    let _field_enum = Ident::new(&format!("{}Field", arch), Span::call_site());
+    let _reg_class = Ident::new(&format!("{}RegisterClass", arch), Span::call_site());
+
+    let spec_statics: Vec<_> = parsed.instructions.iter().map(|insn| {
+        let name = &insn.name;
+        let mnemonic = &insn.mnemonic;
+        let opcode_id = &insn.opcode_id;
+        let pattern_expr = &insn.pattern;
+        let format_expr = &insn.format;
+        let operands_expr = &insn.operands;
+        let features_expr = &insn.features;
+        let modes_expr = &insn.modes;
+        let groups_expr = &insn.groups;
+        let effect_expr = match &insn.effect {
+            Some(e) => {
+                let variant = Ident::new(e, Span::call_site());
+                quote! { Some(::robustone_core::ir::EffectSpec::#variant) }
+            }
+            None => quote! { None },
+        };
+        let constraints_expr = match &insn.constraints {
+            Some(c) => quote! { #c },
+            None => quote! { &[] },
+        };
+        let manual_ref = if let Some(manual) = &insn.manual {
+            quote! { Some(#manual) }
+        } else {
+            quote! { None }
+        };
+        let priority = if let Some(p) = &insn.priority {
+            quote! { #p }
+        } else {
+            quote! { 0 }
+        };
+
+        quote! {
+            pub static #name: ::robustone_isa::InstructionSpec<#backend> = ::robustone_isa::InstructionSpec::__macro_new(
+                #mnemonic,
+                #opcode_id,
+                #pattern_expr,
+                #format_expr,
+                #operands_expr,
+                #features_expr,
+                #modes_expr,
+                #groups_expr,
+                #effect_expr,
+                #constraints_expr,
+                #manual_ref,
+                #priority,
+                ::robustone_isa::SpecSeal::__private_seal_token(),
+            );
+        }
+    }).collect();
+
+    // Generate compile-time validation: duplicate opcode_id check
+    let opcode_ids: Vec<_> = parsed.instructions.iter().map(|i| &i.opcode_id).collect();
+
+    let mut duplicates = Vec::new();
+    for (i, a) in opcode_ids.iter().enumerate() {
+        for (j, b) in opcode_ids.iter().enumerate() {
+            if i < j && a.value() == b.value() {
+                duplicates.push((a.value(), i, j));
+            }
+        }
+    }
+
+    let duplicate_checks: Vec<_> = duplicates
+        .iter()
+        .map(|(id, _, _)| {
+            let msg = format!("duplicate opcode_id: {}", id);
+            quote! {
+                const _: () = ::core::compile_error!(#msg);
+            }
+        })
+        .collect();
+
+    // Compile-time validation: exact-word pattern with variable operands
+    let exact_word_checks: Vec<_> = parsed
+        .instructions
+        .iter()
+        .filter_map(|i| {
+            if is_exact_word_mask(&i.pattern) && is_non_empty_operands(&i.operands) {
+                let msg = format!(
+                    "instruction '{}' has exact-word pattern but non-empty operands",
+                    i.mnemonic.value()
+                );
+                Some(quote! {
+                    const _: () = ::core::compile_error!(#msg);
+                })
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Compile-time validation: missing manual_ref
+    let missing_manual_checks: Vec<_> = parsed
+        .instructions
+        .iter()
+        .filter_map(|i| {
+            if i.manual.is_none() {
+                let msg = format!("instruction '{}' is missing manual_ref", i.mnemonic.value());
+                Some(quote! {
+                    const _: () = ::core::compile_error!(#msg);
+                })
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Generate specs array
+    let spec_names: Vec<_> = parsed.instructions.iter().map(|i| &i.name).collect();
+
+    quote! {
+        #(#duplicate_checks)*
+
+        #(#exact_word_checks)*
+
+        #(#missing_manual_checks)*
+
+        #(#spec_statics)*
+
+        pub static SPECS: &[::robustone_isa::InstructionSpec<#backend>] = &[
+            #(#spec_names),*
+        ];
+    }
+    .into()
+}
+
+struct DefineInstructionsInput {
+    arch: Ident,
+    _module_kw: Ident,
+    _module_name: Ident,
+    instructions: Vec<InstructionDef>,
+}
+
+struct InstructionDef {
+    name: Ident,
+    mnemonic: LitStr,
+    opcode_id: LitStr,
+    pattern: Expr,
+    format: Expr,
+    operands: Expr,
+    features: Expr,
+    modes: Expr,
+    groups: Expr,
+    effect: Option<String>,
+    constraints: Option<Expr>,
+    manual: Option<LitStr>,
+    priority: Option<syn::LitInt>,
+}
+
+impl Parse for DefineInstructionsInput {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        // arch = <ident>; module = <ident>;
+        let _arch_kw: Ident = input.parse()?;
+        let _eq: Token![=] = input.parse()?;
+        let arch: Ident = input.parse()?;
+        let _semi: Token![;] = input.parse()?;
+        let _module_kw: Ident = input.parse()?;
+        let _eq: Token![=] = input.parse()?;
+        let _module_name: Ident = input.parse()?;
+        let _semi: Token![;] = input.parse()?;
+
+        let mut instructions = Vec::new();
+        while !input.is_empty() {
+            let _insn_kw: Ident = input.parse()?;
+            let name: Ident = input.parse()?;
+            let content;
+            braced!(content in input);
+
+            let mut mnemonic = None;
+            let mut opcode_id = None;
+            let mut pattern = None;
+            let mut format = None;
+            let mut operands = None;
+            let mut features = None;
+            let mut modes = None;
+            let mut groups = None;
+            let mut effect = None;
+            let mut constraints = None;
+            let mut manual = None;
+            let mut priority = None;
+
+            while !content.is_empty() {
+                let key: Ident = content.parse()?;
+                let _eq: Token![=] = content.parse()?;
+                match key.to_string().as_str() {
+                    "mnemonic" => mnemonic = Some(content.parse()?),
+                    "opcode_id" => opcode_id = Some(content.parse()?),
+                    "pattern" => pattern = Some(content.parse()?),
+                    "format" => format = Some(content.parse()?),
+                    "operands" => operands = Some(content.parse()?),
+                    "features" => features = Some(content.parse()?),
+                    "modes" => modes = Some(content.parse()?),
+                    "groups" => groups = Some(content.parse()?),
+                    "effect" => {
+                        let ident: Ident = content.parse()?;
+                        effect = Some(ident.to_string());
+                    }
+                    "constraints" => constraints = Some(content.parse()?),
+                    "manual" => manual = Some(content.parse()?),
+                    "priority" => priority = Some(content.parse()?),
+                    other => {
+                        return Err(syn::Error::new(
+                            key.span(),
+                            format!("unknown field: {}", other),
+                        ));
+                    }
+                }
+                let _semi: Token![;] = content.parse()?;
+            }
+
+            let name_clone = name.clone();
+            instructions.push(InstructionDef {
+                name,
+                mnemonic: mnemonic
+                    .ok_or_else(|| syn::Error::new(name_clone.span(), "missing mnemonic"))?,
+                opcode_id: opcode_id
+                    .ok_or_else(|| syn::Error::new(name_clone.span(), "missing opcode_id"))?,
+                pattern: pattern
+                    .ok_or_else(|| syn::Error::new(name_clone.span(), "missing pattern"))?,
+                format: format
+                    .ok_or_else(|| syn::Error::new(name_clone.span(), "missing format"))?,
+                operands: operands
+                    .ok_or_else(|| syn::Error::new(name_clone.span(), "missing operands"))?,
+                features: features
+                    .ok_or_else(|| syn::Error::new(name_clone.span(), "missing features"))?,
+                modes: modes.ok_or_else(|| syn::Error::new(name_clone.span(), "missing modes"))?,
+                groups: groups
+                    .ok_or_else(|| syn::Error::new(name_clone.span(), "missing groups"))?,
+                effect,
+                constraints,
+                manual,
+                priority,
+            });
+        }
+
+        Ok(DefineInstructionsInput {
+            arch,
+            _module_kw,
+            _module_name,
+            instructions,
+        })
+    }
+}
+
+// ============================================================================
+// define_aliases!
+// ============================================================================
+
+/// Define instruction aliases applied post-decode.
+///
+/// Example:
+/// ```ignore
+/// define_aliases! {
+///     arch = LoongArch;
+///     alias "nop" for "ANDI" {
+///         when [operand(0) == reg(0), operand(1) == reg(0), operand(2) == imm(0)];
+///         mnemonic = "nop";
+///         visible_operands = [];
+///     }
+/// }
+/// ```
+#[proc_macro]
+pub fn define_aliases(input: TokenStream) -> TokenStream {
+    let parsed = syn::parse_macro_input!(input as DefineAliasesInput);
+    let aliases = parsed.aliases;
+
+    let alias_branches = aliases.iter().map(|alias| {
+        let opcode_id = &alias.opcode_id;
+        let mnemonic = &alias.mnemonic;
+        let visible = &alias.visible_operands;
+
+        let cond_checks = alias.conditions.iter().map(|cond| {
+            let idx = cond.operand_index;
+            let idx_lit = syn::Index::from(idx);
+            match &cond.kind {
+                AliasConditionKind::Reg(expected) => {
+                    let exp = *expected;
+                    quote! {
+                        {
+                            let __v = match insn.operands.get(#idx_lit) {
+                                Some(::robustone_core::ir::Operand::Register { register }) => register.id == #exp,
+                                _ => false,
+                            };
+                            __v
+                        }
+                    }
+                }
+                AliasConditionKind::Imm(expected) => {
+                    let exp = *expected;
+                    quote! {
+                        {
+                            let __v = match insn.operands.get(#idx_lit) {
+                                Some(::robustone_core::ir::Operand::Immediate { value, .. }) => *value == #exp,
+                                _ => false,
+                            };
+                            __v
+                        }
+                    }
+                }
+            }
+        });
+
+        let visible_arr = quote! { &[#(#visible),*] };
+        let order = &alias.operand_order;
+        let order_code = if order.is_empty() {
+            quote! {}
+        } else {
+            quote! {
+                insn.render_hints.compat_operand_order = vec![#(#order),*];
+            }
+        };
+
+        quote! {
+            if insn.opcode_id.as_deref() == Some(#opcode_id) {
+                if true #(&& #cond_checks)* {
+                    insn.render_hints.compat_mnemonic = Some(#mnemonic.into());
+                    let mut hidden = Vec::new();
+                    for i in 0..insn.operands.len() {
+                        if !#visible_arr.contains(&i) {
+                            hidden.push(i);
+                        }
+                    }
+                    insn.render_hints.compat_hidden_operands = hidden;
+                    #order_code
+                }
+            }
+        }
+    });
+
+    quote! {
+        /// Apply architecture-specific aliases to a decoded instruction.
+        pub fn apply_aliases(insn: &mut ::robustone_core::ir::DecodedInstruction) {
+            #(#alias_branches)*
+        }
+    }
+    .into()
+}
+
+struct DefineAliasesInput {
+    _arch: Ident,
+    aliases: Vec<AliasDef>,
+}
+
+struct AliasDef {
+    opcode_id: String,
+    mnemonic: String,
+    conditions: Vec<AliasCondition>,
+    visible_operands: Vec<usize>,
+    operand_order: Vec<usize>,
+}
+
+struct AliasCondition {
+    operand_index: usize,
+    kind: AliasConditionKind,
+}
+
+enum AliasConditionKind {
+    Reg(u32),
+    Imm(i64),
+}
+
+impl Parse for DefineAliasesInput {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let arch_kw: Ident = input.parse()?;
+        if arch_kw != "arch" {
+            return Err(syn::Error::new(arch_kw.span(), "expected `arch`"));
+        }
+        let _: Token![=] = input.parse()?;
+        let arch_name: Ident = input.parse()?;
+        let _: Token![;] = input.parse()?;
+
+        let mut aliases = Vec::new();
+        while !input.is_empty() {
+            let alias_kw: Ident = input.parse()?;
+            if alias_kw != "alias" {
+                return Err(syn::Error::new(alias_kw.span(), "expected `alias`"));
+            }
+            let alias_mnemonic: LitStr = input.parse()?;
+            let _: Token![for] = input.parse()?;
+            let opcode_id: LitStr = input.parse()?;
+
+            let content;
+            braced!(content in input);
+
+            let mut conditions = Vec::new();
+            let mut mnemonic = None;
+            let mut visible_operands = Vec::new();
+            let mut operand_order = Vec::new();
+
+            while !content.is_empty() {
+                let key: Ident = content.parse()?;
+                if key == "when" {
+                    let conds;
+                    syn::bracketed!(conds in content);
+                    while !conds.is_empty() {
+                        let cond = parse_alias_condition(&conds)?;
+                        conditions.push(cond);
+                        if !conds.is_empty() {
+                            let _: Token![,] = conds.parse()?;
+                        }
+                    }
+                    let _: Token![;] = content.parse()?;
+                } else if key == "mnemonic" {
+                    let _: Token![=] = content.parse()?;
+                    let val: LitStr = content.parse()?;
+                    mnemonic = Some(val.value());
+                    let _: Token![;] = content.parse()?;
+                } else if key == "visible_operands" {
+                    let _: Token![=] = content.parse()?;
+                    let vals;
+                    syn::bracketed!(vals in content);
+                    while !vals.is_empty() {
+                        let v: LitInt = vals.parse()?;
+                        visible_operands.push(v.base10_parse()?);
+                        if !vals.is_empty() {
+                            let _: Token![,] = vals.parse()?;
+                        }
+                    }
+                    let _: Token![;] = content.parse()?;
+                } else if key == "operand_order" {
+                    let _: Token![=] = content.parse()?;
+                    let vals;
+                    syn::bracketed!(vals in content);
+                    while !vals.is_empty() {
+                        let v: LitInt = vals.parse()?;
+                        operand_order.push(v.base10_parse()?);
+                        if !vals.is_empty() {
+                            let _: Token![,] = vals.parse()?;
+                        }
+                    }
+                    let _: Token![;] = content.parse()?;
+                } else {
+                    return Err(syn::Error::new(key.span(), "unknown alias property"));
+                }
+            }
+
+            aliases.push(AliasDef {
+                opcode_id: opcode_id.value(),
+                mnemonic: mnemonic.unwrap_or_else(|| alias_mnemonic.value()),
+                conditions,
+                visible_operands,
+                operand_order,
+            });
+        }
+
+        Ok(DefineAliasesInput {
+            _arch: arch_name,
+            aliases,
+        })
+    }
+}
+
+fn parse_alias_condition(input: ParseStream) -> syn::Result<AliasCondition> {
+    let operand_kw: Ident = input.parse()?;
+    if operand_kw != "operand" {
+        return Err(syn::Error::new(operand_kw.span(), "expected `operand`"));
+    }
+    let idx_paren;
+    syn::parenthesized!(idx_paren in input);
+    let idx: LitInt = idx_paren.parse()?;
+    let operand_index: usize = idx.base10_parse()?;
+
+    let _: Token![==] = input.parse()?;
+
+    let kind_kw: Ident = input.parse()?;
+    let kind = if kind_kw == "reg" {
+        let val_paren;
+        syn::parenthesized!(val_paren in input);
+        let val: LitInt = val_paren.parse()?;
+        AliasConditionKind::Reg(val.base10_parse()?)
+    } else if kind_kw == "imm" {
+        let val_paren;
+        syn::parenthesized!(val_paren in input);
+        // Support negative immediates
+        let val: Expr = val_paren.parse()?;
+        let lit_val = match val {
+            Expr::Lit(syn::ExprLit {
+                lit: syn::Lit::Int(i),
+                ..
+            }) => i.base10_parse()?,
+            Expr::Unary(syn::ExprUnary {
+                op: syn::UnOp::Neg(_),
+                expr,
+                ..
+            }) => {
+                if let Expr::Lit(syn::ExprLit {
+                    lit: syn::Lit::Int(i),
+                    ..
+                }) = *expr
+                {
+                    -i.base10_parse::<i64>()?
+                } else {
+                    return Err(syn::Error::new(kind_kw.span(), "expected integer literal"));
+                }
+            }
+            _ => return Err(syn::Error::new(kind_kw.span(), "expected integer literal")),
+        };
+        AliasConditionKind::Imm(lit_val)
+    } else {
+        return Err(syn::Error::new(kind_kw.span(), "expected `reg` or `imm`"));
+    };
+
+    Ok(AliasCondition {
+        operand_index,
+        kind,
+    })
+}

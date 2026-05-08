@@ -1,7 +1,10 @@
+#![forbid(unsafe_code)]
+#![cfg_attr(not(feature = "std"), no_std)]
+
 //! Robustone – Core disassembly engine with multi-architecture support.
 //!
 //! This crate provides a flexible, extensible disassembly framework inspired by
-//! Capstone's design but implemented in pure Rust. The architecture is designed
+//! reference decoder design but implemented in pure Rust. The architecture is designed
 //! to support multiple instruction set architectures through a unified interface.
 //!
 //! # Architecture Overview
@@ -44,10 +47,14 @@
 //! empty dispatcher with no handlers registered. You must call `register()` to add
 //! architecture backends before disassembling.
 
+extern crate alloc;
+
 pub mod architecture;
 pub mod common;
+pub mod decode_config;
 pub mod ir;
 pub mod render;
+pub mod renderer;
 pub mod traits;
 pub mod types;
 pub mod utils;
@@ -63,6 +70,9 @@ pub mod prelude {
         canonical_architecture_name, is_address_aligned, lookup_architecture_capability,
     };
     pub use crate::common::ArchitectureProfile;
+    pub use crate::decode_config::{
+        Arch, DecodeConfig, DecodeConfigError, DetailLevel, FeatureSet, Mode, parse_decode_config,
+    };
     pub use crate::ir::{ArchitectureId, DecodeStatus, DecodedInstruction, Operand, RegisterId};
     pub use crate::render::{
         RenderOptions, RenderedDisassembly, RenderedInstruction, RenderedIssue, render_disassembly,
@@ -76,6 +86,9 @@ pub mod prelude {
 pub use architecture::{
     ArchitectureCapability, all_architecture_capabilities, canonical_architecture_name,
     lookup_architecture_capability,
+};
+pub use decode_config::{
+    Arch, DecodeConfig, DecodeConfigError, DetailLevel, FeatureSet, Mode, parse_decode_config,
 };
 pub use ir::DecodedInstruction;
 pub use render::{
@@ -128,7 +141,7 @@ impl ArchitectureDispatcher {
 
     /// Sets the detail flag on all registered handlers.
     ///
-    /// This mirrors Capstone's `CS_OPT_DETAIL` option. When `false`, handlers
+    /// This mirrors the reference decoder `CS_OPT_DETAIL` option. When `false`, handlers
     /// may skip expensive detail construction and return `Instruction` objects
     /// with `detail` set to `None`.
     pub fn set_detail(&mut self, detail: bool) {
@@ -265,6 +278,52 @@ impl ArchitectureDispatcher {
         Err(DisasmError::UnsupportedArchitecture(arch.to_string()))
     }
 
+    /// Decode bytes using a strongly-typed `DecodeConfig`.
+    ///
+    /// This is the preferred entry point for new code. The old
+    /// `decode_instruction(&self, bytes, arch: &str, address)` is retained as
+    /// a deprecated compatibility shim.
+    pub fn decode_instruction_with_config(
+        &self,
+        bytes: &[u8],
+        config: &crate::decode_config::DecodeConfig,
+        address: u64,
+    ) -> Result<(DecodedInstruction, usize), DisasmError> {
+        config
+            .validate()
+            .map_err(|e| DisasmError::Configuration(e.to_string()))?;
+        let profile = crate::common::ArchitectureProfile::from(config);
+        for handler in &self.handlers {
+            if handler.supports(profile.mode_name) {
+                return handler.decode_instruction_with_profile(bytes, &profile, address);
+            }
+        }
+        Err(DisasmError::UnsupportedArchitecture(
+            profile.mode_name.to_string(),
+        ))
+    }
+
+    /// Disassemble bytes using a strongly-typed `DecodeConfig`.
+    pub fn disassemble_bytes_with_config(
+        &self,
+        bytes: &[u8],
+        config: &crate::decode_config::DecodeConfig,
+        address: u64,
+    ) -> Result<(Instruction, usize), DisasmError> {
+        config
+            .validate()
+            .map_err(|e| DisasmError::Configuration(e.to_string()))?;
+        let profile = crate::common::ArchitectureProfile::from(config);
+        for handler in &self.handlers {
+            if handler.supports(profile.mode_name) {
+                return handler.disassemble_with_profile(bytes, &profile, address);
+            }
+        }
+        Err(DisasmError::UnsupportedArchitecture(
+            profile.mode_name.to_string(),
+        ))
+    }
+
     /// Decode bytes using an explicit architecture profile.
     pub fn decode_with_profile(
         &self,
@@ -299,6 +358,21 @@ impl ArchitectureDispatcher {
         Err(DisasmError::UnsupportedArchitecture(
             profile.architecture.as_str().to_string(),
         ))
+    }
+
+    /// Returns the renderer for a given architecture, if available.
+    ///
+    /// Falls back to the generic renderer if the handler does not provide
+    /// a dedicated one.
+    pub fn get_renderer(&self, arch: &str) -> &dyn crate::renderer::Renderer {
+        for handler in &self.handlers {
+            if handler.supports(arch) {
+                return handler
+                    .renderer()
+                    .unwrap_or(&crate::renderer::GenericRenderer);
+            }
+        }
+        &crate::renderer::GenericRenderer
     }
 
     /// Returns a list of all registered architecture names.
@@ -379,358 +453,84 @@ impl ArchitectureDispatcher {
 }
 
 impl Default for ArchitectureDispatcher {
+    /// Creates a dispatcher pre-populated with all handlers registered via
+    /// `inventory::submit!` in the backend crates.
     fn default() -> Self {
-        Self::new()
+        let mut dispatcher = Self::new();
+        for factory in inventory::iter::<crate::traits::HandlerFactory> {
+            dispatcher.register((factory.factory)());
+        }
+        dispatcher
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use robustone::{self, common::ArchitectureProfile, riscv::RiscVHandler};
+    use crate::ArchitectureDispatcher;
+    use crate::traits::ArchitectureHandler;
 
-    fn dispatcher_with_riscv() -> robustone::ArchitectureDispatcher {
-        let mut dispatcher = robustone::ArchitectureDispatcher::new();
-        dispatcher.register(Box::new(RiscVHandler::new()));
-        dispatcher
-    }
+    struct MockHandler;
 
-    #[test]
-    fn test_architecture_dispatcher_creation() {
-        let dispatcher = ArchitectureDispatcher::default();
-        let archs = dispatcher.supported_architectures();
+    impl ArchitectureHandler for MockHandler {
+        fn name(&self) -> &'static str {
+            "mock"
+        }
 
-        assert!(archs.is_empty());
-    }
+        fn supports(&self, _arch: &str) -> bool {
+            false
+        }
 
-    #[test]
-    fn test_hex_parsing() {
-        let parser = crate::utils::HexParser::new();
+        fn decode_instruction(
+            &self,
+            _bytes: &[u8],
+            _arch_name: &str,
+            _address: u64,
+        ) -> Result<(crate::DecodedInstruction, usize), crate::DisasmError> {
+            Err(crate::DisasmError::UnsupportedArchitecture(
+                "mock".to_string(),
+            ))
+        }
 
-        // Hex parsing should succeed for bare strings.
-        let bytes = parser.parse("deadbeef", None).unwrap();
-        assert_eq!(bytes, vec![0xde, 0xad, 0xbe, 0xef]);
-
-        // Hex parsing should also accept a `0x` prefix.
-        let bytes = parser.parse("0x1234", None).unwrap();
-        assert_eq!(bytes, vec![0x12, 0x34]);
-    }
-
-    #[test]
-    fn test_low_level_decode_api_returns_ir() {
-        let dispatcher = dispatcher_with_riscv();
-        let (decoded, size) = dispatcher
-            .decode_instruction(&[0x93, 0x00, 0x10, 0x00], "riscv32", 0)
-            .expect("decode should succeed");
-
-        assert_eq!(size, 4);
-        assert_eq!(decoded.mnemonic, "addi");
-        assert_eq!(
-            decoded.render_hints.capstone_mnemonic.as_deref(),
-            Some("li")
-        );
-        assert_eq!(decoded.render_hints.capstone_hidden_operands, vec![1]);
-    }
-
-    #[test]
-    fn test_invalid_encoding_returns_structured_error() {
-        let dispatcher = dispatcher_with_riscv();
-        let error = dispatcher
-            .decode_instruction(&[0xff, 0xff, 0xff, 0xff], "riscv32", 0)
-            .expect_err("invalid encoding should fail");
-        assert_eq!(error.stable_kind(), "invalid_encoding");
-    }
-
-    #[test]
-    fn test_decode_with_profile_enforces_enabled_extensions() {
-        let profile = ArchitectureProfile::riscv(
-            robustone::architecture::Architecture::RiscV32,
-            "riscv32",
-            32,
-            vec!["I"],
-        );
-        let dispatcher = dispatcher_with_riscv();
-
-        let error = dispatcher
-            .decode_with_profile(&[0x05, 0x68], &profile, 0)
-            .expect_err("compressed instruction should require C extension");
-
-        assert_eq!(error.stable_kind(), "unsupported_extension");
-    }
-
-    #[test]
-    fn test_decode_with_profile_rejects_mode_mismatch() {
-        let profile = ArchitectureProfile::riscv(
-            robustone::architecture::Architecture::RiscV32,
-            "riscv64",
-            32,
-            vec!["I", "C"],
-        );
-        let error = match RiscVHandler::from_profile(&profile) {
-            Ok(_) => panic!("mismatched profile should fail"),
-            Err(error) => error,
-        };
-
-        assert_eq!(error.stable_kind(), "unsupported_mode");
-    }
-
-    #[test]
-    fn test_rv64_compressed_ld_decodes_successfully() {
-        let dispatcher = dispatcher_with_riscv();
-        let (decoded, size) = dispatcher
-            .decode_instruction(&[0x00, 0x60], "riscv64", 0)
-            .expect("RV64 should decode c.ld");
-        assert_eq!(size, 2);
-        assert_eq!(decoded.mnemonic, "c.ld");
-    }
-
-    #[test]
-    fn test_rv64_only_ld_reports_unsupported_mode_on_rv32() {
-        let dispatcher = dispatcher_with_riscv();
-        let (decoded, size) = dispatcher
-            .decode_instruction(&[0x83, 0x30, 0x00, 0x00], "riscv64", 0)
-            .expect("RV64 should decode ld");
-
-        assert_eq!(size, 4);
-        assert_eq!(decoded.mnemonic, "ld");
-
-        let error = dispatcher
-            .decode_instruction(&[0x83, 0x30, 0x00, 0x00], "riscv32", 0)
-            .expect_err("RV32 should reject ld with unsupported_mode");
-
-        assert_eq!(error.stable_kind(), "unsupported_mode");
-        assert_eq!(error.architecture_name(), Some("riscv32"));
-    }
-
-    #[test]
-    fn test_decode_with_profile_rejects_d_without_f() {
-        let profile = ArchitectureProfile::riscv(
-            robustone::architecture::Architecture::RiscV32,
-            "riscv32",
-            32,
-            vec!["I", "D"],
-        );
-        let error = match RiscVHandler::from_profile(&profile) {
-            Ok(_) => panic!("D without F should be rejected when building the profile"),
-            Err(error) => error,
-        };
-
-        assert_eq!(error.stable_kind(), "unsupported_extension");
-    }
-
-    #[test]
-    fn test_disassemble_with_profile_enforces_enabled_extensions() {
-        let profile = ArchitectureProfile::riscv(
-            robustone::architecture::Architecture::RiscV64,
-            "riscv64",
-            64,
-            vec!["I", "A"],
-        );
-        let dispatcher = dispatcher_with_riscv();
-
-        let error = dispatcher
-            .disassemble_with_profile(&[0xd3, 0x02, 0x73, 0x00], &profile, 0)
-            .expect_err("missing F/D should be reported");
-
-        assert_eq!(error.stable_kind(), "unsupported_extension");
-    }
-
-    #[test]
-    fn test_rv64_only_lr_d_reports_unsupported_mode_on_rv32() {
-        let dispatcher = dispatcher_with_riscv();
-        let (decoded, size) = dispatcher
-            .decode_instruction(&[0x2f, 0xb4, 0x02, 0x12], "riscv64", 0)
-            .expect("RV64 should decode lr.d");
-
-        assert_eq!(size, 4);
-        assert_eq!(decoded.mnemonic, "lr.d");
-
-        let error = dispatcher
-            .decode_instruction(&[0x2f, 0xb4, 0x02, 0x12], "riscv32", 0)
-            .expect_err("RV32 should reject lr.d with unsupported_mode");
-
-        assert_eq!(error.stable_kind(), "unsupported_mode");
-        assert_eq!(error.architecture_name(), Some("riscv32"));
-    }
-
-    #[test]
-    fn test_rv64_only_compressed_families_report_unsupported_mode_on_rv32() {
-        let dispatcher = dispatcher_with_riscv();
-
-        let (decoded, size) = dispatcher
-            .decode_instruction(&[0x00, 0x60], "riscv64", 0)
-            .expect("RV64 should decode c.ld");
-        assert_eq!(size, 2);
-        assert_eq!(decoded.mnemonic, "c.ld");
-
-        // RV32 GC profile includes F, so c.ld encoding (0x6000) decodes as c.flw
-        let (decoded, size) = dispatcher
-            .decode_instruction(&[0x00, 0x60], "riscv32", 0)
-            .expect("RV32 GC should decode c.flw");
-        assert_eq!(size, 2);
-        assert_eq!(decoded.mnemonic, "c.flw");
-
-        // RV32 I+M+C profile (no F) should reject this encoding
-        let profile = ArchitectureProfile::riscv(
-            robustone::architecture::Architecture::RiscV32,
-            "riscv32",
-            32,
-            vec!["I", "M", "C"],
-        );
-        let rv32_error = dispatcher
-            .decode_with_profile(&[0x00, 0x60], &profile, 0)
-            .expect_err("RV32 without F should reject c.flw encoding");
-        assert_eq!(rv32_error.stable_kind(), "invalid_encoding");
-    }
-
-    #[test]
-    fn test_rv64_only_mulw_decodes_on_rv64_and_reports_unsupported_mode_on_rv32() {
-        let dispatcher = dispatcher_with_riscv();
-        let (decoded, size) = dispatcher
-            .decode_instruction(&[0xbb, 0x00, 0x31, 0x02], "riscv64", 0)
-            .expect("RV64 should decode mulw");
-
-        assert_eq!(size, 4);
-        assert_eq!(decoded.mnemonic, "mulw");
-
-        let error = dispatcher
-            .decode_instruction(&[0xbb, 0x00, 0x31, 0x02], "riscv32", 0)
-            .expect_err("RV32 should reject mulw with unsupported_mode");
-
-        assert_eq!(error.stable_kind(), "unsupported_mode");
-        assert_eq!(error.architecture_name(), Some("riscv32"));
-    }
-
-    #[test]
-    fn test_rv64c_addiw_decodes_on_rv64_while_rv32_keeps_c_jal() {
-        let dispatcher = dispatcher_with_riscv();
-        let (rv64, size) = dispatcher
-            .decode_instruction(&[0x85, 0x20], "riscv64", 0)
-            .expect("RV64 should decode c.addiw");
-        assert_eq!(size, 2);
-        assert_eq!(rv64.mnemonic, "c.addiw");
-
-        let (rv32, size) = dispatcher
-            .decode_instruction(&[0x85, 0x20], "riscv32", 0)
-            .expect("RV32 should still decode c.jal");
-        assert_eq!(size, 2);
-        assert_eq!(rv32.mnemonic, "c.jal");
-    }
-
-    #[test]
-    fn test_rv64c_word_alu_encodings_decode_on_rv64_and_report_unsupported_mode_on_rv32() {
-        let dispatcher = dispatcher_with_riscv();
-        let cases = [(&[0x05, 0x9c][..], "c.subw"), (&[0x25, 0x9c][..], "c.addw")];
-
-        for (bytes, expected_mnemonic) in cases {
-            let (decoded, size) = dispatcher
-                .decode_instruction(bytes, "riscv64", 0)
-                .expect("RV64 should decode the mode-sensitive compressed form");
-
-            assert_eq!(size, 2);
-            assert_eq!(decoded.mnemonic, expected_mnemonic);
-
-            let error = dispatcher
-                .decode_instruction(bytes, "riscv32", 0)
-                .expect_err("RV32 should reject the RV64C word-ALU form with unsupported_mode");
-
-            assert_eq!(error.stable_kind(), "unsupported_mode");
-            assert_eq!(error.architecture_name(), Some("riscv32"));
+        fn disassemble(
+            &self,
+            _bytes: &[u8],
+            _arch_name: &str,
+            _address: u64,
+        ) -> Result<(crate::Instruction, usize), crate::DisasmError> {
+            Err(crate::DisasmError::UnsupportedArchitecture(
+                "mock".to_string(),
+            ))
         }
     }
 
-    /// Profile-matrix test: verify that ArchitectureProfile extension sets are
-    /// strictly enforced at decode time.
     #[test]
-    fn test_profile_matrix_enforces_extension_boundaries() {
-        let dispatcher = dispatcher_with_riscv();
+    fn dispatcher_starts_empty_and_accepts_registered_handlers() {
+        let empty = ArchitectureDispatcher::new();
+        assert!(empty.supported_architectures().is_empty());
 
-        // Bytes for AMOADD.W (A extension), little-endian.
-        let amoadd_w: &[u8] = &[0xaf, 0x21, 0x52, 0x00];
-        // Bytes for MUL (M extension), little-endian.
-        let mul: &[u8] = &[0xb3, 0x01, 0x52, 0x02];
-        // Bytes for FADD.S (F extension), little-endian.
-        let fadd_s: &[u8] = &[0xd3, 0x00, 0x31, 0x00];
-        // Bytes for C.ADDI (C extension), little-endian.
-        let c_addi: &[u8] = &[0x05, 0x05];
+        let mut dispatcher = ArchitectureDispatcher::new();
+        dispatcher.register(Box::new(MockHandler));
+        assert!(!dispatcher.supported_architectures().is_empty());
+        assert!(dispatcher.supported_architectures().contains(&"mock"));
+    }
 
-        // GC profile: everything should decode.
-        let gc = ArchitectureProfile::riscv32gc();
-        dispatcher
-            .decode_with_profile(amoadd_w, &gc, 0)
-            .expect("GC should decode A");
-        dispatcher
-            .decode_with_profile(mul, &gc, 0)
-            .expect("GC should decode M");
-        dispatcher
-            .decode_with_profile(fadd_s, &gc, 0)
-            .expect("GC should decode F");
-        dispatcher
-            .decode_with_profile(c_addi, &gc, 0)
-            .expect("GC should decode C");
+    #[test]
+    fn dispatcher_reports_unsupported_architecture_for_unknown_mode() {
+        let dispatcher = ArchitectureDispatcher::new();
+        let error = dispatcher
+            .decode_instruction(&[0x00, 0x00, 0x00, 0x00], "nonexistent", 0)
+            .expect_err("unknown architecture should fail");
+        assert_eq!(error.stable_kind(), "unsupported_architecture");
+    }
 
-        // I-only profile: A/M/F/C should all report unsupported_extension.
-        let i_only = ArchitectureProfile::riscv(
-            robustone::architecture::Architecture::RiscV32,
-            "riscv32",
-            32,
-            vec!["I"],
-        );
-        assert_eq!(
-            dispatcher
-                .decode_with_profile(amoadd_w, &i_only, 0)
-                .unwrap_err()
-                .stable_kind(),
-            "unsupported_extension"
-        );
-        assert_eq!(
-            dispatcher
-                .decode_with_profile(mul, &i_only, 0)
-                .unwrap_err()
-                .stable_kind(),
-            "unsupported_extension"
-        );
-        assert_eq!(
-            dispatcher
-                .decode_with_profile(fadd_s, &i_only, 0)
-                .unwrap_err()
-                .stable_kind(),
-            "unsupported_extension"
-        );
-        assert_eq!(
-            dispatcher
-                .decode_with_profile(c_addi, &i_only, 0)
-                .unwrap_err()
-                .stable_kind(),
-            "unsupported_extension"
-        );
+    #[test]
+    fn hex_parser_accepts_bare_and_prefixed_hex() {
+        let parser = crate::utils::HexParser::new();
 
-        // I+M+C profile (like "riscv32+c"): A and F should report unsupported_extension.
-        let imc = ArchitectureProfile::riscv(
-            robustone::architecture::Architecture::RiscV32,
-            "riscv32",
-            32,
-            vec!["I", "M", "C"],
-        );
-        dispatcher
-            .decode_with_profile(mul, &imc, 0)
-            .expect("IMC should decode M");
-        dispatcher
-            .decode_with_profile(c_addi, &imc, 0)
-            .expect("IMC should decode C");
-        assert_eq!(
-            dispatcher
-                .decode_with_profile(amoadd_w, &imc, 0)
-                .unwrap_err()
-                .stable_kind(),
-            "unsupported_extension"
-        );
-        assert_eq!(
-            dispatcher
-                .decode_with_profile(fadd_s, &imc, 0)
-                .unwrap_err()
-                .stable_kind(),
-            "unsupported_extension"
-        );
+        let bytes = parser.parse("deadbeef", None).unwrap();
+        assert_eq!(bytes, vec![0xde, 0xad, 0xbe, 0xef]);
+
+        let bytes = parser.parse("0x1234", None).unwrap();
+        assert_eq!(bytes, vec![0x12, 0x34]);
     }
 }

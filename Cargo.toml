@@ -4,8 +4,12 @@ members = [
     "robustone",
     "robustone-cli",
     "robustone-core",
+    "robustone-isa",
+    "robustone-isa-macros",
+    "robustone-loongarch",
     "robustone-riscv",
     "robustone-arm",
     "robustone-x86",
-    "robustone-loongarch",
+    "robustone-capstone-compat",
+    "xtask",
 ]

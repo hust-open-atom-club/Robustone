@@ -22,7 +22,7 @@ pub struct BasicInstructionDetail {
     pub architecture: &'static str,
     pub regs_read: Vec<u32>,
     pub regs_write: Vec<u32>,
-    pub groups: Vec<String>,
+    pub groups: Vec<crate::ir::InstructionGroup>,
     pub properties: HashMap<String, String>,
 }
 
@@ -47,8 +47,8 @@ impl BasicInstructionDetail {
         self
     }
 
-    pub fn with_group(mut self, group: impl Into<String>) -> Self {
-        self.groups.push(group.into());
+    pub fn with_group(mut self, group: crate::ir::InstructionGroup) -> Self {
+        self.groups.push(group);
         self
     }
 

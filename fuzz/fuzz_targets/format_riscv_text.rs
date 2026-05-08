@@ -89,6 +89,7 @@ fn build_instruction(data: &[u8]) -> Instruction {
         implicit_registers_read: Vec::new(),
         implicit_registers_written: Vec::new(),
         groups: vec!["arithmetic".to_string()],
+        effect: None,
         status: match next_byte(data, &mut cursor) % 4 {
             0 => DecodeStatus::Success,
             1 => DecodeStatus::InvalidEncoding,
@@ -96,14 +97,14 @@ fn build_instruction(data: &[u8]) -> Instruction {
             _ => DecodeStatus::Unimplemented,
         },
         render_hints: RenderHints {
-            capstone_mnemonic: if next_byte(data, &mut cursor) & 1 == 0 {
+            compat_mnemonic: if next_byte(data, &mut cursor) & 1 == 0 {
                 Some("li".to_string())
             } else {
                 None
             },
-            capstone_hidden_operands: vec![usize::from(next_byte(data, &mut cursor) % 4)],
+            compat_hidden_operands: vec![usize::from(next_byte(data, &mut cursor) % 4)],
+            compat_operand_order: Vec::new(),
         },
-        render: None,
     };
 
     Instruction::from_decoded(decoded, "legacy".to_string(), "legacy".to_string(), None)
@@ -120,7 +121,7 @@ fn options(profile: TextRenderProfile) -> RenderOptions {
 fuzz_target!(|data: &[u8]| {
     let instruction = build_instruction(data);
 
-    let _ = render_instruction_text(&instruction, options(TextRenderProfile::Capstone));
+    let _ = render_instruction_text(&instruction, options(TextRenderProfile::Compat));
     let _ = render_instruction_text(&instruction, options(TextRenderProfile::Canonical));
     let _ = render_instruction_text(&instruction, options(TextRenderProfile::VerboseDebug));
     let _ = render_disassembly(
@@ -129,6 +130,6 @@ fuzz_target!(|data: &[u8]| {
         instruction.size,
         Vec::new(),
         &[instruction],
-        options(TextRenderProfile::Capstone),
+        options(TextRenderProfile::Compat),
     );
 });

@@ -152,9 +152,8 @@ impl CliExecutor {
 
         // Format and output the results
         let output_config = config.output_config();
-        let formatter = DisassemblyFormatter::new(output_config);
-
-        formatter.print(&result);
+        let output = engine.format_result(&result, output_config);
+        print!("{output}");
 
         // Print summary if there were errors in skip-data mode
         if !result.is_successful() && !config.display_options.json {
@@ -239,9 +238,7 @@ impl CliExecutor {
         };
 
         let output_config = config.output_config();
-        let formatter = DisassemblyFormatter::new(output_config);
-
-        Ok(formatter.format(&result))
+        Ok(engine.format_result(&result, output_config))
     }
 
     /// Execute disassembly with minimal output (mnemonics only).
@@ -254,9 +251,7 @@ impl CliExecutor {
             .map_err(|error| CliError::disassembly(&error))?;
 
         let output_config = OutputConfig::minimal();
-        let formatter = DisassemblyFormatter::new(output_config);
-
-        Ok(formatter.format(&result))
+        Ok(engine.format_result(&result, output_config))
     }
 
     /// Validate CLI arguments without executing disassembly.
@@ -368,6 +363,14 @@ impl CliExecutor {
             render_capabilities_text()
         }
     }
+}
+
+fn guess_architecture_argument(args: &[OsString]) -> Option<String> {
+    args.iter()
+        .skip(1)
+        .filter_map(|arg| arg.to_str())
+        .find(|arg| !arg.starts_with('-'))
+        .map(str::to_string)
 }
 
 #[cfg(test)]
@@ -577,12 +580,4 @@ mod tests {
         assert!(output.contains("parser-only"));
         assert!(output.contains("--capabilities"));
     }
-}
-
-fn guess_architecture_argument(args: &[OsString]) -> Option<String> {
-    args.iter()
-        .skip(1)
-        .filter_map(|arg| arg.to_str())
-        .find(|arg| !arg.starts_with('-'))
-        .map(str::to_string)
 }

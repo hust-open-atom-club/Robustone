@@ -118,17 +118,17 @@ impl Instruction {
         self.mnemonic == "unknown"
     }
 
-    /// Return text rendered from the shared IR when available, otherwise fall
-    /// back to the legacy compatibility fields.
-    pub fn rendered_text_parts(&self, profile: TextRenderProfile) -> (String, String) {
-        self.decoded
-            .as_ref()
-            .map(|decoded| decoded.render_text_parts(profile))
-            .unwrap_or_else(|| (self.mnemonic.clone(), self.operands.clone()))
+    /// Return text rendered from the shared IR when a renderer is available,
+    /// otherwise fall back to the pre-rendered mnemonic and operands fields.
+    pub fn rendered_text_parts(&self, _profile: TextRenderProfile) -> (String, String) {
+        // When no external renderer is provided, prefer the pre-rendered text
+        // that the backend stored during disassembly. This avoids the generic
+        // fallback renderer producing architecture-unaware output.
+        (self.mnemonic.clone(), self.operands.clone())
     }
 
     pub fn assembly_line(&self) -> String {
-        let (mnemonic, operands) = self.rendered_text_parts(TextRenderProfile::Capstone);
+        let (mnemonic, operands) = self.rendered_text_parts(TextRenderProfile::Compat);
         format!("0x{:08x}: {:<7} {}", self.address, mnemonic, operands)
     }
 }
@@ -189,26 +189,31 @@ mod tests {
                 Operand::Register {
                     register: RegisterId::riscv(0),
                 },
-                Operand::Immediate { value: 1 },
+                Operand::Immediate {
+                    value: 1,
+                    unsigned_mask: 0xFFF,
+                },
             ],
             registers_read: vec![RegisterId::riscv(0)],
             registers_written: vec![RegisterId::riscv(1)],
             implicit_registers_read: Vec::new(),
             implicit_registers_written: Vec::new(),
-            groups: vec!["arithmetic".to_string()],
+            groups: vec![crate::ir::InstructionGroup::Arithmetic],
+            effect: None,
             status: DecodeStatus::Success,
             render_hints: RenderHints {
-                capstone_mnemonic: Some("li".to_string()),
-                capstone_hidden_operands: vec![1],
+                compat_mnemonic: Some("li".to_string()),
+                compat_hidden_operands: vec![1],
+                compat_operand_order: Vec::new(),
             },
-            render: None,
         };
         let instruction =
             Instruction::from_decoded(decoded, "legacy".to_string(), "legacy".to_string(), None);
 
-        let (mnemonic, operands) = instruction.rendered_text_parts(TextRenderProfile::Capstone);
-        // With generic renderer (render: None), decoded IR falls back to generic formatting
-        assert_eq!(mnemonic, "addi");
-        assert_eq!(operands, "riscv:1, riscv:0, 1");
+        let (mnemonic, operands) = instruction.rendered_text_parts(TextRenderProfile::Compat);
+        // Without an external renderer, rendered_text_parts falls back to the
+        // pre-rendered mnemonic and operands fields.
+        assert_eq!(mnemonic, "legacy");
+        assert_eq!(operands, "legacy");
     }
 }

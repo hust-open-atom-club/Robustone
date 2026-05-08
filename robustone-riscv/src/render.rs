@@ -1,39 +1,44 @@
 //! RISC-V instruction text rendering.
 //!
-//! Provides Capstone-compatible and canonical text rendering for RISC-V
+//! Provides reference-compatible and canonical text rendering for RISC-V
 //! decoded instructions. This module was extracted from robustone-core so
 //! that architecture-specific formatting lives in the architecture crate.
 
 use robustone_core::ir::{DecodedInstruction, Operand, TextRenderProfile};
+use robustone_core::render::RenderOptions;
+use robustone_core::renderer::Renderer;
 
 /// Render a RISC-V decoded instruction into mnemonic and operand text.
 pub fn render_riscv_text_parts(
     instruction: &DecodedInstruction,
     profile: TextRenderProfile,
     alias_regs: bool,
-    capstone_aliases: bool,
+    compat_aliases: bool,
     compressed_aliases: bool,
     unsigned_immediate: bool,
 ) -> (String, String) {
-    let use_capstone_aliases =
-        capstone_aliases && (compressed_aliases || !instruction.mnemonic.starts_with("c."));
+    let use_compat_aliases = compat_aliases
+        && (compressed_aliases
+            || !instruction
+                .groups
+                .contains(&robustone_core::ir::InstructionGroup::Compressed));
 
-    let mnemonic = if matches!(profile, TextRenderProfile::Canonical) || !use_capstone_aliases {
+    let mnemonic = if matches!(profile, TextRenderProfile::Canonical) || !use_compat_aliases {
         instruction.mnemonic.clone()
     } else {
         instruction
             .render_hints
-            .capstone_mnemonic
+            .compat_mnemonic
             .clone()
             .unwrap_or_else(|| instruction.mnemonic.clone())
     };
 
-    let hidden_operands =
-        if matches!(profile, TextRenderProfile::Canonical) || !use_capstone_aliases {
-            &[][..]
-        } else {
-            instruction.render_hints.capstone_hidden_operands.as_slice()
-        };
+    let hidden_operands = if matches!(profile, TextRenderProfile::Canonical) || !use_compat_aliases
+    {
+        &[][..]
+    } else {
+        instruction.render_hints.compat_hidden_operands.as_slice()
+    };
 
     let visible_operands = instruction
         .operands
@@ -54,10 +59,25 @@ pub fn render_riscv_text_parts(
         );
     }
 
-    if mnemonic.starts_with("sc.") || mnemonic.starts_with("amo") {
+    if instruction
+        .groups
+        .contains(&robustone_core::ir::InstructionGroup::Atomic)
+    {
         return (
             mnemonic,
             format_riscv_atomic_operands(
+                &visible_operands,
+                &instruction.mode,
+                alias_regs,
+                unsigned_immediate,
+            ),
+        );
+    }
+
+    if is_riscv_load_store_mnemonic(&mnemonic) {
+        return (
+            mnemonic,
+            format_riscv_load_store_operands(
                 &visible_operands,
                 &instruction.mode,
                 alias_regs,
@@ -97,14 +117,18 @@ fn format_riscv_jalr_operands(
         (
             Some(Operand::Register { register: rd }),
             Some(Operand::Register { register: rs1 }),
-            Some(Operand::Immediate { value }),
+            Some(Operand::Immediate { value, .. }),
         ) => format!(
             "{}, {}({})",
             format_riscv_register(rd.id, alias_regs),
             format_riscv_immediate(*value, mode, unsigned_immediate),
             format_riscv_register(rs1.id, alias_regs)
         ),
-        (Some(Operand::Register { register: rs1 }), Some(Operand::Immediate { value }), None) => {
+        (
+            Some(Operand::Register { register: rs1 }),
+            Some(Operand::Immediate { value, .. }),
+            None,
+        ) => {
             format!(
                 "{}({})",
                 format_riscv_immediate(*value, mode, unsigned_immediate),
@@ -115,6 +139,35 @@ fn format_riscv_jalr_operands(
             .iter()
             .map(|(_, operand)| {
                 format_riscv_basic_operand(operand, mode, alias_regs, false, unsigned_immediate)
+            })
+            .collect::<Vec<_>>()
+            .join(", "),
+    }
+}
+
+fn format_riscv_load_store_operands(
+    operands: &[(usize, &Operand)],
+    mode: &str,
+    alias_regs: bool,
+    unsigned_immediate: bool,
+) -> String {
+    let mut visible = operands.iter().map(|(_, operand)| *operand);
+    match (visible.next(), visible.next(), visible.next()) {
+        (
+            Some(first),
+            Some(Operand::Immediate { value: imm, .. }),
+            Some(Operand::Register { register: base }),
+        ) => {
+            let first_str =
+                format_riscv_basic_operand(first, mode, alias_regs, true, unsigned_immediate);
+            let disp = format_riscv_immediate(*imm, mode, unsigned_immediate);
+            let base_str = format_riscv_register(base.id, alias_regs);
+            format!("{first_str}, {disp}({base_str})")
+        }
+        _ => operands
+            .iter()
+            .map(|(_, operand)| {
+                format_riscv_basic_operand(operand, mode, alias_regs, true, unsigned_immediate)
             })
             .collect::<Vec<_>>()
             .join(", "),
@@ -174,12 +227,12 @@ fn format_riscv_operand(
     last_visible_index: Option<usize>,
 ) -> String {
     match operand {
-        Operand::Immediate { value } if is_riscv_csr_operand(mnemonic, index) => {
+        Operand::Immediate { value, .. } if is_riscv_csr_operand(mnemonic, index) => {
             csr_name_lookup(*value as u16)
                 .map(str::to_string)
                 .unwrap_or_else(|| format_riscv_immediate(*value, "", unsigned_immediate))
         }
-        Operand::Immediate { value }
+        Operand::Immediate { value, .. }
             if last_visible_index == Some(index) && is_riscv_control_flow_mnemonic(mnemonic) =>
         {
             format_riscv_control_immediate(*value, mode, unsigned_immediate)
@@ -187,7 +240,7 @@ fn format_riscv_operand(
         Operand::Memory {
             base: Some(base),
             displacement,
-        } if *displacement == 0 && is_riscv_atomic_memory_mnemonic(mnemonic) => {
+        } if *displacement == 0 && is_riscv_atomic(mnemonic) => {
             format!("({})", format_riscv_register(base.id, alias_regs))
         }
         _ => format_riscv_basic_operand(operand, mode, alias_regs, true, unsigned_immediate),
@@ -203,7 +256,7 @@ fn format_riscv_basic_operand(
 ) -> String {
     match operand {
         Operand::Register { register } => format_riscv_register(register.id, alias_regs),
-        Operand::Immediate { value } => {
+        Operand::Immediate { value, .. } => {
             if allow_control_hex {
                 format_riscv_immediate(*value, mode, unsigned_immediate)
             } else {
@@ -344,6 +397,46 @@ fn format_riscv_unsigned_immediate(value: i64, mode: &str) -> String {
     }
 }
 
+fn is_riscv_load_store_mnemonic(mnemonic: &str) -> bool {
+    matches!(
+        mnemonic,
+        "lb" | "lh"
+            | "lw"
+            | "lbu"
+            | "lhu"
+            | "ld"
+            | "sb"
+            | "sh"
+            | "sw"
+            | "sd"
+            | "flw"
+            | "fsw"
+            | "fld"
+            | "fsd"
+            | "prefetch.i"
+            | "prefetch.r"
+            | "prefetch.t"
+            | "prefetch.w"
+            | "c.lw"
+            | "c.sw"
+            | "c.ld"
+            | "c.sd"
+            | "c.lwsp"
+            | "c.swsp"
+            | "c.ldsp"
+            | "c.sdsp"
+            | "c.flw"
+            | "c.fsw"
+            | "c.fld"
+            | "c.fsd"
+            | "c.flwsp"
+            | "c.fswsp"
+            | "c.fldsp"
+            | "c.fsdsp"
+    )
+}
+
+// LEGACY: Phase 5 will replace mnemonic-based control-flow detection with InstructionGroup membership.
 fn is_riscv_control_flow_mnemonic(mnemonic: &str) -> bool {
     matches!(
         mnemonic,
@@ -364,6 +457,7 @@ fn is_riscv_control_flow_mnemonic(mnemonic: &str) -> bool {
     )
 }
 
+// LEGACY: Phase 5 will migrate CSR operand detection to spec-level operand metadata.
 fn is_riscv_csr_operand(mnemonic: &str, index: usize) -> bool {
     matches!(
         mnemonic,
@@ -371,8 +465,24 @@ fn is_riscv_csr_operand(mnemonic: &str, index: usize) -> bool {
     ) && index == 1
 }
 
-fn is_riscv_atomic_memory_mnemonic(mnemonic: &str) -> bool {
-    mnemonic.starts_with("lr.") || mnemonic.starts_with("sc.") || mnemonic.starts_with("amo")
+fn is_riscv_atomic(mnemonic: &str) -> bool {
+    // Atomic instructions: LR, SC, AMO prefixes
+    matches!(
+        mnemonic,
+        "lr.w"
+            | "lr.d"
+            | "sc.w"
+            | "sc.d"
+            | "amoadd.w"
+            | "amoswap.w"
+            | "amoand.w"
+            | "amoor.w"
+            | "amoxor.w"
+            | "amomax.w"
+            | "amomin.w"
+            | "amomaxu.w"
+            | "amominu.w"
+    )
 }
 
 fn csr_name_lookup(csr: u16) -> Option<&'static str> {
@@ -393,5 +503,26 @@ fn csr_name_lookup(csr: u16) -> Option<&'static str> {
         0xc81 => Some("timeh"),
         0xc82 => Some("instreth"),
         _ => None,
+    }
+}
+
+/// RISC-V-specific instruction renderer.
+pub struct RiscVRenderer;
+
+impl Renderer for RiscVRenderer {
+    fn render(&self, instruction: &DecodedInstruction, options: RenderOptions) -> (String, String) {
+        // Match the legacy behavior where register aliases are enabled for
+        // compat profile unless explicitly disabled via compat_aliases.
+        let alias_regs = options.compat_aliases
+            && (options.alias_regs
+                || !matches!(options.text_profile, TextRenderProfile::Canonical));
+        render_riscv_text_parts(
+            instruction,
+            options.text_profile,
+            alias_regs,
+            options.compat_aliases,
+            options.compressed_aliases,
+            options.unsigned_immediate,
+        )
     }
 }

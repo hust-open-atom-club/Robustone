@@ -1,27 +1,26 @@
+#![forbid(unsafe_code)]
+
 //! ARM (AArch64) disassembly module for Robustone.
 //!
-//! Provides instruction decoding for ARM AArch64 targets.
+//! Experimental legacy backend. This crate is currently a framework placeholder
+//! and is not yet migrated to the robustone-isa declarative backend model.
+//! Uses the unified `decode_one` pipeline via `ArmBackend` for smoke testing.
 
-pub mod decoder;
+pub mod backend;
 pub mod render;
 
-use decoder::AArch64Decoder;
 use robustone_core::{
     Instruction, common::ArchitectureProfile, ir::DecodedInstruction, traits::ArchitectureHandler,
     types::error::DisasmError,
 };
+use robustone_isa::DecodeProfile;
 
 /// Architecture handler implementation for ARM AArch64 targets.
-pub struct ArmHandler {
-    decoder: AArch64Decoder,
-}
+pub struct ArmHandler;
 
 impl ArmHandler {
-    /// Creates a new handler.
     pub fn new() -> Self {
-        Self {
-            decoder: AArch64Decoder::new(),
-        }
+        Self
     }
 }
 
@@ -34,6 +33,10 @@ impl Default for ArmHandler {
 impl ArchitectureHandler for ArmHandler {
     fn set_detail(&mut self, _detail: bool) {}
 
+    fn renderer(&self) -> Option<&dyn robustone_core::renderer::Renderer> {
+        Some(&crate::render::AArch64Renderer)
+    }
+
     fn decode_instruction(
         &self,
         bytes: &[u8],
@@ -43,7 +46,14 @@ impl ArchitectureHandler for ArmHandler {
         if !self.supports(arch_name) {
             return Err(DisasmError::UnsupportedArchitecture(arch_name.to_string()));
         }
-        let decoded = self.decoder.decode(bytes, arch_name, addr)?;
+        let profile = DecodeProfile {
+            mode: crate::backend::ArmMode::AArch64,
+            features: crate::backend::ArmFeature::BASE,
+            render_dialect: robustone_isa::RenderDialect::Canonical,
+            alias_policy: robustone_isa::AliasPolicy::None,
+        };
+        let decoded =
+            robustone_isa::decode_one::<crate::backend::ArmBackend>(bytes, addr, &profile)?;
         let size = decoded.size;
         Ok((decoded, size))
     }
@@ -66,7 +76,7 @@ impl ArchitectureHandler for ArmHandler {
         let (decoded, size) = self.decode_instruction(bytes, arch_name, addr)?;
         let (mnemonic, operands) = render::render_aarch64_text_parts(
             &decoded,
-            robustone_core::ir::TextRenderProfile::Capstone,
+            robustone_core::ir::TextRenderProfile::Compat,
             true,
             true,
             true,
@@ -90,9 +100,14 @@ impl ArchitectureHandler for ArmHandler {
     }
 
     fn supports(&self, arch_name: &str) -> bool {
-        matches!(arch_name, "arm" | "aarch64" | "arm64" | "aarch64be")
+        matches!(arch_name, "arm" | "aarch64" | "arm64")
     }
 }
+
+// LEGACY: decoder module is kept as a stub. All decoding now routes through
+// the unified ArmBackend + decode_one pipeline. The file is being retained
+// until Phase 6's full AArch64 migration is complete.
+pub mod decoder {}
 
 #[cfg(test)]
 mod tests {
@@ -141,4 +156,9 @@ mod tests {
         assert_eq!(size, 4);
         assert_eq!(instr.mnemonic, "ret");
     }
+}
+
+// Register the ARM handler with the global inventory.
+inventory::submit! {
+    robustone_core::traits::HandlerFactory::new(|| Box::new(ArmHandler::new()))
 }
