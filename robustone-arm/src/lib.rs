@@ -3,7 +3,9 @@
 //! Provides instruction decoding for ARM AArch64 targets.
 
 pub mod decoder;
+pub mod extensions;
 pub mod render;
+pub mod shared;
 pub mod types;
 
 use decoder::AArch64Decoder;
