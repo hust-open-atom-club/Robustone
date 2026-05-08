@@ -4,6 +4,7 @@
 
 pub mod decoder;
 pub mod render;
+pub mod types;
 
 use decoder::AArch64Decoder;
 use robustone_core::{
