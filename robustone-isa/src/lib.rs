@@ -472,8 +472,12 @@ pub struct MemExpr<B: ArchitectureBackend + 'static> {
     pub index: Option<B::Field>,
     /// Scale factor (1, 2, 4, 8).
     pub scale: u8,
-    /// Displacement (immediate offset).
+    /// Displacement (immediate offset) when constant.
     pub displacement: i64,
+    /// Field to extract displacement from when variable.
+    pub displacement_field: Option<B::Field>,
+    /// Transform to apply to extracted displacement.
+    pub displacement_transform: ImmediateTransform,
     /// Segment register field (x86-specific).
     pub segment: Option<B::Field>,
     /// Whether this is a pre-indexed access (AArch64).
@@ -890,22 +894,34 @@ pub fn decode_one<B: ArchitectureBackend>(
         operands.push(operand);
 
         // Infer register access
-        if let OperandSpec::Register {
-            class,
-            field,
-            access,
-        } = op_spec
-        {
-            let raw = B::extract_field(instr.raw, spec.format, *field)?;
-            let reg = B::lower_register(*class, raw, profile);
-            match *access {
-                Access::Read => regs_read.push(reg),
-                Access::Write => regs_written.push(reg),
-                Access::ReadWrite => {
-                    regs_read.push(reg);
-                    regs_written.push(reg);
+        match op_spec {
+            OperandSpec::Register {
+                class,
+                field,
+                access,
+            } => {
+                let raw = B::extract_field(instr.raw, spec.format, *field)?;
+                let reg = B::lower_register(*class, raw, profile);
+                match *access {
+                    Access::Read => regs_read.push(reg),
+                    Access::Write => regs_written.push(reg),
+                    Access::ReadWrite => {
+                        regs_read.push(reg);
+                        regs_written.push(reg);
+                    }
                 }
             }
+            OperandSpec::Memory { expr, .. } => {
+                if let Some(base_field) = expr.base {
+                    let raw = B::extract_field(instr.raw, spec.format, base_field)?;
+                    let reg = B::lower_register(expr.base_class, raw, profile);
+                    // Memory base is always read (address calculation).
+                    // Capstone only adds memory base to registers_read,
+                    // never to registers_written, regardless of access direction.
+                    regs_read.push(reg);
+                }
+            }
+            _ => {}
         }
     }
 
@@ -1032,10 +1048,13 @@ fn lower_operand<B: ArchitectureBackend>(
             } else {
                 None
             };
-            Ok(Operand::Memory {
-                base,
-                displacement: expr.displacement,
-            })
+            let displacement = if let Some(field) = expr.displacement_field {
+                let raw = B::extract_field(word, format, field)?;
+                apply_transform(raw, expr.displacement_transform)
+            } else {
+                expr.displacement
+            };
+            Ok(Operand::Memory { base, displacement })
         }
     }
 }
@@ -1507,7 +1526,7 @@ macro_rules! text {
     };
 }
 
-/// Helper to construct a memory operand spec.
+/// Helper to construct a memory operand spec with constant displacement.
 #[macro_export]
 macro_rules! mem {
     ($class:expr, $base_field:expr, $displacement:expr) => {
@@ -1518,12 +1537,73 @@ macro_rules! mem {
                 index: None,
                 scale: 0,
                 displacement: $displacement,
+                displacement_field: None,
+                displacement_transform: $crate::ImmediateTransform::None,
                 segment: None,
                 pre_indexed: false,
                 post_indexed: false,
             },
             width: 0,
             access: $crate::Access::ReadWrite,
+        }
+    };
+    ($class:expr, $base_field:expr, $displacement:expr, $access:expr) => {
+        $crate::OperandSpec::Memory {
+            expr: $crate::MemExpr {
+                base_class: $class,
+                base: Some($base_field),
+                index: None,
+                scale: 0,
+                displacement: $displacement,
+                displacement_field: None,
+                displacement_transform: $crate::ImmediateTransform::None,
+                segment: None,
+                pre_indexed: false,
+                post_indexed: false,
+            },
+            width: 0,
+            access: $access,
+        }
+    };
+}
+
+/// Helper to construct a memory operand spec with field-extracted displacement.
+#[macro_export]
+macro_rules! mem_imm {
+    ($class:expr, $base_field:expr, $disp_field:expr, $disp_transform:expr) => {
+        $crate::OperandSpec::Memory {
+            expr: $crate::MemExpr {
+                base_class: $class,
+                base: Some($base_field),
+                index: None,
+                scale: 0,
+                displacement: 0,
+                displacement_field: Some($disp_field),
+                displacement_transform: $disp_transform,
+                segment: None,
+                pre_indexed: false,
+                post_indexed: false,
+            },
+            width: 0,
+            access: $crate::Access::ReadWrite,
+        }
+    };
+    ($class:expr, $base_field:expr, $disp_field:expr, $disp_transform:expr, $access:expr) => {
+        $crate::OperandSpec::Memory {
+            expr: $crate::MemExpr {
+                base_class: $class,
+                base: Some($base_field),
+                index: None,
+                scale: 0,
+                displacement: 0,
+                displacement_field: Some($disp_field),
+                displacement_transform: $disp_transform,
+                segment: None,
+                pre_indexed: false,
+                post_indexed: false,
+            },
+            width: 0,
+            access: $access,
         }
     };
 }
