@@ -35,3 +35,33 @@ c0035fd6
 010000d4
 9f3f03d5
 bf3003d5
+
+# Loads and Stores — Stage 2
+# Load/store exclusive
+20000088
+20002088
+200000c8
+200020c8
+# Load literal
+20000018
+20000098
+# Load/store pair
+200000a9
+408040a9
+40804ca9
+# Load/store register (post-indexed)
+200400b8
+200440b8
+# Load/store register (pre-indexed)
+200c00b8
+200c40b8
+# Load/store register (unsigned immediate)
+200400b9
+200000b9
+# Load/store register (register offset)
+206822f8
+# Load/store register (unscaled immediate)
+20f000b8
+200000b8
+# Load/store pair (no-allocate)
+408000a9

@@ -108,17 +108,61 @@ fn format_operand(
 }
 
 fn is_32bit_mnemonic(mnemonic: &str, instruction: &DecodedInstruction) -> bool {
-    // Check if the original encoding used W registers.
+    if instruction.raw_bytes.len() < 4 {
+        return mnemonic.starts_with("w");
+    }
+    let word = u32::from_le_bytes([
+        instruction.raw_bytes[0],
+        instruction.raw_bytes[1],
+        instruction.raw_bytes[2],
+        instruction.raw_bytes[3],
+    ]);
+
     // For cbz/cbnz/tbz/tbnz, the sf bit (bit 31) determines register size.
-    if matches!(mnemonic, "cbz" | "cbnz" | "tbz" | "tbnz") && instruction.raw_bytes.len() >= 4 {
-        let word = u32::from_le_bytes([
-            instruction.raw_bytes[0],
-            instruction.raw_bytes[1],
-            instruction.raw_bytes[2],
-            instruction.raw_bytes[3],
-        ]);
+    if matches!(mnemonic, "cbz" | "cbnz" | "tbz" | "tbnz") {
         return ((word >> 31) & 1) == 0; // sf = 0 means 32-bit
     }
+
+    // LDRSW always uses X register (64-bit result)
+    if mnemonic == "ldrsw" {
+        return false;
+    }
+
+    // For load/store register instructions, size field (bits 31:30) determines width.
+    if matches!(
+        mnemonic,
+        "ldr" | "str" | "ldrb" | "strb" | "ldrh" | "strh"
+            | "ldrsb" | "ldrsh"
+            | "ldur" | "stur" | "ldurb" | "sturb" | "ldurh" | "sturh"
+            | "ldursb" | "ldursh" | "ldursw"
+            | "ldxr" | "stxr" | "ldxrb" | "stxrb" | "ldxrh" | "stxrh"
+            | "ldxp" | "stxp"
+    ) {
+        let size = (word >> 30) & 0b11;
+        let opc = (word >> 22) & 0b11;
+        // Detect load literal: bit29=0, bit24=0, op0=0xC (bit28=1, bit27=1, bit26=0, bit25=0)
+        let op0_val = (word >> 25) & 0xF;
+        let is_load_literal = op0_val == 0xC && ((word >> 29) & 1) == 0 && ((word >> 24) & 1) == 0;
+        if is_load_literal {
+            // Load literal: size=0b00 → W, size=0b01 → X, size=0b10 → LDRSW (handled above)
+            return size == 0b00;
+        }
+        // 64-bit cases: size=0b11 (doubleword) OR sign-extended 64-bit loads
+        if size == 0b11 && matches!(opc, 0b00 | 0b01) {
+            return false; // X register
+        }
+        if matches!(size, 0b00 | 0b01) && opc == 0b11 {
+            return false; // LDRSB/LDRSH 64-bit result → X register
+        }
+        return true; // Everything else is W register
+    }
+
+    // For load/store pair, opc (bits 31:30) determines width.
+    if matches!(mnemonic, "ldp" | "stp" | "ldnp" | "stnp" | "ldpsw") {
+        let opc = (word >> 30) & 0b11;
+        return opc != 0b10; // opc=0b10 → X registers; otherwise W
+    }
+
     mnemonic.starts_with("w")
 }
 
@@ -126,7 +170,13 @@ fn reg_context_for_mnemonic(mnemonic: &str) -> crate::shared::registers::RegCont
     use crate::shared::registers::RegContext;
     match mnemonic {
         "add" | "sub" | "adds" | "subs" => RegContext::AddSub,
-        "ldr" | "str" | "ldp" | "stp" => RegContext::LoadStore,
+        "ldr" | "str" | "ldrb" | "strb" | "ldrh" | "strh"
+        | "ldrsb" | "ldrsh" | "ldrsw"
+        | "ldur" | "stur" | "ldurb" | "sturb" | "ldurh" | "sturh"
+        | "ldursb" | "ldursh" | "ldursw"
+        | "ldp" | "stp" | "ldnp" | "stnp" | "ldpsw"
+        | "ldxr" | "stxr" | "ldxrb" | "stxrb" | "ldxrh" | "stxrh"
+        | "ldxp" | "stxp" => RegContext::LoadStore,
         "br" | "blr" | "ret" => RegContext::Branch,
         _ => RegContext::DataProc,
     }

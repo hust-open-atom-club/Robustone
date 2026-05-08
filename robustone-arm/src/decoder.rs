@@ -189,6 +189,60 @@ fn compute_metadata(mnemonic: Mnemonic, operands: &[Operand]) -> Metadata {
         Msr | Mrs => {
             groups.push("system".to_string());
         }
+        Ldr | Ldrb | Ldrh | Ldrsb | Ldrsh | Ldrsw => {
+            if !operand_regs.is_empty() {
+                written.push(operand_regs[0]);
+            }
+            groups.push("load".to_string());
+        }
+        Str | Strb | Strh => {
+            groups.push("store".to_string());
+        }
+        Ldur | Ldurb | Ldurh | Ldursb | Ldursh | Ldursw => {
+            if !operand_regs.is_empty() {
+                written.push(operand_regs[0]);
+            }
+            groups.push("load".to_string());
+        }
+        Stur | Sturb | Sturh => {
+            groups.push("store".to_string());
+        }
+        Ldp | Ldpsw => {
+            if operand_regs.len() >= 2 {
+                written.push(operand_regs[0]);
+                written.push(operand_regs[1]);
+            }
+            groups.push("load".to_string());
+        }
+        Stp => {
+            groups.push("store".to_string());
+        }
+        Ldnp | Stnp => {
+            if mnemonic == Ldnp && operand_regs.len() >= 2 {
+                written.push(operand_regs[0]);
+                written.push(operand_regs[1]);
+            }
+            groups.push(if mnemonic == Ldnp { "load".to_string() } else { "store".to_string() });
+        }
+        Ldxr | Ldxrb | Ldxrh => {
+            if !operand_regs.is_empty() {
+                written.push(operand_regs[0]);
+            }
+            groups.push("load".to_string());
+        }
+        Stxr | Stxrb | Stxrh => {
+            groups.push("store".to_string());
+        }
+        Ldxp => {
+            if operand_regs.len() >= 2 {
+                written.push(operand_regs[0]);
+                written.push(operand_regs[1]);
+            }
+            groups.push("load".to_string());
+        }
+        Stxp => {
+            groups.push("store".to_string());
+        }
     }
 
     (read, written, implicit_read, implicit_written, groups)

@@ -96,4 +96,92 @@ mod tests {
         assert_eq!(mnemonic, "neg");
         assert_eq!(ops, "x0, x1");
     }
+
+    #[test]
+    fn test_str_post_index() {
+        // str w0, [x1], #0  (post-indexed store)
+        let (mnemonic, ops) = disasm(&[0x20, 0x04, 0x00, 0xb8]);
+        assert_eq!(mnemonic, "str");
+        assert_eq!(ops, "w0, [x1], #0");
+    }
+
+    #[test]
+    fn test_stxr() {
+        // stxr w0, w0, [x1]  (single exclusive store, word)
+        let (mnemonic, ops) = disasm(&[0x20, 0x00, 0x00, 0x88]);
+        assert_eq!(mnemonic, "stxr");
+        assert_eq!(ops, "w0, w0, [x1]");
+    }
+
+    #[test]
+    fn test_stxp() {
+        // stxp w0, w0, w0, [x1]  (pair exclusive store, word)
+        let (mnemonic, ops) = disasm(&[0x20, 0x00, 0x20, 0x88]);
+        assert_eq!(mnemonic, "stxp");
+        assert_eq!(ops, "w0, w0, w0, [x1]");
+    }
+
+    #[test]
+    fn test_stp() {
+        // stp x0, x0, [x1]  (pair store, 64-bit)
+        let (mnemonic, ops) = disasm(&[0x20, 0x00, 0x00, 0xa9]);
+        assert_eq!(mnemonic, "stp");
+        assert_eq!(ops, "x0, x0, [x1]");
+    }
+
+    #[test]
+    fn test_ldr_literal() {
+        // ldr w0, 4  (load literal, PC+4)
+        let (mnemonic, ops) = disasm(&[0x20, 0x00, 0x00, 0x18]);
+        assert_eq!(mnemonic, "ldr");
+        assert_eq!(ops, "w0, 4");
+    }
+
+    #[test]
+    fn test_str_unsigned_imm() {
+        // str w0, [x1, #4]  (unsigned immediate)
+        let (mnemonic, ops) = disasm(&[0x20, 0x04, 0x00, 0xb9]);
+        assert_eq!(mnemonic, "str");
+        assert_eq!(ops, "w0, [x1, #4]");
+    }
+
+    #[test]
+    fn test_str_register_offset() {
+        // str x0, [x1, x2]  (register offset)
+        let (mnemonic, ops) = disasm(&[0x20, 0x68, 0x22, 0xf8]);
+        assert_eq!(mnemonic, "str");
+        assert_eq!(ops, "x0, [x1, x2]");
+    }
+
+    #[test]
+    fn test_stur() {
+        // stur w0, [x1, #0xf]  (unscaled immediate)
+        let (mnemonic, ops) = disasm(&[0x20, 0xf0, 0x00, 0xb8]);
+        assert_eq!(mnemonic, "stur");
+        assert_eq!(ops, "w0, [x1, #0xf]");
+    }
+
+    #[test]
+    fn test_stur_zero_offset() {
+        // stur w0, [x1]  (unscaled immediate, offset=0)
+        let (mnemonic, ops) = disasm(&[0x20, 0x00, 0x00, 0xb8]);
+        assert_eq!(mnemonic, "stur");
+        assert_eq!(ops, "w0, [x1]");
+    }
+
+    #[test]
+    fn test_ldp_post_index() {
+        // ldp x0, x0, [x2], #0x10  (pair post-indexed)
+        let (mnemonic, ops) = disasm(&[0x40, 0x00, 0xc1, 0xa8]);
+        assert_eq!(mnemonic, "ldp");
+        assert_eq!(ops, "x0, x0, [x2], #0x10");
+    }
+
+    #[test]
+    fn test_ldp_pre_index() {
+        // ldp x0, x0, [x2, #16]!  (pair pre-indexed)
+        let (mnemonic, ops) = disasm(&[0x40, 0x00, 0xc1, 0xa9]);
+        assert_eq!(mnemonic, "ldp");
+        assert_eq!(ops, "x0, x0, [x2, #0x10]!");
+    }
 }

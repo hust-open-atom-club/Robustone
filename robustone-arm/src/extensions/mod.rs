@@ -9,6 +9,7 @@ use robustone_core::types::error::DisasmError;
 
 pub mod base;
 pub mod branch;
+pub mod loads_stores;
 pub mod system;
 
 /// Decode result type alias.
@@ -31,11 +32,7 @@ pub fn decode_by_op0(word: u32, addr: u64, _extensions: &AArch64Extensions) -> D
         0x5 | 0xD => base::decode_data_proc_reg(word, addr),
         0x4 | 0x6 | 0xC | 0xE => {
             // Loads and stores — Stage 2
-            Err(DisasmError::decode_failure(
-                robustone_core::types::error::DecodeErrorKind::UnimplementedInstruction,
-                Some("aarch64".to_string()),
-                "loads/stores not yet implemented in stage 1",
-            ))
+            loads_stores::decode_loads_stores(word, addr)
         }
         0x7 | 0xF => {
             // SIMD/FP / Scalar FP — Stage 3

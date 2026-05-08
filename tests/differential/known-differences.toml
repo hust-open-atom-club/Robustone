@@ -53,3 +53,112 @@ reason = "NOP decoded as direct mnemonic; Capstone -r mode reports underlying hi
 active = true
 owner = "aarch64-team"
 expires_on = "2026-12-31"
+
+# AArch64 Stage 2: ADR/ADRP target encoded as text operand for Capstone-compatible
+# rendering. Capstone's -r mode reports it as immediate value.
+[[difference]]
+arch = "aarch64"
+hex = "04000010"
+surface = "semantic_detail"
+reason = "ADR target rendered as text for Capstone text compatibility; semantic uses immediate type"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+[[difference]]
+arch = "aarch64"
+hex = "01000090"
+surface = "semantic_detail"
+reason = "ADRP target rendered as text for Capstone text compatibility; semantic uses immediate type"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+# AArch64 Stage 2: BL target encoded as text operand; LR write tracked differently.
+[[difference]]
+arch = "aarch64"
+hex = "04000094"
+surface = "semantic_detail"
+reason = "BL target rendered as text for Capstone text compatibility; LR write tracking differs in semantic"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+# AArch64 Stage 2: Load literal target encoded as text operand.
+[[difference]]
+arch = "aarch64"
+hex = "20000098"
+surface = "semantic_detail"
+reason = "Load literal target rendered as text for Capstone text compatibility; semantic uses memory type"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+# AArch64 Stage 2: Load/store pair memory operand encoded as text for Capstone
+# compatibility. Capstone -r mode uses structured memory operand.
+[[difference]]
+arch = "aarch64"
+hex = "200000a9"
+surface = "semantic_detail"
+reason = "Pair memory operand rendered as text for Capstone text compatibility; semantic uses memory type"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+[[difference]]
+arch = "aarch64"
+hex = "408040a9"
+surface = "semantic_detail"
+reason = "Pair memory operand rendered as text for Capstone text compatibility; semantic uses memory type"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+[[difference]]
+arch = "aarch64"
+hex = "40804ca9"
+surface = "semantic_detail"
+reason = "Pair memory operand rendered as text for Capstone text compatibility; semantic uses memory type"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+[[difference]]
+arch = "aarch64"
+hex = "408000a9"
+surface = "semantic_detail"
+reason = "Pair memory operand rendered as text for Capstone text compatibility; semantic uses memory type"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+# AArch64 Stage 2: Capstone appends "; Illegal instruction" comment to certain
+# pair load encodings. Text disassembly is otherwise identical.
+[[difference]]
+arch = "aarch64"
+hex = "408040a9"
+surface = "text"
+reason = "Capstone appends ; Illegal instruction comment for this encoding; disassembly text otherwise identical"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+[[difference]]
+arch = "aarch64"
+hex = "40804ca9"
+surface = "text"
+reason = "Capstone appends ; Illegal instruction comment for this encoding; disassembly text otherwise identical"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+# AArch64 Stage 2: Register-offset memory operand encoded as text.
+[[difference]]
+arch = "aarch64"
+hex = "206822f8"
+surface = "semantic_detail"
+reason = "Register-offset memory operand rendered as text for Capstone text compatibility; semantic uses memory type"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
