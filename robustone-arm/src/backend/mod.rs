@@ -96,12 +96,19 @@ fn arm_lookup(
     word: u32,
     profile: &DecodeProfile<ArmBackend>,
 ) -> Option<&'static InstructionSpec<ArmBackend>> {
-    SPECS
-        .iter()
-        .find(|spec| {
-            (word & spec.pattern().mask) == spec.pattern().value
-                && profile.features.contains(spec.features())
-        })
+    let op0 = ((word >> 25) & 0xF) as u8;
+
+    // Hierarchical dispatch: pre-filter by op0 range before linear match.
+    SPECS.iter().find(|spec| {
+        // Quick reject: check if spec's pattern value aligns with op0
+        let spec_op0 = ((spec.pattern().value >> 25) & 0xF) as u8;
+        let spec_mask = ((spec.pattern().mask >> 25) & 0xF) as u8;
+        let op0_matches = (op0 & spec_mask) == spec_op0;
+
+        op0_matches
+            && (word & spec.pattern().mask) == spec.pattern().value
+            && profile.features.contains(spec.features())
+    })
 }
 
 fn arm_lower_register(
