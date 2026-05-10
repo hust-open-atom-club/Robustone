@@ -8,39 +8,48 @@ use crate::types::*;
 use robustone_core::ir::Operand;
 use robustone_core::types::error::{DecodeErrorKind, DisasmError};
 
+// Branch / System instruction encoding masks and values.
+const SYSTEM_INST_MASK: u32 = 0xFFC00000;
+const SYSTEM_INST_VALUE: u32 = 0xD5000000;
+const EXCEPTION_GEN_MASK: u32 = 0xFFC00000;
+const EXCEPTION_GEN_VALUE: u32 = 0xD4000000;
+const UNCOND_BRANCH_IMM_MASK: u32 = 0x7C000000;
+const UNCOND_BRANCH_IMM_VALUE: u32 = 0x14000000;
+const COND_BRANCH_MASK: u32 = 0x7E000000;
+const COND_BRANCH_VALUE: u32 = 0x54000000;
+const COMPARE_BRANCH_MASK: u32 = 0x7E000000;
+const COMPARE_BRANCH_VALUE: u32 = 0x34000000;
+const TEST_BRANCH_MASK: u32 = 0x7E000000;
+const TEST_BRANCH_VALUE: u32 = 0x36000000;
+const UNCOND_BRANCH_REG_MASK: u32 = 0xFF800000;
+const UNCOND_BRANCH_REG_VALUE: u32 = 0xD6000000;
+
 pub fn decode_branch_system(word: u32, addr: u64) -> DecodeResult {
-    // System instructions: 1101_0101_00xx_xxxx_xxxx_xxxx_xxxx_xxxx
-    if (word & 0xFFC00000) == 0xD5000000 {
+    if (word & SYSTEM_INST_MASK) == SYSTEM_INST_VALUE {
         return decode_system(word);
     }
 
-    // Exception generating: 1101_0100_00xx_xxxx_xxxx_xxxx_xxxx_xxxx
-    if (word & 0xFFC00000) == 0xD4000000 {
+    if (word & EXCEPTION_GEN_MASK) == EXCEPTION_GEN_VALUE {
         return decode_exception_generating(word);
     }
 
-    // Unconditional branch immediate: x_00101_xxxxxxxx_xxxx_xxxx_xxxx_xxxx
-    if (word & 0x7C000000) == 0x14000000 {
+    if (word & UNCOND_BRANCH_IMM_MASK) == UNCOND_BRANCH_IMM_VALUE {
         return decode_unconditional_branch_imm(word, addr);
     }
 
-    // Conditional branch: x_01010_xxxxxxxx_xxxx_xxxx_xxxx_xxxx
-    if (word & 0x7E000000) == 0x54000000 {
+    if (word & COND_BRANCH_MASK) == COND_BRANCH_VALUE {
         return decode_conditional_branch(word, addr);
     }
 
-    // Compare & branch: x_011010_xxxxxxx_xxxx_xxxx_xxxx_xxxx
-    if (word & 0x7E000000) == 0x34000000 {
+    if (word & COMPARE_BRANCH_MASK) == COMPARE_BRANCH_VALUE {
         return decode_compare_branch(word, addr);
     }
 
-    // Test & branch: x_011011_xxxxxxx_xxxx_xxxx_xxxx_xxxx
-    if (word & 0x7E000000) == 0x36000000 {
+    if (word & TEST_BRANCH_MASK) == TEST_BRANCH_VALUE {
         return decode_test_branch(word, addr);
     }
 
-    // Unconditional branch register: 1101_0110_0xxxxxxxx_xxxx_xxxx_xxxx
-    if (word & 0xFF800000) == 0xD6000000 {
+    if (word & UNCOND_BRANCH_REG_MASK) == UNCOND_BRANCH_REG_VALUE {
         return decode_unconditional_branch_reg(word);
     }
 
