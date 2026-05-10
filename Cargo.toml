@@ -8,4 +8,6 @@ members = [
     "robustone-arm",
     "robustone-x86",
     "robustone-loongarch",
+    "robustone-isa",
+    "robustone-isa-macros",
 ]

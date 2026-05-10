@@ -6,3 +6,6 @@ description = "ARM (AArch64) architecture support for Robustone"
 
 [dependencies]
 robustone-core = { path = "../robustone-core" }
+robustone-isa = { path = "../robustone-isa" }
+robustone-isa-macros = { path = "../robustone-isa-macros" }
+bitflags = "2"
