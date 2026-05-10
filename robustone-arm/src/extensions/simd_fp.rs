@@ -110,7 +110,7 @@ fn decode_advanced_simd(word: u32) -> DecodeResult {
     Err(DisasmError::decode_failure(
         DecodeErrorKind::UnimplementedInstruction,
         Some("aarch64".to_string()),
-        "unrecognized Advanced SIMD encoding",
+        "Unrecognized Advanced SIMD encoding",
     ))
 }
 
@@ -200,7 +200,7 @@ fn decode_fp_2source(word: u32, opcode: u8) -> DecodeResult {
         DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
-            "invalid ftype for FP 2-source",
+            "Invalid ftype for FP 2-source",
         )
     })?;
 
@@ -222,7 +222,7 @@ fn decode_fp_2source(word: u32, opcode: u8) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
-                format!("unimplemented FP 2-source opcode 0b{opcode:06b}"),
+                format!("Unimplemented FP 2-source opcode 0b{opcode:06b}"),
             ))
         }
     };
@@ -248,7 +248,7 @@ fn decode_fp_3source(word: u32, _opcode: u8) -> DecodeResult {
         DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
-            "invalid ftype for FP 3-source",
+            "Invalid ftype for FP 3-source",
         )
     })?;
 
@@ -291,7 +291,7 @@ fn decode_fp_1source(word: u32, opcode: u8) -> DecodeResult {
         DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
-            "invalid ftype for FP 1-source",
+            "Invalid ftype for FP 1-source",
         )
     })?;
 
@@ -314,7 +314,7 @@ fn decode_fp_1source(word: u32, opcode: u8) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
-                format!("unimplemented FP 1-source opcode 0b{opcode:06b}"),
+                format!("Unimplemented FP 1-source opcode 0b{opcode:06b}"),
             ))
         }
     };
@@ -349,7 +349,7 @@ fn decode_fp_immediate(word: u32) -> DecodeResult {
         DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
-            "invalid ftype for FP immediate",
+            "Invalid ftype for FP immediate",
         )
     })?;
 
@@ -405,7 +405,7 @@ fn decode_fp_compare(word: u32) -> DecodeResult {
         DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
-            "invalid ftype for FP compare",
+            "Invalid ftype for FP compare",
         )
     })?;
 
@@ -442,7 +442,7 @@ fn decode_fp_conditional_select(word: u32) -> DecodeResult {
         DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
-            "invalid ftype for FP conditional select",
+            "Invalid ftype for FP conditional select",
         )
     })?;
 
@@ -456,7 +456,7 @@ fn decode_fp_conditional_select(word: u32) -> DecodeResult {
             DisasmError::decode_failure(
                 DecodeErrorKind::InvalidEncoding,
                 Some("aarch64".to_string()),
-                "invalid condition code",
+                "Invalid condition code",
             )
         })?
         .as_str();
@@ -486,7 +486,7 @@ fn decode_fp_conversion(word: u32) -> DecodeResult {
         DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
-            "invalid ftype for FP conversion",
+            "Invalid ftype for FP conversion",
         )
     })?;
 
@@ -514,7 +514,7 @@ fn decode_fp_conversion(word: u32) -> DecodeResult {
                     return Err(DisasmError::decode_failure(
                         DecodeErrorKind::InvalidEncoding,
                         Some("aarch64".to_string()),
-                        "invalid FCVT source size",
+                        "Invalid FCVT source size",
                     ))
                 }
             };
@@ -570,7 +570,7 @@ fn decode_fp_conversion(word: u32) -> DecodeResult {
         _ => Err(DisasmError::decode_failure(
             DecodeErrorKind::UnimplementedInstruction,
             Some("aarch64".to_string()),
-            format!("unimplemented FP conversion opcode 0b{opcode:03b}"),
+            format!("Unimplemented FP conversion opcode 0b{opcode:03b}"),
         )),
     }
 }
@@ -732,7 +732,7 @@ fn decode_simd_three_same(word: u32) -> DecodeResult {
                 return Err(DisasmError::decode_failure(
                     DecodeErrorKind::UnimplementedInstruction,
                     Some("aarch64".to_string()),
-                    format!("unimplemented Three Same opcode {opcode} U={u}"),
+                    format!("Unimplemented Three Same opcode {opcode} U={u}"),
                 ))
             }
         };
@@ -803,7 +803,7 @@ fn decode_simd_three_same(word: u32) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
-                "reserved FP Three Same opcode 28 size=10 U=0".to_string(),
+                "Reserved FP Three Same opcode 28 size=10 U=0".to_string(),
             ))
         }
         (true, 28, 0b10) => Mnemonic::Fcmgt,
@@ -811,7 +811,7 @@ fn decode_simd_three_same(word: u32) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
-                "reserved FP Three Same opcode 29 size=10 U=0".to_string(),
+                "Reserved FP Three Same opcode 29 size=10 U=0".to_string(),
             ))
         }
         (true, 29, 0b10) => Mnemonic::Facgt,
@@ -833,7 +833,7 @@ fn decode_simd_three_same(word: u32) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
-                "reserved FP Three Same opcode 28 size=11 U=0".to_string(),
+                "Reserved FP Three Same opcode 28 size=11 U=0".to_string(),
             ))
         }
         (true, 28, 0b11) => Mnemonic::Fcmgt,
@@ -841,7 +841,7 @@ fn decode_simd_three_same(word: u32) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
-                "reserved FP Three Same opcode 29 size=11 U=0".to_string(),
+                "Reserved FP Three Same opcode 29 size=11 U=0".to_string(),
             ))
         }
         (true, 29, 0b11) => Mnemonic::Facgt,
@@ -854,7 +854,7 @@ fn decode_simd_three_same(word: u32) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
-                format!("unimplemented Three Same opcode {opcode} U={u} size={size:02b}"),
+                format!("Unimplemented Three Same opcode {opcode} U={u} size={size:02b}"),
             ))
         }
     };
@@ -920,7 +920,7 @@ fn decode_simd_fp16_three_same(word: u32) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
-                format!("unimplemented FP16 Three Same opcode {opcode} U={u}"),
+                format!("Unimplemented FP16 Three Same opcode {opcode} U={u}"),
             ))
         }
     };
@@ -1002,7 +1002,7 @@ fn decode_simd_two_reg_misc(word: u32, _op5_16: u8) -> DecodeResult {
                 return Err(DisasmError::decode_failure(
                     DecodeErrorKind::UnimplementedInstruction,
                     Some("aarch64".to_string()),
-                    format!("unimplemented Two-reg Misc opcode {opcode} U={u} size=00"),
+                    format!("Unimplemented Two-reg Misc opcode {opcode} U={u} size=00"),
                 ))
             }
         },
@@ -1022,7 +1022,7 @@ fn decode_simd_two_reg_misc(word: u32, _op5_16: u8) -> DecodeResult {
                 return Err(DisasmError::decode_failure(
                     DecodeErrorKind::UnimplementedInstruction,
                     Some("aarch64".to_string()),
-                    format!("unimplemented Two-reg Misc opcode {opcode} U={u} size=01"),
+                    format!("Unimplemented Two-reg Misc opcode {opcode} U={u} size=01"),
                 ))
             }
         },
@@ -1032,7 +1032,7 @@ fn decode_simd_two_reg_misc(word: u32, _op5_16: u8) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
-                format!("unimplemented Two-reg Misc opcode {opcode} U={u} size={size:02b}"),
+                format!("Unimplemented Two-reg Misc opcode {opcode} U={u} size={size:02b}"),
             ))
         }
 
@@ -1090,7 +1090,7 @@ fn decode_simd_copy(word: u32) -> DecodeResult {
         DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
-            format!("invalid imm5 encoding 0b{imm5:05b} in SIMD copy"),
+            format!("Invalid imm5 encoding 0b{imm5:05b} in SIMD copy"),
         )
     })?;
 
@@ -1195,7 +1195,7 @@ fn decode_simd_copy(word: u32) -> DecodeResult {
         _ => Err(DisasmError::decode_failure(
             DecodeErrorKind::UnimplementedInstruction,
             Some("aarch64".to_string()),
-            format!("unimplemented SIMD copy Q={q} op={op} imm4=0b{imm4:04b}"),
+            format!("Unimplemented SIMD copy Q={q} op={op} imm4=0b{imm4:04b}"),
         )),
     }
 }
@@ -1217,7 +1217,7 @@ fn decode_simd_modified_imm(word: u32) -> DecodeResult {
         return Err(DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
-            "reserved o2=1 in SIMD modified immediate",
+            "Reserved o2=1 in SIMD modified immediate",
         ));
     }
 
@@ -1437,7 +1437,7 @@ fn decode_simd_modified_imm(word: u32) -> DecodeResult {
                 return Err(DisasmError::decode_failure(
                     DecodeErrorKind::InvalidEncoding,
                     Some("aarch64".to_string()),
-                    "reserved FMOV double-precision Q=0",
+                    "Reserved FMOV double-precision Q=0",
                 ));
             }
             // Double-precision: imm64 = a : ~b : bbbbbbbb : c : d : e : f : g : h : 0... (42 zeros)
@@ -1466,7 +1466,7 @@ fn decode_simd_modified_imm(word: u32) -> DecodeResult {
         _ => Err(DisasmError::decode_failure(
             DecodeErrorKind::UnimplementedInstruction,
             Some("aarch64".to_string()),
-            format!("unimplemented SIMD modified immediate op={op} cmode={cmode:04b}"),
+            format!("Unimplemented SIMD modified immediate op={op} cmode={cmode:04b}"),
         )),
     }
 }
@@ -1488,7 +1488,7 @@ fn decode_simd_shift_imm(word: u32) -> DecodeResult {
         return Err(DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
-            "invalid immh=0000 in SIMD shift immediate",
+            "Invalid immh=0000 in SIMD shift immediate",
         ));
     }
 
@@ -1532,7 +1532,7 @@ fn decode_simd_shift_imm(word: u32) -> DecodeResult {
                 return Err(DisasmError::decode_failure(
                     DecodeErrorKind::InvalidEncoding,
                     Some("aarch64".to_string()),
-                    "reserved SIMD shift immediate opcode 01000 U=0",
+                    "Reserved SIMD shift immediate opcode 01000 U=0",
                 ));
             }
             let s = (2 * esize) - immh_immb;
@@ -1550,7 +1550,7 @@ fn decode_simd_shift_imm(word: u32) -> DecodeResult {
                 return Err(DisasmError::decode_failure(
                     DecodeErrorKind::InvalidEncoding,
                     Some("aarch64".to_string()),
-                    "reserved SIMD shift immediate opcode 01100 U=0",
+                    "Reserved SIMD shift immediate opcode 01100 U=0",
                 ));
             }
             let s = immh_immb - esize;
@@ -1609,7 +1609,7 @@ fn decode_simd_shift_imm(word: u32) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
-                format!("unimplemented SIMD shift immediate opcode {opcode:05b} U={u}"),
+                format!("Unimplemented SIMD shift immediate opcode {opcode:05b} U={u}"),
             ))
         }
     };
@@ -1729,7 +1729,7 @@ fn decode_simd_indexed_element(word: u32) -> DecodeResult {
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
                 format!(
-                    "unimplemented SIMD indexed element opcode={opcode:04b} U={u} size={size}"
+                    "Unimplemented SIMD indexed element opcode={opcode:04b} U={u} size={size}"
                 ),
             ))
         }
@@ -1799,7 +1799,7 @@ fn decode_simd_indexed_element(word: u32) -> DecodeResult {
                     return Err(DisasmError::decode_failure(
                         DecodeErrorKind::InvalidEncoding,
                         Some("aarch64".to_string()),
-                        "invalid FP size for indexed element",
+                        "Invalid FP size for indexed element",
                     ))
                 }
             },
@@ -1817,7 +1817,7 @@ fn decode_simd_indexed_element(word: u32) -> DecodeResult {
                     return Err(DisasmError::decode_failure(
                         DecodeErrorKind::InvalidEncoding,
                         Some("aarch64".to_string()),
-                        "invalid size for long multiply indexed element",
+                        "Invalid size for long multiply indexed element",
                     ))
                 }
             },
@@ -1889,7 +1889,7 @@ fn decode_crypto_aes(word: u32) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
-                format!("unimplemented AES opcode {opcode}"),
+                format!("Unimplemented AES opcode {opcode}"),
             ))
         }
     };
@@ -1928,7 +1928,7 @@ fn decode_crypto_sha2(word: u32) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
-                format!("unimplemented SHA-2 opcode 0b{opcode:02b}"),
+                format!("Unimplemented SHA-2 opcode 0b{opcode:02b}"),
             ))
         }
     };
@@ -1980,7 +1980,7 @@ fn decode_crypto_sha3(word: u32) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
-                format!("unimplemented SHA-3 opcode 0b{opcode:03b}"),
+                format!("Unimplemented SHA-3 opcode 0b{opcode:03b}"),
             ))
         }
     };
@@ -2261,7 +2261,7 @@ fn decode_simd_three_different(word: u32) -> DecodeResult {
                 return Err(DisasmError::decode_failure(
                     DecodeErrorKind::InvalidEncoding,
                     Some("aarch64".to_string()),
-                    "pmull with U=1 is unallocated".to_string(),
+                    "Pmull with U=1 is unallocated".to_string(),
                 ));
             }
             let (dest_arr, src_arr) = match size {
@@ -2271,7 +2271,7 @@ fn decode_simd_three_different(word: u32) -> DecodeResult {
                     return Err(DisasmError::decode_failure(
                         DecodeErrorKind::InvalidEncoding,
                         Some("aarch64".to_string()),
-                        format!("pmull with size={} is unallocated", size),
+                        format!("Pmull with size={} is unallocated", size),
                     ));
                 }
             };
@@ -2295,7 +2295,7 @@ fn decode_simd_three_different(word: u32) -> DecodeResult {
         _ => Err(DisasmError::decode_failure(
             DecodeErrorKind::UnimplementedInstruction,
             Some("aarch64".to_string()),
-            format!("unimplemented SIMD Three Different opcode 0b{:04b}", opcode),
+            format!("Unimplemented SIMD Three Different opcode 0b{:04b}", opcode),
         )),
     }
 }
@@ -2315,7 +2315,7 @@ fn decode_simd_permute_table(word: u32) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::InvalidEncoding,
                 Some("aarch64".to_string()),
-                format!("unallocated EXT op2={op2}"),
+                format!("Unallocated EXT op2={op2}"),
             ));
         }
         let imm4 = bits(word, 14, 11) as u8;
@@ -2390,7 +2390,7 @@ fn decode_simd_permute_table(word: u32) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
-                format!("unimplemented SIMD permute opcode {opcode}"),
+                format!("Unimplemented SIMD permute opcode {opcode}"),
             ))
         }
     };

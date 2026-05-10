@@ -982,7 +982,7 @@ impl AArch64Extensions {
                     return Err(DisasmError::decode_failure(
                         DecodeErrorKind::UnsupportedExtension,
                         None::<String>,
-                        format!("unsupported AArch64 extension `{other}`"),
+                        format!("Unsupported AArch64 extension `{other}`"),
                     ));
                 }
             }

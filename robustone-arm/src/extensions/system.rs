@@ -13,6 +13,6 @@ pub fn decode_system_register(_word: u32) -> DecodeResult {
     Err(DisasmError::decode_failure(
         robustone_core::types::error::DecodeErrorKind::UnimplementedInstruction,
         Some("aarch64".to_string()),
-        "system register moves not in stage 1",
+        "System register moves not in stage 1",
     ))
 }

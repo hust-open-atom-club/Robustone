@@ -44,13 +44,13 @@ pub fn decode_by_op0(word: u32, addr: u64, _extensions: &AArch64Extensions) -> D
             Err(DisasmError::decode_failure(
                 robustone_core::types::error::DecodeErrorKind::InvalidEncoding,
                 Some("aarch64".to_string()),
-                "unallocated encoding",
+                "Unallocated encoding",
             ))
         }
         _ => Err(DisasmError::decode_failure(
             robustone_core::types::error::DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
-            format!("unrecognized op0=0x{:x}", op0(word)),
+            format!("Unrecognized op0=0x{:x}", op0(word)),
         )),
     }
 }

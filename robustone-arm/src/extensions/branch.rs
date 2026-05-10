@@ -56,7 +56,7 @@ pub fn decode_branch_system(word: u32, addr: u64) -> DecodeResult {
     Err(DisasmError::decode_failure(
         DecodeErrorKind::InvalidEncoding,
         Some("aarch64".to_string()),
-        "unrecognized branch/system encoding",
+        "Unrecognized branch/system encoding",
     ))
 }
 
@@ -69,7 +69,7 @@ fn decode_conditional_branch(word: u32, addr: u64) -> DecodeResult {
         DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
-            "invalid condition code",
+            "Invalid condition code",
         )
     })?;
 
@@ -105,7 +105,7 @@ fn decode_exception_generating(word: u32) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::InvalidEncoding,
                 Some("aarch64".to_string()),
-                "reserved exception generating encoding",
+                "Reserved exception generating encoding",
             ));
         }
     };
@@ -147,7 +147,7 @@ fn decode_system(word: u32) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::InvalidEncoding,
                 Some("aarch64".to_string()),
-                "reserved system encoding",
+                "Reserved system encoding",
             ));
         }
         Err(DisasmError::decode_failure(
@@ -216,7 +216,7 @@ fn decode_barriers(word: u32) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::InvalidEncoding,
                 Some("aarch64".to_string()),
-                "unrecognized barrier encoding",
+                "Unrecognized barrier encoding",
             ));
         }
     };

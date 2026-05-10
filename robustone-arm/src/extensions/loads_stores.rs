@@ -44,7 +44,7 @@ pub fn decode_loads_stores(word: u32, addr: u64) -> DecodeResult {
                     Err(DisasmError::decode_failure(
                         DecodeErrorKind::InvalidEncoding,
                         Some("aarch64".to_string()),
-                        "invalid load/store encoding",
+                        "Invalid load/store encoding",
                     ))
                 }
             } else {
@@ -239,7 +239,7 @@ fn decode_load_literal(word: u32, addr: u64) -> DecodeResult {
                 return Err(DisasmError::decode_failure(
                     DecodeErrorKind::InvalidEncoding,
                     Some("aarch64".to_string()),
-                    "reserved SIMD/FP load literal encoding",
+                    "Reserved SIMD/FP load literal encoding",
                 ));
             }
             0b11 => FpRegSize::Q,
@@ -339,7 +339,7 @@ fn decode_simd_fp_loads_stores(word: u32, _addr: u64, op0_val: u8) -> DecodeResu
                 Err(DisasmError::decode_failure(
                     DecodeErrorKind::InvalidEncoding,
                     Some("aarch64".to_string()),
-                    "invalid SIMD/FP lower-half encoding",
+                    "Invalid SIMD/FP lower-half encoding",
                 ))
             }
         }
@@ -356,7 +356,7 @@ fn decode_simd_fp_loads_stores(word: u32, _addr: u64, op0_val: u8) -> DecodeResu
                 Err(DisasmError::decode_failure(
                     DecodeErrorKind::InvalidEncoding,
                     Some("aarch64".to_string()),
-                    "invalid SIMD/FP upper-half encoding",
+                    "Invalid SIMD/FP upper-half encoding",
                 ))
             }
         }
@@ -410,7 +410,7 @@ fn decode_simd_fp_structure(word: u32) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
-                "unsupported SIMD/FP structure opcode",
+                "Unsupported SIMD/FP structure opcode",
             ));
         }
     };
@@ -473,7 +473,7 @@ fn decode_simd_fp_load_store_pair(word: u32) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::InvalidEncoding,
                 Some("aarch64".to_string()),
-                "reserved SIMD/FP pair encoding",
+                "Reserved SIMD/FP pair encoding",
             ));
         }
         _ => unreachable!(),
@@ -605,7 +605,7 @@ fn decode_simd_fp_single_immediate(word: u32) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::InvalidEncoding,
                 Some("aarch64".to_string()),
-                "invalid SIMD/FP register offset encoding",
+                "Invalid SIMD/FP register offset encoding",
             ));
         }
         let rm_val = rm(word);
@@ -998,7 +998,7 @@ fn decode_ls_mnemonic(size: u32, opc: u32) -> Result<Mnemonic, DisasmError> {
         (0b11, 0b10) => Err(DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
-            "reserved load/store encoding",
+            "Reserved load/store encoding",
         )),
         // Load signed (64-bit result for byte/half)
         (0b00, 0b11) => Ok(Mnemonic::Ldrsb),
@@ -1006,7 +1006,7 @@ fn decode_ls_mnemonic(size: u32, opc: u32) -> Result<Mnemonic, DisasmError> {
         (0b10, 0b11) | (0b11, 0b11) => Err(DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
-            "reserved load/store encoding",
+            "Reserved load/store encoding",
         )),
         _ => unreachable!(),
     }
@@ -1032,7 +1032,7 @@ fn decode_ls_unscaled_mnemonic(size: u32, opc: u32) -> Result<Mnemonic, DisasmEr
         (0b11, 0b10) => Err(DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
-            "reserved unscaled load/store encoding",
+            "Reserved unscaled load/store encoding",
         )),
         // Load signed (64-bit result for byte/half)
         (0b00, 0b11) => Ok(Mnemonic::Ldursb),
@@ -1040,7 +1040,7 @@ fn decode_ls_unscaled_mnemonic(size: u32, opc: u32) -> Result<Mnemonic, DisasmEr
         (0b10, 0b11) | (0b11, 0b11) => Err(DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
-            "reserved unscaled load/store encoding",
+            "Reserved unscaled load/store encoding",
         )),
         _ => unreachable!(),
     }

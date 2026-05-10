@@ -25,7 +25,7 @@ pub fn decode_data_proc_imm(word: u32, addr: u64) -> DecodeResult {
         0b110 | 0b111 => Err(DisasmError::decode_failure(
             DecodeErrorKind::UnimplementedInstruction,
             Some("aarch64".to_string()),
-            "bitfield/extract not in stage 1",
+            "Bitfield/extract not in stage 1",
         )),
         _ => unreachable!(),
     }
@@ -102,7 +102,7 @@ fn decode_logical_imm(word: u32) -> DecodeResult {
         DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
-            "reserved bitmask immediate encoding",
+            "Reserved bitmask immediate encoding",
         )
     })?;
 
@@ -151,7 +151,7 @@ fn decode_move_wide(word: u32) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::InvalidEncoding,
                 Some("aarch64".to_string()),
-                "reserved move wide opc=01",
+                "Reserved move wide opc=01",
             ));
         }
         _ => unreachable!(),
@@ -203,7 +203,7 @@ pub fn decode_data_proc_reg(word: u32, _addr: u64) -> DecodeResult {
                 Err(DisasmError::decode_failure(
                     DecodeErrorKind::InvalidEncoding,
                     Some("aarch64".to_string()),
-                    "reserved Data Processing -- Register encoding",
+                    "Reserved Data Processing -- Register encoding",
                 ))
             }
         }
@@ -367,7 +367,7 @@ fn decode_add_sub_with_carry(_word: u32) -> DecodeResult {
     Err(DisasmError::decode_failure(
         DecodeErrorKind::UnimplementedInstruction,
         Some("aarch64".to_string()),
-        "add/sub with carry not in stage 1",
+        "Add/sub with carry not in stage 1",
     ))
 }
 
@@ -384,7 +384,7 @@ fn decode_conditional_select(word: u32) -> DecodeResult {
         DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
-            "invalid condition code",
+            "Invalid condition code",
         )
     })?;
 
@@ -392,7 +392,7 @@ fn decode_conditional_select(word: u32) -> DecodeResult {
         return Err(DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
-            "reserved S=1 in conditional select",
+            "Reserved S=1 in conditional select",
         ));
     }
 
@@ -447,7 +447,7 @@ fn decode_conditional_compare(_word: u32) -> DecodeResult {
     Err(DisasmError::decode_failure(
         DecodeErrorKind::UnimplementedInstruction,
         Some("aarch64".to_string()),
-        "conditional compare not in stage 1",
+        "Conditional compare not in stage 1",
     ))
 }
 
@@ -481,7 +481,7 @@ fn decode_data_proc_2source(word: u32) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::InvalidEncoding,
                 Some("aarch64".to_string()),
-                "reserved 2-source encoding",
+                "Reserved 2-source encoding",
             ))
         }
     };
@@ -497,7 +497,7 @@ fn decode_data_proc_1source(_word: u32) -> DecodeResult {
     Err(DisasmError::decode_failure(
         DecodeErrorKind::UnimplementedInstruction,
         Some("aarch64".to_string()),
-        "data-processing (1 source) not in stage 1",
+        "Data-processing (1 source) not in stage 1",
     ))
 }
 
@@ -533,7 +533,7 @@ fn decode_data_proc_3source(word: u32) -> DecodeResult {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::InvalidEncoding,
                 Some("aarch64".to_string()),
-                "reserved 3-source encoding",
+                "Reserved 3-source encoding",
             ))
         }
     };
