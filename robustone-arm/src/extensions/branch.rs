@@ -113,7 +113,7 @@ fn decode_system(word: u32) -> DecodeResult {
     let _op2 = bits(word, 7, 5);
     let rt = bits(word, 4, 0);
 
-    if l == 0 {
+    if !l {
         // System instructions with CRn determine the category.
         match crn {
             0b0010 => decode_hints(crm),
@@ -297,7 +297,7 @@ fn decode_unconditional_branch_reg(word: u32) -> DecodeResult {
 
 /// Unconditional branch (immediate): B, BL.
 fn decode_unconditional_branch_imm(word: u32, addr: u64) -> DecodeResult {
-    let is_bl = bit(word, 31) == 1;
+    let is_bl = bit(word, 31);
     let imm = decode_b_imm(word);
     let target = (addr as i64).wrapping_add(imm) as u64;
 
@@ -307,8 +307,8 @@ fn decode_unconditional_branch_imm(word: u32, addr: u64) -> DecodeResult {
 
 /// Compare & branch: CBZ, CBNZ.
 fn decode_compare_branch(word: u32, addr: u64) -> DecodeResult {
-    let _is_32bit = bit(word, 31) == 0;
-    let is_cbnz = bit(word, 24) == 1;
+    let _is_32bit = !bit(word, 31);
+    let is_cbnz = bit(word, 24);
     let imm = decode_cbz_imm(word);
     let rt_val = rt(word);
     let target = (addr as i64).wrapping_add(imm) as u64;
@@ -323,12 +323,12 @@ fn decode_compare_branch(word: u32, addr: u64) -> DecodeResult {
 
 /// Test & branch: TBZ, TBNZ.
 fn decode_test_branch(word: u32, addr: u64) -> DecodeResult {
-    let is_tbnz = bit(word, 24) == 1;
+    let is_tbnz = bit(word, 24);
     let imm = decode_cbz_imm(word);
     let rt_val = rt(word);
     let b40 = bits(word, 23, 19) as u8;
     let b5 = bit(word, 31);
-    let bit_pos = b40 | (b5 << 5);
+    let bit_pos = b40 | (u8::from(b5) << 5);
     let target = (addr as i64).wrapping_add(imm) as u64;
 
     let mnemonic = if is_tbnz {

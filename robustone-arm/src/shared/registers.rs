@@ -202,16 +202,16 @@ pub fn fp_simd_reg_name(reg: u8, size: FpRegSize) -> &'static str {
 
 /// Vector arrangement suffix from size:Q bits.
 /// Returns e.g. ".8b", ".4h", ".2s", ".1d", ".16b", ".8h", ".4s", ".2d"
-pub fn arrangement_suffix(size: u8, q: u8) -> &'static str {
+pub fn arrangement_suffix(size: u8, q: bool) -> &'static str {
     match (size, q) {
-        (0b00, 0) => ".8b",
-        (0b00, 1) => ".16b",
-        (0b01, 0) => ".4h",
-        (0b01, 1) => ".8h",
-        (0b10, 0) => ".2s",
-        (0b10, 1) => ".4s",
-        (0b11, 0) => ".1d",
-        (0b11, 1) => ".2d",
+        (0b00, false) => ".8b",
+        (0b00, true) => ".16b",
+        (0b01, false) => ".4h",
+        (0b01, true) => ".8h",
+        (0b10, false) => ".2s",
+        (0b10, true) => ".4s",
+        (0b11, false) => ".1d",
+        (0b11, true) => ".2d",
         _ => unreachable!(),
     }
 }

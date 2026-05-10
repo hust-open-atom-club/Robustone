@@ -47,7 +47,7 @@ fn decode_advanced_simd(word: u32) -> DecodeResult {
 
     // Modified Immediate: b24=1, b10=1, immh=0000
     // Shift Immediate: b24=1, b10=1, immh≠0000
-    if b24 == 1 && b10 == 1 {
+    if b24 && b10 {
         if immh == 0b0000 {
             return decode_simd_modified_imm(word);
         } else {
@@ -56,18 +56,18 @@ fn decode_advanced_simd(word: u32) -> DecodeResult {
     }
 
     // Indexed Element: b24=1, b10=0
-    if b24 == 1 && b10 == 0 {
+    if b24 && !b10 {
         return decode_simd_indexed_element(word);
     }
 
     // Three Same (integer + FP32/64): b21=1, b10=1
-    if b21 == 1 && b10 == 1 {
+    if b21 && b10 {
         return decode_simd_three_same(word);
     }
 
     // b21=0, b10=1: either FP16 Three Same or Copy
-    if b21 == 0 && b10 == 1 {
-        if b22 == 1 {
+    if !b21 && b10 {
+        if b22 {
             return decode_simd_fp16_three_same(word);
         } else {
             return decode_simd_copy(word);
@@ -75,7 +75,7 @@ fn decode_advanced_simd(word: u32) -> DecodeResult {
     }
 
     // b21=1, b10=0: Three Different / Across Lanes / AES / Two-reg Misc
-    if b21 == 1 && b10 == 0 {
+    if b21 && !b10 {
         let b11 = bit(word, 11);
         let op5_16 = bits(word, 16, 12) as u8;
         let size = simd_size(word);
@@ -94,7 +94,7 @@ fn decode_advanced_simd(word: u32) -> DecodeResult {
         // CRITICAL FIX: Check bit 11 to distinguish Three Different from Two-reg Misc.
         // bit 11 = 0: Three Different (opcode in bits 15:12, 4 bits)
         // bit 11 = 1: Two-register Misc (opcode in bits 16:12, 5 bits)
-        if b11 == 0 {
+        if !b11 {
             return decode_simd_three_different(word);
         }
 
@@ -103,7 +103,7 @@ fn decode_advanced_simd(word: u32) -> DecodeResult {
     }
 
     // b21=0, b10=0: Permute / Extract / Table
-    if b21 == 0 && b10 == 0 {
+    if !b21 && !b10 {
         return decode_simd_permute_table(word);
     }
 
@@ -132,23 +132,23 @@ fn decode_scalar_fp(word: u32) -> DecodeResult {
     let opcode3 = bits(word, 18, 16) as u8;
     let rd_val = rd(word);
 
-    if m == 1 {
+    if m {
         // M=1: conversions from 64-bit integer (UCVTF, SCVTF with Xn)
         return decode_fp_conversion(word);
     }
 
-    if b24 == 1 {
+    if b24 {
         // 3-source (FMADD, FMSUB, FNMADD, FNMSUB)
         return decode_fp_3source(word, opcode6);
     }
 
-    if b21 == 1 {
+    if b21 {
         // 2-source data-processing OR cryptographic two-register SHA
         let bits_20_16 = bits(word, 20, 16) as u8;
         let bit30 = bit(word, 30);
 
         // Cryptographic two-register SHA uses bit30=1 (0x5E prefix) with bits(20:16)=0b01000
-        if bit30 == 1 && bits_20_16 == 0b01000 {
+        if bit30 && bits_20_16 == 0b01000 {
             return decode_crypto_sha2(word);
         }
 
@@ -164,7 +164,7 @@ fn decode_scalar_fp(word: u32) -> DecodeResult {
     let b23_21 = bits(word, 23, 21) as u8;
     let bits_15_12 = bits(word, 15, 12) as u8;
     let b11 = bit(word, 11);
-    if bit30 == 1 && b23_21 == 0b000 && b11 == 0 && bits_15_12 <= 0b0110 {
+    if bit30 && b23_21 == 0b000 && !b11 && bits_15_12 <= 0b0110 {
         return decode_crypto_sha3(word);
     }
 
@@ -263,7 +263,7 @@ fn decode_fp_3source(word: u32, _opcode: u8) -> DecodeResult {
     // But M is also bit 31. For scalar 3-source, M=0 always.
     // FNMADD/FNMSUB use a different encoding pattern; for now we only
     // decode the two most common: FMADD and FMSUB.
-    let mnemonic = if o0 == 0 {
+    let mnemonic = if !o0 {
         Mnemonic::Fmadd
     } else {
         Mnemonic::Fmsub
@@ -336,7 +336,7 @@ fn decode_fp_immediate(word: u32) -> DecodeResult {
     let m = bit(word, 31);
     let _opcode = bits(word, 15, 10) as u8;
 
-    if m != 0 {
+    if m {
         return Err(DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
@@ -414,10 +414,10 @@ fn decode_fp_compare(word: u32) -> DecodeResult {
     let op = bit(word, 3);
     let e = bit(word, 4);
 
-    let mnemonic = if e == 1 { Mnemonic::Fcmpe } else { Mnemonic::Fcmp };
+    let mnemonic = if e { Mnemonic::Fcmpe } else { Mnemonic::Fcmp };
 
     // When Rm = 0 and bit 3 (op) = 0, the instruction compares against #0.0
-    let ops = if rm_val == 0 && op == 0 {
+    let ops = if rm_val == 0 && !op {
         vec![
             fp_reg_operand(rn_val, size),
             Operand::Text {
@@ -529,7 +529,7 @@ fn decode_fp_conversion(word: u32) -> DecodeResult {
         0b010 | 0b011 => {
             // SCVTF / UCVTF
             // sf (bit 31) determines integer register size: 0 = W, 1 = X
-            let is_32bit = sf(word) == 0;
+            let is_32bit = sf(word).is_w();
             let is_unsigned = (opc & 1) != 0;
             let mnemonic = if is_unsigned {
                 Mnemonic::Ucvtf
@@ -553,7 +553,7 @@ fn decode_fp_conversion(word: u32) -> DecodeResult {
             // FCVT to integer (general) — rendered as fcvt with rounding mode
             let _ = (rmode, opc); // used for rounding mode / signed / unsigned
             // For simplicity, render as `fcvt` with integer destination
-            let is_32bit = sf(word) == 0;
+            let is_32bit = sf(word).is_w();
             let int_reg = if is_32bit {
                 format!("w{}", rd_val)
             } else {
@@ -587,7 +587,7 @@ fn fp_reg_operand(reg: u8, size: FpRegSize) -> Operand {
 }
 
 /// Create a vector register operand with arrangement suffix.
-fn vec_reg_operand(reg: u8, size: u8, q: u8) -> Operand {
+fn vec_reg_operand(reg: u8, size: u8, q: bool) -> Operand {
     let suffix = arrangement_suffix(size, q);
     Operand::Text {
         value: format!("v{}{}", reg, suffix),
@@ -615,23 +615,23 @@ fn decode_simd_three_same(word: u32) -> DecodeResult {
     if opcode <= 23 {
         let mnemonic = match (u, opcode) {
             // Opcode 0: shadd / uhadd
-            (0, 0) => Mnemonic::Shadd,
-            (1, 0) => Mnemonic::Uhadd,
+            (false, 0) => Mnemonic::Shadd,
+            (true, 0) => Mnemonic::Uhadd,
             // Opcode 1: sqadd / uqadd
-            (0, 1) => Mnemonic::Sqadd,
-            (1, 1) => Mnemonic::Uqadd,
+            (false, 1) => Mnemonic::Sqadd,
+            (true, 1) => Mnemonic::Uqadd,
             // Opcode 2: srhadd / urhadd
-            (0, 2) => Mnemonic::Srhadd,
-            (1, 2) => Mnemonic::Urhadd,
+            (false, 2) => Mnemonic::Srhadd,
+            (true, 2) => Mnemonic::Urhadd,
             // Opcode 3: size-dependent bitwise
-            (0, 3) => match size {
+            (false, 3) => match size {
                 0b00 => Mnemonic::And,
                 0b01 => Mnemonic::Bic,
                 0b10 => Mnemonic::Orr,
                 0b11 => Mnemonic::Orn,
                 _ => unreachable!(),
             },
-            (1, 3) => match size {
+            (true, 3) => match size {
                 0b00 => Mnemonic::Eor,
                 0b01 => Mnemonic::Bsl,
                 0b10 => Mnemonic::Bit,
@@ -639,53 +639,53 @@ fn decode_simd_three_same(word: u32) -> DecodeResult {
                 _ => unreachable!(),
             },
             // Opcode 4: shsub / uhsub
-            (0, 4) => Mnemonic::Shsub,
-            (1, 4) => Mnemonic::Uhsub,
+            (false, 4) => Mnemonic::Shsub,
+            (true, 4) => Mnemonic::Uhsub,
             // Opcode 5: sqsub / uqsub
-            (0, 5) => Mnemonic::Sqsub,
-            (1, 5) => Mnemonic::Uqsub,
+            (false, 5) => Mnemonic::Sqsub,
+            (true, 5) => Mnemonic::Uqsub,
             // Opcode 6: cmgt / cmhi
-            (0, 6) => Mnemonic::Cmgt,
-            (1, 6) => Mnemonic::Cmhi,
+            (false, 6) => Mnemonic::Cmgt,
+            (true, 6) => Mnemonic::Cmhi,
             // Opcode 7: cmge / cmhs
-            (0, 7) => Mnemonic::Cmge,
-            (1, 7) => Mnemonic::Cmhs,
+            (false, 7) => Mnemonic::Cmge,
+            (true, 7) => Mnemonic::Cmhs,
             // Opcode 8: sshl / ushl
-            (0, 8) => Mnemonic::Sshl,
-            (1, 8) => Mnemonic::Ushl,
+            (false, 8) => Mnemonic::Sshl,
+            (true, 8) => Mnemonic::Ushl,
             // Opcode 9: sqshl / uqshl
-            (0, 9) => Mnemonic::Sqshl,
-            (1, 9) => Mnemonic::Uqshl,
+            (false, 9) => Mnemonic::Sqshl,
+            (true, 9) => Mnemonic::Uqshl,
             // Opcode 10: srshl / urshl
-            (0, 10) => Mnemonic::Srshl,
-            (1, 10) => Mnemonic::Urshl,
+            (false, 10) => Mnemonic::Srshl,
+            (true, 10) => Mnemonic::Urshl,
             // Opcode 11: sqrshl / uqrshl
-            (0, 11) => Mnemonic::Sqrshl,
-            (1, 11) => Mnemonic::Uqrshl,
+            (false, 11) => Mnemonic::Sqrshl,
+            (true, 11) => Mnemonic::Uqrshl,
             // Opcode 12: smax / umax
-            (0, 12) => Mnemonic::Smax,
-            (1, 12) => Mnemonic::Umax,
+            (false, 12) => Mnemonic::Smax,
+            (true, 12) => Mnemonic::Umax,
             // Opcode 13: smin / umin
-            (0, 13) => Mnemonic::Smin,
-            (1, 13) => Mnemonic::Umin,
+            (false, 13) => Mnemonic::Smin,
+            (true, 13) => Mnemonic::Umin,
             // Opcode 14: sabd / uabd
-            (0, 14) => Mnemonic::Sabd,
-            (1, 14) => Mnemonic::Uabd,
+            (false, 14) => Mnemonic::Sabd,
+            (true, 14) => Mnemonic::Uabd,
             // Opcode 15: saba / uaba
-            (0, 15) => Mnemonic::Saba,
-            (1, 15) => Mnemonic::Uaba,
+            (false, 15) => Mnemonic::Saba,
+            (true, 15) => Mnemonic::Uaba,
             // Opcode 16: add / sub
-            (0, 16) => Mnemonic::Add,
-            (1, 16) => Mnemonic::Sub,
+            (false, 16) => Mnemonic::Add,
+            (true, 16) => Mnemonic::Sub,
             // Opcode 17: cmtst / cmeq
-            (0, 17) => Mnemonic::Cmtst,
-            (1, 17) => Mnemonic::Cmeq,
+            (false, 17) => Mnemonic::Cmtst,
+            (true, 17) => Mnemonic::Cmeq,
             // Opcode 18: mla / mls
-            (0, 18) => Mnemonic::Mla,
-            (1, 18) => Mnemonic::Mls,
+            (false, 18) => Mnemonic::Mla,
+            (true, 18) => Mnemonic::Mls,
             // Opcode 19: mul / pmul (only size=00)
-            (0, 19) => Mnemonic::Mul,
-            (1, 19) => {
+            (false, 19) => Mnemonic::Mul,
+            (true, 19) => {
                 if size == 0b00 {
                     Mnemonic::Pmul
                 } else {
@@ -697,13 +697,13 @@ fn decode_simd_three_same(word: u32) -> DecodeResult {
                 }
             }
             // Opcode 20: smaxp / umaxp
-            (0, 20) => Mnemonic::Smaxp,
-            (1, 20) => Mnemonic::Umaxp,
+            (false, 20) => Mnemonic::Smaxp,
+            (true, 20) => Mnemonic::Umaxp,
             // Opcode 21: sminp / uminp
-            (0, 21) => Mnemonic::Sminp,
-            (1, 21) => Mnemonic::Uminp,
+            (false, 21) => Mnemonic::Sminp,
+            (true, 21) => Mnemonic::Uminp,
             // Opcode 22: sqdmulh (only size=01,10) / sqrdmulh (only size=01,10)
-            (0, 22) => {
+            (false, 22) => {
                 if size == 0b01 || size == 0b10 {
                     Mnemonic::Sqdmulh
                 } else {
@@ -714,7 +714,7 @@ fn decode_simd_three_same(word: u32) -> DecodeResult {
                     ));
                 }
             }
-            (1, 22) => {
+            (true, 22) => {
                 if size == 0b01 || size == 0b10 {
                     Mnemonic::Sqrdmulh
                 } else {
@@ -726,8 +726,8 @@ fn decode_simd_three_same(word: u32) -> DecodeResult {
                 }
             }
             // Opcode 23: addp / faddp (fp)
-            (0, 23) => Mnemonic::Addp,
-            (1, 23) => Mnemonic::Faddp,
+            (false, 23) => Mnemonic::Addp,
+            (true, 23) => Mnemonic::Faddp,
             _ => {
                 return Err(DisasmError::decode_failure(
                     DecodeErrorKind::UnimplementedInstruction,
@@ -755,100 +755,100 @@ fn decode_simd_three_same(word: u32) -> DecodeResult {
     // size field behavior: bit23 selects operation, bit22 selects precision
     let mnemonic = match (u, opcode, size) {
         // size=00 (FP32)
-        (0, 24, 0b00) => Mnemonic::Fmaxnm,
-        (1, 24, 0b00) => Mnemonic::Fmaxnmp,
-        (0, 25, 0b00) => Mnemonic::Fmla,
-        (1, 25, 0b00) => Mnemonic::Fnmla,
-        (0, 26, 0b00) => Mnemonic::Fadd,
-        (1, 26, 0b00) => Mnemonic::Faddp,
-        (0, 27, 0b00) => Mnemonic::Fmulx,
-        (1, 27, 0b00) => Mnemonic::Fmul,
-        (0, 28, 0b00) => Mnemonic::Fcmeq,
-        (1, 28, 0b00) => Mnemonic::Fcmge,
-        (0, 29, 0b00) => Mnemonic::Fmlal,
-        (1, 29, 0b00) => Mnemonic::Facge,
-        (0, 30, 0b00) => Mnemonic::Fmax,
-        (1, 30, 0b00) => Mnemonic::Fmaxp,
-        (0, 31, 0b00) => Mnemonic::Frecps,
-        (1, 31, 0b00) => Mnemonic::Fdiv,
+        (false, 24, 0b00) => Mnemonic::Fmaxnm,
+        (true, 24, 0b00) => Mnemonic::Fmaxnmp,
+        (false, 25, 0b00) => Mnemonic::Fmla,
+        (true, 25, 0b00) => Mnemonic::Fnmla,
+        (false, 26, 0b00) => Mnemonic::Fadd,
+        (true, 26, 0b00) => Mnemonic::Faddp,
+        (false, 27, 0b00) => Mnemonic::Fmulx,
+        (true, 27, 0b00) => Mnemonic::Fmul,
+        (false, 28, 0b00) => Mnemonic::Fcmeq,
+        (true, 28, 0b00) => Mnemonic::Fcmge,
+        (false, 29, 0b00) => Mnemonic::Fmlal,
+        (true, 29, 0b00) => Mnemonic::Facge,
+        (false, 30, 0b00) => Mnemonic::Fmax,
+        (true, 30, 0b00) => Mnemonic::Fmaxp,
+        (false, 31, 0b00) => Mnemonic::Frecps,
+        (true, 31, 0b00) => Mnemonic::Fdiv,
 
         // size=01 (FP64, Q=1 only for .2d)
-        (0, 24, 0b01) => Mnemonic::Fmaxnm,
-        (1, 24, 0b01) => Mnemonic::Fmaxnmp,
-        (0, 25, 0b01) => Mnemonic::Fmla,
-        (1, 25, 0b01) => Mnemonic::Fnmla,
-        (0, 26, 0b01) => Mnemonic::Fadd,
-        (1, 26, 0b01) => Mnemonic::Faddp,
-        (0, 27, 0b01) => Mnemonic::Fmulx,
-        (1, 27, 0b01) => Mnemonic::Fmul,
-        (0, 28, 0b01) => Mnemonic::Fcmeq,
-        (1, 28, 0b01) => Mnemonic::Fcmge,
-        (0, 29, 0b01) => Mnemonic::Fmlal,
-        (1, 29, 0b01) => Mnemonic::Facge,
-        (0, 30, 0b01) => Mnemonic::Fmax,
-        (1, 30, 0b01) => Mnemonic::Fmaxp,
-        (0, 31, 0b01) => Mnemonic::Frecps,
-        (1, 31, 0b01) => Mnemonic::Fdiv,
+        (false, 24, 0b01) => Mnemonic::Fmaxnm,
+        (true, 24, 0b01) => Mnemonic::Fmaxnmp,
+        (false, 25, 0b01) => Mnemonic::Fmla,
+        (true, 25, 0b01) => Mnemonic::Fnmla,
+        (false, 26, 0b01) => Mnemonic::Fadd,
+        (true, 26, 0b01) => Mnemonic::Faddp,
+        (false, 27, 0b01) => Mnemonic::Fmulx,
+        (true, 27, 0b01) => Mnemonic::Fmul,
+        (false, 28, 0b01) => Mnemonic::Fcmeq,
+        (true, 28, 0b01) => Mnemonic::Fcmge,
+        (false, 29, 0b01) => Mnemonic::Fmlal,
+        (true, 29, 0b01) => Mnemonic::Facge,
+        (false, 30, 0b01) => Mnemonic::Fmax,
+        (true, 30, 0b01) => Mnemonic::Fmaxp,
+        (false, 31, 0b01) => Mnemonic::Frecps,
+        (true, 31, 0b01) => Mnemonic::Fdiv,
 
         // size=10 (FP32 "inverse")
-        (0, 24, 0b10) => Mnemonic::Fminnm,
-        (1, 24, 0b10) => Mnemonic::Fminnmp,
-        (0, 25, 0b10) => Mnemonic::Fmls,
-        (1, 25, 0b10) => Mnemonic::Fnmls,
-        (0, 26, 0b10) => Mnemonic::Fsub,
-        (1, 26, 0b10) => Mnemonic::Fabd,
-        (0, 27, 0b10) => Mnemonic::Famax,
-        (1, 27, 0b10) => Mnemonic::Famin,
-        (0, 28, 0b10) => {
+        (false, 24, 0b10) => Mnemonic::Fminnm,
+        (true, 24, 0b10) => Mnemonic::Fminnmp,
+        (false, 25, 0b10) => Mnemonic::Fmls,
+        (true, 25, 0b10) => Mnemonic::Fnmls,
+        (false, 26, 0b10) => Mnemonic::Fsub,
+        (true, 26, 0b10) => Mnemonic::Fabd,
+        (false, 27, 0b10) => Mnemonic::Famax,
+        (true, 27, 0b10) => Mnemonic::Famin,
+        (false, 28, 0b10) => {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
                 "reserved FP Three Same opcode 28 size=10 U=0".to_string(),
             ))
         }
-        (1, 28, 0b10) => Mnemonic::Fcmgt,
-        (0, 29, 0b10) => {
+        (true, 28, 0b10) => Mnemonic::Fcmgt,
+        (false, 29, 0b10) => {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
                 "reserved FP Three Same opcode 29 size=10 U=0".to_string(),
             ))
         }
-        (1, 29, 0b10) => Mnemonic::Facgt,
-        (0, 30, 0b10) => Mnemonic::Fmin,
-        (1, 30, 0b10) => Mnemonic::Fminp,
-        (0, 31, 0b10) => Mnemonic::Frsqrts,
-        (1, 31, 0b10) => Mnemonic::Fscale,
+        (true, 29, 0b10) => Mnemonic::Facgt,
+        (false, 30, 0b10) => Mnemonic::Fmin,
+        (true, 30, 0b10) => Mnemonic::Fminp,
+        (false, 31, 0b10) => Mnemonic::Frsqrts,
+        (true, 31, 0b10) => Mnemonic::Fscale,
 
         // size=11 (FP64 "inverse")
-        (0, 24, 0b11) => Mnemonic::Fminnm,
-        (1, 24, 0b11) => Mnemonic::Fminnmp,
-        (0, 25, 0b11) => Mnemonic::Fmls,
-        (1, 25, 0b11) => Mnemonic::Fnmls,
-        (0, 26, 0b11) => Mnemonic::Fsub,
-        (1, 26, 0b11) => Mnemonic::Fabd,
-        (0, 27, 0b11) => Mnemonic::Famax,
-        (1, 27, 0b11) => Mnemonic::Famin,
-        (0, 28, 0b11) => {
+        (false, 24, 0b11) => Mnemonic::Fminnm,
+        (true, 24, 0b11) => Mnemonic::Fminnmp,
+        (false, 25, 0b11) => Mnemonic::Fmls,
+        (true, 25, 0b11) => Mnemonic::Fnmls,
+        (false, 26, 0b11) => Mnemonic::Fsub,
+        (true, 26, 0b11) => Mnemonic::Fabd,
+        (false, 27, 0b11) => Mnemonic::Famax,
+        (true, 27, 0b11) => Mnemonic::Famin,
+        (false, 28, 0b11) => {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
                 "reserved FP Three Same opcode 28 size=11 U=0".to_string(),
             ))
         }
-        (1, 28, 0b11) => Mnemonic::Fcmgt,
-        (0, 29, 0b11) => {
+        (true, 28, 0b11) => Mnemonic::Fcmgt,
+        (false, 29, 0b11) => {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
                 "reserved FP Three Same opcode 29 size=11 U=0".to_string(),
             ))
         }
-        (1, 29, 0b11) => Mnemonic::Facgt,
-        (0, 30, 0b11) => Mnemonic::Fmin,
-        (1, 30, 0b11) => Mnemonic::Fminp,
-        (0, 31, 0b11) => Mnemonic::Frsqrts,
-        (1, 31, 0b11) => Mnemonic::Fscale,
+        (true, 29, 0b11) => Mnemonic::Facgt,
+        (false, 30, 0b11) => Mnemonic::Fmin,
+        (true, 30, 0b11) => Mnemonic::Fminp,
+        (false, 31, 0b11) => Mnemonic::Frsqrts,
+        (true, 31, 0b11) => Mnemonic::Fscale,
 
         _ => {
             return Err(DisasmError::decode_failure(
@@ -896,25 +896,25 @@ fn decode_simd_fp16_three_same(word: u32) -> DecodeResult {
     // Only implement common opcodes 0-7 for now.
     let mnemonic = match (u, opcode) {
         // Opcode 0: fmaxnm / fminnm
-        (0, 0) => Mnemonic::Fmaxnm,
-        (1, 0) => Mnemonic::Fminnm,
+        (false, 0) => Mnemonic::Fmaxnm,
+        (true, 0) => Mnemonic::Fminnm,
         // Opcode 1: fmla / fmls
-        (0, 1) => Mnemonic::Fmla,
-        (1, 1) => Mnemonic::Fmls,
+        (false, 1) => Mnemonic::Fmla,
+        (true, 1) => Mnemonic::Fmls,
         // Opcode 2: fadd / fsub
-        (0, 2) => Mnemonic::Fadd,
-        (1, 2) => Mnemonic::Fsub,
+        (false, 2) => Mnemonic::Fadd,
+        (true, 2) => Mnemonic::Fsub,
         // Opcode 3: fmulx / famax
-        (0, 3) => Mnemonic::Fmulx,
-        (1, 3) => Mnemonic::Famax,
+        (false, 3) => Mnemonic::Fmulx,
+        (true, 3) => Mnemonic::Famax,
         // Opcode 4: fcmeq (U=0 only)
-        (0, 4) => Mnemonic::Fcmeq,
+        (false, 4) => Mnemonic::Fcmeq,
         // Opcode 6: fmax / fmin
-        (0, 6) => Mnemonic::Fmax,
-        (1, 6) => Mnemonic::Fmin,
+        (false, 6) => Mnemonic::Fmax,
+        (true, 6) => Mnemonic::Fmin,
         // Opcode 7: frecps / frsqrts
-        (0, 7) => Mnemonic::Frecps,
-        (1, 7) => Mnemonic::Frsqrts,
+        (false, 7) => Mnemonic::Frecps,
+        (true, 7) => Mnemonic::Frsqrts,
         // Opcodes 8-23: mostly reserved for FP16
         _ => {
             return Err(DisasmError::decode_failure(
@@ -955,49 +955,49 @@ fn decode_simd_two_reg_misc(word: u32, _op5_16: u8) -> DecodeResult {
         // size=00: byte operations and FP conversions
         0b00 => match (u, opcode) {
             // U=0
-            (0, 0) => Mnemonic::Rev64,
-            (0, 1) => Mnemonic::Rev16,
-            (0, 2) => Mnemonic::Saddlp,
-            (0, 3) => Mnemonic::Suqadd,
-            (0, 4) => Mnemonic::Cls,
-            (0, 5) => Mnemonic::Cnt,
-            (0, 6) => Mnemonic::Sadalp,
-            (0, 7) => Mnemonic::Sqabs,
-            (0, 8) => Mnemonic::Cmgt,
-            (0, 9) => Mnemonic::Cmeq,
-            (0, 10) => Mnemonic::Cmlt,
-            (0, 11) => Mnemonic::Abs,
-            (0, 18) => Mnemonic::Xtn,
-            (0, 20) => Mnemonic::Sqxtn,
-            (0, 22) => Mnemonic::Fcvtn,
-            (0, 23) => Mnemonic::Fcvtl,
-            (0, 24) => Mnemonic::Frintn,
-            (0, 25) => Mnemonic::Frintm,
-            (0, 26) => Mnemonic::Fcvtns,
-            (0, 27) => Mnemonic::Fcvtms,
-            (0, 28) => Mnemonic::Fcvtas,
-            (0, 29) => Mnemonic::Scvtf,
+            (false, 0) => Mnemonic::Rev64,
+            (false, 1) => Mnemonic::Rev16,
+            (false, 2) => Mnemonic::Saddlp,
+            (false, 3) => Mnemonic::Suqadd,
+            (false, 4) => Mnemonic::Cls,
+            (false, 5) => Mnemonic::Cnt,
+            (false, 6) => Mnemonic::Sadalp,
+            (false, 7) => Mnemonic::Sqabs,
+            (false, 8) => Mnemonic::Cmgt,
+            (false, 9) => Mnemonic::Cmeq,
+            (false, 10) => Mnemonic::Cmlt,
+            (false, 11) => Mnemonic::Abs,
+            (false, 18) => Mnemonic::Xtn,
+            (false, 20) => Mnemonic::Sqxtn,
+            (false, 22) => Mnemonic::Fcvtn,
+            (false, 23) => Mnemonic::Fcvtl,
+            (false, 24) => Mnemonic::Frintn,
+            (false, 25) => Mnemonic::Frintm,
+            (false, 26) => Mnemonic::Fcvtns,
+            (false, 27) => Mnemonic::Fcvtms,
+            (false, 28) => Mnemonic::Fcvtas,
+            (false, 29) => Mnemonic::Scvtf,
             // U=1
-            (1, 0) => Mnemonic::Rev32,
-            (1, 2) => Mnemonic::Uaddlp,
-            (1, 3) => Mnemonic::Usqadd,
-            (1, 4) => Mnemonic::Clz,
-            (1, 5) => Mnemonic::Not,
-            (1, 6) => Mnemonic::Uadalp,
-            (1, 7) => Mnemonic::Sqneg,
-            (1, 8) => Mnemonic::Cmge,
-            (1, 9) => Mnemonic::Cmle,
-            (1, 11) => Mnemonic::Neg,
-            (1, 18) => Mnemonic::Sqxtun,
-            (1, 19) => Mnemonic::Shll,
-            (1, 20) => Mnemonic::Uqxtn,
-            (1, 23) => Mnemonic::Fcvtxn,
-            (1, 24) => Mnemonic::Frinta,
-            (1, 25) => Mnemonic::Frintx,
-            (1, 26) => Mnemonic::Fcvtnu,
-            (1, 27) => Mnemonic::Fcvtmu,
-            (1, 28) => Mnemonic::Fcvtau,
-            (1, 29) => Mnemonic::Ucvtf,
+            (true, 0) => Mnemonic::Rev32,
+            (true, 2) => Mnemonic::Uaddlp,
+            (true, 3) => Mnemonic::Usqadd,
+            (true, 4) => Mnemonic::Clz,
+            (true, 5) => Mnemonic::Not,
+            (true, 6) => Mnemonic::Uadalp,
+            (true, 7) => Mnemonic::Sqneg,
+            (true, 8) => Mnemonic::Cmge,
+            (true, 9) => Mnemonic::Cmle,
+            (true, 11) => Mnemonic::Neg,
+            (true, 18) => Mnemonic::Sqxtun,
+            (true, 19) => Mnemonic::Shll,
+            (true, 20) => Mnemonic::Uqxtn,
+            (true, 23) => Mnemonic::Fcvtxn,
+            (true, 24) => Mnemonic::Frinta,
+            (true, 25) => Mnemonic::Frintx,
+            (true, 26) => Mnemonic::Fcvtnu,
+            (true, 27) => Mnemonic::Fcvtmu,
+            (true, 28) => Mnemonic::Fcvtau,
+            (true, 29) => Mnemonic::Ucvtf,
             _ => {
                 return Err(DisasmError::decode_failure(
                     DecodeErrorKind::UnimplementedInstruction,
@@ -1009,15 +1009,15 @@ fn decode_simd_two_reg_misc(word: u32, _op5_16: u8) -> DecodeResult {
 
         // size=01: halfword operations and across-lanes
         0b01 => match (u, opcode) {
-            (0, 3) => Mnemonic::Saddlv,
-            (0, 10) => Mnemonic::Smaxv,
-            (0, 12) => Mnemonic::Fmaxnmv,
-            (0, 15) => Mnemonic::Fmaxv,
-            (0, 26) => Mnemonic::Sminv,
-            (0, 27) => Mnemonic::Addv,
-            (1, 3) => Mnemonic::Uaddlv,
-            (1, 10) => Mnemonic::Umaxv,
-            (1, 26) => Mnemonic::Uminv,
+            (false, 3) => Mnemonic::Saddlv,
+            (false, 10) => Mnemonic::Smaxv,
+            (false, 12) => Mnemonic::Fmaxnmv,
+            (false, 15) => Mnemonic::Fmaxv,
+            (false, 26) => Mnemonic::Sminv,
+            (false, 27) => Mnemonic::Addv,
+            (true, 3) => Mnemonic::Uaddlv,
+            (true, 10) => Mnemonic::Umaxv,
+            (true, 26) => Mnemonic::Uminv,
             _ => {
                 return Err(DisasmError::decode_failure(
                     DecodeErrorKind::UnimplementedInstruction,
@@ -1101,7 +1101,7 @@ fn decode_simd_copy(word: u32) -> DecodeResult {
     // See ARM ARM Table C4-300.
     match (q, op, imm4) {
         // DUP (element): duplicate vector element to all lanes
-        (_, 0, 0b0000) => Ok((
+        (_, false, 0b0000) => Ok((
             Mnemonic::Dup,
             vec![
                 Operand::Text {
@@ -1111,7 +1111,7 @@ fn decode_simd_copy(word: u32) -> DecodeResult {
             ],
         )),
         // DUP (general): duplicate general register to all lanes
-        (_, 0, 0b0001) => {
+        (_, false, 0b0001) => {
             let src_reg = match elem_char {
                 'd' => format!("x{}", rn_val),
                 _ => format!("w{}", rn_val),
@@ -1128,7 +1128,7 @@ fn decode_simd_copy(word: u32) -> DecodeResult {
         }
         // INS (general): insert general register into vector element
         // Capstone renders as `mov` alias.
-        (1, 0, 0b0011) => {
+        (true, false, 0b0011) => {
             let dest_elem = format!("v{}.{elem_char}[{index}]", rd_val);
             let src_reg = match elem_char {
                 'd' => format!("x{}", rn_val),
@@ -1143,8 +1143,8 @@ fn decode_simd_copy(word: u32) -> DecodeResult {
             ))
         }
         // SMOV: move vector element to general register (signed)
-        (0, 0, 0b0101) | (1, 0, 0b0101) => {
-            let dest_reg = if q == 0 {
+        (false, false, 0b0101) | (true, false, 0b0101) => {
+            let dest_reg = if !q {
                 format!("w{}", rd_val)
             } else {
                 format!("x{}", rd_val)
@@ -1159,8 +1159,8 @@ fn decode_simd_copy(word: u32) -> DecodeResult {
         }
         // UMOV: move vector element to general register (unsigned)
         // Capstone uses `mov` alias for S and D elements.
-        (0, 0, 0b0111) | (1, 0, 0b0111) => {
-            let dest_reg = if q == 0 {
+        (false, false, 0b0111) | (true, false, 0b0111) => {
+            let dest_reg = if !q {
                 format!("w{}", rd_val)
             } else {
                 format!("x{}", rd_val)
@@ -1180,7 +1180,7 @@ fn decode_simd_copy(word: u32) -> DecodeResult {
         // INS (element): insert vector element into vector element
         // Capstone renders as `mov` alias.
         // Q=1, op=1 with any imm4. Source index is imm4 shifted by element size.
-        (1, 1, _) => {
+        (true, true, _) => {
             let dest_elem = format!("v{}.{elem_char}[{index}]", rd_val);
             let src_index = imm4 >> arr_size;
             let src_elem = format!("v{}.{elem_char}[{src_index}]", rn_val);
@@ -1213,7 +1213,7 @@ fn decode_simd_modified_imm(word: u32) -> DecodeResult {
     let o2 = bit(word, 11);
     let rd_val = rd(word);
 
-    if o2 != 0 {
+    if o2 {
         return Err(DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
@@ -1230,21 +1230,21 @@ fn decode_simd_modified_imm(word: u32) -> DecodeResult {
     let f = bit(word, 7);
     let g = bit(word, 6);
     let h = bit(word, 5);
-    let imm8 = (a << 7)
-        | (b << 6)
-        | (c << 5)
-        | (d << 4)
-        | (e << 3)
-        | (f << 2)
-        | (g << 1)
-        | h;
+    let imm8 = (u8::from(a) << 7)
+        | (u8::from(b) << 6)
+        | (u8::from(c) << 5)
+        | (u8::from(d) << 4)
+        | (u8::from(e) << 3)
+        | (u8::from(f) << 2)
+        | (u8::from(g) << 1)
+        | u8::from(h);
 
     // Determine operation and operands from (op, cmode)
     match (op, cmode) {
         // MOVI / MVNI / ORR / BIC — 32-bit element, no shift
-        (0, 0b0000) | (0, 0b0010) | (0, 0b0100) | (0, 0b0110) => {
+        (false, 0b0000) | (false, 0b0010) | (false, 0b0100) | (false, 0b0110) => {
             let shift = ((cmode >> 1) & 0b11) * 8;
-            let arr = if q == 0 { ".2s" } else { ".4s" };
+            let arr = if !q { ".2s" } else { ".4s" };
             let imm_text = if shift == 0 {
                 format!("#{}", imm8)
             } else {
@@ -1255,9 +1255,9 @@ fn decode_simd_modified_imm(word: u32) -> DecodeResult {
                 Operand::Text { value: imm_text },
             ]))
         }
-        (1, 0b0000) | (1, 0b0010) | (1, 0b0100) | (1, 0b0110) => {
+        (true, 0b0000) | (true, 0b0010) | (true, 0b0100) | (true, 0b0110) => {
             let shift = ((cmode >> 1) & 0b11) * 8;
-            let arr = if q == 0 { ".2s" } else { ".4s" };
+            let arr = if !q { ".2s" } else { ".4s" };
             let imm_text = if shift == 0 {
                 format!("#{}", imm8)
             } else {
@@ -1269,9 +1269,9 @@ fn decode_simd_modified_imm(word: u32) -> DecodeResult {
             ]))
         }
         // ORR / BIC — 32-bit element, same shifts
-        (0, 0b0001) | (0, 0b0011) | (0, 0b0101) | (0, 0b0111) => {
+        (false, 0b0001) | (false, 0b0011) | (false, 0b0101) | (false, 0b0111) => {
             let shift = ((cmode >> 1) & 0b11) * 8;
-            let arr = if q == 0 { ".2s" } else { ".4s" };
+            let arr = if !q { ".2s" } else { ".4s" };
             let imm_text = if shift == 0 {
                 format!("#{}", imm8)
             } else {
@@ -1282,9 +1282,9 @@ fn decode_simd_modified_imm(word: u32) -> DecodeResult {
                 Operand::Text { value: imm_text },
             ]))
         }
-        (1, 0b0001) | (1, 0b0011) | (1, 0b0101) | (1, 0b0111) => {
+        (true, 0b0001) | (true, 0b0011) | (true, 0b0101) | (true, 0b0111) => {
             let shift = ((cmode >> 1) & 0b11) * 8;
-            let arr = if q == 0 { ".2s" } else { ".4s" };
+            let arr = if !q { ".2s" } else { ".4s" };
             let imm_text = if shift == 0 {
                 format!("#{}", imm8)
             } else {
@@ -1296,9 +1296,9 @@ fn decode_simd_modified_imm(word: u32) -> DecodeResult {
             ]))
         }
         // MOVI / MVNI — 16-bit element
-        (0, 0b1000) | (0, 0b1010) => {
+        (false, 0b1000) | (false, 0b1010) => {
             let shift = if (cmode & 0b10) != 0 { 8 } else { 0 };
-            let arr = if q == 0 { ".4h" } else { ".8h" };
+            let arr = if !q { ".4h" } else { ".8h" };
             let imm_text = if shift == 0 {
                 format!("#{}", imm8)
             } else {
@@ -1309,9 +1309,9 @@ fn decode_simd_modified_imm(word: u32) -> DecodeResult {
                 Operand::Text { value: imm_text },
             ]))
         }
-        (1, 0b1000) | (1, 0b1010) => {
+        (true, 0b1000) | (true, 0b1010) => {
             let shift = if (cmode & 0b10) != 0 { 8 } else { 0 };
-            let arr = if q == 0 { ".4h" } else { ".8h" };
+            let arr = if !q { ".4h" } else { ".8h" };
             let imm_text = if shift == 0 {
                 format!("#{}", imm8)
             } else {
@@ -1323,9 +1323,9 @@ fn decode_simd_modified_imm(word: u32) -> DecodeResult {
             ]))
         }
         // ORR / BIC — 16-bit element
-        (0, 0b1001) | (0, 0b1011) => {
+        (false, 0b1001) | (false, 0b1011) => {
             let shift = if (cmode & 0b10) != 0 { 8 } else { 0 };
-            let arr = if q == 0 { ".4h" } else { ".8h" };
+            let arr = if !q { ".4h" } else { ".8h" };
             let imm_text = if shift == 0 {
                 format!("#{}", imm8)
             } else {
@@ -1336,9 +1336,9 @@ fn decode_simd_modified_imm(word: u32) -> DecodeResult {
                 Operand::Text { value: imm_text },
             ]))
         }
-        (1, 0b1001) | (1, 0b1011) => {
+        (true, 0b1001) | (true, 0b1011) => {
             let shift = if (cmode & 0b10) != 0 { 8 } else { 0 };
-            let arr = if q == 0 { ".4h" } else { ".8h" };
+            let arr = if !q { ".4h" } else { ".8h" };
             let imm_text = if shift == 0 {
                 format!("#{}", imm8)
             } else {
@@ -1350,44 +1350,44 @@ fn decode_simd_modified_imm(word: u32) -> DecodeResult {
             ]))
         }
         // MOVI / MVNI — MSL forms
-        (0, 0b1100) => {
-            let arr = if q == 0 { ".2s" } else { ".4s" };
+        (false, 0b1100) => {
+            let arr = if !q { ".2s" } else { ".4s" };
             Ok((Mnemonic::Movi, vec![
                 Operand::Text { value: format!("v{}{}", rd_val, arr) },
                 Operand::Text { value: format!("#{}, msl #8", imm8) },
             ]))
         }
-        (0, 0b1101) => {
-            let arr = if q == 0 { ".2s" } else { ".4s" };
+        (false, 0b1101) => {
+            let arr = if !q { ".2s" } else { ".4s" };
             Ok((Mnemonic::Movi, vec![
                 Operand::Text { value: format!("v{}{}", rd_val, arr) },
                 Operand::Text { value: format!("#{}, msl #16", imm8) },
             ]))
         }
-        (1, 0b1100) => {
-            let arr = if q == 0 { ".2s" } else { ".4s" };
+        (true, 0b1100) => {
+            let arr = if !q { ".2s" } else { ".4s" };
             Ok((Mnemonic::Mvni, vec![
                 Operand::Text { value: format!("v{}{}", rd_val, arr) },
                 Operand::Text { value: format!("#{}, msl #8", imm8) },
             ]))
         }
-        (1, 0b1101) => {
-            let arr = if q == 0 { ".2s" } else { ".4s" };
+        (true, 0b1101) => {
+            let arr = if !q { ".2s" } else { ".4s" };
             Ok((Mnemonic::Mvni, vec![
                 Operand::Text { value: format!("v{}{}", rd_val, arr) },
                 Operand::Text { value: format!("#{}, msl #16", imm8) },
             ]))
         }
         // MOVI — 8-bit element
-        (0, 0b1110) => {
-            let arr = if q == 0 { ".8b" } else { ".16b" };
+        (false, 0b1110) => {
+            let arr = if !q { ".8b" } else { ".16b" };
             Ok((Mnemonic::Movi, vec![
                 Operand::Text { value: format!("v{}{}", rd_val, arr) },
                 Operand::Text { value: format!("#{}", imm8) },
             ]))
         }
         // MOVI — 64-bit immediate
-        (1, 0b1110) => {
+        (true, 0b1110) => {
             // Construct 64-bit immediate: each bit of imm8 replicated to a byte
             let mut imm64: u64 = 0;
             for i in 0..8 {
@@ -1395,7 +1395,7 @@ fn decode_simd_modified_imm(word: u32) -> DecodeResult {
                 let byte_val = if bit != 0 { 0xFFu64 } else { 0x00u64 };
                 imm64 = (imm64 << 8) | byte_val;
             }
-            if q == 0 {
+            if !q {
                 // Scalar: movi dN, #imm64
                 Ok((Mnemonic::Movi, vec![
                     Operand::Text { value: format!("d{}", rd_val) },
@@ -1410,10 +1410,10 @@ fn decode_simd_modified_imm(word: u32) -> DecodeResult {
             }
         }
         // FMOV — floating-point immediate
-        (0, 0b1111) => {
+        (false, 0b1111) => {
             // Single-precision: imm32 = a : ~b : bbbbb : c : d : e : f : g : h : 0... (19 zeros)
             let imm32: u32 = ((a as u32) << 31)
-                | ((((!b) & 1) as u32) << 30)
+                | ((((!b) as u32) & 1) << 30)
                 | ((b as u32) << 29)
                 | ((b as u32) << 28)
                 | ((b as u32) << 27)
@@ -1426,14 +1426,14 @@ fn decode_simd_modified_imm(word: u32) -> DecodeResult {
                 | ((g as u32) << 20)
                 | ((h as u32) << 19);
             let fp_val = f32::from_bits(imm32);
-            let arr = if q == 0 { ".2s" } else { ".4s" };
+            let arr = if !q { ".2s" } else { ".4s" };
             Ok((Mnemonic::Fmov, vec![
                 Operand::Text { value: format!("v{}{}", rd_val, arr) },
                 Operand::Text { value: format!("#{:.8}", fp_val) },
             ]))
         }
-        (1, 0b1111) => {
-            if q == 0 {
+        (true, 0b1111) => {
+            if !q {
                 return Err(DisasmError::decode_failure(
                     DecodeErrorKind::InvalidEncoding,
                     Some("aarch64".to_string()),
@@ -1442,7 +1442,7 @@ fn decode_simd_modified_imm(word: u32) -> DecodeResult {
             }
             // Double-precision: imm64 = a : ~b : bbbbbbbb : c : d : e : f : g : h : 0... (42 zeros)
             let imm64: u64 = ((a as u64) << 63)
-                | ((((!b) & 1) as u64) << 62)
+                | ((((!b) as u64) & 1) << 62)
                 | ((b as u64) << 61)
                 | ((b as u64) << 60)
                 | ((b as u64) << 59)
@@ -1504,31 +1504,31 @@ fn decode_simd_shift_imm(word: u32) -> DecodeResult {
     let (mnemonic, shift, is_narrowing, is_long) = match opcode {
         0b00000 => {
             // SSHR (U=0) / USHR (U=1)
-            let m = if u == 0 { Mnemonic::Sshr } else { Mnemonic::Ushr };
+            let m = if !u { Mnemonic::Sshr } else { Mnemonic::Ushr };
             let s = (2 * esize) - immh_immb;
             (m, s, false, false)
         }
         0b00010 => {
             // SSRA (U=0) / USRA (U=1)
-            let m = if u == 0 { Mnemonic::Ssra } else { Mnemonic::Usra };
+            let m = if !u { Mnemonic::Ssra } else { Mnemonic::Usra };
             let s = (2 * esize) - immh_immb;
             (m, s, false, false)
         }
         0b00100 => {
             // SRSHR (U=0) / URSHR (U=1)
-            let m = if u == 0 { Mnemonic::Srshr } else { Mnemonic::Urshr };
+            let m = if !u { Mnemonic::Srshr } else { Mnemonic::Urshr };
             let s = (2 * esize) - immh_immb;
             (m, s, false, false)
         }
         0b00110 => {
             // SRSRA (U=0) / URSRA (U=1)
-            let m = if u == 0 { Mnemonic::Srsra } else { Mnemonic::Ursra };
+            let m = if !u { Mnemonic::Srsra } else { Mnemonic::Ursra };
             let s = (2 * esize) - immh_immb;
             (m, s, false, false)
         }
         0b01000 => {
             // SRI (U=1 only)
-            if u == 0 {
+            if !u {
                 return Err(DisasmError::decode_failure(
                     DecodeErrorKind::InvalidEncoding,
                     Some("aarch64".to_string()),
@@ -1540,13 +1540,13 @@ fn decode_simd_shift_imm(word: u32) -> DecodeResult {
         }
         0b01010 => {
             // SHL (U=0) / SLI (U=1)
-            let m = if u == 0 { Mnemonic::Shl } else { Mnemonic::Sli };
+            let m = if !u { Mnemonic::Shl } else { Mnemonic::Sli };
             let s = immh_immb - esize;
             (m, s, false, false)
         }
         0b01100 => {
             // SQSHLU (U=1 only)
-            if u == 0 {
+            if !u {
                 return Err(DisasmError::decode_failure(
                     DecodeErrorKind::InvalidEncoding,
                     Some("aarch64".to_string()),
@@ -1558,7 +1558,7 @@ fn decode_simd_shift_imm(word: u32) -> DecodeResult {
         }
         0b01110 => {
             // SQSHL (imm) (U=0) / UQSHL (imm) (U=1)
-            let m = if u == 0 { Mnemonic::Sqshl } else { Mnemonic::Uqshl };
+            let m = if !u { Mnemonic::Sqshl } else { Mnemonic::Uqshl };
             let s = immh_immb - esize;
             (m, s, false, false)
         }
@@ -1566,7 +1566,7 @@ fn decode_simd_shift_imm(word: u32) -> DecodeResult {
             // SHRN/SHRN2 (U=0) / SQSHRUN/SQSHRUN2 (U=1)
             // For narrowing, immh encodes dest element size
             let s = (2 * esize) - immh_immb;
-            if u == 0 {
+            if !u {
                 (Mnemonic::Shrn, s, true, false)
             } else {
                 (Mnemonic::Sqshrun, s, true, false)
@@ -1575,7 +1575,7 @@ fn decode_simd_shift_imm(word: u32) -> DecodeResult {
         0b10001 => {
             // RSHRN/RSHRN2 (U=0) / SQRSHRUN/SQRSHRUN2 (U=1)
             let s = (2 * esize) - immh_immb;
-            if u == 0 {
+            if !u {
                 (Mnemonic::Rshrn, s, true, false)
             } else {
                 (Mnemonic::Sqrshrun, s, true, false)
@@ -1584,7 +1584,7 @@ fn decode_simd_shift_imm(word: u32) -> DecodeResult {
         0b10010 => {
             // SQSHRN/SQSHRN2 (U=0) / UQSHRN/UQSHRN2 (U=1)
             let s = (2 * esize) - immh_immb;
-            if u == 0 {
+            if !u {
                 (Mnemonic::Sqshrn, s, true, false)
             } else {
                 (Mnemonic::Uqshrn, s, true, false)
@@ -1593,7 +1593,7 @@ fn decode_simd_shift_imm(word: u32) -> DecodeResult {
         0b10011 => {
             // SQRSHRN/SQRSHRN2 (U=0) / UQRSHRN/UQRSHRN2 (U=1)
             let s = (2 * esize) - immh_immb;
-            if u == 0 {
+            if !u {
                 (Mnemonic::Sqrshrn, s, true, false)
             } else {
                 (Mnemonic::Uqrshrn, s, true, false)
@@ -1601,7 +1601,7 @@ fn decode_simd_shift_imm(word: u32) -> DecodeResult {
         }
         0b10100 => {
             // SSHLL/SSHLL2 (U=0) / USHLL/USHLL2 (U=1)
-            let m = if u == 0 { Mnemonic::Sshll } else { Mnemonic::Ushll };
+            let m = if !u { Mnemonic::Sshll } else { Mnemonic::Ushll };
             let s = immh_immb - esize;
             (m, s, false, true)
         }
@@ -1620,7 +1620,7 @@ fn decode_simd_shift_imm(word: u32) -> DecodeResult {
         arrangement_suffix(size, q)
     } else if is_long {
         // Widening: dest is always 128-bit, element is double source
-        arrangement_suffix(size + 1, 1)
+        arrangement_suffix(size + 1, true)
     } else {
         // Same-size: dest arrangement matches source
         arrangement_suffix(size, q)
@@ -1628,7 +1628,7 @@ fn decode_simd_shift_imm(word: u32) -> DecodeResult {
 
     let src_arr = if is_narrowing {
         // Narrowing: source element is double dest, always 128-bit
-        arrangement_suffix(size + 1, 1)
+        arrangement_suffix(size + 1, true)
     } else if is_long {
         // Widening: source arrangement uses Q as encoded
         arrangement_suffix(size, q)
@@ -1638,7 +1638,7 @@ fn decode_simd_shift_imm(word: u32) -> DecodeResult {
     };
 
     // Map mnemonic string back to enum for narrowing/long Q=1 variants
-    let final_mnemonic = if is_narrowing && q == 1 {
+    let final_mnemonic = if is_narrowing && q {
         match mnemonic {
             Mnemonic::Shrn => Mnemonic::Shrn2,
             Mnemonic::Sqshrun => Mnemonic::Sqshrun2,
@@ -1650,7 +1650,7 @@ fn decode_simd_shift_imm(word: u32) -> DecodeResult {
             Mnemonic::Uqrshrn => Mnemonic::Uqrshrn2,
             _ => mnemonic,
         }
-    } else if is_long && q == 1 {
+    } else if is_long && q {
         match mnemonic {
             Mnemonic::Sshll => Mnemonic::Sshll2,
             Mnemonic::Ushll => Mnemonic::Ushll2,
@@ -1697,33 +1697,33 @@ fn decode_simd_indexed_element(word: u32) -> DecodeResult {
     // integer opcodes when the element size is 32-bit encoded.
     let (mnemonic, is_fp, is_long, is_fp16_fml) = match (opcode, u, size) {
         // ARMv8.2-FP16 multiply-accumulate (size=10 only)
-        (0b0000, 0, 0b10) => (Mnemonic::Fmlal, false, false, true),
-        (0b0000, 1, _) => (Mnemonic::Mla, false, false, false),
-        (0b0100, 0, 0b10) => (Mnemonic::Fmlsl, false, false, true),
-        (0b0100, 1, _) => (Mnemonic::Mls, false, false, false),
-        (0b1000, 1, 0b10) => (Mnemonic::Fmlal2, false, false, true),
-        (0b1000, 1, _) => (Mnemonic::Mul, false, false, false),
-        (0b1100, 1, 0b10) => (Mnemonic::Fmlsl2, false, false, true),
+        (0b0000, false, 0b10) => (Mnemonic::Fmlal, false, false, true),
+        (0b0000, true, _) => (Mnemonic::Mla, false, false, false),
+        (0b0100, false, 0b10) => (Mnemonic::Fmlsl, false, false, true),
+        (0b0100, true, _) => (Mnemonic::Mls, false, false, false),
+        (0b1000, true, 0b10) => (Mnemonic::Fmlal2, false, false, true),
+        (0b1000, true, _) => (Mnemonic::Mul, false, false, false),
+        (0b1100, true, 0b10) => (Mnemonic::Fmlsl2, false, false, true),
         // Integer long multiply-accumulate
-        (0b0010, 0, _) => (Mnemonic::Smlal, false, true, false),
-        (0b0010, 1, _) => (Mnemonic::Umlal, false, true, false),
-        (0b0110, 0, _) => (Mnemonic::Smlsl, false, true, false),
-        (0b0110, 1, _) => (Mnemonic::Umlsl, false, true, false),
-        (0b1010, 0, _) => (Mnemonic::Smull, false, true, false),
-        (0b1010, 1, _) => (Mnemonic::Umull, false, true, false),
+        (0b0010, false, _) => (Mnemonic::Smlal, false, true, false),
+        (0b0010, true, _) => (Mnemonic::Umlal, false, true, false),
+        (0b0110, false, _) => (Mnemonic::Smlsl, false, true, false),
+        (0b0110, true, _) => (Mnemonic::Umlsl, false, true, false),
+        (0b1010, false, _) => (Mnemonic::Smull, false, true, false),
+        (0b1010, true, _) => (Mnemonic::Umull, false, true, false),
         // Integer saturating long multiply
-        (0b0011, 0, _) => (Mnemonic::Sqdmlal, false, true, false),
-        (0b0111, 0, _) => (Mnemonic::Sqdmlsl, false, true, false),
-        (0b1011, 0, _) => (Mnemonic::Sqdmull, false, true, false),
+        (0b0011, false, _) => (Mnemonic::Sqdmlal, false, true, false),
+        (0b0111, false, _) => (Mnemonic::Sqdmlsl, false, true, false),
+        (0b1011, false, _) => (Mnemonic::Sqdmull, false, true, false),
         // Integer saturating multiply
-        (0b1100, 0, _) => (Mnemonic::Sqdmulh, false, false, false),
-        (0b1100, 1, _) => (Mnemonic::Sqrdmulh, false, false, false),
+        (0b1100, false, _) => (Mnemonic::Sqdmulh, false, false, false),
+        (0b1100, true, _) => (Mnemonic::Sqrdmulh, false, false, false),
         // FP multiply-accumulate
-        (0b0001, 0, _) => (Mnemonic::Fmla, true, false, false),
-        (0b0101, 0, _) => (Mnemonic::Fmls, true, false, false),
+        (0b0001, false, _) => (Mnemonic::Fmla, true, false, false),
+        (0b0101, false, _) => (Mnemonic::Fmls, true, false, false),
         // FP multiply
-        (0b1001, 0, _) => (Mnemonic::Fmul, true, false, false),
-        (0b1001, 1, _) => (Mnemonic::Fmulx, true, false, false),
+        (0b1001, false, _) => (Mnemonic::Fmul, true, false, false),
+        (0b1001, true, _) => (Mnemonic::Fmulx, true, false, false),
         _ => {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
@@ -1742,7 +1742,7 @@ fn decode_simd_indexed_element(word: u32) -> DecodeResult {
         // FP16 indexed element: Rm = bits(19:16), index = {H, L, bit20}
         let rm = bits(word, 19, 16) as u8;
         let bit20 = bit(word, 20);
-        let idx = (h << 2) | (l << 1) | bit20;
+        let idx = (u8::from(h) << 2) | (u8::from(l) << 1) | u8::from(bit20);
         (rm, idx)
     } else {
         match size {
@@ -1750,26 +1750,26 @@ fn decode_simd_indexed_element(word: u32) -> DecodeResult {
                 // Byte: Rm = bits(19:16), index = {H, L, M, bit20}
                 let rm = bits(word, 19, 16) as u8;
                 let bit20 = bit(word, 20);
-                let idx = (h << 3) | (l << 2) | (m << 1) | bit20;
+                let idx = (u8::from(h) << 3) | (u8::from(l) << 2) | (u8::from(m) << 1) | u8::from(bit20);
                 (rm, idx)
             }
             0b01 => {
                 // Halfword: Rm = bits(19:16), index = {H, L, bit20}
                 let rm = bits(word, 19, 16) as u8;
                 let bit20 = bit(word, 20);
-                let idx = (h << 2) | (l << 1) | bit20;
+                let idx = (u8::from(h) << 2) | (u8::from(l) << 1) | u8::from(bit20);
                 (rm, idx)
             }
             0b10 => {
                 // Word: Rm = bits(20:16), index = {H, L}
                 let rm = bits(word, 20, 16) as u8;
-                let idx = (h << 1) | l;
+                let idx = (u8::from(h) << 1) | u8::from(l);
                 (rm, idx)
             }
             0b11 => {
                 // Doubleword: Rm = bits(20:16), index = {H}
                 let rm = bits(word, 20, 16) as u8;
-                let idx = h;
+                let idx = u8::from(h);
                 (rm, idx)
             }
             _ => unreachable!(),
@@ -1782,7 +1782,7 @@ fn decode_simd_indexed_element(word: u32) -> DecodeResult {
         // dest is .2s/.4s (single), src is .2h/.4h (half), element is h
         (
             arrangement_suffix(0b10, q), // .2s or .4s
-            if q == 0 { ".2h" } else { ".4h" },
+            if !q { ".2h" } else { ".4h" },
             'h',
         )
     } else if is_fp {
@@ -1808,7 +1808,7 @@ fn decode_simd_indexed_element(word: u32) -> DecodeResult {
         // Long multiply: dest is wider, src is normal size
         let dest_size = size + 1;
         (
-            arrangement_suffix(dest_size, 1), // Always 128-bit result
+            arrangement_suffix(dest_size, true), // Always 128-bit result
             arrangement_suffix(size, q),
             match size {
                 0b01 => 'h',
@@ -1838,7 +1838,7 @@ fn decode_simd_indexed_element(word: u32) -> DecodeResult {
     };
 
     // Handle "2" suffix for long multiply when Q=1
-    let final_mnemonic = if is_long && q == 1 {
+    let final_mnemonic = if is_long && q {
         match mnemonic {
             Mnemonic::Smlal => Mnemonic::Smlal2,
             Mnemonic::Umlal => Mnemonic::Umlal2,
@@ -1895,7 +1895,7 @@ fn decode_crypto_aes(word: u32) -> DecodeResult {
     };
 
     // AES operates on .16b (Q=1) or .8b (Q=0)
-    let arr = if q == 1 { ".16b" } else { ".8b" };
+    let arr = if q { ".16b" } else { ".8b" };
 
     Ok((
         mnemonic,
@@ -1949,8 +1949,8 @@ fn decode_crypto_sha2(word: u32) -> DecodeResult {
             Ok((
                 mnemonic,
                 vec![
-                    vec_reg_operand(rd_val, 0b10, 1), // .4s
-                    vec_reg_operand(rn_val, 0b10, 1),
+                    vec_reg_operand(rd_val, 0b10, true), // .4s
+                    vec_reg_operand(rn_val, 0b10, true),
                 ],
             ))
         }
@@ -1994,7 +1994,7 @@ fn decode_crypto_sha3(word: u32) -> DecodeResult {
                     value: format!("q{}", rd_val),
                 },
                 fp_reg_operand(rn_val, FpRegSize::S),
-                vec_reg_operand(rm_val, 0b10, 1), // .4s
+                vec_reg_operand(rm_val, 0b10, true), // .4s
             ]
         }
         Mnemonic::Sha256h | Mnemonic::Sha256h2 => {
@@ -2006,15 +2006,15 @@ fn decode_crypto_sha3(word: u32) -> DecodeResult {
                 Operand::Text {
                     value: format!("q{}", rn_val),
                 },
-                vec_reg_operand(rm_val, 0b10, 1), // .4s
+                vec_reg_operand(rm_val, 0b10, true), // .4s
             ]
         }
         _ => {
             // sha1su0, sha256su1: Vd.4s, Vn.4s, Vm.4s
             vec![
-                vec_reg_operand(rd_val, 0b10, 1),
-                vec_reg_operand(rn_val, 0b10, 1),
-                vec_reg_operand(rm_val, 0b10, 1),
+                vec_reg_operand(rd_val, 0b10, true),
+                vec_reg_operand(rn_val, 0b10, true),
+                vec_reg_operand(rm_val, 0b10, true),
             ]
         }
     };
@@ -2032,7 +2032,7 @@ fn try_decode_simd_across_lanes(word: u32, op5_16: u8) -> Option<(Mnemonic, Vec<
 
     // Across Lanes instructions all have b20=1 in the b21=1, b10=0, b11=1 branch.
     // Some Two-reg Misc instructions also have b20=1, so we need to filter carefully.
-    if b20 == 0 {
+    if !b20 {
         return None;
     }
 
@@ -2040,11 +2040,11 @@ fn try_decode_simd_across_lanes(word: u32, op5_16: u8) -> Option<(Mnemonic, Vec<
     let mnemonic = match op5_16 {
         0b00011 => {
             // saddlv (U=0) / uaddlv (U=1)
-            if u == 0 { Mnemonic::Saddlv } else { Mnemonic::Uaddlv }
+            if !u { Mnemonic::Saddlv } else { Mnemonic::Uaddlv }
         }
         0b01010 => {
             // smaxv (U=0) / umaxv (U=1)
-            if u == 0 { Mnemonic::Smaxv } else { Mnemonic::Umaxv }
+            if !u { Mnemonic::Smaxv } else { Mnemonic::Umaxv }
         }
         0b01100 => {
             // fmaxnmv (U=0) / fminnmv (U=1) — Across Lanes
@@ -2052,7 +2052,7 @@ fn try_decode_simd_across_lanes(word: u32, op5_16: u8) -> Option<(Mnemonic, Vec<
             if size == 0b11 {
                 return None;
             }
-            if u == 0 { Mnemonic::Fmaxnmv } else { Mnemonic::Fminnmv }
+            if !u { Mnemonic::Fmaxnmv } else { Mnemonic::Fminnmv }
         }
         0b01101 => {
             // fcmeq/fcmle (Two-reg Misc) — no Across Lanes at this opcode
@@ -2068,16 +2068,16 @@ fn try_decode_simd_across_lanes(word: u32, op5_16: u8) -> Option<(Mnemonic, Vec<
             if size == 0b11 {
                 return None;
             }
-            if u == 0 { Mnemonic::Fmaxv } else { Mnemonic::Fminv }
+            if !u { Mnemonic::Fmaxv } else { Mnemonic::Fminv }
         }
         0b11010 => {
             // sminv (U=0) / uminv (U=1) — Across Lanes, size must be 00
             if size != 0b00 {
                 return None; // fcvtns/fcvtnu/fcvtps/fcvtpu (Two-reg Misc, size=01/10)
             }
-            if u == 0 { Mnemonic::Sminv } else { Mnemonic::Uminv }
+            if !u { Mnemonic::Sminv } else { Mnemonic::Uminv }
         }
-        0b11011 if u == 0 && size != 0b11 => {
+        0b11011 if !u && size != 0b11 => {
             // addv (U=0, size=00/01/10) — Across Lanes
             Mnemonic::Addv
         }
@@ -2144,7 +2144,7 @@ fn decode_simd_three_different(word: u32) -> DecodeResult {
     let rm_val = rm(word);
 
     // Helper to build vector register text operand
-    let vec = |reg: u8, sz: u8, qbit: u8| -> Operand {
+    let vec = |reg: u8, sz: u8, qbit: bool| -> Operand {
         Operand::Text {
             value: format!("v{}{}", reg, arrangement_suffix(sz, qbit)),
         }
@@ -2155,13 +2155,13 @@ fn decode_simd_three_different(word: u32) -> DecodeResult {
         // Widen: ADD Long, SUB Long, MUL Long, etc.
         0b0000 | 0b0010 | 0b0101 | 0b0111 | 0b1000 | 0b1010 | 0b1100 | 0b1001 | 0b1011 | 0b1101 => {
             let base_mnemonic = match opcode {
-                0b0000 => if u == 0 { Mnemonic::Saddl } else { Mnemonic::Uaddl },
-                0b0010 => if u == 0 { Mnemonic::Ssubl } else { Mnemonic::Usubl },
-                0b0101 => if u == 0 { Mnemonic::Sabal } else { Mnemonic::Uabal },
-                0b0111 => if u == 0 { Mnemonic::Sabdl } else { Mnemonic::Uabdl },
-                0b1000 => if u == 0 { Mnemonic::Smlal } else { Mnemonic::Umlal },
-                0b1010 => if u == 0 { Mnemonic::Smlsl } else { Mnemonic::Umlsl },
-                0b1100 => if u == 0 { Mnemonic::Smull } else { Mnemonic::Umull },
+                0b0000 => if !u { Mnemonic::Saddl } else { Mnemonic::Uaddl },
+                0b0010 => if !u { Mnemonic::Ssubl } else { Mnemonic::Usubl },
+                0b0101 => if !u { Mnemonic::Sabal } else { Mnemonic::Uabal },
+                0b0111 => if !u { Mnemonic::Sabdl } else { Mnemonic::Uabdl },
+                0b1000 => if !u { Mnemonic::Smlal } else { Mnemonic::Umlal },
+                0b1010 => if !u { Mnemonic::Smlsl } else { Mnemonic::Umlsl },
+                0b1100 => if !u { Mnemonic::Smull } else { Mnemonic::Umull },
                 0b1001 => Mnemonic::Sqdmlal,
                 0b1011 => Mnemonic::Sqdmlsl,
                 0b1101 => Mnemonic::Sqdmull,
@@ -2169,7 +2169,7 @@ fn decode_simd_three_different(word: u32) -> DecodeResult {
             };
 
             // "2" suffix when Q=1 for long/widen operations
-            let mnemonic = if q == 1 {
+            let mnemonic = if q {
                 match base_mnemonic {
                     Mnemonic::Saddl => Mnemonic::Saddl2,
                     Mnemonic::Uaddl => Mnemonic::Uaddl2,
@@ -2195,7 +2195,7 @@ fn decode_simd_three_different(word: u32) -> DecodeResult {
             };
 
             // Widen: dest uses size+1 with Q=1 (128-bit), sources use size with actual Q
-            let dest = vec(rd_val, size + 1, 1);
+            let dest = vec(rd_val, size + 1, true);
             let src1 = vec(rn_val, size, q);
             let src2 = vec(rm_val, size, q);
             Ok((mnemonic, vec![dest, src1, src2]))
@@ -2204,12 +2204,12 @@ fn decode_simd_three_different(word: u32) -> DecodeResult {
         // Widening add/sub (saddw, ssubw, uaddw, usubw)
         0b0001 | 0b0011 => {
             let base_mnemonic = match opcode {
-                0b0001 => if u == 0 { Mnemonic::Saddw } else { Mnemonic::Uaddw },
-                0b0011 => if u == 0 { Mnemonic::Ssubw } else { Mnemonic::Usubw },
+                0b0001 => if !u { Mnemonic::Saddw } else { Mnemonic::Uaddw },
+                0b0011 => if !u { Mnemonic::Ssubw } else { Mnemonic::Usubw },
                 _ => unreachable!(),
             };
 
-            let mnemonic = if q == 1 {
+            let mnemonic = if q {
                 match base_mnemonic {
                     Mnemonic::Saddw => Mnemonic::Saddw2,
                     Mnemonic::Uaddw => Mnemonic::Uaddw2,
@@ -2222,8 +2222,8 @@ fn decode_simd_three_different(word: u32) -> DecodeResult {
             };
 
             // saddw: dest and first src use size+1 with Q=1, second src uses size with actual Q
-            let dest = vec(rd_val, size + 1, 1);
-            let src1 = vec(rn_val, size + 1, 1);
+            let dest = vec(rd_val, size + 1, true);
+            let src1 = vec(rn_val, size + 1, true);
             let src2 = vec(rm_val, size, q);
             Ok((mnemonic, vec![dest, src1, src2]))
         }
@@ -2231,12 +2231,12 @@ fn decode_simd_three_different(word: u32) -> DecodeResult {
         // Narrow (addhn, raddhn, subhn, rsubhn)
         0b0100 | 0b0110 => {
             let base_mnemonic = match opcode {
-                0b0100 => if u == 0 { Mnemonic::Addhn } else { Mnemonic::Raddhn },
-                0b0110 => if u == 0 { Mnemonic::Subhn } else { Mnemonic::Rsubhn },
+                0b0100 => if !u { Mnemonic::Addhn } else { Mnemonic::Raddhn },
+                0b0110 => if !u { Mnemonic::Subhn } else { Mnemonic::Rsubhn },
                 _ => unreachable!(),
             };
 
-            let mnemonic = if q == 1 {
+            let mnemonic = if q {
                 match base_mnemonic {
                     Mnemonic::Addhn => Mnemonic::Addhn2,
                     Mnemonic::Raddhn => Mnemonic::Raddhn2,
@@ -2250,14 +2250,14 @@ fn decode_simd_three_different(word: u32) -> DecodeResult {
 
             // Narrow: dest uses size with actual Q, sources use size+1 with Q=1
             let dest = vec(rd_val, size, q);
-            let src1 = vec(rn_val, size + 1, 1);
-            let src2 = vec(rm_val, size + 1, 1);
+            let src1 = vec(rn_val, size + 1, true);
+            let src2 = vec(rm_val, size + 1, true);
             Ok((mnemonic, vec![dest, src1, src2]))
         }
 
         // PMULL / PMULL2
         0b1110 => {
-            if u != 0 {
+            if u {
                 return Err(DisasmError::decode_failure(
                     DecodeErrorKind::InvalidEncoding,
                     Some("aarch64".to_string()),
@@ -2265,8 +2265,8 @@ fn decode_simd_three_different(word: u32) -> DecodeResult {
                 ));
             }
             let (dest_arr, src_arr) = match size {
-                0b00 => (".8h", if q == 0 { ".8b" } else { ".16b" }),
-                0b11 => (".1q", if q == 0 { ".1d" } else { ".2d" }),
+                0b00 => (".8h", if !q { ".8b" } else { ".16b" }),
+                0b11 => (".1q", if !q { ".1d" } else { ".2d" }),
                 _ => {
                     return Err(DisasmError::decode_failure(
                         DecodeErrorKind::InvalidEncoding,
@@ -2275,7 +2275,7 @@ fn decode_simd_three_different(word: u32) -> DecodeResult {
                     ));
                 }
             };
-            let mnemonic = if q == 0 { Mnemonic::Pmull } else { Mnemonic::Pmull2 };
+            let mnemonic = if !q { Mnemonic::Pmull } else { Mnemonic::Pmull2 };
             Ok((
                 mnemonic,
                 vec![
@@ -2307,7 +2307,7 @@ fn decode_simd_permute_table(word: u32) -> DecodeResult {
     let rn_val = rn(word);
     let rm_val = rm(word);
 
-    if op == 1 {
+    if op {
         // Advanced SIMD extract: EXT
         // op2 (bits22:21) must be 00; imm4 in bits14:11
         let op2 = bits(word, 22, 21) as u8;
@@ -2319,7 +2319,7 @@ fn decode_simd_permute_table(word: u32) -> DecodeResult {
             ));
         }
         let imm4 = bits(word, 14, 11) as u8;
-        let arr = if q == 0 { ".8b" } else { ".16b" };
+        let arr = if !q { ".8b" } else { ".16b" };
         return Ok((
             Mnemonic::Ext,
             vec![
@@ -2342,11 +2342,11 @@ fn decode_simd_permute_table(word: u32) -> DecodeResult {
     // op=0: either table lookup or permute
     let b11 = bit(word, 11);
 
-    if b11 == 0 {
+    if !b11 {
         // Advanced SIMD table lookup: TBL / TBX
         let len = bits(word, 14, 13) as u8;
         let tbl_op = bit(word, 12);
-        let mnemonic = if tbl_op == 0 { Mnemonic::Tbl } else { Mnemonic::Tbx };
+        let mnemonic = if !tbl_op { Mnemonic::Tbl } else { Mnemonic::Tbx };
 
         // Build register list: { vRn.16b, vRn+1.16b, ... }
         let table_regs: Vec<String> = (0..=len)
@@ -2357,8 +2357,8 @@ fn decode_simd_permute_table(word: u32) -> DecodeResult {
             .collect();
         let table_list = format!("{{ {} }}", table_regs.join(", "));
 
-        let dest_arr = if q == 0 { ".8b" } else { ".16b" };
-        let idx_arr = if q == 0 { ".8b" } else { ".16b" };
+        let dest_arr = if !q { ".8b" } else { ".16b" };
+        let idx_arr = if !q { ".8b" } else { ".16b" };
 
         return Ok((
             mnemonic,

@@ -34,7 +34,7 @@ pub fn decode_data_proc_imm(word: u32, addr: u64) -> DecodeResult {
 /// PC-relative addressing: ADR, ADRP.
 fn decode_pc_rel_addressing(word: u32, addr: u64) -> DecodeResult {
     let rd_val = rd(word);
-    let is_adrp = bit(word, 31) == 1;
+    let is_adrp = bit(word, 31);
     let imm = if is_adrp {
         decode_adrp_imm(word)
     } else {
@@ -54,9 +54,9 @@ fn decode_pc_rel_addressing(word: u32, addr: u64) -> DecodeResult {
 
 /// Add/subtract (immediate): ADD, ADDS, SUB, SUBS, CMP, CMN.
 fn decode_add_sub_imm(word: u32) -> DecodeResult {
-    let _is_32bit = sf(word) == 0;
-    let is_sub = bit(word, 30) == 1;
-    let set_flags = s_flag(word) == 1;
+    let _is_32bit = sf(word).is_w();
+    let is_sub = bit(word, 30);
+    let set_flags = s_flag(word);
     let (imm, _shift) = decode_imm12(word);
     let rd_val = rd(word);
     let rn_val = rn(word);
@@ -90,7 +90,7 @@ fn decode_add_sub_imm(word: u32) -> DecodeResult {
 
 /// Logical (immediate): AND, ORR, EOR, ANDS, TST.
 fn decode_logical_imm(word: u32) -> DecodeResult {
-    let is_32bit = sf(word) == 0;
+    let is_32bit = sf(word).is_w();
     let opc_val = opc(word);
     let n = n_bit(word);
     let immr_val = immr(word);
@@ -98,7 +98,7 @@ fn decode_logical_imm(word: u32) -> DecodeResult {
     let rd_val = rd(word);
     let rn_val = rn(word);
 
-    let _bitmask = decode_bitmask_imm(n, immr_val, imms_val, !is_32bit).ok_or_else(|| {
+    let _bitmask = decode_bitmask_imm(n as u8, immr_val, imms_val, !is_32bit).ok_or_else(|| {
         DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
@@ -138,7 +138,7 @@ fn decode_logical_imm(word: u32) -> DecodeResult {
 
 /// Move wide (immediate): MOVZ, MOVN, MOVK.
 fn decode_move_wide(word: u32) -> DecodeResult {
-    let _is_32bit = sf(word) == 0;
+    let _is_32bit = sf(word).is_w();
     let opc_val = opc(word);
     let (imm, shift) = decode_imm16_hw(word);
     let rd_val = rd(word);
@@ -173,11 +173,11 @@ fn decode_move_wide(word: u32) -> DecodeResult {
 // ---------------------------------------------------------------------------
 
 pub fn decode_data_proc_reg(word: u32, _addr: u64) -> DecodeResult {
-    let _is_32bit = sf(word) == 0;
+    let _is_32bit = sf(word).is_w();
     let b28 = bit28(word);
     let op2 = op2_4bit(word);
 
-    if b28 == 0 {
+    if !b28 {
         // Logical / Add-subtract group
         match op2 {
             0b0000..=0b0111 => decode_logical_shifted_reg(word),
@@ -192,7 +192,7 @@ pub fn decode_data_proc_reg(word: u32, _addr: u64) -> DecodeResult {
             0b0010 => decode_conditional_compare(word),
             0b0100 => decode_conditional_select(word),
             0b0110 => {
-                if bit(word, 30) == 0 {
+                if !bit(word, 30) {
                     decode_data_proc_2source(word)
                 } else {
                     decode_data_proc_1source(word)
@@ -212,7 +212,7 @@ pub fn decode_data_proc_reg(word: u32, _addr: u64) -> DecodeResult {
 
 /// Logical (shifted register): AND, BIC, ORR, ORN, EOR, EON, ANDS, BICS.
 fn decode_logical_shifted_reg(word: u32) -> DecodeResult {
-    let _is_32bit = sf(word) == 0;
+    let _is_32bit = sf(word).is_w();
     let opc_val = opc(word);
     let rd_val = rd(word);
     let rn_val = rn(word);
@@ -222,8 +222,8 @@ fn decode_logical_shifted_reg(word: u32) -> DecodeResult {
     let n_bit_val = bit(word, 21);
 
     let mnemonic = match (opc_val, n_bit_val) {
-        (0b00, 0) => Mnemonic::And,
-        (0b00, 1) => {
+        (0b00, false) => Mnemonic::And,
+        (0b00, true) => {
             // BIC — Stage 1 skip, return unimplemented
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
@@ -231,24 +231,24 @@ fn decode_logical_shifted_reg(word: u32) -> DecodeResult {
                 "BIC not in stage 1",
             ));
         }
-        (0b01, 0) => Mnemonic::Orr,
-        (0b01, 1) => {
+        (0b01, false) => Mnemonic::Orr,
+        (0b01, true) => {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
                 "ORN not in stage 1",
             ));
         }
-        (0b10, 0) => Mnemonic::Eor,
-        (0b10, 1) => {
+        (0b10, false) => Mnemonic::Eor,
+        (0b10, true) => {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
                 "EON not in stage 1",
             ));
         }
-        (0b11, 0) => Mnemonic::Ands,
-        (0b11, 1) => {
+        (0b11, false) => Mnemonic::Ands,
+        (0b11, true) => {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
@@ -278,9 +278,9 @@ fn decode_logical_shifted_reg(word: u32) -> DecodeResult {
 
 /// Add/subtract (shifted register): ADD, ADDS, SUB, SUBS, NEG.
 fn decode_add_sub_shifted_reg(word: u32) -> DecodeResult {
-    let _is_32bit = sf(word) == 0;
-    let is_sub = bit(word, 30) == 1;
-    let set_flags = s_flag(word) == 1;
+    let _is_32bit = sf(word).is_w();
+    let is_sub = bit(word, 30);
+    let set_flags = s_flag(word);
     let rd_val = rd(word);
     let rn_val = rn(word);
     let rm_val = rm(word);
@@ -324,8 +324,8 @@ fn decode_add_sub_shifted_reg(word: u32) -> DecodeResult {
 
 /// Add/subtract (extended register): ADD, ADDS, SUB, SUBS.
 fn decode_add_sub_extended_reg(word: u32) -> DecodeResult {
-    let is_sub = bit(word, 30) == 1;
-    let set_flags = s_flag(word) == 1;
+    let is_sub = bit(word, 30);
+    let set_flags = s_flag(word);
     let rd_val = rd(word);
     let rn_val = rn(word);
     let rm_val = rm(word);
@@ -373,7 +373,7 @@ fn decode_add_sub_with_carry(_word: u32) -> DecodeResult {
 
 /// Conditional select: CSEL, CSINC, CSINV, CSNEG, CSET, CSETM, CINC, CINV, CNEG.
 fn decode_conditional_select(word: u32) -> DecodeResult {
-    let _is_32bit = sf(word) == 0;
+    let _is_32bit = sf(word).is_w();
     let op = bit(word, 30);
     let s = s_flag(word);
     let rd_val = rd(word);
@@ -388,7 +388,7 @@ fn decode_conditional_select(word: u32) -> DecodeResult {
         )
     })?;
 
-    if s == 1 {
+    if s {
         return Err(DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
@@ -400,28 +400,25 @@ fn decode_conditional_select(word: u32) -> DecodeResult {
     let mnemonic = if rn_val == 31 && rm_val == 31 {
         // CSET / CSETM
         match (op, bit(word, 10)) {
-            (0, 0) => Mnemonic::Cset,
-            (0, 1) => Mnemonic::Csetm,
-            (1, 0) => Mnemonic::Cinc, // Actually CSINC with ZR/ZR
-            (1, 1) => Mnemonic::Cinv,
-            _ => unreachable!(),
+            (false, false) => Mnemonic::Cset,
+            (false, true) => Mnemonic::Csetm,
+            (true, false) => Mnemonic::Cinc, // Actually CSINC with ZR/ZR
+            (true, true) => Mnemonic::Cinv,
         }
     } else if rm_val == 31 {
         // CINC / CINV / CNEG
         match (op, bit(word, 10)) {
-            (0, 0) => Mnemonic::Csel,
-            (0, 1) => Mnemonic::Csinv,
-            (1, 0) => Mnemonic::Csinc,
-            (1, 1) => Mnemonic::Csneg,
-            _ => unreachable!(),
+            (false, false) => Mnemonic::Csel,
+            (false, true) => Mnemonic::Csinv,
+            (true, false) => Mnemonic::Csinc,
+            (true, true) => Mnemonic::Csneg,
         }
     } else {
         match (op, bit(word, 10)) {
-            (0, 0) => Mnemonic::Csel,
-            (0, 1) => Mnemonic::Csinv,
-            (1, 0) => Mnemonic::Csinc,
-            (1, 1) => Mnemonic::Csneg,
-            _ => unreachable!(),
+            (false, false) => Mnemonic::Csel,
+            (false, true) => Mnemonic::Csinv,
+            (true, false) => Mnemonic::Csinc,
+            (true, true) => Mnemonic::Csneg,
         }
     };
 
@@ -456,7 +453,7 @@ fn decode_conditional_compare(_word: u32) -> DecodeResult {
 
 /// Data-processing (2 source): LSL, LSR, ASR, ROR, CLS, CLZ, RBIT, REV, REV16, REV32.
 fn decode_data_proc_2source(word: u32) -> DecodeResult {
-    let _is_32bit = sf(word) == 0;
+    let _is_32bit = sf(word).is_w();
     let opcode = bits(word, 15, 10);
     let rd_val = rd(word);
     let rn_val = rn(word);
@@ -506,7 +503,7 @@ fn decode_data_proc_1source(_word: u32) -> DecodeResult {
 
 /// Data-processing (3 source): MADD, MSUB, SMADDL, SMSUBL, UMADDL, UMSUBL.
 fn decode_data_proc_3source(word: u32) -> DecodeResult {
-    let _is_32bit = sf(word) == 0;
+    let _is_32bit = sf(word).is_w();
     let op54 = bits(word, 30, 29);
     // Capstone checks bits 23:21 (not 24:21) for 3-source sub-classification.
     let op31_3bit = bits(word, 23, 21);

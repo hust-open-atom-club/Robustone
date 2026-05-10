@@ -1,5 +1,26 @@
 //! Bit-field extraction helpers for AArch64 instructions.
 
+/// Register width selector from the `sf` bit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RegWidth {
+    /// 32-bit (W registers).
+    W,
+    /// 64-bit (X registers).
+    X,
+}
+
+impl RegWidth {
+    /// Returns true if this is the 32-bit width.
+    pub fn is_w(self) -> bool {
+        matches!(self, RegWidth::W)
+    }
+
+    /// Returns true if this is the 64-bit width.
+    pub fn is_x(self) -> bool {
+        matches!(self, RegWidth::X)
+    }
+}
+
 /// Extract bits `[high:low]` (inclusive) from a 32-bit word.
 pub fn bits(word: u32, high: u8, low: u8) -> u32 {
     debug_assert!(high >= low, "bits: high ({}) must be >= low ({})", high, low);
@@ -10,13 +31,17 @@ pub fn bits(word: u32, high: u8, low: u8) -> u32 {
 }
 
 /// Extract a single bit.
-pub fn bit(word: u32, pos: u8) -> u8 {
-    ((word >> pos) & 1) as u8
+pub fn bit(word: u32, pos: u8) -> bool {
+    ((word >> pos) & 1) != 0
 }
 
-/// Extract the `sf` field (bit 31) — 0=W (32-bit), 1=X (64-bit).
-pub fn sf(word: u32) -> u8 {
-    bit(word, 31)
+/// Extract the `sf` field (bit 31).
+pub fn sf(word: u32) -> RegWidth {
+    if bit(word, 31) {
+        RegWidth::X
+    } else {
+        RegWidth::W
+    }
 }
 
 /// Extract the `op0` field (bits 28:25) — top-level instruction class.
@@ -35,7 +60,7 @@ pub fn op1_3bit(word: u32) -> u8 {
 }
 
 /// Extract bit 28 (op1 in Data Processing — Register table).
-pub fn bit28(word: u32) -> u8 {
+pub fn bit28(word: u32) -> bool {
     bit(word, 28)
 }
 
@@ -75,7 +100,7 @@ pub fn ra(word: u32) -> u8 {
 }
 
 /// Extract the `S` flag (bit 29) — set flags.
-pub fn s_flag(word: u32) -> u8 {
+pub fn s_flag(word: u32) -> bool {
     bit(word, 29)
 }
 
@@ -100,7 +125,7 @@ pub fn hw(word: u32) -> u8 {
 }
 
 /// Extract the `N` bit (bit 22) for logical immediate.
-pub fn n_bit(word: u32) -> u8 {
+pub fn n_bit(word: u32) -> bool {
     bit(word, 22)
 }
 
@@ -130,7 +155,7 @@ pub fn size(word: u32) -> u8 {
 }
 
 /// Extract the `v` bit (bit 26) for SIMD/FP load/store.
-pub fn v_bit(word: u32) -> u8 {
+pub fn v_bit(word: u32) -> bool {
     bit(word, 26)
 }
 
@@ -160,22 +185,22 @@ pub fn simd_size(word: u32) -> u8 {
 }
 
 /// Extract the `Q` bit (bit 30) for SIMD vector width.
-pub fn q_bit(word: u32) -> u8 {
+pub fn q_bit(word: u32) -> bool {
     bit(word, 30)
 }
 
 /// Extract the `U` bit (bit 29) for SIMD/FP operations.
-pub fn u_bit(word: u32) -> u8 {
+pub fn u_bit(word: u32) -> bool {
     bit(word, 29)
 }
 
 /// Extract the `L` bit (bit 22) for SIMD/FP load/store direction.
-pub fn l_bit(word: u32) -> u8 {
+pub fn l_bit(word: u32) -> bool {
     bit(word, 22)
 }
 
 /// Extract the `r` bit (bit 21) for SIMD/FP load/store.
-pub fn r_bit(word: u32) -> u8 {
+pub fn r_bit(word: u32) -> bool {
     bit(word, 21)
 }
 
@@ -216,7 +241,7 @@ mod tests {
     #[test]
     fn test_bits_extraction() {
         let word = 0x91000820; // add x0, x1, #2
-        assert_eq!(sf(word), 1);
+        assert!(sf(word).is_x());
         assert_eq!(op0(word), 0b1000);
         assert_eq!(op1(word), 0b10);
         assert_eq!(rd(word), 0);
@@ -226,8 +251,8 @@ mod tests {
 
     #[test]
     fn test_single_bit() {
-        assert_eq!(bit(0x80000000, 31), 1);
-        assert_eq!(bit(0x00000000, 31), 0);
+        assert!(bit(0x80000000, 31));
+        assert!(!bit(0x00000000, 31));
     }
 
     #[test]

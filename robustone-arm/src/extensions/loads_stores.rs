@@ -26,9 +26,9 @@ pub fn decode_loads_stores(word: u32, addr: u64) -> DecodeResult {
     match op0_val {
         0x4 => {
             // GPR loads/stores, lower half (V=0)
-            if b29 == 0 {
-                if b24 == 0 {
-                    if bit(word, 23) == 0 {
+            if !b29 {
+                if !b24 {
+                    if !bit(word, 23) {
                         // bit 21=0: single exclusive; bit 21=1: pair exclusive
                         decode_load_store_exclusive(word)
                     } else {
@@ -53,7 +53,7 @@ pub fn decode_loads_stores(word: u32, addr: u64) -> DecodeResult {
                 // bit24=0,bit23=1 → pair post-indexed (STP/LDP)
                 // bit24=1,bit23=0 → pair signed offset (STP/LDP)
                 // bit24=1,bit23=1 → pair pre-indexed (STP/LDP)
-                if b24 == 0 && bit(word, 23) == 0 {
+                if !b24 && !bit(word, 23) {
                     decode_load_store_pair_no_allocate(word)
                 } else {
                     decode_load_store_pair(word)
@@ -66,8 +66,8 @@ pub fn decode_loads_stores(word: u32, addr: u64) -> DecodeResult {
         }
         0xC => {
             // GPR loads/stores, upper half (V=0)
-            if b29 == 0 {
-                if b24 == 0 {
+            if !b29 {
+                if !b24 {
                     decode_load_literal(word, addr)
                 } else {
                     // RCpc (STLUR/LDLUR) — ARMv8.3, not stage 2
@@ -79,8 +79,8 @@ pub fn decode_loads_stores(word: u32, addr: u64) -> DecodeResult {
                 }
             } else {
                 // b29=1
-                if b24 == 0 {
-                    if bit(word, 21) == 0 {
+                if !b24 {
+                    if !bit(word, 21) {
                         decode_load_store_register_immediate(word)
                     } else {
                         // bit21=1: register offset (bits 11:10=10) or atomic (bits 11:10=00)
@@ -101,7 +101,7 @@ pub fn decode_loads_stores(word: u32, addr: u64) -> DecodeResult {
         }
         0xE => {
             // SIMD/FP loads/stores, upper half — Stage 3
-            if b29 == 0 && b24 == 0 {
+            if !b29 && !b24 {
                 // SIMD/FP load literal (same encoding pattern as GPR literal)
                 decode_load_literal(word, addr)
             } else {
@@ -126,7 +126,7 @@ fn decode_load_store_exclusive(word: u32) -> DecodeResult {
     let rt_val = rt(word);
 
     // o0=1: not in stage 2 (atomic memory operations)
-    if o0 == 1 {
+    if o0 {
         return Err(DisasmError::decode_failure(
             DecodeErrorKind::UnimplementedInstruction,
             Some("aarch64".to_string()),
@@ -136,19 +136,19 @@ fn decode_load_store_exclusive(word: u32) -> DecodeResult {
 
     // bit 21 = 0: single register exclusive
     // bit 21 = 1: pair register exclusive
-    if bit(word, 21) == 0 {
+    if !bit(word, 21) {
         // Single register exclusive
         let mnemonic = match (size, l) {
-            (0b00, 0) => Mnemonic::Stxrb,
-            (0b00, 1) => Mnemonic::Ldxrb,
-            (0b01, 0) => Mnemonic::Stxrh,
-            (0b01, 1) => Mnemonic::Ldxrh,
-            (0b10, 0) | (0b11, 0) => Mnemonic::Stxr,
-            (0b10, 1) | (0b11, 1) => Mnemonic::Ldxr,
+            (0b00, false) => Mnemonic::Stxrb,
+            (0b00, true) => Mnemonic::Ldxrb,
+            (0b01, false) => Mnemonic::Stxrh,
+            (0b01, true) => Mnemonic::Ldxrh,
+            (0b10, false) | (0b11, false) => Mnemonic::Stxr,
+            (0b10, true) | (0b11, true) => Mnemonic::Ldxr,
             _ => unreachable!(),
         };
 
-        let is_store = l == 0;
+        let is_store = !l;
         if is_store {
             // STXR Ws, Rt, [Xn]
             // Ws is always a 32-bit register regardless of size
@@ -176,12 +176,12 @@ fn decode_load_store_exclusive(word: u32) -> DecodeResult {
     } else {
         // Pair register exclusive
         let mnemonic = match (size, l) {
-            (0b00, 0) | (0b01, 0) | (0b10, 0) | (0b11, 0) => Mnemonic::Stxp,
-            (0b00, 1) | (0b01, 1) | (0b10, 1) | (0b11, 1) => Mnemonic::Ldxp,
+            (0b00, false) | (0b01, false) | (0b10, false) | (0b11, false) => Mnemonic::Stxp,
+            (0b00, true) | (0b01, true) | (0b10, true) | (0b11, true) => Mnemonic::Ldxp,
             _ => unreachable!(),
         };
 
-        let is_store = l == 0;
+        let is_store = !l;
         if is_store {
             // STXP Ws, Rt, Rt2, [Xn]
             // Ws is always a 32-bit register regardless of size
@@ -229,7 +229,7 @@ fn decode_load_literal(word: u32, addr: u64) -> DecodeResult {
     let target = (addr as i64).wrapping_add(imm);
     let rt_val = rt(word);
 
-    if v == 1 {
+    if v {
         // SIMD/FP literal load — Stage 3
         // size (bits 31:30) determines register size: 00=S, 01=D, 10=reserved, 11=Q
         let fp_size = match size {
@@ -323,10 +323,10 @@ fn decode_simd_fp_loads_stores(word: u32, _addr: u64, op0_val: u8) -> DecodeResu
     match op0_val {
         0x6 => {
             // SIMD/FP loads/stores, lower half
-            if b29 == 1 {
+            if b29 {
                 decode_simd_fp_load_store_pair(word)
-            } else if b24 == 0 {
-                if bit(word, 23) == 0 {
+            } else if !b24 {
+                if !bit(word, 23) {
                     decode_simd_fp_structure(word)
                 } else {
                     Err(DisasmError::decode_failure(
@@ -346,8 +346,8 @@ fn decode_simd_fp_loads_stores(word: u32, _addr: u64, op0_val: u8) -> DecodeResu
         0xE => {
             // SIMD/FP loads/stores, upper half
             // b29=0, b24=0 is handled in decode_loads_stores (literal loads)
-            if b29 == 1 {
-                if b24 == 0 {
+            if b29 {
+                if !b24 {
                     decode_simd_fp_single_immediate(word)
                 } else {
                     decode_simd_fp_single_unsigned_imm(word)
@@ -381,7 +381,7 @@ fn decode_simd_fp_structure(word: u32) -> DecodeResult {
     let rn_val = rn(word);
 
     // Multiple structures: bit 21 must be 0
-    if bit(word, 21) == 1 {
+    if bit(word, 21) {
         return Err(DisasmError::decode_failure(
             DecodeErrorKind::UnimplementedInstruction,
             Some("aarch64".to_string()),
@@ -392,20 +392,20 @@ fn decode_simd_fp_structure(word: u32) -> DecodeResult {
     // Opcode determines both the mnemonic and the register count.
     // See ARM ARM Table C4-281 (AdvSIMD load/store multiple structures).
     let (mnemonic, reg_count) = match (opcode, l) {
-        (0x0, 1) => (Mnemonic::Ld4, 4),
-        (0x0, 0) => (Mnemonic::St4, 4),
-        (0x2, 1) => (Mnemonic::Ld1, 4),
-        (0x2, 0) => (Mnemonic::St1, 4),
-        (0x4, 1) => (Mnemonic::Ld3, 3),
-        (0x4, 0) => (Mnemonic::St3, 3),
-        (0x6, 1) => (Mnemonic::Ld1, 3),
-        (0x6, 0) => (Mnemonic::St1, 3),
-        (0x7, 1) => (Mnemonic::Ld1, 1),
-        (0x7, 0) => (Mnemonic::St1, 1),
-        (0x8, 1) => (Mnemonic::Ld2, 2),
-        (0x8, 0) => (Mnemonic::St2, 2),
-        (0xA, 1) => (Mnemonic::Ld1, 2),
-        (0xA, 0) => (Mnemonic::St1, 2),
+        (0x0, true) => (Mnemonic::Ld4, 4),
+        (0x0, false) => (Mnemonic::St4, 4),
+        (0x2, true) => (Mnemonic::Ld1, 4),
+        (0x2, false) => (Mnemonic::St1, 4),
+        (0x4, true) => (Mnemonic::Ld3, 3),
+        (0x4, false) => (Mnemonic::St3, 3),
+        (0x6, true) => (Mnemonic::Ld1, 3),
+        (0x6, false) => (Mnemonic::St1, 3),
+        (0x7, true) => (Mnemonic::Ld1, 1),
+        (0x7, false) => (Mnemonic::St1, 1),
+        (0x8, true) => (Mnemonic::Ld2, 2),
+        (0x8, false) => (Mnemonic::St2, 2),
+        (0xA, true) => (Mnemonic::Ld1, 2),
+        (0xA, false) => (Mnemonic::St1, 2),
         _ => {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
@@ -486,12 +486,12 @@ fn decode_simd_fp_load_store_pair(word: u32) -> DecodeResult {
     };
 
     let mnemonic = if index_mode == 0b00 {
-        if l == 1 {
+        if l {
             Mnemonic::Ldnp
         } else {
             Mnemonic::Stnp
         }
-    } else if l == 1 {
+    } else if l {
         Mnemonic::Ldp
     } else {
         Mnemonic::Stp
@@ -566,7 +566,7 @@ fn decode_simd_fp_single_unsigned_imm(word: u32) -> DecodeResult {
     };
 
     let imm = imm12 << scale;
-    let mnemonic = if l == 1 { Mnemonic::Ldr } else { Mnemonic::Str };
+    let mnemonic = if l { Mnemonic::Ldr } else { Mnemonic::Str };
 
     Ok((
         mnemonic,
@@ -599,7 +599,7 @@ fn decode_simd_fp_single_immediate(word: u32) -> DecodeResult {
         _ => unreachable!(),
     };
 
-    if b21 == 1 {
+    if b21 {
         // Register offset: bits 11:10 must be 0b10
         if bits(word, 11, 10) != 0b10 {
             return Err(DisasmError::decode_failure(
@@ -612,7 +612,7 @@ fn decode_simd_fp_single_immediate(word: u32) -> DecodeResult {
         let option = bits(word, 15, 13);
         let s = bit(word, 12);
         let extend = decode_reg_offset_extend(option, s, size);
-        let mnemonic = if l == 1 { Mnemonic::Ldr } else { Mnemonic::Str };
+        let mnemonic = if l { Mnemonic::Ldr } else { Mnemonic::Str };
 
         return Ok((
             mnemonic,
@@ -647,12 +647,12 @@ fn decode_simd_fp_single_immediate(word: u32) -> DecodeResult {
     let is_unscaled = index_mode == 0b00;
 
     let mnemonic = if is_unscaled {
-        if l == 1 {
+        if l {
             Mnemonic::Ldur
         } else {
             Mnemonic::Stur
         }
-    } else if l == 1 {
+    } else if l {
         Mnemonic::Ldr
     } else {
         Mnemonic::Str
@@ -732,7 +732,7 @@ fn decode_load_store_pair_no_allocate(word: u32) -> DecodeResult {
         imm7 << scale
     };
 
-    let mnemonic = if l == 1 { Mnemonic::Ldnp } else { Mnemonic::Stnp };
+    let mnemonic = if l { Mnemonic::Ldnp } else { Mnemonic::Stnp };
 
     Ok((
         mnemonic,
@@ -759,18 +759,18 @@ fn decode_load_store_pair(word: u32) -> DecodeResult {
 
     // opc=0b00: 32-bit (W), opc=0b01: LDPSW/STGP, opc=0b10: 64-bit (X), opc=0b11: 128-bit
     let (scale, mnemonic) = match (opc, l) {
-        (0b00, 0) => (2, Mnemonic::Stp),
-        (0b00, 1) => (2, Mnemonic::Ldp),
-        (0b01, 0) => {
+        (0b00, false) => (2, Mnemonic::Stp),
+        (0b00, true) => (2, Mnemonic::Ldp),
+        (0b01, false) => {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
                 Some("aarch64".to_string()),
                 "STGP not in stage 2",
             ));
         }
-        (0b01, 1) => (2, Mnemonic::Ldpsw),
-        (0b10, 0) => (3, Mnemonic::Stp),
-        (0b10, 1) => (3, Mnemonic::Ldp),
+        (0b01, true) => (2, Mnemonic::Ldpsw),
+        (0b10, false) => (3, Mnemonic::Stp),
+        (0b10, true) => (3, Mnemonic::Ldp),
         (0b11, _) => {
             return Err(DisasmError::decode_failure(
                 DecodeErrorKind::UnimplementedInstruction,
@@ -840,7 +840,7 @@ fn decode_load_store_register_immediate(word: u32) -> DecodeResult {
     let rt_val = rt(word);
     let index_mode = bits(word, 11, 10); // 00=unscaled, 01=post, 10=unprivileged, 11=pre
 
-    if v == 1 {
+    if v {
         return Err(DisasmError::decode_failure(
             DecodeErrorKind::UnimplementedInstruction,
             Some("aarch64".to_string()),
@@ -911,7 +911,7 @@ fn decode_load_store_register_unsigned_imm(word: u32) -> DecodeResult {
     let rn_val = rn(word);
     let rt_val = rt(word);
 
-    if v == 1 {
+    if v {
         return Err(DisasmError::decode_failure(
             DecodeErrorKind::UnimplementedInstruction,
             Some("aarch64".to_string()),
@@ -952,7 +952,7 @@ fn decode_load_store_register_offset(word: u32) -> DecodeResult {
     let rn_val = rn(word);
     let rt_val = rt(word);
 
-    if v == 1 {
+    if v {
         return Err(DisasmError::decode_failure(
             DecodeErrorKind::UnimplementedInstruction,
             Some("aarch64".to_string()),
@@ -1047,7 +1047,7 @@ fn decode_ls_unscaled_mnemonic(size: u32, opc: u32) -> Result<Mnemonic, DisasmEr
 }
 
 /// Decode register offset extend/shift string.
-fn decode_reg_offset_extend(option: u32, s: u8, size: u32) -> Option<String> {
+fn decode_reg_offset_extend(option: u32, s: bool, size: u32) -> Option<String> {
     // option[1:0] determines extend type:
     // 00: UXTB/UXTH/UXTW/UXTX (but for 64-bit it's UXTX always)
     // 10: SXTB/SXTH/SXTW/SXTX
@@ -1081,7 +1081,7 @@ fn decode_reg_offset_extend(option: u32, s: u8, size: u32) -> Option<String> {
 
     // S=1: shift amount = log2(size) for LSL/SXTX/UXTX
     // For non-shifted, no shift amount shown
-    if s == 1 {
+    if s {
         let shift = match size {
             0b00 => 0,
             0b01 => 1,
@@ -1096,7 +1096,7 @@ fn decode_reg_offset_extend(option: u32, s: u8, size: u32) -> Option<String> {
         }
     } else {
         // For option=011 (UXTX) or 111 (SXTX) with S=0, Capstone doesn't show extend
-        if (option == 0b011 || option == 0b111) && s == 0 {
+        if (option == 0b011 || option == 0b111) && !s {
             None
         } else {
             Some(extend_type.to_string())
