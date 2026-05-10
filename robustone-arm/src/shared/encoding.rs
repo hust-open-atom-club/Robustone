@@ -2,7 +2,10 @@
 
 /// Extract bits `[high:low]` (inclusive) from a 32-bit word.
 pub fn bits(word: u32, high: u8, low: u8) -> u32 {
-    let mask = (1u32 << (high - low + 1)) - 1;
+    debug_assert!(high >= low, "bits: high ({}) must be >= low ({})", high, low);
+    debug_assert!(high < 32, "bits: high ({}) must be < 32", high);
+    let width = (high - low + 1) as u32;
+    let mask = (1u32.checked_shl(width).unwrap_or(0)).wrapping_sub(1);
     (word >> low) & mask
 }
 
