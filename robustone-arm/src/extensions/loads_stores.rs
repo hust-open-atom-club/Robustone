@@ -23,91 +23,67 @@ pub fn decode_loads_stores(word: u32, addr: u64) -> DecodeResult {
     let b29 = bit(word, 29);
     let b24 = bit(word, 24);
 
-    match op0_val {
-        0x4 => {
-            // GPR loads/stores, lower half (V=0)
-            if !b29 {
-                if !b24 {
-                    if !bit(word, 23) {
-                        // bit 21=0: single exclusive; bit 21=1: pair exclusive
-                        decode_load_store_exclusive(word)
-                    } else {
-                        // LDLLR/STLLR etc. — ARMv8.1, not stage 2
-                        Err(DisasmError::decode_failure(
-                            DecodeErrorKind::UnimplementedInstruction,
-                            Some("aarch64".to_string()),
-                            "LL/SC acquire/release not in stage 2",
-                        ))
-                    }
-                } else {
-                    // Invalid encoding for this region
-                    Err(DisasmError::decode_failure(
-                        DecodeErrorKind::InvalidEncoding,
-                        Some("aarch64".to_string()),
-                        "Invalid load/store encoding",
-                    ))
-                }
+    match (op0_val, b29, b24) {
+        // GPR loads/stores, lower half (V=0)
+        (0x4, false, false) => {
+            if !bit(word, 23) {
+                // bit 21=0: single exclusive; bit 21=1: pair exclusive
+                decode_load_store_exclusive(word)
             } else {
-                // b29=1: pair instructions
-                // bit24=0,bit23=0 → no-allocate (STNP/LDNP)
-                // bit24=0,bit23=1 → pair post-indexed (STP/LDP)
-                // bit24=1,bit23=0 → pair signed offset (STP/LDP)
-                // bit24=1,bit23=1 → pair pre-indexed (STP/LDP)
-                if !b24 && !bit(word, 23) {
-                    decode_load_store_pair_no_allocate(word)
-                } else {
-                    decode_load_store_pair(word)
-                }
+                // LDLLR/STLLR etc. — ARMv8.1, not stage 2
+                Err(DisasmError::decode_failure(
+                    DecodeErrorKind::UnimplementedInstruction,
+                    Some("aarch64".to_string()),
+                    "LL/SC acquire/release not in stage 2",
+                ))
             }
         }
-        0x6 => {
-            // SIMD/FP loads/stores, lower half — Stage 3
-            decode_simd_fp_loads_stores(word, addr, op0_val)
+        (0x4, false, true) => Err(DisasmError::decode_failure(
+            DecodeErrorKind::InvalidEncoding,
+            Some("aarch64".to_string()),
+            "Invalid load/store encoding",
+        )),
+        (0x4, true, _) => {
+            // b29=1: pair instructions
+            // bit24=0,bit23=0 → no-allocate (STNP/LDNP)
+            // bit24=0,bit23=1 → pair post-indexed (STP/LDP)
+            // bit24=1,bit23=0 → pair signed offset (STP/LDP)
+            // bit24=1,bit23=1 → pair pre-indexed (STP/LDP)
+            if !b24 && !bit(word, 23) {
+                decode_load_store_pair_no_allocate(word)
+            } else {
+                decode_load_store_pair(word)
+            }
         }
-        0xC => {
-            // GPR loads/stores, upper half (V=0)
-            if !b29 {
-                if !b24 {
-                    decode_load_literal(word, addr)
+        // SIMD/FP loads/stores, lower half — Stage 3
+        (0x6, _, _) => decode_simd_fp_loads_stores(word, addr, op0_val),
+        // GPR loads/stores, upper half (V=0)
+        (0xC, false, false) => decode_load_literal(word, addr),
+        (0xC, false, true) => Err(DisasmError::decode_failure(
+            DecodeErrorKind::UnimplementedInstruction,
+            Some("aarch64".to_string()),
+            "RCpc loads/stores not in stage 2",
+        )),
+        (0xC, true, false) => {
+            if !bit(word, 21) {
+                decode_load_store_register_immediate(word)
+            } else {
+                // bit21=1: register offset (bits 11:10=10) or atomic (bits 11:10=00)
+                if bits(word, 11, 10) == 0b10 {
+                    decode_load_store_register_offset(word)
                 } else {
-                    // RCpc (STLUR/LDLUR) — ARMv8.3, not stage 2
                     Err(DisasmError::decode_failure(
                         DecodeErrorKind::UnimplementedInstruction,
                         Some("aarch64".to_string()),
-                        "RCpc loads/stores not in stage 2",
+                        "atomic memory operations not in stage 2",
                     ))
                 }
-            } else {
-                // b29=1
-                if !b24 {
-                    if !bit(word, 21) {
-                        decode_load_store_register_immediate(word)
-                    } else {
-                        // bit21=1: register offset (bits 11:10=10) or atomic (bits 11:10=00)
-                        if bits(word, 11, 10) == 0b10 {
-                            decode_load_store_register_offset(word)
-                        } else {
-                            Err(DisasmError::decode_failure(
-                                DecodeErrorKind::UnimplementedInstruction,
-                                Some("aarch64".to_string()),
-                                "atomic memory operations not in stage 2",
-                            ))
-                        }
-                    }
-                } else {
-                    decode_load_store_register_unsigned_imm(word)
-                }
             }
         }
-        0xE => {
-            // SIMD/FP loads/stores, upper half — Stage 3
-            if !b29 && !b24 {
-                // SIMD/FP load literal (same encoding pattern as GPR literal)
-                decode_load_literal(word, addr)
-            } else {
-                decode_simd_fp_loads_stores(word, addr, op0_val)
-            }
-        }
+        (0xC, true, true) => decode_load_store_register_unsigned_imm(word),
+        // SIMD/FP loads/stores, upper half — Stage 3
+        (0xE, false, false) => decode_load_literal(word, addr),
+        (0xE, _, _) => decode_simd_fp_loads_stores(word, addr, op0_val),
         _ => unreachable!(),
     }
 }
