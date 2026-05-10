@@ -298,17 +298,13 @@ fn meta_load(
     use crate::types::Mnemonic::*;
     groups.push("load".to_string());
     match mnemonic {
-        Ldp | Ldpsw | Ldxp | Ldnp => {
-            if regs.len() >= 2 {
-                written.push(regs[0]);
-                written.push(regs[1]);
-            }
+        Ldp | Ldpsw | Ldxp | Ldnp if regs.len() >= 2 => {
+            written.push(regs[0]);
+            written.push(regs[1]);
         }
         Ldr | Ldrb | Ldrh | Ldrsb | Ldrsh | Ldrsw | Ldur | Ldurb | Ldurh | Ldursb | Ldursh
-        | Ldursw | Ldxr | Ldxrb | Ldxrh => {
-            if !regs.is_empty() {
-                written.push(regs[0]);
-            }
+        | Ldursw | Ldxr | Ldxrb | Ldxrh if !regs.is_empty() => {
+            written.push(regs[0]);
         }
         _ => {}
     }
@@ -323,10 +319,8 @@ fn meta_store(
     use crate::types::Mnemonic::*;
     groups.push("store".to_string());
     match mnemonic {
-        Stxr | Stxrb | Stxrh => {
-            if !regs.is_empty() {
-                written.push(regs[0]); // Ws (status)
-            }
+        Stxr | Stxrb | Stxrh if !regs.is_empty() => {
+            written.push(regs[0]); // Ws (status)
         }
         _ => {}
     }
