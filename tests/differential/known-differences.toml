@@ -162,3 +162,32 @@ active = true
 owner = "aarch64-team"
 expires_on = "2026-12-31"
 
+# AArch64 Stage 3: SIMD/FP registers rendered as text operands; Capstone semantic
+# uses structured register operands. Memory operands also text-based.
+[[difference]]
+arch = "aarch64"
+hex = "4000001c"
+surface = "semantic_detail"
+reason = "SIMD/FP register and literal target rendered as text for Capstone compatibility; semantic uses register/memory types"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+[[difference]]
+arch = "aarch64"
+hex = "e70700bd"
+surface = "semantic_detail"
+reason = "SIMD/FP register and memory operand rendered as text for Capstone compatibility; semantic uses register/memory types"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+[[difference]]
+arch = "aarch64"
+hex = "4100402d"
+surface = "semantic_detail"
+reason = "SIMD/FP pair registers and memory operand rendered as text for Capstone compatibility; semantic uses register/memory types"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+

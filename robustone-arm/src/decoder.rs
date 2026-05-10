@@ -110,11 +110,11 @@ fn compute_metadata(mnemonic: Mnemonic, operands: &[Operand]) -> Metadata {
     match mnemonic {
         Add | Adds | Sub | Subs | And | Orr | Eor | Ands | Lsl | Lsr | Asr | Ror | Movz | Movn
         | Movk | Csel | Csinc | Csinv | Csneg | Madd | Msub | Smaddl | Smsubl | Umaddl | Umsubl
-        | Sdiv | Udiv | Neg | Mvn | Mul | Mulh => {
+        | Sdiv | Udiv | Neg | Mvn | Mul | Mulh | Abs => {
             if !operand_regs.is_empty() {
                 written.push(operand_regs[0]);
             }
-            for reg in &operand_regs[1..] {
+            for reg in operand_regs.iter().skip(1) {
                 read.push(*reg);
             }
             groups.push("data".to_string());
@@ -242,6 +242,49 @@ fn compute_metadata(mnemonic: Mnemonic, operands: &[Operand]) -> Metadata {
         }
         Stxp => {
             groups.push("store".to_string());
+        }
+        // SIMD/FP — Stage 3 (metadata computed in Step 4)
+        Fadd | Fsub | Fmul | Fdiv | Fmadd | Fmsub | Fnmadd | Fnmsub | Fmov
+        | Fcmp | Fcmpe | Fcsel | Fcvt | Scvtf | Ucvtf | Frinta | Frintm | Frintn
+        | Frintp | Frintz | Frintx | Frinti | Fabs | Fneg | Fsqrt
+        | Fmax | Fmin | Fmaxnm | Fminnm | Fnmla | Fnmls | Fnmul
+        | Ld1 | St1 | Ld2 | St2 | Ld3 | St3 | Ld4 | St4
+        // SIMD/FP — Stage 3C vector data processing
+        | Mla | Mls | Cmeq | Cmge | Cmgt | Cmhi | Cmhs | Cmle | Cmlt | Cmtst
+        | Smax | Smin | Umax | Umin | Sabd | Uabd | Saba | Uaba | Bsl | Bit | Bif
+        | Shadd | Uhadd | Srhadd | Urhadd | Shsub | Uhsub
+        | Sqadd | Uqadd | Sqsub | Uqsub | Suqadd | Usqadd
+        | Sshl | Ushl | Sqshl | Uqshl | Srshl | Urshl | Sqrshl | Uqrshl | Sqshlu
+        | Sqdmulh | Sqrdmulh
+        | Sqabs | Sqneg | Addp | Addv | Saddl | Saddw | Ssubl | Ssubw
+        | Uaddl | Uaddw | Usubl | Usubw | Smlal | Smlsl | Umlal | Umlsl
+        | Smull | Umull | Sqdmlal | Sqdmlsl | Sqdmull
+        | Sabal | Uabal | Sabdl | Uabdl | Addhn | Raddhn | Subhn | Rsubhn
+        | Saddl2 | Uaddl2 | Saddw2 | Uaddw2 | Ssubl2 | Usubl2 | Ssubw2 | Usubw2
+        | Smlal2 | Umlal2 | Smlsl2 | Umlsl2 | Smull2 | Umull2
+        | Sqdmlal2 | Sqdmlsl2 | Sqdmull2
+        | Sabal2 | Uabal2 | Sabdl2 | Uabdl2 | Addhn2 | Raddhn2 | Subhn2 | Rsubhn2
+        | Sadalp | Uadalp | Saddlp | Uaddlp | Smaxp | Sminp | Umaxp | Uminp
+        | Saddlv | Uaddlv | Saddv | Smaxv | Sminv | Umaxv | Uminv
+        | Xtn | Xtn2 | Sqxtn | Sqxtn2 | Sqxtun | Sqxtun2 | Uqxtn | Uqxtn2
+        | Shll | Shll2 | Pmul | Pmull | Pmull2
+        | Dup | Ins | Ext | Umov | Smov | Zip1 | Zip2 | Uzp1 | Uzp2 | Trn1 | Trn2
+        | Rev16 | Rev32 | Rev64 | Cls | Clz | Cnt | Rbit | Not
+        | Faddp | Fmaxp | Fminp | Fmaxnmp | Fminnmp | Fmaxv | Fminv | Fmaxnmv | Fminnmv
+        | Fcvtl | Fcvtl2 | Fcvtn | Fcvtn2 | Fcvtxn | Fcvtxn2
+        | Frecpe | Frsqrte | Frecpx | Fcmge | Fcmgt | Fcmeq | Fcmle | Fcmlt
+        | Fcvtx | Fcvtas | Fcvtau | Fcvtms | Fcvtmu | Fcvtns | Fcvtnu | Fcvtps | Fcvtpu | Fcvtzs | Fcvtzu
+        | Fabd | Facge | Facgt | Fmulx | Frecps | Frsqrts
+        | Fmlal | Fmlal2 | Fmlsl | Fmlsl2 | Fscale | Famax | Famin
+        | Sshr | Ssra | Srshr | Srsra | Ushr | Usra | Urshr | Ursra | Sri | Sli | Shl
+        | Shrn | Shrn2 | Rshrn | Rshrn2 | Sqshrn | Sqshrn2 | Sqrshrn | Sqrshrn2
+        | Sqshrun | Sqshrun2 | Sqrshrun | Sqrshrun2 | Uqshrn | Uqshrn2 | Uqrshrn | Uqrshrn2
+        | Sshll | Sshll2 | Ushll | Ushll2 | Movi | Mvni | Tbl | Tbx
+        | Aese | Aesd | Aesmc | Aesimc | Sha1c | Sha1h | Sha1p | Sha1m | Sha1su0 | Sha1su1
+        | Sha256h | Sha256h2 | Sha256su0 | Sha256su1
+        // Also Bic and Orn (SIMD bitwise) and Fmla/Fmls (vector FP)
+        | Bic | Orn | Fmla | Fmls => {
+            groups.push("simd".to_string());
         }
     }
 

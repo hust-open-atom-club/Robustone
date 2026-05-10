@@ -10,6 +10,7 @@ use robustone_core::types::error::DisasmError;
 pub mod base;
 pub mod branch;
 pub mod loads_stores;
+pub mod simd_fp;
 pub mod system;
 
 /// Decode result type alias.
@@ -36,11 +37,7 @@ pub fn decode_by_op0(word: u32, addr: u64, _extensions: &AArch64Extensions) -> D
         }
         0x7 | 0xF => {
             // SIMD/FP / Scalar FP — Stage 3
-            Err(DisasmError::decode_failure(
-                robustone_core::types::error::DecodeErrorKind::UnimplementedInstruction,
-                Some("aarch64".to_string()),
-                "SIMD/FP not yet implemented in stage 1",
-            ))
+            simd_fp::decode_simd_fp(word, addr)
         }
         0x0..=0x3 => {
             // UNALLOCATED

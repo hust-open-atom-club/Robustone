@@ -131,6 +131,66 @@ pub fn v_bit(word: u32) -> u8 {
     bit(word, 26)
 }
 
+/// Extract the `op1` field (bits 28:24) for SIMD/FP data processing.
+pub fn op1_5bit(word: u32) -> u8 {
+    bits(word, 28, 24) as u8
+}
+
+/// Extract the `opcode` field (bits 15:12) for SIMD/FP.
+pub fn opcode_4bit(word: u32) -> u8 {
+    bits(word, 15, 12) as u8
+}
+
+/// Extract the `cmode` field (bits 15:12) for SIMD modified immediate.
+pub fn cmode(word: u32) -> u8 {
+    bits(word, 15, 12) as u8
+}
+
+/// Extract the `ftype` field (bits 23:22) for scalar FP.
+pub fn ftype(word: u32) -> u8 {
+    bits(word, 23, 22) as u8
+}
+
+/// Extract the `size` field (bits 23:22) for SIMD/FP operations.
+pub fn simd_size(word: u32) -> u8 {
+    bits(word, 23, 22) as u8
+}
+
+/// Extract the `Q` bit (bit 30) for SIMD vector width.
+pub fn q_bit(word: u32) -> u8 {
+    bit(word, 30)
+}
+
+/// Extract the `U` bit (bit 29) for SIMD/FP operations.
+pub fn u_bit(word: u32) -> u8 {
+    bit(word, 29)
+}
+
+/// Extract the `L` bit (bit 22) for SIMD/FP load/store direction.
+pub fn l_bit(word: u32) -> u8 {
+    bit(word, 22)
+}
+
+/// Extract the `r` bit (bit 21) for SIMD/FP load/store.
+pub fn r_bit(word: u32) -> u8 {
+    bit(word, 21)
+}
+
+/// Extract the `scale` field (bits 15:12) for SIMD/FP load/store.
+pub fn scale(word: u32) -> u8 {
+    bits(word, 15, 12) as u8
+}
+
+/// Extract the `len` field (bits 11:10) for SIMD structure loads/stores.
+pub fn len(word: u32) -> u8 {
+    bits(word, 11, 10) as u8
+}
+
+/// Extract the `opcode` field (bits 15:13) for SIMD structure loads/stores.
+pub fn opcode_3bit(word: u32) -> u8 {
+    bits(word, 15, 13) as u8
+}
+
 /// Extract the `rt` field (bits 4:0) — same as Rd.
 pub fn rt(word: u32) -> u8 {
     rd(word)

@@ -65,3 +65,46 @@ bf3003d5
 200000b8
 # Load/store pair (no-allocate)
 408000a9
+
+# SIMD/FP Loads/Stores — Stage 3A
+# Structure loads/stores
+2070400c
+2070000c
+2028400c
+2070404c
+6482400c
+6442400c
+6402400c
+6482000c
+# SIMD/FP load literal
+4000001c
+# SIMD/FP unsigned immediate
+e70700bd
+e80740fd
+# SIMD/FP pair loads
+4100402d
+4108406d
+020c41ad
+
+# SIMD Indexed Element — Stage 3C
+2008822f
+2008726f
+2008722f
+2018820f
+2018c24f
+20b0620f
+20b0624f
+20c0620f
+2088822f
+2098820f
+2098824f
+
+# SIMD Modified Immediate — Stage 3C
+2004000f
+2024004f
+40e5056f
+2004002f
+2014000f
+2014002f
+01f6030f
+1ff6036f

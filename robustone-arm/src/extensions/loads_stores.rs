@@ -2,7 +2,9 @@
 
 use crate::extensions::DecodeResult;
 use crate::shared::encoding::*;
-use crate::shared::registers::{gpr_name, reg_operand, RegContext};
+use crate::shared::registers::{
+    arrangement_suffix, fp_simd_reg_name, gpr_name, reg_operand, FpRegSize, RegContext,
+};
 use crate::types::*;
 use robustone_core::ir::Operand;
 use robustone_core::types::error::{DecodeErrorKind, DisasmError};
@@ -60,11 +62,7 @@ pub fn decode_loads_stores(word: u32, addr: u64) -> DecodeResult {
         }
         0x6 => {
             // SIMD/FP loads/stores, lower half — Stage 3
-            Err(DisasmError::decode_failure(
-                DecodeErrorKind::UnimplementedInstruction,
-                Some("aarch64".to_string()),
-                "SIMD/FP loads/stores not in stage 2",
-            ))
+            decode_simd_fp_loads_stores(word, addr, op0_val)
         }
         0xC => {
             // GPR loads/stores, upper half (V=0)
@@ -103,11 +101,12 @@ pub fn decode_loads_stores(word: u32, addr: u64) -> DecodeResult {
         }
         0xE => {
             // SIMD/FP loads/stores, upper half — Stage 3
-            Err(DisasmError::decode_failure(
-                DecodeErrorKind::UnimplementedInstruction,
-                Some("aarch64".to_string()),
-                "SIMD/FP loads/stores not in stage 2",
-            ))
+            if b29 == 0 && b24 == 0 {
+                // SIMD/FP load literal (same encoding pattern as GPR literal)
+                decode_load_literal(word, addr)
+            } else {
+                decode_simd_fp_loads_stores(word, addr, op0_val)
+            }
         }
         _ => unreachable!(),
     }
@@ -232,10 +231,39 @@ fn decode_load_literal(word: u32, addr: u64) -> DecodeResult {
 
     if v == 1 {
         // SIMD/FP literal load — Stage 3
-        return Err(DisasmError::decode_failure(
-            DecodeErrorKind::UnimplementedInstruction,
-            Some("aarch64".to_string()),
-            "SIMD/FP load literal not in stage 2",
+        // size (bits 31:30) determines register size: 00=S, 01=D, 10=reserved, 11=Q
+        let fp_size = match size {
+            0b00 => FpRegSize::S,
+            0b01 => FpRegSize::D,
+            0b10 => {
+                return Err(DisasmError::decode_failure(
+                    DecodeErrorKind::InvalidEncoding,
+                    Some("aarch64".to_string()),
+                    "reserved SIMD/FP load literal encoding",
+                ));
+            }
+            0b11 => FpRegSize::Q,
+            _ => unreachable!(),
+        };
+
+        let target_text = if (0..10).contains(&target) {
+            format!("{target}")
+        } else if target >= 0 {
+            format!("0x{target:x}")
+        } else {
+            format!("0x{:x}", target as u64)
+        };
+
+        return Ok((
+            Mnemonic::Ldr,
+            vec![
+                Operand::Text {
+                    value: fp_simd_reg_name(rt_val, fp_size).to_string(),
+                },
+                Operand::Text {
+                    value: target_text,
+                },
+            ],
         ));
     }
 
@@ -275,6 +303,394 @@ fn decode_load_literal(word: u32, addr: u64) -> DecodeResult {
             value: target_text,
         }],
     ))
+}
+
+// ---------------------------------------------------------------------------
+// SIMD/FP loads/stores (op0 = 0x6 / 0xE)
+// ---------------------------------------------------------------------------
+
+/// Decode SIMD/FP loads and stores.
+///
+/// Classification within op0=0x6/0xE:
+/// - bit29=0, bit24=0, bit23=0: structure loads/stores (LD1-LD4 / ST1-ST4)
+/// - bit29=0, bit24=0, bit23=1: single-register, immediate post/pre-indexed
+/// - bit29=0, bit24=1: single-register, unsigned immediate
+/// - bit29=1: pair loads/stores (LDP/STP for FP/SIMD)
+fn decode_simd_fp_loads_stores(word: u32, _addr: u64, op0_val: u8) -> DecodeResult {
+    let b29 = bit(word, 29);
+    let b24 = bit(word, 24);
+
+    match op0_val {
+        0x6 => {
+            // SIMD/FP loads/stores, lower half
+            if b29 == 1 {
+                decode_simd_fp_load_store_pair(word)
+            } else if b24 == 0 {
+                if bit(word, 23) == 0 {
+                    decode_simd_fp_structure(word)
+                } else {
+                    Err(DisasmError::decode_failure(
+                        DecodeErrorKind::UnimplementedInstruction,
+                        Some("aarch64".to_string()),
+                        "SIMD/FP single-element structure not in stage 3A",
+                    ))
+                }
+            } else {
+                Err(DisasmError::decode_failure(
+                    DecodeErrorKind::InvalidEncoding,
+                    Some("aarch64".to_string()),
+                    "invalid SIMD/FP lower-half encoding",
+                ))
+            }
+        }
+        0xE => {
+            // SIMD/FP loads/stores, upper half
+            // b29=0, b24=0 is handled in decode_loads_stores (literal loads)
+            if b29 == 1 {
+                if b24 == 0 {
+                    decode_simd_fp_single_immediate(word)
+                } else {
+                    decode_simd_fp_single_unsigned_imm(word)
+                }
+            } else {
+                Err(DisasmError::decode_failure(
+                    DecodeErrorKind::InvalidEncoding,
+                    Some("aarch64".to_string()),
+                    "invalid SIMD/FP upper-half encoding",
+                ))
+            }
+        }
+        _ => unreachable!(),
+    }
+}
+
+/// Decode SIMD/FP structure loads/stores (LD1-LD4 / ST1-ST4).
+///
+/// Encoding: bit29=0, bit24=0, bit23=0.
+/// - bits 15:13 = opcode
+/// - bits 11:10 = len (number of registers - 1)
+/// - bit 22 = L (load=1/store=0)
+/// - bit 30 = Q (vector width)
+/// - bits 31:30 = size (element size)
+fn decode_simd_fp_structure(word: u32) -> DecodeResult {
+    let opcode = bits(word, 15, 12) as u8;
+    let l = bit(word, 22);
+    let q = bit(word, 30);
+    let size = bits(word, 11, 10) as u8;
+    let rt_val = rt(word);
+    let rn_val = rn(word);
+
+    // Multiple structures: bit 21 must be 0
+    if bit(word, 21) == 1 {
+        return Err(DisasmError::decode_failure(
+            DecodeErrorKind::UnimplementedInstruction,
+            Some("aarch64".to_string()),
+            "SIMD/FP single-element structure not in stage 3A",
+        ));
+    }
+
+    // Opcode determines both the mnemonic and the register count.
+    // See ARM ARM Table C4-281 (AdvSIMD load/store multiple structures).
+    let (mnemonic, reg_count) = match (opcode, l) {
+        (0x0, 1) => (Mnemonic::Ld4, 4),
+        (0x0, 0) => (Mnemonic::St4, 4),
+        (0x2, 1) => (Mnemonic::Ld1, 4),
+        (0x2, 0) => (Mnemonic::St1, 4),
+        (0x4, 1) => (Mnemonic::Ld3, 3),
+        (0x4, 0) => (Mnemonic::St3, 3),
+        (0x6, 1) => (Mnemonic::Ld1, 3),
+        (0x6, 0) => (Mnemonic::St1, 3),
+        (0x7, 1) => (Mnemonic::Ld1, 1),
+        (0x7, 0) => (Mnemonic::St1, 1),
+        (0x8, 1) => (Mnemonic::Ld2, 2),
+        (0x8, 0) => (Mnemonic::St2, 2),
+        (0xA, 1) => (Mnemonic::Ld1, 2),
+        (0xA, 0) => (Mnemonic::St1, 2),
+        _ => {
+            return Err(DisasmError::decode_failure(
+                DecodeErrorKind::UnimplementedInstruction,
+                Some("aarch64".to_string()),
+                "unsupported SIMD/FP structure opcode",
+            ));
+        }
+    };
+
+    let suffix = arrangement_suffix(size, q);
+
+    // Build register list: { v0.16b, v1.16b, v2.16b, v3.16b }
+    let mut reg_list = String::new();
+    reg_list.push_str("{ ");
+    for i in 0..reg_count {
+        if i > 0 {
+            reg_list.push_str(", ");
+        }
+        let reg_name = fp_simd_reg_name((rt_val + i as u8) & 0x1F, FpRegSize::V);
+        reg_list.push_str(reg_name);
+        reg_list.push_str(suffix);
+    }
+    reg_list.push_str(" }");
+
+    let base_name = gpr_name(rn_val, false, RegContext::LoadStore);
+    let addr = format!("[{base_name}]");
+
+    Ok((
+        mnemonic,
+        vec![
+            Operand::Text { value: reg_list },
+            Operand::Text { value: addr },
+        ],
+    ))
+}
+
+/// Decode SIMD/FP pair loads/stores (LDP/STP for FP/SIMD registers).
+///
+/// Similar to GPR pair but with V=1. Encoding: bit29=1.
+/// - size (bits 31:30) determines element size
+/// - opc (bits 23:22) for 128-bit
+/// - bit24=0,bit23=0 → no-allocate (STNP/LDNP)
+/// - bit24=0,bit23=1 → post-indexed
+/// - bit24=1,bit23=0 → signed offset
+/// - bit24=1,bit23=1 → pre-indexed
+fn decode_simd_fp_load_store_pair(word: u32) -> DecodeResult {
+    let size = bits(word, 31, 30);
+    let l = bit(word, 22);
+    let imm7 = ((word >> 15) & 0x7F) as i64;
+    let rt_val = rt(word);
+    let rt2_val = bits(word, 14, 10) as u8;
+    let rn_val = rn(word);
+    let index_mode = bits(word, 24, 23);
+
+    // For SIMD/FP pair, size determines the scale:
+    // size=0b00: 32-bit (S), scale=2
+    // size=0b01: 64-bit (D), scale=3
+    // size=0b10: 128-bit (Q), scale=4
+    // size=0b11: reserved
+    let (fp_size, scale) = match size {
+        0b00 => (FpRegSize::S, 2),
+        0b01 => (FpRegSize::D, 3),
+        0b10 => (FpRegSize::Q, 4),
+        0b11 => {
+            return Err(DisasmError::decode_failure(
+                DecodeErrorKind::InvalidEncoding,
+                Some("aarch64".to_string()),
+                "reserved SIMD/FP pair encoding",
+            ));
+        }
+        _ => unreachable!(),
+    };
+
+    let imm = if (imm7 & 0x40) != 0 {
+        (imm7 | !0x7F) << scale
+    } else {
+        imm7 << scale
+    };
+
+    let mnemonic = if index_mode == 0b00 {
+        if l == 1 {
+            Mnemonic::Ldnp
+        } else {
+            Mnemonic::Stnp
+        }
+    } else if l == 1 {
+        Mnemonic::Ldp
+    } else {
+        Mnemonic::Stp
+    };
+
+    let is_post_index = index_mode == 0b01;
+    let is_pre_index = index_mode == 0b11;
+
+    if is_post_index {
+        Ok((
+            mnemonic,
+            vec![
+                Operand::Text {
+                    value: fp_simd_reg_name(rt_val, fp_size).to_string(),
+                },
+                Operand::Text {
+                    value: fp_simd_reg_name(rt2_val, fp_size).to_string(),
+                },
+                addr_text(rn_val, 0, false, false, None, None),
+                Operand::Immediate { value: imm },
+            ],
+        ))
+    } else if is_pre_index {
+        Ok((
+            mnemonic,
+            vec![
+                Operand::Text {
+                    value: fp_simd_reg_name(rt_val, fp_size).to_string(),
+                },
+                Operand::Text {
+                    value: fp_simd_reg_name(rt2_val, fp_size).to_string(),
+                },
+                addr_text(rn_val, imm, true, false, None, None),
+            ],
+        ))
+    } else {
+        // Signed offset (or no-allocate with offset 0)
+        Ok((
+            mnemonic,
+            vec![
+                Operand::Text {
+                    value: fp_simd_reg_name(rt_val, fp_size).to_string(),
+                },
+                Operand::Text {
+                    value: fp_simd_reg_name(rt2_val, fp_size).to_string(),
+                },
+                addr_text(rn_val, imm, false, false, None, None),
+            ],
+        ))
+    }
+}
+
+/// Decode SIMD/FP single-register loads/stores with unsigned immediate.
+///
+/// Encoding: op0=0x6/0xE, bit29=0, bit24=1.
+/// - size determines register size (S/D/Q)
+/// - imm12 is scaled by size
+fn decode_simd_fp_single_unsigned_imm(word: u32) -> DecodeResult {
+    let size = bits(word, 31, 30);
+    let l = bit(word, 22);
+    let imm12 = ((word >> 10) & 0xFFF) as i64;
+    let rn_val = rn(word);
+    let rt_val = rt(word);
+
+    // Size encodes element width: 00=B, 01=H, 10=S, 11=D (not Q — Q is pair-only).
+    let (fp_size, scale) = match size {
+        0b00 => (FpRegSize::B, 0),
+        0b01 => (FpRegSize::H, 1),
+        0b10 => (FpRegSize::S, 2),
+        0b11 => (FpRegSize::D, 3),
+        _ => unreachable!(),
+    };
+
+    let imm = imm12 << scale;
+    let mnemonic = if l == 1 { Mnemonic::Ldr } else { Mnemonic::Str };
+
+    Ok((
+        mnemonic,
+        vec![
+            Operand::Text {
+                value: fp_simd_reg_name(rt_val, fp_size).to_string(),
+            },
+            addr_text(rn_val, imm, false, false, None, None),
+        ],
+    ))
+}
+
+/// Decode SIMD/FP single-register loads/stores with immediate post/pre/unscaled.
+///
+/// Encoding: op0=0x6/0xE, bit29=0, bit24=0, bit23=1.
+/// Also covers register offset when bit21=1.
+fn decode_simd_fp_single_immediate(word: u32) -> DecodeResult {
+    let size = bits(word, 31, 30);
+    let l = bit(word, 22);
+    let b21 = bit(word, 21);
+    let rn_val = rn(word);
+    let rt_val = rt(word);
+
+    // Size encodes element width: 00=B, 01=H, 10=S, 11=D (not Q — Q is pair-only).
+    let fp_size = match size {
+        0b00 => FpRegSize::B,
+        0b01 => FpRegSize::H,
+        0b10 => FpRegSize::S,
+        0b11 => FpRegSize::D,
+        _ => unreachable!(),
+    };
+
+    if b21 == 1 {
+        // Register offset: bits 11:10 must be 0b10
+        if bits(word, 11, 10) != 0b10 {
+            return Err(DisasmError::decode_failure(
+                DecodeErrorKind::InvalidEncoding,
+                Some("aarch64".to_string()),
+                "invalid SIMD/FP register offset encoding",
+            ));
+        }
+        let rm_val = rm(word);
+        let option = bits(word, 15, 13);
+        let s = bit(word, 12);
+        let extend = decode_reg_offset_extend(option, s, size);
+        let mnemonic = if l == 1 { Mnemonic::Ldr } else { Mnemonic::Str };
+
+        return Ok((
+            mnemonic,
+            vec![
+                Operand::Text {
+                    value: fp_simd_reg_name(rt_val, fp_size).to_string(),
+                },
+                addr_text(rn_val, 0, false, false, Some(rm_val), extend.as_deref()),
+            ],
+        ));
+    }
+
+    // Immediate: unscaled (00), post-indexed (01), unprivileged (10), pre-indexed (11)
+    let index_mode = bits(word, 11, 10);
+    let imm9 = ((word >> 12) & 0x1FF) as i64;
+    let imm = if (imm9 & 0x100) != 0 {
+        imm9 | !0x1FF
+    } else {
+        imm9
+    };
+
+    if index_mode == 0b10 {
+        return Err(DisasmError::decode_failure(
+            DecodeErrorKind::UnimplementedInstruction,
+            Some("aarch64".to_string()),
+            "SIMD/FP unprivileged load/store not in stage 3A",
+        ));
+    }
+
+    let is_pre_index = index_mode == 0b11;
+    let is_post_index = index_mode == 0b01;
+    let is_unscaled = index_mode == 0b00;
+
+    let mnemonic = if is_unscaled {
+        if l == 1 {
+            Mnemonic::Ldur
+        } else {
+            Mnemonic::Stur
+        }
+    } else if l == 1 {
+        Mnemonic::Ldr
+    } else {
+        Mnemonic::Str
+    };
+
+    if is_post_index {
+        Ok((
+            mnemonic,
+            vec![
+                Operand::Text {
+                    value: fp_simd_reg_name(rt_val, fp_size).to_string(),
+                },
+                addr_text(rn_val, 0, false, false, None, None),
+                Operand::Immediate { value: imm },
+            ],
+        ))
+    } else if is_pre_index {
+        Ok((
+            mnemonic,
+            vec![
+                Operand::Text {
+                    value: fp_simd_reg_name(rt_val, fp_size).to_string(),
+                },
+                addr_text(rn_val, imm, true, false, None, None),
+            ],
+        ))
+    } else {
+        // Unscaled immediate (LDUR/STUR)
+        Ok((
+            mnemonic,
+            vec![
+                Operand::Text {
+                    value: fp_simd_reg_name(rt_val, fp_size).to_string(),
+                },
+                addr_text(rn_val, imm, false, false, None, None),
+            ],
+        ))
+    }
 }
 
 // ---------------------------------------------------------------------------
