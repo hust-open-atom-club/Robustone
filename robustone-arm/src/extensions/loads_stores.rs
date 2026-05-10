@@ -152,7 +152,7 @@ fn decode_load_store_exclusive(word: u32) -> DecodeResult {
         if is_store {
             // STXR Ws, Rt, [Xn]
             // Ws is always a 32-bit register regardless of size
-            let ws_text = gpr_name(rs, true, RegContext::DataProc);
+            let ws_text = gpr_name(rs, true, RegContext::DataProc).unwrap_or("?");
             Ok((
                 mnemonic,
                 vec![
@@ -185,7 +185,7 @@ fn decode_load_store_exclusive(word: u32) -> DecodeResult {
         if is_store {
             // STXP Ws, Rt, Rt2, [Xn]
             // Ws is always a 32-bit register regardless of size
-            let ws_text = gpr_name(rs, true, RegContext::DataProc);
+            let ws_text = gpr_name(rs, true, RegContext::DataProc).unwrap_or("?");
             Ok((
                 mnemonic,
                 vec![
@@ -258,7 +258,7 @@ fn decode_load_literal(word: u32, addr: u64) -> DecodeResult {
             Mnemonic::Ldr,
             vec![
                 Operand::Text {
-                    value: fp_simd_reg_name(rt_val, fp_size).to_string(),
+                    value: fp_simd_reg_name(rt_val, fp_size).unwrap_or("?").to_string(),
                 },
                 Operand::Text {
                     value: target_text,
@@ -415,7 +415,7 @@ fn decode_simd_fp_structure(word: u32) -> DecodeResult {
         }
     };
 
-    let suffix = arrangement_suffix(size, q);
+    let suffix = arrangement_suffix(size, q).unwrap_or("?");
 
     // Build register list: { v0.16b, v1.16b, v2.16b, v3.16b }
     let mut reg_list = String::new();
@@ -424,13 +424,13 @@ fn decode_simd_fp_structure(word: u32) -> DecodeResult {
         if i > 0 {
             reg_list.push_str(", ");
         }
-        let reg_name = fp_simd_reg_name((rt_val + i as u8) & 0x1F, FpRegSize::V);
+        let reg_name = fp_simd_reg_name((rt_val + i as u8) & 0x1F, FpRegSize::V).unwrap_or("?");
         reg_list.push_str(reg_name);
         reg_list.push_str(suffix);
     }
     reg_list.push_str(" }");
 
-    let base_name = gpr_name(rn_val, false, RegContext::LoadStore);
+    let base_name = gpr_name(rn_val, false, RegContext::LoadStore).unwrap_or("?");
     let addr = format!("[{base_name}]");
 
     Ok((
@@ -505,10 +505,10 @@ fn decode_simd_fp_load_store_pair(word: u32) -> DecodeResult {
             mnemonic,
             vec![
                 Operand::Text {
-                    value: fp_simd_reg_name(rt_val, fp_size).to_string(),
+                    value: fp_simd_reg_name(rt_val, fp_size).unwrap_or("?").to_string(),
                 },
                 Operand::Text {
-                    value: fp_simd_reg_name(rt2_val, fp_size).to_string(),
+                    value: fp_simd_reg_name(rt2_val, fp_size).unwrap_or("?").to_string(),
                 },
                 addr_text(rn_val, 0, false, false, None, None),
                 Operand::Immediate { value: imm },
@@ -519,10 +519,10 @@ fn decode_simd_fp_load_store_pair(word: u32) -> DecodeResult {
             mnemonic,
             vec![
                 Operand::Text {
-                    value: fp_simd_reg_name(rt_val, fp_size).to_string(),
+                    value: fp_simd_reg_name(rt_val, fp_size).unwrap_or("?").to_string(),
                 },
                 Operand::Text {
-                    value: fp_simd_reg_name(rt2_val, fp_size).to_string(),
+                    value: fp_simd_reg_name(rt2_val, fp_size).unwrap_or("?").to_string(),
                 },
                 addr_text(rn_val, imm, true, false, None, None),
             ],
@@ -533,10 +533,10 @@ fn decode_simd_fp_load_store_pair(word: u32) -> DecodeResult {
             mnemonic,
             vec![
                 Operand::Text {
-                    value: fp_simd_reg_name(rt_val, fp_size).to_string(),
+                    value: fp_simd_reg_name(rt_val, fp_size).unwrap_or("?").to_string(),
                 },
                 Operand::Text {
-                    value: fp_simd_reg_name(rt2_val, fp_size).to_string(),
+                    value: fp_simd_reg_name(rt2_val, fp_size).unwrap_or("?").to_string(),
                 },
                 addr_text(rn_val, imm, false, false, None, None),
             ],
@@ -572,7 +572,7 @@ fn decode_simd_fp_single_unsigned_imm(word: u32) -> DecodeResult {
         mnemonic,
         vec![
             Operand::Text {
-                value: fp_simd_reg_name(rt_val, fp_size).to_string(),
+                value: fp_simd_reg_name(rt_val, fp_size).unwrap_or("?").to_string(),
             },
             addr_text(rn_val, imm, false, false, None, None),
         ],
@@ -618,7 +618,7 @@ fn decode_simd_fp_single_immediate(word: u32) -> DecodeResult {
             mnemonic,
             vec![
                 Operand::Text {
-                    value: fp_simd_reg_name(rt_val, fp_size).to_string(),
+                    value: fp_simd_reg_name(rt_val, fp_size).unwrap_or("?").to_string(),
                 },
                 addr_text(rn_val, 0, false, false, Some(rm_val), extend.as_deref()),
             ],
@@ -663,7 +663,7 @@ fn decode_simd_fp_single_immediate(word: u32) -> DecodeResult {
             mnemonic,
             vec![
                 Operand::Text {
-                    value: fp_simd_reg_name(rt_val, fp_size).to_string(),
+                    value: fp_simd_reg_name(rt_val, fp_size).unwrap_or("?").to_string(),
                 },
                 addr_text(rn_val, 0, false, false, None, None),
                 Operand::Immediate { value: imm },
@@ -674,7 +674,7 @@ fn decode_simd_fp_single_immediate(word: u32) -> DecodeResult {
             mnemonic,
             vec![
                 Operand::Text {
-                    value: fp_simd_reg_name(rt_val, fp_size).to_string(),
+                    value: fp_simd_reg_name(rt_val, fp_size).unwrap_or("?").to_string(),
                 },
                 addr_text(rn_val, imm, true, false, None, None),
             ],
@@ -685,7 +685,7 @@ fn decode_simd_fp_single_immediate(word: u32) -> DecodeResult {
             mnemonic,
             vec![
                 Operand::Text {
-                    value: fp_simd_reg_name(rt_val, fp_size).to_string(),
+                    value: fp_simd_reg_name(rt_val, fp_size).unwrap_or("?").to_string(),
                 },
                 addr_text(rn_val, imm, false, false, None, None),
             ],
@@ -1128,10 +1128,10 @@ fn addr_text(
     reg_offset: Option<u8>,
     extend: Option<&str>,
 ) -> Operand {
-    let base_name = gpr_name(base, false, RegContext::LoadStore);
+    let base_name = gpr_name(base, false, RegContext::LoadStore).unwrap_or("?");
 
     let text = if let Some(reg_off) = reg_offset {
-        let offset_name = gpr_name(reg_off, false, RegContext::DataProc);
+        let offset_name = gpr_name(reg_off, false, RegContext::DataProc).unwrap_or("?");
         if let Some(ext) = extend {
             format!("[{base_name}, {offset_name}, {ext}]")
         } else {

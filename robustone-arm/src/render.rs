@@ -75,7 +75,9 @@ fn format_operand(
             // Determine register size from mnemonic context or raw bytes
             let is_32bit = is_32bit_mnemonic(_mnemonic, instruction);
             let context = reg_context_for_mnemonic(_mnemonic);
-            gpr_name(register.id as u8, is_32bit, context).to_string()
+            gpr_name(register.id as u8, is_32bit, context)
+                .unwrap_or("?")
+                .to_string()
         }
         Operand::Immediate { value } => {
             if unsigned_imm && *value < 0 {
@@ -90,7 +92,7 @@ fn format_operand(
         Operand::Memory { base, displacement } => {
             use crate::shared::registers::gpr_name;
             let base_name = base
-                .map(|b| {
+                .and_then(|b| {
                     gpr_name(
                         b.id as u8,
                         false,

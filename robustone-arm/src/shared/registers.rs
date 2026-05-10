@@ -20,18 +20,18 @@ pub enum RegContext {
 /// Get the name of a general-purpose register.
 /// `is_32bit` selects W* vs X* naming.
 /// `context` determines whether R31 is ZR/SP or WZR/WSP.
-pub fn gpr_name(reg: u8, is_32bit: bool, context: RegContext) -> &'static str {
+pub fn gpr_name(reg: u8, is_32bit: bool, context: RegContext) -> Option<&'static str> {
     if reg >= 31 {
-        return match (is_32bit, context) {
+        return Some(match (is_32bit, context) {
             (false, RegContext::LoadStore) | (false, RegContext::AddSub) => "sp",
             (false, _) => "xzr",
             (true, RegContext::LoadStore) | (true, RegContext::AddSub) => "wsp",
             (true, _) => "wzr",
-        };
+        });
     }
 
     if is_32bit {
-        match reg {
+        Some(match reg {
             0 => "w0",
             1 => "w1",
             2 => "w2",
@@ -63,10 +63,10 @@ pub fn gpr_name(reg: u8, is_32bit: bool, context: RegContext) -> &'static str {
             28 => "w28",
             29 => "w29",
             30 => "w30",
-            _ => unreachable!(),
-        }
+            _ => return None,
+        })
     } else {
-        match reg {
+        Some(match reg {
             0 => "x0",
             1 => "x1",
             2 => "x2",
@@ -98,8 +98,8 @@ pub fn gpr_name(reg: u8, is_32bit: bool, context: RegContext) -> &'static str {
             28 => "x28",
             29 => "x29",
             30 => "x30",
-            _ => unreachable!(),
-        }
+            _ => return None,
+        })
     }
 }
 
@@ -129,8 +129,11 @@ pub enum FpRegSize {
 }
 
 /// Get the name of a scalar FP/SIMD register.
-pub fn fp_simd_reg_name(reg: u8, size: FpRegSize) -> &'static str {
-    match size {
+pub fn fp_simd_reg_name(reg: u8, size: FpRegSize) -> Option<&'static str> {
+    if reg > 31 {
+        return None;
+    }
+    Some(match size {
         FpRegSize::B => match reg {
             0 => "b0", 1 => "b1", 2 => "b2", 3 => "b3", 4 => "b4",
             5 => "b5", 6 => "b6", 7 => "b7", 8 => "b8", 9 => "b9",
@@ -140,7 +143,7 @@ pub fn fp_simd_reg_name(reg: u8, size: FpRegSize) -> &'static str {
             22 => "b22", 23 => "b23", 24 => "b24", 25 => "b25",
             26 => "b26", 27 => "b27", 28 => "b28", 29 => "b29",
             30 => "b30", 31 => "b31",
-            _ => unreachable!(),
+            _ => return None,
         },
         FpRegSize::H => match reg {
             0 => "h0", 1 => "h1", 2 => "h2", 3 => "h3", 4 => "h4",
@@ -151,7 +154,7 @@ pub fn fp_simd_reg_name(reg: u8, size: FpRegSize) -> &'static str {
             22 => "h22", 23 => "h23", 24 => "h24", 25 => "h25",
             26 => "h26", 27 => "h27", 28 => "h28", 29 => "h29",
             30 => "h30", 31 => "h31",
-            _ => unreachable!(),
+            _ => return None,
         },
         FpRegSize::S => match reg {
             0 => "s0", 1 => "s1", 2 => "s2", 3 => "s3", 4 => "s4",
@@ -162,7 +165,7 @@ pub fn fp_simd_reg_name(reg: u8, size: FpRegSize) -> &'static str {
             22 => "s22", 23 => "s23", 24 => "s24", 25 => "s25",
             26 => "s26", 27 => "s27", 28 => "s28", 29 => "s29",
             30 => "s30", 31 => "s31",
-            _ => unreachable!(),
+            _ => return None,
         },
         FpRegSize::D => match reg {
             0 => "d0", 1 => "d1", 2 => "d2", 3 => "d3", 4 => "d4",
@@ -173,7 +176,7 @@ pub fn fp_simd_reg_name(reg: u8, size: FpRegSize) -> &'static str {
             22 => "d22", 23 => "d23", 24 => "d24", 25 => "d25",
             26 => "d26", 27 => "d27", 28 => "d28", 29 => "d29",
             30 => "d30", 31 => "d31",
-            _ => unreachable!(),
+            _ => return None,
         },
         FpRegSize::Q => match reg {
             0 => "q0", 1 => "q1", 2 => "q2", 3 => "q3", 4 => "q4",
@@ -184,7 +187,7 @@ pub fn fp_simd_reg_name(reg: u8, size: FpRegSize) -> &'static str {
             22 => "q22", 23 => "q23", 24 => "q24", 25 => "q25",
             26 => "q26", 27 => "q27", 28 => "q28", 29 => "q29",
             30 => "q30", 31 => "q31",
-            _ => unreachable!(),
+            _ => return None,
         },
         FpRegSize::V => match reg {
             0 => "v0", 1 => "v1", 2 => "v2", 3 => "v3", 4 => "v4",
@@ -195,24 +198,24 @@ pub fn fp_simd_reg_name(reg: u8, size: FpRegSize) -> &'static str {
             22 => "v22", 23 => "v23", 24 => "v24", 25 => "v25",
             26 => "v26", 27 => "v27", 28 => "v28", 29 => "v29",
             30 => "v30", 31 => "v31",
-            _ => unreachable!(),
+            _ => return None,
         },
-    }
+    })
 }
 
 /// Vector arrangement suffix from size:Q bits.
 /// Returns e.g. ".8b", ".4h", ".2s", ".1d", ".16b", ".8h", ".4s", ".2d"
-pub fn arrangement_suffix(size: u8, q: bool) -> &'static str {
+pub fn arrangement_suffix(size: u8, q: bool) -> Option<&'static str> {
     match (size, q) {
-        (0b00, false) => ".8b",
-        (0b00, true) => ".16b",
-        (0b01, false) => ".4h",
-        (0b01, true) => ".8h",
-        (0b10, false) => ".2s",
-        (0b10, true) => ".4s",
-        (0b11, false) => ".1d",
-        (0b11, true) => ".2d",
-        _ => unreachable!(),
+        (0b00, false) => Some(".8b"),
+        (0b00, true) => Some(".16b"),
+        (0b01, false) => Some(".4h"),
+        (0b01, true) => Some(".8h"),
+        (0b10, false) => Some(".2s"),
+        (0b10, true) => Some(".4s"),
+        (0b11, false) => Some(".1d"),
+        (0b11, true) => Some(".2d"),
+        _ => None,
     }
 }
 
@@ -223,7 +226,7 @@ pub fn ftype_to_size(ftype: u8) -> Option<FpRegSize> {
         0b01 => Some(FpRegSize::D),
         0b10 => Some(FpRegSize::H),
         0b11 => Some(FpRegSize::B),
-        _ => unreachable!(),
+        _ => None,
     }
 }
 
@@ -240,13 +243,14 @@ mod tests {
 
     #[test]
     fn test_gpr_names() {
-        assert_eq!(gpr_name(0, false, RegContext::DataProc), "x0");
-        assert_eq!(gpr_name(0, true, RegContext::DataProc), "w0");
-        assert_eq!(gpr_name(30, false, RegContext::DataProc), "x30");
-        assert_eq!(gpr_name(31, false, RegContext::DataProc), "xzr");
-        assert_eq!(gpr_name(31, false, RegContext::LoadStore), "sp");
-        assert_eq!(gpr_name(31, true, RegContext::DataProc), "wzr");
-        assert_eq!(gpr_name(31, true, RegContext::LoadStore), "wsp");
+        assert_eq!(gpr_name(0, false, RegContext::DataProc), Some("x0"));
+        assert_eq!(gpr_name(0, true, RegContext::DataProc), Some("w0"));
+        assert_eq!(gpr_name(30, false, RegContext::DataProc), Some("x30"));
+        assert_eq!(gpr_name(31, false, RegContext::DataProc), Some("xzr"));
+        assert_eq!(gpr_name(31, false, RegContext::LoadStore), Some("sp"));
+        assert_eq!(gpr_name(31, true, RegContext::DataProc), Some("wzr"));
+        assert_eq!(gpr_name(31, true, RegContext::LoadStore), Some("wsp"));
+        assert_eq!(gpr_name(255, false, RegContext::DataProc), Some("xzr"));
     }
 
     #[test]

@@ -582,13 +582,13 @@ fn decode_fp_conversion(word: u32) -> DecodeResult {
 /// Create a register operand for an FP/SIMD register.
 fn fp_reg_operand(reg: u8, size: FpRegSize) -> Operand {
     Operand::Text {
-        value: fp_simd_reg_name(reg, size).to_string(),
+        value: fp_simd_reg_name(reg, size).unwrap_or("?").to_string(),
     }
 }
 
 /// Create a vector register operand with arrangement suffix.
 fn vec_reg_operand(reg: u8, size: u8, q: bool) -> Operand {
-    let suffix = arrangement_suffix(size, q);
+    let suffix = arrangement_suffix(size, q).unwrap_or("?");
     Operand::Text {
         value: format!("v{}{}", reg, suffix),
     }
@@ -1094,7 +1094,7 @@ fn decode_simd_copy(word: u32) -> DecodeResult {
         )
     })?;
 
-    let arr_suffix = arrangement_suffix(arr_size, q);
+    let arr_suffix = arrangement_suffix(arr_size, q).unwrap_or("?");
     let vec_elem = format!("v{}.{elem_char}[{index}]", rn_val);
 
     // Advanced SIMD copy is discriminated by Q, op, and imm4.
@@ -1617,24 +1617,24 @@ fn decode_simd_shift_imm(word: u32) -> DecodeResult {
     // Build operands
     let dest_arr = if is_narrowing {
         // Narrowing: immh encodes dest element size, src is double
-        arrangement_suffix(size, q)
+        arrangement_suffix(size, q).unwrap_or("?")
     } else if is_long {
         // Widening: dest is always 128-bit, element is double source
-        arrangement_suffix(size + 1, true)
+        arrangement_suffix(size + 1, true).unwrap_or("?")
     } else {
         // Same-size: dest arrangement matches source
-        arrangement_suffix(size, q)
+        arrangement_suffix(size, q).unwrap_or("?")
     };
 
     let src_arr = if is_narrowing {
         // Narrowing: source element is double dest, always 128-bit
-        arrangement_suffix(size + 1, true)
+        arrangement_suffix(size + 1, true).unwrap_or("?")
     } else if is_long {
         // Widening: source arrangement uses Q as encoded
-        arrangement_suffix(size, q)
+        arrangement_suffix(size, q).unwrap_or("?")
     } else {
         // Same-size
-        arrangement_suffix(size, q)
+        arrangement_suffix(size, q).unwrap_or("?")
     };
 
     // Map mnemonic string back to enum for narrowing/long Q=1 variants
@@ -1781,7 +1781,7 @@ fn decode_simd_indexed_element(word: u32) -> DecodeResult {
         // ARMv8.2-FP16 fmlal/fmlal2/fmlsl/fmlsl2:
         // dest is .2s/.4s (single), src is .2h/.4h (half), element is h
         (
-            arrangement_suffix(0b10, q), // .2s or .4s
+            arrangement_suffix(0b10, q).unwrap_or("?"), // .2s or .4s
             if !q { ".2h" } else { ".4h" },
             'h',
         )
@@ -1789,8 +1789,8 @@ fn decode_simd_indexed_element(word: u32) -> DecodeResult {
         // FP: size=00 is FP16, which uses 'h' arrangement
         let arr_size = if size == 0b00 { 0b01 } else { size };
         (
-            arrangement_suffix(arr_size, q),
-            arrangement_suffix(arr_size, q),
+            arrangement_suffix(arr_size, q).unwrap_or("?"),
+            arrangement_suffix(arr_size, q).unwrap_or("?"),
             match size {
                 0b00 => 'h',
                 0b10 => 's',
@@ -1808,8 +1808,8 @@ fn decode_simd_indexed_element(word: u32) -> DecodeResult {
         // Long multiply: dest is wider, src is normal size
         let dest_size = size + 1;
         (
-            arrangement_suffix(dest_size, true), // Always 128-bit result
-            arrangement_suffix(size, q),
+            arrangement_suffix(dest_size, true).unwrap_or("?"), // Always 128-bit result
+            arrangement_suffix(size, q).unwrap_or("?"),
             match size {
                 0b01 => 'h',
                 0b10 => 's',
@@ -1825,8 +1825,8 @@ fn decode_simd_indexed_element(word: u32) -> DecodeResult {
     } else {
         // Integer same-width
         (
-            arrangement_suffix(size, q),
-            arrangement_suffix(size, q),
+            arrangement_suffix(size, q).unwrap_or("?"),
+            arrangement_suffix(size, q).unwrap_or("?"),
             match size {
                 0b00 => 'b',
                 0b01 => 'h',
@@ -2146,7 +2146,7 @@ fn decode_simd_three_different(word: u32) -> DecodeResult {
     // Helper to build vector register text operand
     let vec = |reg: u8, sz: u8, qbit: bool| -> Operand {
         Operand::Text {
-            value: format!("v{}{}", reg, arrangement_suffix(sz, qbit)),
+            value: format!("v{}{}", reg, arrangement_suffix(sz, qbit).unwrap_or("?")),
         }
     };
 
@@ -2377,7 +2377,7 @@ fn decode_simd_permute_table(word: u32) -> DecodeResult {
     // Advanced SIMD permute: UZP1, TRN1, ZIP1, UZP2, TRN2, ZIP2
     let size = simd_size(word);
     let opcode = bits(word, 14, 12) as u8;
-    let arr_suffix = arrangement_suffix(size, q);
+    let arr_suffix = arrangement_suffix(size, q).unwrap_or("?");
 
     let mnemonic = match opcode {
         0b001 => Mnemonic::Uzp1,
