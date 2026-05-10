@@ -218,7 +218,7 @@ fn decode_load_store_exclusive(word: u32) -> DecodeResult {
 fn decode_load_literal(word: u32, addr: u64) -> DecodeResult {
     let size = bits(word, 31, 30);
     let v = v_bit(word);
-    let _opc = bits(word, 23, 22);
+
     let imm19 = ((word >> 5) & 0x7FFFF) as i64;
     let imm = imm19 << 2;
     let imm = if (imm & (1 << 20)) != 0 {

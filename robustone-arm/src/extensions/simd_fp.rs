@@ -334,7 +334,7 @@ fn decode_fp_1source(word: u32, opcode: u8) -> DecodeResult {
 /// Currently implements `FMOV (immediate)`; all others are unimplemented.
 fn decode_fp_immediate(word: u32) -> DecodeResult {
     let m = bit(word, 31);
-    let _opcode = bits(word, 15, 10) as u8;
+
 
     if m {
         return Err(DisasmError::decode_failure(
@@ -890,7 +890,7 @@ fn decode_simd_fp16_three_same(word: u32) -> DecodeResult {
     let rd_val = rd(word);
     let rn_val = rn(word);
     let rm_val = rm(word);
-    let _size = simd_size(word);
+
 
     // FP16 uses size=01 or size=11 for arrangement (.4h / .8h)
     // Only implement common opcodes 0-7 for now.

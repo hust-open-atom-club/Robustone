@@ -107,10 +107,10 @@ fn decode_exception_generating(word: u32) -> DecodeResult {
 /// System instructions: NOP, YIELD, WFE, WFI, SEV, SEVL, ISB, DSB, DMB, MSR, MRS.
 fn decode_system(word: u32) -> DecodeResult {
     let l = bit(word, 21);
-    let _op1 = bits(word, 19, 16);
+
     let crn = bits(word, 15, 12);
     let crm = bits(word, 11, 8);
-    let _op2 = bits(word, 7, 5);
+
     let rt = bits(word, 4, 0);
 
     if !l {
@@ -307,7 +307,7 @@ fn decode_unconditional_branch_imm(word: u32, addr: u64) -> DecodeResult {
 
 /// Compare & branch: CBZ, CBNZ.
 fn decode_compare_branch(word: u32, addr: u64) -> DecodeResult {
-    let _is_32bit = !bit(word, 31);
+
     let is_cbnz = bit(word, 24);
     let imm = decode_cbz_imm(word);
     let rt_val = rt(word);

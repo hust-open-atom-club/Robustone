@@ -54,7 +54,7 @@ fn decode_pc_rel_addressing(word: u32, addr: u64) -> DecodeResult {
 
 /// Add/subtract (immediate): ADD, ADDS, SUB, SUBS, CMP, CMN.
 fn decode_add_sub_imm(word: u32) -> DecodeResult {
-    let _is_32bit = sf(word).is_w();
+    
     let is_sub = bit(word, 30);
     let set_flags = s_flag(word);
     let (imm, _shift) = decode_imm12(word);
@@ -98,7 +98,7 @@ fn decode_logical_imm(word: u32) -> DecodeResult {
     let rd_val = rd(word);
     let rn_val = rn(word);
 
-    let _bitmask = decode_bitmask_imm(n as u8, immr_val, imms_val, !is_32bit).ok_or_else(|| {
+    let bitmask = decode_bitmask_imm(n as u8, immr_val, imms_val, !is_32bit).ok_or_else(|| {
         DisasmError::decode_failure(
             DecodeErrorKind::InvalidEncoding,
             Some("aarch64".to_string()),
@@ -125,7 +125,7 @@ fn decode_logical_imm(word: u32) -> DecodeResult {
         reg_operand(rn_val),
         // TODO: render bitmask as hex immediate
         Operand::Immediate {
-            value: _bitmask as i64,
+            value: bitmask as i64,
         },
     ];
 
@@ -138,7 +138,7 @@ fn decode_logical_imm(word: u32) -> DecodeResult {
 
 /// Move wide (immediate): MOVZ, MOVN, MOVK.
 fn decode_move_wide(word: u32) -> DecodeResult {
-    let _is_32bit = sf(word).is_w();
+    
     let opc_val = opc(word);
     let (imm, shift) = decode_imm16_hw(word);
     let rd_val = rd(word);
@@ -173,7 +173,7 @@ fn decode_move_wide(word: u32) -> DecodeResult {
 // ---------------------------------------------------------------------------
 
 pub fn decode_data_proc_reg(word: u32, _addr: u64) -> DecodeResult {
-    let _is_32bit = sf(word).is_w();
+    
     let b28 = bit28(word);
     let op2 = op2_4bit(word);
 
@@ -212,7 +212,7 @@ pub fn decode_data_proc_reg(word: u32, _addr: u64) -> DecodeResult {
 
 /// Logical (shifted register): AND, BIC, ORR, ORN, EOR, EON, ANDS, BICS.
 fn decode_logical_shifted_reg(word: u32) -> DecodeResult {
-    let _is_32bit = sf(word).is_w();
+    
     let opc_val = opc(word);
     let rd_val = rd(word);
     let rn_val = rn(word);
@@ -278,7 +278,7 @@ fn decode_logical_shifted_reg(word: u32) -> DecodeResult {
 
 /// Add/subtract (shifted register): ADD, ADDS, SUB, SUBS, NEG.
 fn decode_add_sub_shifted_reg(word: u32) -> DecodeResult {
-    let _is_32bit = sf(word).is_w();
+    
     let is_sub = bit(word, 30);
     let set_flags = s_flag(word);
     let rd_val = rd(word);
@@ -373,7 +373,7 @@ fn decode_add_sub_with_carry(_word: u32) -> DecodeResult {
 
 /// Conditional select: CSEL, CSINC, CSINV, CSNEG, CSET, CSETM, CINC, CINV, CNEG.
 fn decode_conditional_select(word: u32) -> DecodeResult {
-    let _is_32bit = sf(word).is_w();
+    
     let op = bit(word, 30);
     let s = s_flag(word);
     let rd_val = rd(word);
@@ -453,7 +453,7 @@ fn decode_conditional_compare(_word: u32) -> DecodeResult {
 
 /// Data-processing (2 source): LSL, LSR, ASR, ROR, CLS, CLZ, RBIT, REV, REV16, REV32.
 fn decode_data_proc_2source(word: u32) -> DecodeResult {
-    let _is_32bit = sf(word).is_w();
+    
     let opcode = bits(word, 15, 10);
     let rd_val = rd(word);
     let rn_val = rn(word);
@@ -503,7 +503,7 @@ fn decode_data_proc_1source(_word: u32) -> DecodeResult {
 
 /// Data-processing (3 source): MADD, MSUB, SMADDL, SMSUBL, UMADDL, UMSUBL.
 fn decode_data_proc_3source(word: u32) -> DecodeResult {
-    let _is_32bit = sf(word).is_w();
+    
     let op54 = bits(word, 30, 29);
     // Capstone checks bits 23:21 (not 24:21) for 3-source sub-classification.
     let op31_3bit = bits(word, 23, 21);
