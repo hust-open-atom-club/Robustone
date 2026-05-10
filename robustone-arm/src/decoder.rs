@@ -77,7 +77,7 @@ impl AArch64Decoder {
             groups,
             status: DecodeStatus::Success,
             render_hints,
-            render: Some(crate::render::render_aarch64_text_parts),
+            render: Some(crate::render::render_aarch64_text_parts_fn),
         })
     }
 }

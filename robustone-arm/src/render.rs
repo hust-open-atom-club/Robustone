@@ -2,16 +2,36 @@
 
 use robustone_core::ir::{DecodedInstruction, Operand, TextRenderProfile};
 
+/// Options controlling AArch64 text rendering behavior.
+pub struct RenderOptions {
+    /// Use register aliases (e.g., `fp` for `x29`).
+    pub alias_regs: bool,
+    /// Prefer Capstone-specific mnemonic aliases.
+    pub capstone_aliases: bool,
+    /// Use compressed mnemonic aliases where available.
+    pub compressed_aliases: bool,
+    /// Render immediates as unsigned hex.
+    pub unsigned_immediate: bool,
+}
+
+impl Default for RenderOptions {
+    fn default() -> Self {
+        Self {
+            alias_regs: true,
+            capstone_aliases: true,
+            compressed_aliases: true,
+            unsigned_immediate: false,
+        }
+    }
+}
+
 /// Render an AArch64 decoded instruction into mnemonic and operand text.
 pub fn render_aarch64_text_parts(
     instruction: &DecodedInstruction,
     profile: TextRenderProfile,
-    _alias_regs: bool,
-    capstone_aliases: bool,
-    _compressed_aliases: bool,
-    unsigned_immediate: bool,
+    options: RenderOptions,
 ) -> (String, String) {
-    let use_capstone_aliases = capstone_aliases;
+    let use_capstone_aliases = options.capstone_aliases;
 
     let mnemonic = if matches!(profile, TextRenderProfile::Canonical) || !use_capstone_aliases {
         instruction.mnemonic.clone()
@@ -44,7 +64,7 @@ pub fn render_aarch64_text_parts(
     let operands = format_operands(
         &mnemonic,
         &visible_operands,
-        unsigned_immediate,
+        options.unsigned_immediate,
         instruction,
     );
     (mnemonic, operands)
@@ -182,4 +202,26 @@ fn reg_context_for_mnemonic(mnemonic: &str) -> crate::shared::registers::RegCont
         "br" | "blr" | "ret" => RegContext::Branch,
         _ => RegContext::DataProc,
     }
+}
+
+/// Wrapper matching the core `RenderFn` signature for use as a function pointer.
+/// Delegates to [`render_aarch64_text_parts`] with per-flag `RenderOptions`.
+pub fn render_aarch64_text_parts_fn(
+    instruction: &DecodedInstruction,
+    profile: TextRenderProfile,
+    alias_regs: bool,
+    capstone_aliases: bool,
+    compressed_aliases: bool,
+    unsigned_immediate: bool,
+) -> (String, String) {
+    render_aarch64_text_parts(
+        instruction,
+        profile,
+        RenderOptions {
+            alias_regs,
+            capstone_aliases,
+            compressed_aliases,
+            unsigned_immediate,
+        },
+    )
 }

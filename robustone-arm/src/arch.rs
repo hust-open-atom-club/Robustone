@@ -80,10 +80,7 @@ impl ArchitectureHandler for AArch64Handler {
         let (mnemonic, operands) = crate::render::render_aarch64_text_parts(
             &decoded,
             robustone_core::ir::TextRenderProfile::Capstone,
-            true,
-            true,
-            true,
-            false,
+            crate::render::RenderOptions::default(),
         );
         let instruction = Instruction::from_decoded(decoded, mnemonic, operands, None);
         Ok((instruction, size))
