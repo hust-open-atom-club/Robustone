@@ -114,17 +114,17 @@ pub fn reg_id(reg: u8) -> RegisterId {
 /// FP/SIMD register size class.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FpRegSize {
-    /// Byte (8-bit)
+    /// Byte (8-bit).
     B,
-    /// Half (16-bit)
+    /// Half (16-bit).
     H,
-    /// Single (32-bit)
+    /// Single (32-bit).
     S,
-    /// Double (64-bit)
+    /// Double (64-bit).
     D,
-    /// Quad (128-bit)
+    /// Quad (128-bit).
     Q,
-    /// Vector (used for structure loads/stores, e.g. v0.16b)
+    /// Vector (used for structure loads/stores, e.g. `v0.16b`).
     V,
 }
 
