@@ -582,12 +582,15 @@ fn decode_simd_three_same(word: u32) -> DecodeResult {
             // Opcode 0: shadd / uhadd
             (false, 0) => Mnemonic::Shadd,
             (true, 0) => Mnemonic::Uhadd,
+
             // Opcode 1: sqadd / uqadd
             (false, 1) => Mnemonic::Sqadd,
             (true, 1) => Mnemonic::Uqadd,
+
             // Opcode 2: srhadd / urhadd
             (false, 2) => Mnemonic::Srhadd,
             (true, 2) => Mnemonic::Urhadd,
+
             // Opcode 3: size-dependent bitwise
             (false, 3) => match size {
                 0b00 => Mnemonic::And,
@@ -606,48 +609,63 @@ fn decode_simd_three_same(word: u32) -> DecodeResult {
             // Opcode 4: shsub / uhsub
             (false, 4) => Mnemonic::Shsub,
             (true, 4) => Mnemonic::Uhsub,
+
             // Opcode 5: sqsub / uqsub
             (false, 5) => Mnemonic::Sqsub,
             (true, 5) => Mnemonic::Uqsub,
+
             // Opcode 6: cmgt / cmhi
             (false, 6) => Mnemonic::Cmgt,
             (true, 6) => Mnemonic::Cmhi,
+
             // Opcode 7: cmge / cmhs
             (false, 7) => Mnemonic::Cmge,
             (true, 7) => Mnemonic::Cmhs,
+
             // Opcode 8: sshl / ushl
             (false, 8) => Mnemonic::Sshl,
             (true, 8) => Mnemonic::Ushl,
+
             // Opcode 9: sqshl / uqshl
             (false, 9) => Mnemonic::Sqshl,
             (true, 9) => Mnemonic::Uqshl,
+
             // Opcode 10: srshl / urshl
             (false, 10) => Mnemonic::Srshl,
             (true, 10) => Mnemonic::Urshl,
+
             // Opcode 11: sqrshl / uqrshl
             (false, 11) => Mnemonic::Sqrshl,
             (true, 11) => Mnemonic::Uqrshl,
+
             // Opcode 12: smax / umax
             (false, 12) => Mnemonic::Smax,
             (true, 12) => Mnemonic::Umax,
+
             // Opcode 13: smin / umin
             (false, 13) => Mnemonic::Smin,
             (true, 13) => Mnemonic::Umin,
+
             // Opcode 14: sabd / uabd
             (false, 14) => Mnemonic::Sabd,
             (true, 14) => Mnemonic::Uabd,
+
             // Opcode 15: saba / uaba
             (false, 15) => Mnemonic::Saba,
             (true, 15) => Mnemonic::Uaba,
+
             // Opcode 16: add / sub
             (false, 16) => Mnemonic::Add,
             (true, 16) => Mnemonic::Sub,
+
             // Opcode 17: cmtst / cmeq
             (false, 17) => Mnemonic::Cmtst,
             (true, 17) => Mnemonic::Cmeq,
+
             // Opcode 18: mla / mls
             (false, 18) => Mnemonic::Mla,
             (true, 18) => Mnemonic::Mls,
+
             // Opcode 19: mul / pmul (only size=00)
             (false, 19) => Mnemonic::Mul,
             (true, 19) => {
@@ -664,9 +682,11 @@ fn decode_simd_three_same(word: u32) -> DecodeResult {
             // Opcode 20: smaxp / umaxp
             (false, 20) => Mnemonic::Smaxp,
             (true, 20) => Mnemonic::Umaxp,
+
             // Opcode 21: sminp / uminp
             (false, 21) => Mnemonic::Sminp,
             (true, 21) => Mnemonic::Uminp,
+
             // Opcode 22: sqdmulh (only size=01,10) / sqrdmulh (only size=01,10)
             (false, 22) => {
                 if size == 0b01 || size == 0b10 {
@@ -863,20 +883,26 @@ fn decode_simd_fp16_three_same(word: u32) -> DecodeResult {
         // Opcode 0: fmaxnm / fminnm
         (false, 0) => Mnemonic::Fmaxnm,
         (true, 0) => Mnemonic::Fminnm,
+
         // Opcode 1: fmla / fmls
         (false, 1) => Mnemonic::Fmla,
         (true, 1) => Mnemonic::Fmls,
+
         // Opcode 2: fadd / fsub
         (false, 2) => Mnemonic::Fadd,
         (true, 2) => Mnemonic::Fsub,
+
         // Opcode 3: fmulx / famax
         (false, 3) => Mnemonic::Fmulx,
         (true, 3) => Mnemonic::Famax,
+
         // Opcode 4: fcmeq (U=0 only)
         (false, 4) => Mnemonic::Fcmeq,
+
         // Opcode 6: fmax / fmin
         (false, 6) => Mnemonic::Fmax,
         (true, 6) => Mnemonic::Fmin,
+
         // Opcode 7: frecps / frsqrts
         (false, 7) => Mnemonic::Frecps,
         (true, 7) => Mnemonic::Frsqrts,
