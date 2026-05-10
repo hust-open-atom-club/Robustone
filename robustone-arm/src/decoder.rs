@@ -90,206 +90,251 @@ type Metadata = (
     Vec<String>,
 );
 
+/// Collect register IDs from operand list.
+fn operand_regs(operands: &[Operand]) -> Vec<RegisterId> {
+    operands
+        .iter()
+        .filter_map(|op| match op {
+            Operand::Register { register } => Some(*register),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Compute read/write register metadata and instruction groups.
 fn compute_metadata(mnemonic: Mnemonic, operands: &[Operand]) -> Metadata {
     use crate::types::Mnemonic::*;
 
+    let regs = operand_regs(operands);
     let mut read = Vec::new();
     let mut written = Vec::new();
     let mut implicit_read = Vec::new();
     let implicit_written = Vec::new();
     let mut groups = Vec::new();
 
-    // Extract register IDs from operands
-    let mut operand_regs = Vec::new();
-    for op in operands {
-        if let Operand::Register { register } = op {
-            operand_regs.push(*register);
-        }
-    }
-
     match mnemonic {
+        // Data processing — register
         Add | Adds | Sub | Subs | And | Orr | Eor | Ands | Lsl | Lsr | Asr | Ror | Movz | Movn
         | Movk | Csel | Csinc | Csinv | Csneg | Madd | Msub | Smaddl | Smsubl | Umaddl | Umsubl
         | Sdiv | Udiv | Neg | Mvn | Mul | Mulh | Abs => {
-            if !operand_regs.is_empty() {
-                written.push(operand_regs[0]);
-            }
-            for reg in operand_regs.iter().skip(1) {
-                read.push(*reg);
-            }
-            groups.push("data".to_string());
+            meta_data_proc(&regs, &mut read, &mut written, &mut groups);
         }
+        // Data processing — compare / test
         Cmp | Cmn | Tst => {
-            for reg in &operand_regs {
-                read.push(*reg);
-            }
-            written.push(RegisterId {
-                architecture: ArchitectureId::Arm,
-                id: 33,
-            }); // NZCV (PSTATE flags) — pseudo-register
-            groups.push("data".to_string());
+            meta_compare(&regs, &mut read, &mut written, &mut groups);
         }
+        // Address generation / move
         Adr | Adrp | Mov => {
-            if !operand_regs.is_empty() {
-                written.push(operand_regs[0]);
-            }
-            groups.push("data".to_string());
+            meta_move(&regs, &mut written, &mut groups);
         }
+        // Branch — direct
         B | Bl => {
-            groups.push("branch".to_string());
-            if mnemonic == Bl {
-                written.push(RegisterId {
-                    architecture: ArchitectureId::Arm,
-                    id: 30,
-                }); // LR (x30)
-            }
+            meta_branch_direct(mnemonic, &mut written, &mut groups);
         }
+        // Branch — indirect
         Br | Blr | Ret => {
-            groups.push("branch".to_string());
-            if !operand_regs.is_empty() {
-                read.push(operand_regs[0]);
-            }
-            if mnemonic == Ret {
-                implicit_read.push(RegisterId {
-                    architecture: ArchitectureId::Arm,
-                    id: 30,
-                }); // LR
-            }
+            meta_branch_indirect(mnemonic, &regs, &mut read, &mut implicit_read, &mut groups);
         }
+        // Branch — conditional
         BCond => {
-            groups.push("branch".to_string());
-            implicit_read.push(RegisterId {
-                architecture: ArchitectureId::Arm,
-                id: 33,
-            }); // NZCV
+            meta_branch_cond(&mut implicit_read, &mut groups);
         }
+        // Branch — compare
         Cbz | Cbnz | Tbz | Tbnz => {
-            groups.push("branch".to_string());
-            if !operand_regs.is_empty() {
-                read.push(operand_regs[0]);
-            }
+            meta_branch_compare(&regs, &mut read, &mut groups);
         }
+        // Conditional select aliases
         Cset | Csetm | Cinc | Cinv | Cneg => {
-            if !operand_regs.is_empty() {
-                written.push(operand_regs[0]);
-            }
-            implicit_read.push(RegisterId {
-                architecture: ArchitectureId::Arm,
-                id: 33,
-            }); // NZCV
-            groups.push("data".to_string());
+            meta_conditional(&regs, &mut written, &mut implicit_read, &mut groups);
         }
+        // System / exceptions / barriers
         Nop | Svc | Hvc | Smc | Brk | Isb | Dsb | Dmb => {
-            if matches!(mnemonic, Svc | Hvc | Smc | Brk) {
-                groups.push("interrupt".to_string());
-            } else {
-                groups.push("system".to_string());
-            }
+            meta_system(mnemonic, &mut groups);
         }
         Msr | Mrs => {
             groups.push("system".to_string());
         }
-        Ldr | Ldrb | Ldrh | Ldrsb | Ldrsh | Ldrsw => {
-            if !operand_regs.is_empty() {
-                written.push(operand_regs[0]);
-            }
-            groups.push("load".to_string());
+        // Loads
+        Ldr | Ldrb | Ldrh | Ldrsb | Ldrsh | Ldrsw | Ldur | Ldurb | Ldurh | Ldursb | Ldursh
+        | Ldursw | Ldp | Ldpsw | Ldnp | Ldxr | Ldxrb | Ldxrh | Ldxp => {
+            meta_load(mnemonic, &regs, &mut written, &mut groups);
         }
-        Str | Strb | Strh => {
-            groups.push("store".to_string());
+        // Stores
+        Str | Strb | Strh | Stur | Sturb | Sturh | Stp | Stnp | Stxr | Stxrb | Stxrh | Stxp => {
+            meta_store(mnemonic, &regs, &mut written, &mut groups);
         }
-        Ldur | Ldurb | Ldurh | Ldursb | Ldursh | Ldursw => {
-            if !operand_regs.is_empty() {
-                written.push(operand_regs[0]);
-            }
-            groups.push("load".to_string());
-        }
-        Stur | Sturb | Sturh => {
-            groups.push("store".to_string());
-        }
-        Ldp | Ldpsw => {
-            if operand_regs.len() >= 2 {
-                written.push(operand_regs[0]);
-                written.push(operand_regs[1]);
-            }
-            groups.push("load".to_string());
-        }
-        Stp => {
-            groups.push("store".to_string());
-        }
-        Ldnp | Stnp => {
-            if mnemonic == Ldnp && operand_regs.len() >= 2 {
-                written.push(operand_regs[0]);
-                written.push(operand_regs[1]);
-            }
-            groups.push(if mnemonic == Ldnp { "load".to_string() } else { "store".to_string() });
-        }
-        Ldxr | Ldxrb | Ldxrh => {
-            if !operand_regs.is_empty() {
-                written.push(operand_regs[0]);
-            }
-            groups.push("load".to_string());
-        }
-        Stxr | Stxrb | Stxrh => {
-            groups.push("store".to_string());
-        }
-        Ldxp => {
-            if operand_regs.len() >= 2 {
-                written.push(operand_regs[0]);
-                written.push(operand_regs[1]);
-            }
-            groups.push("load".to_string());
-        }
-        Stxp => {
-            groups.push("store".to_string());
-        }
-        // SIMD/FP — Stage 3 (metadata computed in Step 4)
-        Fadd | Fsub | Fmul | Fdiv | Fmadd | Fmsub | Fnmadd | Fnmsub | Fmov
-        | Fcmp | Fcmpe | Fcsel | Fcvt | Scvtf | Ucvtf | Frinta | Frintm | Frintn
-        | Frintp | Frintz | Frintx | Frinti | Fabs | Fneg | Fsqrt
-        | Fmax | Fmin | Fmaxnm | Fminnm | Fnmla | Fnmls | Fnmul
-        | Ld1 | St1 | Ld2 | St2 | Ld3 | St3 | Ld4 | St4
-        // SIMD/FP — Stage 3C vector data processing
-        | Mla | Mls | Cmeq | Cmge | Cmgt | Cmhi | Cmhs | Cmle | Cmlt | Cmtst
-        | Smax | Smin | Umax | Umin | Sabd | Uabd | Saba | Uaba | Bsl | Bit | Bif
-        | Shadd | Uhadd | Srhadd | Urhadd | Shsub | Uhsub
-        | Sqadd | Uqadd | Sqsub | Uqsub | Suqadd | Usqadd
-        | Sshl | Ushl | Sqshl | Uqshl | Srshl | Urshl | Sqrshl | Uqrshl | Sqshlu
-        | Sqdmulh | Sqrdmulh
-        | Sqabs | Sqneg | Addp | Addv | Saddl | Saddw | Ssubl | Ssubw
-        | Uaddl | Uaddw | Usubl | Usubw | Smlal | Smlsl | Umlal | Umlsl
-        | Smull | Umull | Sqdmlal | Sqdmlsl | Sqdmull
-        | Sabal | Uabal | Sabdl | Uabdl | Addhn | Raddhn | Subhn | Rsubhn
-        | Saddl2 | Uaddl2 | Saddw2 | Uaddw2 | Ssubl2 | Usubl2 | Ssubw2 | Usubw2
-        | Smlal2 | Umlal2 | Smlsl2 | Umlsl2 | Smull2 | Umull2
-        | Sqdmlal2 | Sqdmlsl2 | Sqdmull2
-        | Sabal2 | Uabal2 | Sabdl2 | Uabdl2 | Addhn2 | Raddhn2 | Subhn2 | Rsubhn2
-        | Sadalp | Uadalp | Saddlp | Uaddlp | Smaxp | Sminp | Umaxp | Uminp
-        | Saddlv | Uaddlv | Saddv | Smaxv | Sminv | Umaxv | Uminv
-        | Xtn | Xtn2 | Sqxtn | Sqxtn2 | Sqxtun | Sqxtun2 | Uqxtn | Uqxtn2
-        | Shll | Shll2 | Pmul | Pmull | Pmull2
-        | Dup | Ins | Ext | Umov | Smov | Zip1 | Zip2 | Uzp1 | Uzp2 | Trn1 | Trn2
-        | Rev16 | Rev32 | Rev64 | Cls | Clz | Cnt | Rbit | Not
-        | Faddp | Fmaxp | Fminp | Fmaxnmp | Fminnmp | Fmaxv | Fminv | Fmaxnmv | Fminnmv
-        | Fcvtl | Fcvtl2 | Fcvtn | Fcvtn2 | Fcvtxn | Fcvtxn2
-        | Frecpe | Frsqrte | Frecpx | Fcmge | Fcmgt | Fcmeq | Fcmle | Fcmlt
-        | Fcvtx | Fcvtas | Fcvtau | Fcvtms | Fcvtmu | Fcvtns | Fcvtnu | Fcvtps | Fcvtpu | Fcvtzs | Fcvtzu
-        | Fabd | Facge | Facgt | Fmulx | Frecps | Frsqrts
-        | Fmlal | Fmlal2 | Fmlsl | Fmlsl2 | Fscale | Famax | Famin
-        | Sshr | Ssra | Srshr | Srsra | Ushr | Usra | Urshr | Ursra | Sri | Sli | Shl
-        | Shrn | Shrn2 | Rshrn | Rshrn2 | Sqshrn | Sqshrn2 | Sqrshrn | Sqrshrn2
-        | Sqshrun | Sqshrun2 | Sqrshrun | Sqrshrun2 | Uqshrn | Uqshrn2 | Uqrshrn | Uqrshrn2
-        | Sshll | Sshll2 | Ushll | Ushll2 | Movi | Mvni | Tbl | Tbx
-        | Aese | Aesd | Aesmc | Aesimc | Sha1c | Sha1h | Sha1p | Sha1m | Sha1su0 | Sha1su1
-        | Sha256h | Sha256h2 | Sha256su0 | Sha256su1
-        // Also Bic and Orn (SIMD bitwise) and Fmla/Fmls (vector FP)
-        | Bic | Orn | Fmla | Fmls => {
+        // SIMD/FP — all other instructions
+        _ => {
             groups.push("simd".to_string());
         }
     }
 
     (read, written, implicit_read, implicit_written, groups)
 }
+
+// ---------------------------------------------------------------------------
+// Per-category metadata helpers
+// ---------------------------------------------------------------------------
+
+fn meta_data_proc(
+    regs: &[RegisterId],
+    read: &mut Vec<RegisterId>,
+    written: &mut Vec<RegisterId>,
+    groups: &mut Vec<String>,
+) {
+    if !regs.is_empty() {
+        written.push(regs[0]);
+    }
+    for reg in regs.iter().skip(1) {
+        read.push(*reg);
+    }
+    groups.push("data".to_string());
+}
+
+fn meta_compare(
+    regs: &[RegisterId],
+    read: &mut Vec<RegisterId>,
+    written: &mut Vec<RegisterId>,
+    groups: &mut Vec<String>,
+) {
+    for reg in regs {
+        read.push(*reg);
+    }
+    written.push(RegisterId {
+        architecture: ArchitectureId::Arm,
+        id: 33,
+    }); // NZCV
+    groups.push("data".to_string());
+}
+
+fn meta_move(regs: &[RegisterId], written: &mut Vec<RegisterId>, groups: &mut Vec<String>) {
+    if !regs.is_empty() {
+        written.push(regs[0]);
+    }
+    groups.push("data".to_string());
+}
+
+fn meta_branch_direct(mnemonic: Mnemonic, written: &mut Vec<RegisterId>, groups: &mut Vec<String>) {
+    use crate::types::Mnemonic::*;
+    groups.push("branch".to_string());
+    if mnemonic == Bl {
+        written.push(RegisterId {
+            architecture: ArchitectureId::Arm,
+            id: 30,
+        }); // LR
+    }
+}
+
+fn meta_branch_indirect(
+    mnemonic: Mnemonic,
+    regs: &[RegisterId],
+    read: &mut Vec<RegisterId>,
+    implicit_read: &mut Vec<RegisterId>,
+    groups: &mut Vec<String>,
+) {
+    use crate::types::Mnemonic::*;
+    groups.push("branch".to_string());
+    if !regs.is_empty() {
+        read.push(regs[0]);
+    }
+    if mnemonic == Ret {
+        implicit_read.push(RegisterId {
+            architecture: ArchitectureId::Arm,
+            id: 30,
+        }); // LR
+    }
+}
+
+fn meta_branch_cond(implicit_read: &mut Vec<RegisterId>, groups: &mut Vec<String>) {
+    groups.push("branch".to_string());
+    implicit_read.push(RegisterId {
+        architecture: ArchitectureId::Arm,
+        id: 33,
+    }); // NZCV
+}
+
+fn meta_branch_compare(
+    regs: &[RegisterId],
+    read: &mut Vec<RegisterId>,
+    groups: &mut Vec<String>,
+) {
+    groups.push("branch".to_string());
+    if !regs.is_empty() {
+        read.push(regs[0]);
+    }
+}
+
+fn meta_conditional(
+    regs: &[RegisterId],
+    written: &mut Vec<RegisterId>,
+    implicit_read: &mut Vec<RegisterId>,
+    groups: &mut Vec<String>,
+) {
+    if !regs.is_empty() {
+        written.push(regs[0]);
+    }
+    implicit_read.push(RegisterId {
+        architecture: ArchitectureId::Arm,
+        id: 33,
+    }); // NZCV
+    groups.push("data".to_string());
+}
+
+fn meta_system(mnemonic: Mnemonic, groups: &mut Vec<String>) {
+    use crate::types::Mnemonic::*;
+    if matches!(mnemonic, Svc | Hvc | Smc | Brk) {
+        groups.push("interrupt".to_string());
+    } else {
+        groups.push("system".to_string());
+    }
+}
+
+fn meta_load(
+    mnemonic: Mnemonic,
+    regs: &[RegisterId],
+    written: &mut Vec<RegisterId>,
+    groups: &mut Vec<String>,
+) {
+    use crate::types::Mnemonic::*;
+    groups.push("load".to_string());
+    match mnemonic {
+        Ldp | Ldpsw | Ldxp | Ldnp => {
+            if regs.len() >= 2 {
+                written.push(regs[0]);
+                written.push(regs[1]);
+            }
+        }
+        Ldr | Ldrb | Ldrh | Ldrsb | Ldrsh | Ldrsw | Ldur | Ldurb | Ldurh | Ldursb | Ldursh
+        | Ldursw | Ldxr | Ldxrb | Ldxrh => {
+            if !regs.is_empty() {
+                written.push(regs[0]);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn meta_store(
+    mnemonic: Mnemonic,
+    regs: &[RegisterId],
+    written: &mut Vec<RegisterId>,
+    groups: &mut Vec<String>,
+) {
+    use crate::types::Mnemonic::*;
+    groups.push("store".to_string());
+    match mnemonic {
+        Stxr | Stxrb | Stxrh => {
+            if !regs.is_empty() {
+                written.push(regs[0]); // Ws (status)
+            }
+        }
+        _ => {}
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Render hints
+// ---------------------------------------------------------------------------
 
 fn compute_render_hints(mnemonic: Mnemonic, operands: &[Operand]) -> RenderHints {
     use crate::types::Mnemonic::*;
