@@ -38,6 +38,18 @@ jobs:
         id: repo_checks
         run: make check
 
+      - name: Run boundary checks
+        id: boundary_checks
+        run: cargo xtask verify-boundary
+
+      - name: Run spec validation
+        id: spec_checks
+        run: cargo xtask check-spec --all
+
+      - name: Run Capstone-generated spec audit
+        id: capstone_audit
+        run: cargo xtask audit-no-capstone-generated-specs
+
       - name: Summarize repository checks
         if: always()
         run: |
@@ -45,6 +57,9 @@ jobs:
             echo "## Repository Checks"
             echo
             echo "- \`make check\`: ${{ steps.repo_checks.outcome }}"
+            echo "- \`cargo xtask verify-boundary\`: ${{ steps.boundary_checks.outcome }}"
+            echo "- \`cargo xtask check-spec --all\`: ${{ steps.spec_checks.outcome }}"
+            echo "- \`cargo xtask audit-no-capstone-generated-specs\`: ${{ steps.capstone_audit.outcome }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
   test:
@@ -76,6 +91,14 @@ jobs:
         id: parity_tests
         run: make test
 
+      - name: Run compat tests (strict)
+        id: compat_tests
+        run: cargo xtask compat --strict
+
+      - name: Run compat report
+        id: compat_report
+        run: cargo xtask compat-report --deny-xfail-increase
+
       - name: Summarize workspace and parity tests
         if: always()
         run: |
@@ -84,6 +107,8 @@ jobs:
             echo
             echo "- \`cargo test --workspace --all-features\`: ${{ steps.workspace_tests.outcome }}"
             echo "- \`make test\`: ${{ steps.parity_tests.outcome }}"
+            echo "- \`cargo xtask compat --strict\`: ${{ steps.compat_tests.outcome }}"
+            echo "- \`cargo xtask compat-report --deny-xfail-increase\`: ${{ steps.compat_report.outcome }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
   capstone-yaml-tests:

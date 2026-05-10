@@ -1,6 +1,6 @@
 //! LoongArch instruction pretty-printer.
 //!
-//! Provides Capstone-compatible and canonical text formatting,
+//! Provides decoder-compatible and canonical text formatting,
 //! mirroring the architecture of `robustone-riscv/src/printer.rs`.
 
 use robustone_core::Instruction;
@@ -9,7 +9,7 @@ use robustone_core::ir::{DecodedInstruction, TextRenderProfile};
 /// Text formatting profiles for the LoongArch printer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LoongArchTextProfile {
-    Capstone,
+    Compat,
     Canonical,
     VerboseDebug,
 }
@@ -17,7 +17,7 @@ pub enum LoongArchTextProfile {
 /// Pretty-printer for LoongArch instructions.
 pub struct LoongArchPrinter {
     alias_regs: bool,
-    capstone_aliases: bool,
+    compat_aliases: bool,
     compressed_aliases: bool,
     unsigned_immediate: bool,
     profile: LoongArchTextProfile,
@@ -26,7 +26,7 @@ pub struct LoongArchPrinter {
 impl LoongArchPrinter {
     fn text_render_profile(&self) -> TextRenderProfile {
         match self.profile {
-            LoongArchTextProfile::Capstone => TextRenderProfile::Capstone,
+            LoongArchTextProfile::Compat => TextRenderProfile::Compat,
             LoongArchTextProfile::Canonical => TextRenderProfile::Canonical,
             LoongArchTextProfile::VerboseDebug => TextRenderProfile::VerboseDebug,
         }
@@ -36,10 +36,10 @@ impl LoongArchPrinter {
     pub fn new() -> Self {
         Self {
             alias_regs: true,
-            capstone_aliases: true,
+            compat_aliases: true,
             compressed_aliases: true,
             unsigned_immediate: false,
-            profile: LoongArchTextProfile::Capstone,
+            profile: LoongArchTextProfile::Compat,
         }
     }
 
@@ -49,8 +49,8 @@ impl LoongArchPrinter {
         self
     }
 
-    pub fn with_capstone_aliases(mut self, capstone_aliases: bool) -> Self {
-        self.capstone_aliases = capstone_aliases;
+    pub fn with_compat_aliases(mut self, compat_aliases: bool) -> Self {
+        self.compat_aliases = compat_aliases;
         self
     }
 
@@ -68,7 +68,7 @@ impl LoongArchPrinter {
         self.profile = profile;
         if profile == LoongArchTextProfile::Canonical {
             self.alias_regs = false;
-            self.capstone_aliases = false;
+            self.compat_aliases = false;
         }
         self
     }
@@ -79,7 +79,7 @@ impl LoongArchPrinter {
             instruction,
             self.text_render_profile(),
             self.alias_regs,
-            self.capstone_aliases,
+            self.compat_aliases,
             self.compressed_aliases,
             self.unsigned_immediate,
         )
@@ -92,7 +92,7 @@ impl Default for LoongArchPrinter {
     }
 }
 
-/// Convenience function: render an `Instruction` with the default Capstone profile.
+/// Convenience function: render an `Instruction` with the default compat profile.
 pub fn render_instruction(instr: &Instruction) -> (String, String) {
     let printer = LoongArchPrinter::new();
     if let Some(ref decoded) = instr.decoded {

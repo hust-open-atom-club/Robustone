@@ -1,6 +1,6 @@
 //! LoongArch instruction text rendering.
 //!
-//! Provides Capstone-compatible and canonical text rendering for LoongArch
+//! Provides reference-compatible and canonical text rendering for LoongArch
 //! decoded instructions. This module was extracted from robustone-core so
 //! that architecture-specific formatting lives in the architecture crate.
 
@@ -9,81 +9,24 @@ use robustone_core::ir::{DecodedInstruction, Operand, TextRenderProfile};
 use crate::shared::registers::RegisterManager;
 
 /// Helper: format a raw register id with or without ABI aliases.
-fn format_register(id: u32, alias_regs: bool) -> String {
+fn format_register(id: u32, _alias_regs: bool) -> String {
+    // LoongArch always uses ABI names ($zero, $ra, $a0, etc.) in both
+    // canonical and compatibility modes — raw names ($r0-$r31) are not
+    // part of the standard LoongArch assembly syntax.
     let mgr = RegisterManager::instance();
-    if alias_regs {
-        mgr.format_raw_id(id).to_string()
-    } else {
-        mgr.format_raw_id_unaliased(id).to_string()
-    }
+    mgr.format_raw_id(id).to_string()
 }
 
-/// Branch instructions that Capstone renders as absolute addresses.
-const BRANCH_MNEMONICS: &[&str] = &[
-    "b", "bl", "beq", "bne", "blt", "bge", "bltu", "bgeu", "beqz", "bnez", "bceqz", "bcnez",
-];
-
-/// Control-flow mnemonics whose last immediate operand is PC-relative.
-/// `jirl` is excluded because its offset is added to `rj`, not to the PC.
-const PC_RELATIVE_MNEMONICS: &[&str] = &[
-    "b", "bl", "beq", "bne", "blt", "bge", "bltu", "bgeu", "beqz", "bnez", "bceqz", "bcnez",
-];
-
-/// Return the expected raw bit-mask for the immediate field of `mnemonic`.
-///
-/// This is used when `unsigned_immediate` is enabled so that sign-extended
-/// negative constants are truncated back to their original encoded width
-/// instead of being rendered as full 64-bit values.
-fn immediate_mask_for_mnemonic(mnemonic: &str) -> u64 {
-    match mnemonic {
-        // 28-bit PC-relative offsets
-        "b" | "bl" => 0xFFFFFFF,
-        // 20-bit
-        m if m.starts_with("lu12i") => 0xFFFFF,
-        m if m.starts_with("pcaddi") => 0xFFFFF,
-        m if m.starts_with("pcaddu12i") => 0xFFFFF,
-        m if m.starts_with("pcalau12i") => 0xFFFFF,
-        // 16-bit branch / jirl offsets
-        m if BRANCH_MNEMONICS.contains(&m) && m != "b" && m != "bl" || m == "jirl" => 0xFFFF,
-        // 14-bit
-        "ll.w" | "llacq.w" | "sc.w" | "screl.w" => 0x3FFF,
-        m if m.starts_with("ldl.")
-            || m.starts_with("ldr.")
-            || m.starts_with("stl.")
-            || m.starts_with("str.") =>
-        {
-            0x3FFF
+/// Return the unsigned bit-mask for the instruction's immediate field,
+/// sourced from the first Immediate operand's declared `unsigned_mask`.
+/// Defaults to 0xFFF (12-bit) when no immediate operand is present.
+fn immediate_unsigned_mask(instruction: &DecodedInstruction) -> u64 {
+    for operand in &instruction.operands {
+        if let Operand::Immediate { unsigned_mask, .. } = operand {
+            return *unsigned_mask;
         }
-        // 5-bit unsigned shift / vector immediates
-        m if m.starts_with("slli")
-            || m.starts_with("srli")
-            || m.starts_with("srai")
-            || m.starts_with("rotri")
-            || m.starts_with("rcri")
-            || m.starts_with("xvmaxi")
-            || m.starts_with("xvmini")
-            || m.starts_with("xvseqi")
-            || m.starts_with("xvslei")
-            || m.starts_with("xvslli")
-            || m.starts_with("xvsrli")
-            || m.starts_with("xvsrai")
-            || m.starts_with("xvrotri")
-            || m.starts_with("xvstelm")
-            || m.starts_with("xvfrstpi") =>
-        {
-            0x1F
-        }
-        // 4-bit
-        m if m.ends_with("replvei.b") => 0xF,
-        // 3-bit
-        m if m.ends_with("replvei.h") => 0x7,
-        // 2-bit
-        m if m.ends_with("replvei.w") => 0x3,
-        // 1-bit
-        m if m.ends_with("replvei.d") => 0x1,
-        // 12-bit (default for the vast majority of LoongArch instructions)
-        _ => 0xFFF,
     }
+    0xFFF
 }
 
 /// Render a LoongArch decoded instruction into mnemonic and operand text.
@@ -91,50 +34,91 @@ pub fn render_loongarch_text_parts(
     instruction: &DecodedInstruction,
     profile: TextRenderProfile,
     alias_regs: bool,
-    capstone_aliases: bool,
+    compat_aliases: bool,
     // LoongArch has no compressed instruction encoding, so this flag is
     // intentionally unused. It is kept in the signature to match the
     // `RenderFn` type expected by `DecodedInstruction`.
     _compressed_aliases: bool,
     unsigned_immediate: bool,
 ) -> (String, String) {
-    let use_capstone_aliases = capstone_aliases && !matches!(profile, TextRenderProfile::Canonical);
+    let use_compat_aliases = compat_aliases && !matches!(profile, TextRenderProfile::Canonical);
 
-    let mnemonic = if use_capstone_aliases {
+    let mnemonic = if use_compat_aliases {
         instruction
             .render_hints
-            .capstone_mnemonic
+            .compat_mnemonic
             .clone()
             .unwrap_or_else(|| instruction.mnemonic.clone())
     } else {
         instruction.mnemonic.clone()
     };
 
-    let hidden_operands = if use_capstone_aliases {
-        instruction.render_hints.capstone_hidden_operands.as_slice()
+    let hidden_operands = if use_compat_aliases {
+        instruction.render_hints.compat_hidden_operands.as_slice()
     } else {
         &[][..]
     };
 
-    let visible_operands = instruction
+    let mut visible_operands = instruction
         .operands
         .iter()
         .enumerate()
         .filter(|(index, _)| !hidden_operands.contains(index))
         .collect::<Vec<_>>();
 
-    let is_pc_relative = PC_RELATIVE_MNEMONICS.contains(&mnemonic.as_str());
+    // Apply operand reordering from render hints (e.g. invtlb operand_order = [2, 0, 1]).
+    if use_compat_aliases && !instruction.render_hints.compat_operand_order.is_empty() {
+        let order = &instruction.render_hints.compat_operand_order;
+        let mut reordered: Vec<(usize, &Operand)> = Vec::new();
+        for &idx in order {
+            if let Some(item) = visible_operands.iter().find(|(i, _)| *i == idx) {
+                reordered.push(*item);
+            }
+        }
+        if reordered.len() == visible_operands.len() {
+            visible_operands = reordered;
+        }
+    }
+
+    // Deduplicate equal register operands for CSR instructions only.
+    // Vector instructions are excluded to match reference decoder output,
+    // which always prints all operands including duplicates.
+    let needs_csr_dedup = instruction.groups.iter().any(|g| {
+        *g == robustone_core::ir::InstructionGroup::Privileged
+            || *g == robustone_core::ir::InstructionGroup::System
+    });
+    if needs_csr_dedup {
+        let mut dedup_indices: Vec<usize> = Vec::new();
+        for i in 0..visible_operands.len() {
+            for j in (i + 1)..visible_operands.len() {
+                if let (
+                    (_, Operand::Register { register: ra }),
+                    (_, Operand::Register { register: rb }),
+                ) = (&visible_operands[i], &visible_operands[j])
+                    && ra.id == rb.id
+                {
+                    dedup_indices.push(visible_operands[j].0);
+                }
+            }
+        }
+        visible_operands.retain(|(idx, _)| !dedup_indices.contains(idx));
+    }
+
+    // PC-relative detection via InstructionGroup::Branch.
+    let is_pc_relative = instruction
+        .groups
+        .contains(&robustone_core::ir::InstructionGroup::Branch);
     let pc = instruction.address as i64;
-    let imm_mask = immediate_mask_for_mnemonic(&mnemonic);
+    let imm_mask = immediate_unsigned_mask(instruction);
 
     let mut operands = visible_operands
         .iter()
         .enumerate()
         .map(|(i, (_, operand))| {
-            // For PC-relative instructions, Capstone adds the PC to the last immediate operand
+            // For PC-relative instructions, the decoder adds the PC to the last immediate operand
             if is_pc_relative
                 && i == visible_operands.len() - 1
-                && let Operand::Immediate { value } = operand
+                && let Operand::Immediate { value, .. } = operand
             {
                 return format_loongarch_immediate(value + pc, unsigned_immediate, imm_mask);
             }
@@ -143,10 +127,16 @@ pub fn render_loongarch_text_parts(
         .collect::<Vec<_>>()
         .join(", ");
 
-    // Capstone uses $vr for LSX (128-bit) vector registers and $xr for LASX (256-bit).
-    // LSX instructions start with 'v' but do not contain "xv"; LASX instructions contain "xv".
-    // Only apply the alias when register aliasing is enabled.
-    if alias_regs && mnemonic.starts_with('v') && !mnemonic.contains("xv") {
+    // LSX (128-bit vector) uses $vr, LASX (256-bit) uses $xr.
+    // Distinguish by InstructionGroup: LASX specs carry Vector256.
+    if alias_regs
+        && instruction
+            .groups
+            .contains(&robustone_core::ir::InstructionGroup::Vector)
+        && !instruction
+            .groups
+            .contains(&robustone_core::ir::InstructionGroup::Vector256)
+    {
         operands = operands.replace("$xr", "$vr");
     }
 
@@ -161,7 +151,7 @@ fn format_loongarch_operand(
 ) -> String {
     match operand {
         Operand::Register { register } => format_register(register.id, alias_regs),
-        Operand::Immediate { value } => {
+        Operand::Immediate { value, .. } => {
             format_loongarch_immediate(*value, unsigned_immediate, imm_mask)
         }
         Operand::Text { value } => value.clone(),
@@ -202,5 +192,24 @@ fn format_loongarch_immediate(value: i64, unsigned_immediate: bool, imm_mask: u6
         format!("-{display_value}")
     } else {
         format!("{display_value}")
+    }
+}
+
+use robustone_core::render::RenderOptions;
+use robustone_core::renderer::Renderer;
+
+/// LoongArch-specific instruction renderer.
+pub struct LoongArchRenderer;
+
+impl Renderer for LoongArchRenderer {
+    fn render(&self, instruction: &DecodedInstruction, options: RenderOptions) -> (String, String) {
+        render_loongarch_text_parts(
+            instruction,
+            options.text_profile,
+            options.alias_regs,
+            options.compat_aliases,
+            options.compressed_aliases,
+            options.unsigned_immediate,
+        )
     }
 }

@@ -6,5 +6,11 @@ description = "RISC-V architecture support for Robustone"
 
 [dependencies]
 robustone-core = { path = "../robustone-core" }
+robustone-isa = { path = "../robustone-isa" }
+robustone-isa-macros = { path = "../robustone-isa-macros" }
 bitflags = "2.10.0"
 hex = "0.4"
+inventory = "0.3.24"
+
+[features]
+default = []

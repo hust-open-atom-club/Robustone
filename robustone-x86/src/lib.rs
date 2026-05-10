@@ -1,7 +1,13 @@
+#![forbid(unsafe_code)]
+
 //! x86/x64 disassembly module for Robustone.
 //!
-//! Provides instruction decoding for x86 and x86-64 targets.
+//! ⚠️ LEGACY EXPERIMENTAL: This module uses a private decoder loop (`X86Decoder`)
+//! rather than the unified `decode_one` pipeline. It is frozen and does not receive
+//! new features. Full migration to the unified ISA backend framework is planned for
+//! Phase 6 (see plan T6.3).
 
+pub mod backend;
 pub mod decoder;
 pub mod render;
 
@@ -44,6 +50,10 @@ impl Default for X86Handler {
 impl ArchitectureHandler for X86Handler {
     fn set_detail(&mut self, _detail: bool) {}
 
+    fn renderer(&self) -> Option<&dyn robustone_core::renderer::Renderer> {
+        Some(&crate::render::X86Renderer)
+    }
+
     fn decode_instruction(
         &self,
         bytes: &[u8],
@@ -74,7 +84,7 @@ impl ArchitectureHandler for X86Handler {
         let (decoded, size) = self.decode_instruction(bytes, arch_name, addr)?;
         let (mnemonic, operands) = render::render_x86_text_parts(
             &decoded,
-            robustone_core::ir::TextRenderProfile::Capstone,
+            robustone_core::ir::TextRenderProfile::Compat,
             true,
             true,
             true,
@@ -141,4 +151,9 @@ mod tests {
         assert_eq!(instr.mnemonic, "mov");
         assert_eq!(instr.operands, "eax, 0x12345678");
     }
+}
+
+// Register the x86 handler with the global inventory.
+inventory::submit! {
+    robustone_core::traits::HandlerFactory::new(|| Box::new(X86Handler::new()))
 }

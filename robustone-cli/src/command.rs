@@ -4,11 +4,11 @@ use crate::utils::{parse_address_legacy, parse_hex_code_legacy};
 use clap::{CommandFactory, Parser};
 use robustone_core::all_architecture_capabilities;
 
-/// Robustone - Capstone-compatible disassembly engine CLI tool (cstool style)
+/// Robustone - Compatible disassembly engine CLI tool (cstool style)
 #[derive(Parser, Debug)]
 #[command(
     name = "robustone",
-    about = "Robustone - Capstone-compatible disassembly engine CLI tool",
+    about = "Robustone - Compatible disassembly engine CLI tool",
     version = clap::crate_version!(),
     author = clap::crate_authors!(),
     disable_version_flag = true
@@ -51,12 +51,12 @@ If not provided, defaults to 0. Prefix with 0x or use plain hex."
     )]
     pub detailed: bool,
 
-    /// `-a`: render register names using Capstone's alias list.
+    /// `-a`: render register names using compatible alias list.
     #[arg(
         short = 'a',
         long = "alias-regs",
         help = "Accept alias-register compatibility flag",
-        long_help = "Compatibility-accepted flag for alias-oriented register output. The current RISC-V backend already prints Capstone-style aliases by default, so this switch currently acts as an explicit no-op."
+        long_help = "Compatibility-accepted flag for alias-oriented register output. The current RISC-V backend already prints compatible aliases by default, so this switch currently acts as an explicit no-op."
     )]
     pub alias_regs: bool,
 

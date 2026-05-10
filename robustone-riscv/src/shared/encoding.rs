@@ -365,24 +365,24 @@ pub struct ShamtExtractor;
 
 impl ShamtExtractor {
     /// Extract shift amount for standard instructions.
-    pub fn extract_shamt(imm: i64, xlen: super::super::decoder::Xlen) -> i64 {
+    pub fn extract_shamt(imm: i64, xlen: super::super::backend::Xlen) -> i64 {
         let mask = match xlen {
-            super::super::decoder::Xlen::X64 => 0x3f,
-            super::super::decoder::Xlen::X32 => 0x1f,
+            super::super::backend::Xlen::X64 => 0x3f,
+            super::super::backend::Xlen::X32 => 0x1f,
         } as u64;
         (imm as u64 & mask) as i64
     }
 
     /// Extract shift amount for compressed instructions.
-    pub fn extract_shamt_c(imm: i64, xlen: super::super::decoder::Xlen) -> i64 {
+    pub fn extract_shamt_c(imm: i64, xlen: super::super::backend::Xlen) -> i64 {
         Self::extract_shamt(imm, xlen)
     }
 
     /// Validate shift amount for the given XLEN.
-    pub fn is_valid_shamt(shamt: i64, xlen: super::super::decoder::Xlen) -> bool {
+    pub fn is_valid_shamt(shamt: i64, xlen: super::super::backend::Xlen) -> bool {
         let max_bits = match xlen {
-            super::super::decoder::Xlen::X64 => 6,
-            super::super::decoder::Xlen::X32 => 5,
+            super::super::backend::Xlen::X64 => 6,
+            super::super::backend::Xlen::X32 => 5,
         };
         shamt >= 0 && shamt < (1 << max_bits)
     }
@@ -443,7 +443,7 @@ pub mod convenience {
     }
 
     /// Extract and validate shift amount.
-    pub fn extract_shamt(imm: i64, xlen: crate::decoder::Xlen) -> i64 {
+    pub fn extract_shamt(imm: i64, xlen: crate::backend::Xlen) -> i64 {
         ShamtExtractor::extract_shamt(imm, xlen)
     }
 }
@@ -451,7 +451,7 @@ pub mod convenience {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::decoder::Xlen;
+    use crate::backend::Xlen;
 
     #[test]
     fn test_sign_extender() {

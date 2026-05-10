@@ -386,6 +386,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "inventory"
+version = "0.3.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4f0c30c76f2f4ccee3fe55a2435f691ca00c0e4bd87abe4f4a851b1d4dac39b"
+dependencies = [
+ "rustversion",
+]
+
+[[package]]
 name = "is-terminal"
 version = "0.4.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -683,12 +692,15 @@ checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 name = "robustone"
 version = "0.0.0"
 dependencies = [
+ "hex",
+ "proptest",
  "robustone-arm",
  "robustone-cli",
  "robustone-core",
  "robustone-loongarch",
  "robustone-riscv",
  "robustone-x86",
+ "serde",
  "serde_json",
 ]
 
@@ -696,7 +708,23 @@ dependencies = [
 name = "robustone-arm"
 version = "0.1.0"
 dependencies = [
+ "bitflags",
+ "inventory",
  "robustone-core",
+ "robustone-isa",
+ "robustone-isa-macros",
+]
+
+[[package]]
+name = "robustone-capstone-compat"
+version = "0.1.0"
+dependencies = [
+ "robustone-core",
+ "robustone-isa",
+ "robustone-loongarch",
+ "serde",
+ "serde_yaml",
+ "walkdir",
 ]
 
 [[package]]
@@ -723,18 +751,45 @@ dependencies = [
  "bitflags",
  "criterion",
  "hex",
+ "inventory",
  "proptest",
- "robustone",
+ "robustone-riscv",
  "serde",
  "serde_json",
  "thiserror",
 ]
 
 [[package]]
+name = "robustone-isa"
+version = "0.1.0"
+dependencies = [
+ "bitflags",
+ "criterion",
+ "robustone-core",
+ "robustone-isa-macros",
+ "robustone-loongarch",
+ "robustone-riscv",
+ "serde_json",
+]
+
+[[package]]
+name = "robustone-isa-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "robustone-loongarch"
 version = "0.1.0"
 dependencies = [
+ "bitflags",
+ "inventory",
  "robustone-core",
+ "robustone-isa",
+ "robustone-isa-macros",
 ]
 
 [[package]]
@@ -743,14 +798,21 @@ version = "0.1.0"
 dependencies = [
  "bitflags",
  "hex",
+ "inventory",
  "robustone-core",
+ "robustone-isa",
+ "robustone-isa-macros",
 ]
 
 [[package]]
 name = "robustone-x86"
 version = "0.1.0"
 dependencies = [
+ "bitflags",
+ "inventory",
  "robustone-core",
+ "robustone-isa",
+ "robustone-isa-macros",
 ]
 
 [[package]]
@@ -783,6 +845,12 @@ dependencies = [
  "tempfile",
  "wait-timeout",
 ]
+
+[[package]]
+name = "ryu"
+version = "1.0.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
 
 [[package]]
 name = "same-file"
@@ -840,6 +908,19 @@ dependencies = [
  "serde",
  "serde_core",
  "zmij",
+]
+
+[[package]]
+name = "serde_yaml"
+version = "0.9.34+deprecated"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a8b1a1a2ebf674015cc02edccce75287f1a0130d394307b36743c2f5d504b47"
+dependencies = [
+ "indexmap",
+ "itoa",
+ "ryu",
+ "serde",
+ "unsafe-libyaml",
 ]
 
 [[package]]
@@ -919,6 +1000,12 @@ name = "unicode-xid"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
+
+[[package]]
+name = "unsafe-libyaml"
+version = "0.2.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "673aac59facbab8a9007c7f6108d11f63b603f7cabff99fabf650fea5c32b861"
 
 [[package]]
 name = "utf8parse"
@@ -1227,6 +1314,13 @@ dependencies = [
  "serde_json",
  "unicode-xid",
  "wasmparser",
+]
+
+[[package]]
+name = "xtask"
+version = "0.1.0"
+dependencies = [
+ "regex",
 ]
 
 [[package]]

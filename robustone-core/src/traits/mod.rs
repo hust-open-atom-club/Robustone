@@ -6,5 +6,5 @@
 pub mod architecture;
 pub mod instruction;
 
-pub use architecture::ArchitectureHandler;
+pub use architecture::{ArchitectureHandler, HandlerFactory};
 pub use instruction::{BasicInstructionDetail, Detail};

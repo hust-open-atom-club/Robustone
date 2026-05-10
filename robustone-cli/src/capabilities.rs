@@ -21,6 +21,7 @@ pub struct CapabilityRow {
     pub detail_supported: bool,
     pub json_supported: bool,
     pub status: &'static str,
+    pub stability: &'static str,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -43,6 +44,7 @@ pub fn capability_report() -> CapabilityReport {
             detail_supported: capability.detail_supported,
             json_supported: capability.json_supported,
             status: capability_status(capability),
+            stability: capability.stability.as_str(),
         })
         .collect::<Vec<_>>();
 
@@ -78,26 +80,27 @@ pub fn render_capabilities_text() -> String {
     writeln!(output).expect("writing blank separator should succeed");
     writeln!(
         output,
-        "| Token | Category | Parse | Decode | Detail | JSON | Status |"
+        "| Token | Category | Parse | Decode | Detail | JSON | Status | Stability |"
     )
     .expect("writing capability table header should succeed");
     writeln!(
         output,
-        "|-------|----------|-------|--------|--------|------|--------|"
+        "|-------|----------|-------|--------|--------|------|--------|-----------|"
     )
     .expect("writing capability table separator should succeed");
 
     for row in &report.architectures {
         writeln!(
             output,
-            "| `{}` | `{}` | {} | {} | {} | {} | {} |",
+            "| `{}` | `{}` | {} | {} | {} | {} | {} | {} |",
             row.canonical_name,
             row.category,
             yes_no(row.parse_supported),
             yes_no(row.decode_supported),
             yes_no(row.detail_supported),
             yes_no(row.json_supported),
-            row.status
+            row.status,
+            row.stability
         )
         .expect("writing capability table row should succeed");
     }
@@ -186,6 +189,7 @@ mod tests {
         assert_eq!(parsed["summary"]["decode_ready"], 6);
         assert_eq!(parsed["architectures"][0]["canonical_name"], "riscv32");
         assert_eq!(parsed["architectures"][0]["status"], "decode-ready");
+        assert_eq!(parsed["architectures"][0]["stability"], "Beta");
         assert!(parsed["architectures"][1]["aliases"].is_array());
     }
 

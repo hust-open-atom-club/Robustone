@@ -5,6 +5,7 @@
 
 use crate::common::ArchitectureProfile;
 use crate::ir::DecodedInstruction;
+use crate::renderer::Renderer;
 use crate::types::error::DisasmError;
 use crate::types::instruction::Instruction;
 
@@ -64,6 +65,21 @@ use crate::types::instruction::Instruction;
 ///     }
 /// }
 /// ```
+/// A factory function that produces a boxed architecture handler.
+///
+/// Used with `inventory` for automatic handler registration.
+pub struct HandlerFactory {
+    pub factory: fn() -> Box<dyn ArchitectureHandler>,
+}
+
+impl HandlerFactory {
+    pub const fn new(factory: fn() -> Box<dyn ArchitectureHandler>) -> Self {
+        Self { factory }
+    }
+}
+
+inventory::collect!(HandlerFactory);
+
 pub trait ArchitectureHandler: Sync {
     /// Decodes a single instruction into the shared IR.
     fn decode_instruction(
@@ -159,10 +175,19 @@ pub trait ArchitectureHandler: Sync {
     /// `false` otherwise.
     fn supports(&self, arch_name: &str) -> bool;
 
+    /// Return an architecture-specific renderer, if available.
+    ///
+    /// When `None`, the generic fallback renderer in `robustone-core` is
+    /// used. Backends that need decoder-compatible aliases, custom operand
+    /// formatting, or hidden operands should return a concrete renderer here.
+    fn renderer(&self) -> Option<&dyn Renderer> {
+        None
+    }
+
     /// Controls whether the handler should produce detailed instruction
     /// metadata (registers read/written, groups, etc.) during disassembly.
     ///
-    /// This mirrors Capstone's `CS_OPT_DETAIL` option. When disabled,
+    /// This mirrors the reference decoder `CS_OPT_DETAIL` option. When disabled,
     /// handlers can skip the expensive detail construction and return
     /// `Instruction` objects with `detail` set to `None`.
     ///

@@ -1,6 +1,6 @@
 # Robustone Support Matrix
 
-This matrix documents what the repository supports today and what it intentionally does not claim yet. It was synchronized with the shared architecture capability registry on 2026-04-08.
+This matrix documents what the repository supports today and what it intentionally does not claim yet. It was synchronized with the shared architecture capability registry on 2026-04-28.
 
 ## Capstone Compatibility Layers
 
@@ -14,46 +14,46 @@ This matrix documents what the repository supports today and what it intentional
 
 Canonical tokens below are the normalized architecture names emitted by the shared capability registry. A `no` in `Decode`, `Detail`, or `JSON` means the token is parser-only today.
 
-| Canonical token | Category | Parse | Decode | Detail | JSON |
-|-----------------|----------|-------|--------|--------|------|
-| `riscv32` | `RISC-V` | yes | yes | yes | yes |
-| `riscv64` | `RISC-V` | yes | yes | yes | yes |
-| `riscv32e` | `RISC-V` | yes | no | no | no |
-| `arm` | `ARM` | yes | no | no | no |
-| `armle` | `ARM` | yes | no | no | no |
-| `armbe` | `ARM` | yes | no | no | no |
-| `thumb` | `ARM` | yes | no | no | no |
-| `aarch64` | `ARM` | yes | yes | no | yes |
-| `aarch64be` | `ARM` | yes | no | no | no |
-| `x16` | `x86` | yes | no | no | no |
-| `x32` | `x86` | yes | yes | no | yes |
-| `x64` | `x86` | yes | yes | no | yes |
-| `mips` | `MIPS` | yes | no | no | no |
-| `mipsel` | `MIPS` | yes | no | no | no |
-| `mips64` | `MIPS` | yes | no | no | no |
-| `mips64el` | `MIPS` | yes | no | no | no |
-| `powerpc32` | `PowerPC` | yes | no | no | no |
-| `powerpc32be` | `PowerPC` | yes | no | no | no |
-| `powerpc64` | `PowerPC` | yes | no | no | no |
-| `powerpc64be` | `PowerPC` | yes | no | no | no |
-| `sparc` | `SPARC` | yes | no | no | no |
-| `sparcle` | `SPARC` | yes | no | no | no |
-| `sparc64` | `SPARC` | yes | no | no | no |
-| `systemz` | `Other` | yes | no | no | no |
-| `xcore` | `Other` | yes | no | no | no |
-| `m68k` | `Other` | yes | no | no | no |
-| `tms320c64x` | `Other` | yes | no | no | no |
-| `m680x` | `Other` | yes | no | no | no |
-| `evm` | `Other` | yes | no | no | no |
-| `bpf` | `Other` | yes | no | no | no |
-| `loongarch64` | `LoongArch` | yes | yes | no | yes |
+| Canonical token | Category | Parse | Decode | Detail | JSON | Stability |
+|-----------------|----------|-------|--------|--------|------|-----------|
+| `riscv32` | `RISC-V` | yes | yes | yes | yes | Beta |
+| `riscv64` | `RISC-V` | yes | yes | yes | yes | Beta |
+| `riscv32e` | `RISC-V` | yes | no | no | no | ParserOnly |
+| `arm` | `ARM` | yes | no | no | no | ParserOnly |
+| `armle` | `ARM` | yes | no | no | no | ParserOnly |
+| `armbe` | `ARM` | yes | no | no | no | ParserOnly |
+| `thumb` | `ARM` | yes | no | no | no | ParserOnly |
+| `aarch64` | `ARM` | yes | yes | no | yes | ExperimentalDecode |
+| `aarch64be` | `ARM` | yes | no | no | no | ParserOnly |
+| `x16` | `x86` | yes | no | no | no | ParserOnly |
+| `x32` | `x86` | yes | yes | no | yes | ExperimentalDecode |
+| `x64` | `x86` | yes | yes | no | yes | ExperimentalDecode |
+| `mips` | `MIPS` | yes | no | no | no | ParserOnly |
+| `mipsel` | `MIPS` | yes | no | no | no | ParserOnly |
+| `mips64` | `MIPS` | yes | no | no | no | ParserOnly |
+| `mips64el` | `MIPS` | yes | no | no | no | ParserOnly |
+| `powerpc32` | `PowerPC` | yes | no | no | no | ParserOnly |
+| `powerpc32be` | `PowerPC` | yes | no | no | no | ParserOnly |
+| `powerpc64` | `PowerPC` | yes | no | no | no | ParserOnly |
+| `powerpc64be` | `PowerPC` | yes | no | no | no | ParserOnly |
+| `sparc` | `SPARC` | yes | no | no | no | ParserOnly |
+| `sparcle` | `SPARC` | yes | no | no | no | ParserOnly |
+| `sparc64` | `SPARC` | yes | no | no | no | ParserOnly |
+| `systemz` | `Other` | yes | no | no | no | ParserOnly |
+| `xcore` | `Other` | yes | no | no | no | ParserOnly |
+| `m68k` | `Other` | yes | no | no | no | ParserOnly |
+| `tms320c64x` | `Other` | yes | no | no | no | ParserOnly |
+| `m680x` | `Other` | yes | no | no | no | ParserOnly |
+| `evm` | `Other` | yes | no | no | no | ParserOnly |
+| `bpf` | `Other` | yes | no | no | no | ParserOnly |
+| `loongarch64` | `LoongArch` | yes | yes | no | yes | ExperimentalDecode |
 
 ## Decode Backends
 
 | Surface | Status | Notes |
 |---------|--------|-------|
 | `riscv32`, `riscv64` decode | Implemented | Backed by `robustone-core` plus `robustone-riscv` and exercised by the parity harness. |
-| `riscv32e` | Parser-only | Accepted as a canonical token so capability and help surfaces can be honest about the missing backend. |
+| `riscv32e` | Parser-only | Accepted as a canonical token so capability and help surfaces can be honest about the missing backend. | | ParserOnly |
 | All non-RISC-V canonical tokens above | Parser-only placeholders | Accepted for CLI parsing and version/help reporting only; no decode backend is registered in `ArchitectureDispatcher` for them today. |
 
 ## RISC-V Feature Status

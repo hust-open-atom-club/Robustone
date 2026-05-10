@@ -5,9 +5,12 @@ use thiserror::Error;
 pub enum DecodeErrorKind {
     NeedMoreBytes,
     InvalidEncoding,
+    ReservedEncoding,
     UnsupportedExtension,
     UnimplementedInstruction,
     UnsupportedMode,
+    InvalidField,
+    InternalSpecBug,
 }
 
 impl std::fmt::Display for DecodeErrorKind {
@@ -15,9 +18,12 @@ impl std::fmt::Display for DecodeErrorKind {
         let text = match self {
             DecodeErrorKind::NeedMoreBytes => "need_more_bytes",
             DecodeErrorKind::InvalidEncoding => "invalid_encoding",
+            DecodeErrorKind::ReservedEncoding => "reserved_encoding",
             DecodeErrorKind::UnsupportedExtension => "unsupported_extension",
             DecodeErrorKind::UnimplementedInstruction => "unimplemented_instruction",
             DecodeErrorKind::UnsupportedMode => "unsupported_mode",
+            DecodeErrorKind::InvalidField => "invalid_field",
+            DecodeErrorKind::InternalSpecBug => "internal_spec_bug",
         };
         write!(f, "{text}")
     }
@@ -69,6 +75,8 @@ pub enum DisasmError {
     InvalidHexCode(String),
     #[error("ERROR: invalid address argument: {0}")]
     InvalidAddress(String),
+    #[error("ERROR: configuration error: {0}")]
+    Configuration(String),
 }
 
 impl DisasmError {
@@ -93,13 +101,17 @@ impl DisasmError {
             DisasmError::DecodeFailure { kind, .. } => match kind {
                 DecodeErrorKind::NeedMoreBytes => "need_more_bytes",
                 DecodeErrorKind::InvalidEncoding => "invalid_encoding",
+                DecodeErrorKind::ReservedEncoding => "reserved_encoding",
                 DecodeErrorKind::UnsupportedExtension => "unsupported_extension",
                 DecodeErrorKind::UnimplementedInstruction => "unimplemented_instruction",
                 DecodeErrorKind::UnsupportedMode => "unsupported_mode",
+                DecodeErrorKind::InvalidField => "invalid_field",
+                DecodeErrorKind::InternalSpecBug => "internal_spec_bug",
             },
             DisasmError::DecodingError(_) => "decoding_error",
             DisasmError::InvalidHexCode(_) => "invalid_hex_code",
             DisasmError::InvalidAddress(_) => "invalid_address",
+            DisasmError::Configuration(_) => "configuration_error",
         }
     }
 
@@ -122,6 +134,7 @@ impl DisasmError {
             DisasmError::DecodingError(detail) => detail.clone(),
             DisasmError::InvalidHexCode(detail) => detail.clone(),
             DisasmError::InvalidAddress(detail) => detail.clone(),
+            DisasmError::Configuration(detail) => detail.clone(),
         }
     }
 }

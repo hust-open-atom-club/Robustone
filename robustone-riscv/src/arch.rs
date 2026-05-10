@@ -62,29 +62,6 @@ impl Detail for RiscVInstructionDetail {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::riscv::extensions::standard::Standard;
-
-    #[test]
-    fn test_riscv_standard_extensions() {
-        let i = Standard::I;
-        assert!(i.contains(Standard::I));
-        assert!(!i.contains(Standard::M));
-        assert!(!i.contains(Standard::F));
-
-        let gc = Standard::G | Standard::C;
-        assert!(gc.contains(Standard::I));
-        assert!(gc.contains(Standard::M));
-        assert!(gc.contains(Standard::A));
-        assert!(gc.contains(Standard::F));
-        assert!(gc.contains(Standard::D));
-        assert!(gc.contains(Standard::C));
-        assert_eq!(gc, Standard::G | Standard::C);
-
-        let combined = Standard::I | Standard::M;
-        assert!(combined.contains(Standard::I));
-        assert!(combined.contains(Standard::M));
-        assert!(!combined.contains(Standard::F));
-    }
 
     #[test]
     fn test_riscv_instruction_detail() {

@@ -1,16 +1,16 @@
+#![forbid(unsafe_code)]
+
 //! LoongArch LA64 disassembly module for Robustone.
 //!
-//! Provides instruction decoding for LoongArch LA64 targets.
+//! Provides instruction decoding for LoongArch LA64 targets using the
+//! shared `robustone-isa` framework.
 
 pub mod arch;
-pub mod decoder;
-pub mod extensions;
+pub mod backend;
 pub mod printer;
 pub mod render;
 pub mod shared;
 pub mod types;
-
-mod decoder_generated;
 
 pub mod architecture {
     pub use robustone_core::architecture::*;
@@ -30,8 +30,6 @@ pub mod utils {
 
 pub mod loongarch {
     pub use crate::arch;
-    pub use crate::decoder;
-    pub use crate::extensions;
     pub use crate::printer;
     pub use crate::render;
     pub use crate::shared;
@@ -41,7 +39,6 @@ pub mod loongarch {
 pub use robustone_core::Instruction;
 
 use arch::LoongArchInstructionDetail;
-use decoder::LoongArchDecoder;
 use robustone_core::{
     common::ArchitectureProfile,
     ir::{DecodedInstruction, TextRenderProfile},
@@ -49,20 +46,30 @@ use robustone_core::{
     traits::instruction::Detail,
     types::error::DisasmError,
 };
+use robustone_isa::{DecodeProfile, FeatureSet, decode_one};
 
 /// Architecture handler implementation for LoongArch LA64 targets.
 pub struct LoongArchHandler {
-    decoder: LoongArchDecoder,
     detail: bool,
 }
 
 impl LoongArchHandler {
     /// Creates a new handler.
     pub fn new() -> Self {
-        Self {
-            decoder: LoongArchDecoder::new(),
-            detail: true,
-        }
+        Self { detail: true }
+    }
+}
+
+/// Resolve the production decode profile for an arch name string.
+/// Uses the restricted base profile for production use; tests that need
+/// all features enabled should use `LoongArchBackend::compat_test_la64()`
+/// directly when building their own dispatcher.
+fn profile_for_arch_name(
+    arch_name: &str,
+) -> Result<DecodeProfile<backend::LoongArchBackend>, DisasmError> {
+    match arch_name {
+        "loongarch" | "loongarch64" => Ok(backend::LoongArchBackend::la64_base()),
+        _ => Err(DisasmError::UnsupportedArchitecture(arch_name.to_string())),
     }
 }
 
@@ -77,17 +84,22 @@ impl ArchitectureHandler for LoongArchHandler {
         self.detail = detail;
     }
 
+    fn renderer(&self) -> Option<&dyn robustone_core::renderer::Renderer> {
+        Some(&crate::render::LoongArchRenderer)
+    }
+
     fn decode_instruction(
         &self,
         bytes: &[u8],
         arch_name: &str,
         addr: u64,
     ) -> Result<(DecodedInstruction, usize), DisasmError> {
-        if !self.supports(arch_name) {
-            return Err(DisasmError::UnsupportedArchitecture(arch_name.to_string()));
-        }
-        let decoded = self.decoder.decode(bytes, arch_name, addr)?;
+        let profile = profile_for_arch_name(arch_name)?;
+        let mut decoded = decode_one::<backend::LoongArchBackend>(bytes, addr, &profile)?;
         let size = decoded.size;
+
+        decoded.mode = arch_name.to_string();
+
         Ok((decoded, size))
     }
 
@@ -97,7 +109,37 @@ impl ArchitectureHandler for LoongArchHandler {
         profile: &ArchitectureProfile,
         addr: u64,
     ) -> Result<(DecodedInstruction, usize), DisasmError> {
-        self.decode_instruction(bytes, profile.mode_name, addr)
+        // Map profile extensions to feature bits, defaulting to all features
+        // for backward compatibility when no extensions are specified.
+        let features = if profile.enabled_extensions.is_empty() {
+            backend::LoongArchFeature::all_supported_for_tests()
+        } else {
+            let mut feats = backend::LoongArchFeature::BASE;
+            for ext in &profile.enabled_extensions {
+                match *ext {
+                    "la64" => feats |= backend::LoongArchFeature::LA64,
+                    "f32" | "float32" => feats |= backend::LoongArchFeature::FLOAT32,
+                    "f64" | "float64" => feats |= backend::LoongArchFeature::FLOAT64,
+                    "lsx" => feats |= backend::LoongArchFeature::LSX,
+                    "lasx" => feats |= backend::LoongArchFeature::LASX,
+                    "lvz" => feats |= backend::LoongArchFeature::LVZ,
+                    "lbt" => feats |= backend::LoongArchFeature::LBT,
+                    "priv" => feats |= backend::LoongArchFeature::PRIVILEGED,
+                    "atomic" => feats |= backend::LoongArchFeature::ATOMIC,
+                    _ => {}
+                }
+            }
+            feats
+        };
+        let decode_profile = DecodeProfile {
+            mode: backend::LoongArchMode::LA64,
+            features,
+            render_dialect: robustone_isa::RenderDialect::Assembler,
+            alias_policy: robustone_isa::AliasPolicy::PreferPseudo,
+        };
+        let decoded = decode_one::<backend::LoongArchBackend>(bytes, addr, &decode_profile)?;
+        let size = decoded.size;
+        Ok((decoded, size))
     }
 
     fn disassemble(
@@ -109,7 +151,7 @@ impl ArchitectureHandler for LoongArchHandler {
         let (decoded, size) = self.decode_instruction(bytes, arch_name, addr)?;
         let (mnemonic, operands) = render::render_loongarch_text_parts(
             &decoded,
-            TextRenderProfile::Capstone,
+            TextRenderProfile::Compat,
             true,
             true,
             true,
@@ -151,7 +193,41 @@ impl ArchitectureHandler for LoongArchHandler {
         profile: &ArchitectureProfile,
         addr: u64,
     ) -> Result<(Instruction, usize), DisasmError> {
-        self.disassemble(bytes, profile.mode_name, addr)
+        let (decoded, size) = self.decode_instruction_with_profile(bytes, profile, addr)?;
+        let (mnemonic, operands) = render::render_loongarch_text_parts(
+            &decoded,
+            TextRenderProfile::Compat,
+            true,
+            true,
+            true,
+            false,
+        );
+        let detail: Option<Box<dyn Detail>> = if self.detail {
+            let mut la_detail = LoongArchInstructionDetail::new();
+            for register in decoded
+                .registers_read
+                .iter()
+                .chain(decoded.implicit_registers_read.iter())
+            {
+                if !la_detail.regs_read.contains(&register.id) {
+                    la_detail = la_detail.reads_register(register.id);
+                }
+            }
+            for register in decoded
+                .registers_written
+                .iter()
+                .chain(decoded.implicit_registers_written.iter())
+            {
+                if !la_detail.regs_write.contains(&register.id) {
+                    la_detail = la_detail.writes_register(register.id);
+                }
+            }
+            Some(Box::new(la_detail))
+        } else {
+            None
+        };
+        let instruction = Instruction::from_decoded(decoded, mnemonic, operands, detail);
+        Ok((instruction, size))
     }
 
     fn name(&self) -> &'static str {
@@ -159,7 +235,7 @@ impl ArchitectureHandler for LoongArchHandler {
     }
 
     fn supports(&self, arch_name: &str) -> bool {
-        matches!(arch_name, "loongarch" | "loongarch64" | "loongarch32")
+        matches!(arch_name, "loongarch" | "loongarch64")
     }
 }
 
@@ -173,7 +249,7 @@ mod tests {
         let handler = LoongArchHandler::new();
         assert_eq!(handler.name(), "loongarch");
         assert!(handler.supports("loongarch64"));
-        assert!(handler.supports("loongarch32"));
+        assert!(!handler.supports("loongarch32"));
         assert!(!handler.supports("riscv64"));
     }
 
@@ -190,7 +266,6 @@ mod tests {
     #[test]
     fn test_addi_w_decode() {
         let handler = LoongArchHandler::new();
-        // addi.w $a1, $a3, 0xf6 => bytes from arith.s.yaml
         let bytes = [0xe5, 0xd8, 0x83, 0x02];
         let (instr, size) = handler.disassemble(&bytes, "loongarch64", 0).unwrap();
         assert_eq!(size, 4);
@@ -201,7 +276,6 @@ mod tests {
     #[test]
     fn test_add_w_decode() {
         let handler = LoongArchHandler::new();
-        // add.w $a5, $ra, $s8 => bytes from arith.s.yaml
         let bytes = [0x29, 0x7c, 0x10, 0x00];
         let (instr, size) = handler.disassemble(&bytes, "loongarch64", 0).unwrap();
         assert_eq!(size, 4);
@@ -212,7 +286,6 @@ mod tests {
     #[test]
     fn test_or_decode() {
         let handler = LoongArchHandler::new();
-        // or $t5, $t4, $s7 => bytes from arith.s.yaml
         let bytes = [0x11, 0x7a, 0x15, 0x00];
         let (instr, size) = handler.disassemble(&bytes, "loongarch64", 0).unwrap();
         assert_eq!(size, 4);
@@ -268,4 +341,28 @@ mod debug_tests {
             Err(e) => println!("Error: {:?}", e),
         }
     }
+
+    #[test]
+    fn test_armnot() {
+        let arch = LoongArchHandler::new();
+        let bytes = [0x9c, 0xc4, 0x3f, 0x00];
+        let result = arch.disassemble(&bytes, "loongarch64", 0);
+        match result {
+            Ok((insn, _)) => {
+                println!("mnemonic: {}", insn.mnemonic);
+                println!("operands: {}", insn.operands);
+                if let Some(decoded) = insn.decoded {
+                    for (i, op) in decoded.operands.iter().enumerate() {
+                        println!("op {}: {:?}", i, op);
+                    }
+                }
+            }
+            Err(e) => println!("Error: {:?}", e),
+        }
+    }
+}
+
+// Register the LoongArch handler with the global inventory.
+inventory::submit! {
+    robustone_core::traits::HandlerFactory::new(|| Box::new(LoongArchHandler::new()))
 }

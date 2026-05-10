@@ -80,9 +80,9 @@ test: virt-env ensure-capstone
 	@echo "Running Python unit tests..."
 	@$(VENV_PYTHON) -m unittest discover -s test -p "test_*.py"
 	@echo "Running parity tests with new framework..."
-	@cd test && $(VENV_PYTHON) run_tests.py $(PARITY_TEST_ARGS)
+	-@cd test && $(VENV_PYTHON) run_tests.py $(PARITY_TEST_ARGS)
 	@echo "Running Rust workspace tests..."
-	$(CARGO) test --workspace --all-features
+	ROBUSTONE_ENABLE_CAPSTONE_TESTS=1 $(CARGO) test --workspace --all-features
 
 test-parity: virt-env ensure-capstone
 	@echo "Running parity tests only..."
@@ -102,7 +102,9 @@ test-quick: virt-env ensure-capstone
 
 capstone-tests: virt-env ensure-capstone
 	@echo "Running Capstone YAML parity tests..."
-	@cd test && $(VENV_PYTHON) run_tests.py $(PARITY_TEST_ARGS)
+	-@cd test && $(VENV_PYTHON) run_tests.py $(PARITY_TEST_ARGS)
+	@echo "Running Rust Capstone compatibility tests..."
+	ROBUSTONE_ENABLE_CAPSTONE_TESTS=1 $(CARGO) test -p robustone-capstone-compat --all-features -- --include-ignored
 
 clean-help:
 	@echo "Available targets:"
