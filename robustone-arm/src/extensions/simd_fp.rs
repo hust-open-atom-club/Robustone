@@ -367,33 +367,6 @@ fn decode_fp_immediate(word: u32) -> DecodeResult {
 }
 
 /// Decode an 8-bit FP immediate into a Capstone-compatible text operand.
-///
-/// The imm8 encodes a small floating-point constant.  For simplicity we
-/// decode the common cases and fall back to a generic representation.
-fn decode_fp_imm8(imm8: u8, size: FpRegSize) -> String {
-    // imm8 layout: [7]=sign, [6:4]=exponent, [3:0]=fraction
-    let sign = (imm8 >> 7) & 1;
-    let exp = (imm8 >> 4) & 0x7;
-    let frac = (imm8 & 0xF) as u32;
-
-    // See ARM ARM "Floating-point modified immediate":
-    // value = (-1)^sign * 2^exp * (1.fraction)
-    // where exp is biased by 3 (i.e. real exponent = exp - 3).
-    let mantissa = 16.0 + f64::from(frac); // 1.fraction in 4-bit form
-    let real_exp = f64::from(exp) - 3.0;
-    let mut value = mantissa * f64::powf(2.0, real_exp - 4.0); // -4 because frac is 4 bits
-
-    if sign != 0 {
-        value = -value;
-    }
-
-    // Capstone renders with 8 decimal places for S/D, fewer for H.
-    match size {
-        FpRegSize::H => format!("#{:.4}", value),
-        _ => format!("#{:.8}", value),
-    }
-}
-
 // ---------------------------------------------------------------------------
 // FP compare
 // ---------------------------------------------------------------------------
@@ -579,14 +552,6 @@ fn decode_fp_conversion(word: u32) -> DecodeResult {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Create a register operand for an FP/SIMD register.
-fn fp_reg_operand(reg: u8, size: FpRegSize) -> Operand {
-    Operand::Text {
-        value: fp_simd_reg_name(reg, size).unwrap_or("?").to_string(),
-    }
-}
-
-/// Create a vector register operand with arrangement suffix.
 fn vec_reg_operand(reg: u8, size: u8, q: bool) -> Operand {
     let suffix = arrangement_suffix(size, q).unwrap_or("?");
     Operand::Text {
@@ -1061,23 +1026,6 @@ fn decode_simd_two_reg_misc(word: u32, _op5_16: u8) -> DecodeResult {
 /// - bit1=1: H element, index in bits[4:2]
 /// - bit2=1: S element, index in bits[4:3]
 /// - bit3=1: D element, index in bit[4]
-///
-/// Returns (element_char, index, arrangement_size) where arrangement_size
-/// is 0=B, 1=H, 2=S, 3=D for use with `arrangement_suffix`.
-fn decode_imm5(imm5: u8) -> Option<(char, u8, u8)> {
-    if imm5 & 0b00001 != 0 {
-        Some(('b', (imm5 >> 1) & 0xF, 0b00))
-    } else if imm5 & 0b00010 != 0 {
-        Some(('h', (imm5 >> 2) & 0x7, 0b01))
-    } else if imm5 & 0b00100 != 0 {
-        Some(('s', (imm5 >> 3) & 0x3, 0b10))
-    } else if imm5 & 0b01000 != 0 {
-        Some(('d', (imm5 >> 4) & 0x1, 0b11))
-    } else {
-        None
-    }
-}
-
 fn decode_simd_copy(word: u32) -> DecodeResult {
     let op = bit(word, 29);
     let q = q_bit(word);
@@ -2409,6 +2357,60 @@ fn decode_simd_permute_table(word: u32) -> DecodeResult {
             },
         ],
     ))
+}
+
+
+///
+/// The imm8 encodes a small floating-point constant.  For simplicity we
+/// decode the common cases and fall back to a generic representation.
+fn decode_fp_imm8(imm8: u8, size: FpRegSize) -> String {
+    // imm8 layout: [7]=sign, [6:4]=exponent, [3:0]=fraction
+    let sign = (imm8 >> 7) & 1;
+    let exp = (imm8 >> 4) & 0x7;
+    let frac = (imm8 & 0xF) as u32;
+
+    // See ARM ARM "Floating-point modified immediate":
+    // value = (-1)^sign * 2^exp * (1.fraction)
+    // where exp is biased by 3 (i.e. real exponent = exp - 3).
+    let mantissa = 16.0 + f64::from(frac); // 1.fraction in 4-bit form
+    let real_exp = f64::from(exp) - 3.0;
+    let mut value = mantissa * f64::powf(2.0, real_exp - 4.0); // -4 because frac is 4 bits
+
+    if sign != 0 {
+        value = -value;
+    }
+
+    // Capstone renders with 8 decimal places for S/D, fewer for H.
+    match size {
+        FpRegSize::H => format!("#{:.4}", value),
+        _ => format!("#{:.8}", value),
+    }
+}
+
+/// Create a register operand for an FP/SIMD register.
+fn fp_reg_operand(reg: u8, size: FpRegSize) -> Operand {
+    Operand::Text {
+        value: fp_simd_reg_name(reg, size).unwrap_or("?").to_string(),
+    }
+}
+
+/// Create a vector register operand with arrangement suffix.
+
+///
+/// Returns (element_char, index, arrangement_size) where arrangement_size
+/// is 0=B, 1=H, 2=S, 3=D for use with `arrangement_suffix`.
+fn decode_imm5(imm5: u8) -> Option<(char, u8, u8)> {
+    if imm5 & 0b00001 != 0 {
+        Some(('b', (imm5 >> 1) & 0xF, 0b00))
+    } else if imm5 & 0b00010 != 0 {
+        Some(('h', (imm5 >> 2) & 0x7, 0b01))
+    } else if imm5 & 0b00100 != 0 {
+        Some(('s', (imm5 >> 3) & 0x3, 0b10))
+    } else if imm5 & 0b01000 != 0 {
+        Some(('d', (imm5 >> 4) & 0x1, 0b11))
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
