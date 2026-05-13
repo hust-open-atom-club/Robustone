@@ -79,7 +79,7 @@ impl ArchitectureHandler for AArch64Handler {
         let (decoded, size) = self.decode_instruction(bytes, arch_name, addr)?;
         let (mnemonic, operands) = crate::render::render_aarch64_text_parts(
             &decoded,
-            robustone_core::ir::TextRenderProfile::Capstone,
+            robustone_core::ir::TextRenderProfile::Compat,
             crate::render::RenderOptions::default(),
         );
         let instruction = Instruction::from_decoded(decoded, mnemonic, operands, None);

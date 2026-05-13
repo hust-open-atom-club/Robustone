@@ -243,7 +243,7 @@ fn decode_load_literal(word: u32, addr: u64) -> DecodeResult {
         ));
     }
 
-    // Capstone is more permissive than the ARM ARM for load literal.
+    // Reference is more permissive than the ARM ARM for load literal.
     // It decodes all size/opc combinations, mapping by size only:
     // - size=0b00: LDR (32-bit)
     // - size=0b01: LDR (64-bit)
@@ -262,7 +262,7 @@ fn decode_load_literal(word: u32, addr: u64) -> DecodeResult {
         _ => unreachable!(),
     };
 
-    // Capstone formatting for load literal targets:
+    // Reference formatting for load literal targets:
     // - 0..9: decimal
     // - >= 10 or negative: hex with 0x prefix
     let target_text = if (0..10).contains(&target) {
@@ -862,9 +862,9 @@ fn decode_load_store_register_immediate(word: u32) -> DecodeResult {
         ))
     } else {
         // Unscaled immediate (LDUR/STUR)
-        // Capstone renders LDUR even when offset is 0, but for LDR/STR with
+        // Reference renders LDUR even when offset is 0, but for LDR/STR with
         // unsigned immediate and offset 0, it renders as [xn] without offset.
-        // For unscaled, Capstone always uses LDUR/STUR.
+        // For unscaled, reference always uses LDUR/STUR.
         Ok((
             mnemonic,
             vec![
@@ -1071,7 +1071,7 @@ fn decode_reg_offset_extend(option: u32, s: bool, size: u32) -> Option<String> {
             Some(extend_type.to_string())
         }
     } else {
-        // For option=011 (UXTX) or 111 (SXTX) with S=0, Capstone doesn't show extend
+        // For option=011 (UXTX) or 111 (SXTX) with S=0, reference doesn't show extend
         if (option == 0b011 || option == 0b111) && !s {
             None
         } else {
@@ -1080,10 +1080,10 @@ fn decode_reg_offset_extend(option: u32, s: bool, size: u32) -> Option<String> {
     }
 }
 
-/// Format an immediate value in Capstone style for memory operands.
+/// Format an immediate value for memory operands.
 /// -9..9 (excluding 0 in offset mode): decimal
 /// Others: hex with 0x prefix
-fn fmt_imm_capstone(value: i64) -> String {
+fn fmt_imm_compat(value: i64) -> String {
     if value == 0 {
         "#0".to_string()
     } else if (1..10).contains(&value) || (-9..=-1).contains(&value) {
@@ -1114,12 +1114,12 @@ fn addr_text(
             format!("[{base_name}, {offset_name}]")
         }
     } else if pre_index {
-        // Capstone always renders the displacement for pre-indexed, even when 0.
-        format!("[{base_name}, {}]!", fmt_imm_capstone(displacement))
+        // Reference always renders the displacement for pre-indexed, even when 0.
+        format!("[{base_name}, {}]!", fmt_imm_compat(displacement))
     } else if displacement == 0 {
         format!("[{base_name}]")
     } else {
-        format!("[{base_name}, {}]", fmt_imm_capstone(displacement))
+        format!("[{base_name}, {}]", fmt_imm_compat(displacement))
     };
 
     Operand::Text { value: text }

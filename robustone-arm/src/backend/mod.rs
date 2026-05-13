@@ -2712,7 +2712,7 @@ mod tests {
     fn test_decode_vfabs_2s() {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
-        // fabs v0.2s, v1.2s  => 0x0EA0F820 (derived from capstone pattern)
+        // fabs v0.2s, v1.2s  => 0x0EA0F820
         let insn = decoder
             .decode(&[0x20, 0xF8, 0xA0, 0x0E], 0, &profile)
             .unwrap();

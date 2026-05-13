@@ -505,7 +505,7 @@ fn decode_data_proc_1source(_word: u32) -> DecodeResult {
 fn decode_data_proc_3source(word: u32) -> DecodeResult {
     
     let op54 = bits(word, 30, 29);
-    // Capstone checks bits 23:21 (not 24:21) for 3-source sub-classification.
+    // Reference checks bits 23:21 (not 24:21) for 3-source sub-classification.
     let op31_3bit = bits(word, 23, 21);
     let rd_val = rd(word);
     let rn_val = rn(word);

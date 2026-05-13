@@ -77,7 +77,7 @@ fn decode_conditional_branch(word: u32, addr: u64) -> DecodeResult {
         Mnemonic::BCond,
         vec![
             Operand::Text {
-                value: cond.as_str_capstone().to_string(),
+                value: cond.as_str_compat().to_string(),
             },
             operands::label(target),
         ],
@@ -194,7 +194,7 @@ fn decode_hints(crm: u32) -> DecodeResult {
 }
 
 fn decode_barriers(word: u32) -> DecodeResult {
-    // Capstone matches barriers by the full bits 7:0 value.
+    // Reference matches barriers by the full bits 7:0 value.
     // These all require Rt=31 (bits 4:0 = 0b11111).
     let bottom_byte = word & 0xFF;
     let crm = bits(word, 11, 8);

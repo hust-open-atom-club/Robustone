@@ -38,7 +38,7 @@ pub fn format_mem(base: &str, index: Option<&str>, displacement: i64) -> String 
     }
 }
 
-/// Format a condition code suffix for Capstone compatibility.
+/// Format a condition code suffix for reference compatibility.
 pub fn format_cond(cond: &str) -> String {
     format!(".{cond}")
 }

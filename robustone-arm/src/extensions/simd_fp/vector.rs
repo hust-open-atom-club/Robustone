@@ -550,7 +550,7 @@ pub fn decode_simd_copy(word: u32) -> DecodeResult {
             ))
         }
         // INS (general): insert general register into vector element
-        // Capstone renders as `mov` alias.
+        // Reference renders as `mov` alias.
         (true, false, 0b0011) => {
             let dest_elem = format!("v{}.{elem_char}[{index}]", rd_val);
             let src_reg = match elem_char {
@@ -581,7 +581,7 @@ pub fn decode_simd_copy(word: u32) -> DecodeResult {
             ))
         }
         // UMOV: move vector element to general register (unsigned)
-        // Capstone uses `mov` alias for S and D elements.
+        // Reference uses `mov` alias for S and D elements.
         (false, false, 0b0111) | (true, false, 0b0111) => {
             let dest_reg = if !q {
                 format!("w{}", rd_val)
@@ -601,7 +601,7 @@ pub fn decode_simd_copy(word: u32) -> DecodeResult {
             ))
         }
         // INS (element): insert vector element into vector element
-        // Capstone renders as `mov` alias.
+        // Reference renders as `mov` alias.
         // Q=1, op=1 with any imm4. Source index is imm4 shifted by element size.
         (true, true, _) => {
             let dest_elem = format!("v{}.{elem_char}[{index}]", rd_val);

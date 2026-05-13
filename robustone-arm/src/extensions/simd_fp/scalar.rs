@@ -451,7 +451,7 @@ fn decode_fp_imm8(imm8: u8, size: FpRegSize) -> String {
         value = -value;
     }
 
-    // Capstone renders with 8 decimal places for S/D, fewer for H.
+    // Reference renders with 8 decimal places for S/D, fewer for H.
     match size {
         FpRegSize::H => format!("#{:.4}", value),
         _ => format!("#{:.8}", value),

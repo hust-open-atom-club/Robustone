@@ -860,8 +860,8 @@ impl ConditionCode {
         }
     }
 
-    pub const fn as_str_capstone(&self) -> &'static str {
-        // Capstone uses hs/lo aliases for cs/cc
+    pub const fn as_str_compat(&self) -> &'static str {
+        // Reference formatter uses hs/lo aliases for cs/cc
         match self {
             ConditionCode::Cs => "hs",
             ConditionCode::Cc => "lo",
@@ -1148,9 +1148,9 @@ mod tests {
     }
 
     #[test]
-    fn test_condition_code_capstone_aliases() {
-        assert_eq!(ConditionCode::Cs.as_str_capstone(), "hs");
-        assert_eq!(ConditionCode::Cc.as_str_capstone(), "lo");
+    fn test_condition_code_compat_aliases() {
+        assert_eq!(ConditionCode::Cs.as_str_compat(), "hs");
+        assert_eq!(ConditionCode::Cc.as_str_compat(), "lo");
     }
 
     #[test]
