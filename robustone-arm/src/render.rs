@@ -1,6 +1,8 @@
 //! AArch64 instruction text rendering.
 
 use robustone_core::ir::{DecodedInstruction, TextRenderProfile};
+use robustone_core::render::RenderOptions;
+use robustone_core::renderer::Renderer;
 
 /// Render an AArch64 decoded instruction into mnemonic and operand text.
 pub fn render_aarch64_text_parts(
@@ -46,12 +48,10 @@ fn aarch64_register_name(id: u32) -> String {
     match id {
         0..=30 => format!("x{id}"),
         31 => "sp".to_string(),
+        64..=95 => format!("v{}", id - 64),
         _ => format!("r{id}"),
     }
 }
-
-use robustone_core::render::RenderOptions;
-use robustone_core::renderer::Renderer;
 
 /// AArch64-specific instruction renderer.
 pub struct AArch64Renderer;

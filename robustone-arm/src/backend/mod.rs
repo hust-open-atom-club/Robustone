@@ -14,18 +14,41 @@ use robustone_isa::{DecodeProfile, FeatureSet, FormatSpec, InstructionRead, Inst
 // Field enum
 // ---------------------------------------------------------------------------
 
+/// AArch64 instruction fields used by format specs and field extractors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ArmField {
     // General-purpose registers
-    Rd, Rn, Rm, Ra, Rt, Rt2, Rs,
+    Rd,
+    Rn,
+    Rm,
+    Ra,
+    Rt,
+    Rt2,
+    Rs,
     // Immediates
-    Imm12, Imm16, Imm19, Imm26,
-    Immhi, Immlo, Imm7,
+    Imm12,
+    Imm16,
+    Imm19,
+    Imm26,
+    Immhi,
+    Immlo,
+    Imm7,
     Cond,
-    Shift, Imm6, Hw,
-    N, Immr, Imms,
+    Shift,
+    Imm6,
+    Hw,
+    N,
+    Immr,
+    Imms,
     // FP / SIMD
-    Ftype, Opcode, Size, Q, U, L, M, H,
+    Ftype,
+    Opcode,
+    Size,
+    Q,
+    U,
+    L,
+    M,
+    H,
 }
 
 // ---------------------------------------------------------------------------
@@ -78,37 +101,44 @@ robustone_isa_macros::define_arch! {
 // Spec modules
 // ---------------------------------------------------------------------------
 
+/// Base integer data-processing instruction specs (arithmetic, logical, bitfield, etc.).
 pub mod specs_base {
     use super::*;
     use robustone_isa::ModeSet;
     include!("specs_base.rs");
 }
+/// Branch instruction specs (B, BL, B.cond, CBZ, CBNZ, TBZ, TBNZ).
 pub mod specs_branch {
     use super::*;
     use robustone_isa::ModeSet;
     include!("specs_branch.rs");
 }
+/// Load/store instruction specs (immediate, register offset, literal, pair, atomic).
 pub mod specs_loadstore {
     use super::*;
     use robustone_isa::ModeSet;
     include!("specs_loadstore.rs");
 }
+/// Scalar floating-point data-processing specs (1-source, 2-source, 3-source, comparison, conversion).
 pub mod specs_scalar_fp {
     use super::*;
     use robustone_isa::ModeSet;
     include!("specs_scalar_fp.rs");
 }
+/// System instruction specs (NOP, SVC, BRK, barriers, MSR/MRS).
 pub mod specs_system {
     use super::*;
     use robustone_isa::ModeSet;
     include!("specs_system.rs");
 }
+/// Advanced SIMD vector instruction specs (three same, two-reg misc, across lanes, copy/extract, indexed element, modified immediate, shift immediate, table lookup, crypto).
 pub mod specs_vector {
     use super::*;
     use robustone_isa::ModeSet;
     include!("specs_vector.rs");
 }
 
+/// Concatenated slices of all AArch64 instruction specs for validation and lookup.
 pub static ALL_SPEC_SLICES: &[&[InstructionSpec<ArmBackend>]] = &[
     specs_base::SPECS,
     specs_branch::SPECS,
@@ -126,6 +156,7 @@ fn all_arm_specs() -> impl Iterator<Item = &'static InstructionSpec<ArmBackend>>
 // Backend functions
 // ---------------------------------------------------------------------------
 
+/// Read a single 32-bit little-endian AArch64 instruction from bytes.
 fn arm_read_instruction(bytes: &[u8]) -> Result<InstructionRead<u32>, DisasmError> {
     if bytes.len() < 4 {
         return Err(DisasmError::decode_failure(
@@ -141,6 +172,8 @@ fn arm_read_instruction(bytes: &[u8]) -> Result<InstructionRead<u32>, DisasmErro
     })
 }
 
+/// Look up the instruction spec matching `word` within the enabled feature set.
+/// Uses hierarchical op0 pre-filtering to reduce linear search cost.
 fn arm_lookup(
     word: u32,
     profile: &DecodeProfile<ArmBackend>,
@@ -160,6 +193,7 @@ fn arm_lookup(
     })
 }
 
+/// Lower a raw register number into a `RegisterId` for the given register class.
 fn arm_lower_register(
     class: ArmRegisterClass,
     raw: u32,
@@ -171,6 +205,7 @@ fn arm_lower_register(
     }
 }
 
+/// Extract the value of `field` from `word` according to the format definition.
 fn arm_extract_field(
     word: u32,
     format: &FormatSpec<ArmField>,
@@ -194,6 +229,10 @@ fn arm_extract_field(
 // Alias / operand rewrite
 // ---------------------------------------------------------------------------
 
+/// Rewrite decoded operands and mnemonics to match AArch64 assembly conventions.
+///
+/// Handles SIMD arrangement suffixes, scalar FP register names, indexed element
+/// notation, shift immediates, modified immediates, and various instruction aliases.
 fn arm_apply_aliases(decoded: &mut robustone_core::ir::DecodedInstruction) {
     if decoded.raw_bytes.len() < 4 {
         return;
@@ -474,10 +513,10 @@ fn arm_apply_aliases(decoded: &mut robustone_core::ir::DecodedInstruction) {
 
             // Compute element index based on size and Q.
             let index = match (size, q) {
-                (0, 0) | (1, 0) => (l << 1) | h,           // FP16/H Q=0: {L, H}
+                (0, 0) | (1, 0) => (l << 1) | h,                // FP16/H Q=0: {L, H}
                 (0, 1) | (1, 1) => (h << 2) | (l << 1) | bit20, // FP16/H Q=1: {H, L, M}
-                (2, _) => (h << 1) | l,                     // S: {H, L}
-                (3, _) => h,                                        // D: {H}
+                (2, _) => (h << 1) | l,                         // S: {H, L}
+                (3, _) => h,                                    // D: {H}
                 _ => 0,
             };
 
@@ -502,7 +541,7 @@ fn arm_apply_aliases(decoded: &mut robustone_core::ir::DecodedInstruction) {
 
             // Element type suffix for indexed register.
             let elem = match size {
-                0 => "h",  // FP16 uses h element
+                0 => "h", // FP16 uses h element
                 1 => "h",
                 2 => "s",
                 3 => "d",
@@ -554,21 +593,30 @@ fn arm_apply_aliases(decoded: &mut robustone_core::ir::DecodedInstruction) {
             let f = ((word >> 7) & 0x1) as u8;
             let g = ((word >> 6) & 0x1) as u8;
             let h = ((word >> 5) & 0x1) as u8;
-            let imm8 = (a << 7) | (b << 6) | (c << 5) | (d << 4) | (e << 3) | (f << 2) | (g << 1) | h;
+            let imm8 =
+                (a << 7) | (b << 6) | (c << 5) | (d << 4) | (e << 3) | (f << 2) | (g << 1) | h;
             let rd = (word & 0x1F) as u8;
 
             // Determine mnemonic and arrangement.
             let (mnemonic, arr_suffix, is_scalar) = match (op, cmode) {
                 // movi: op=0, cmode even (including 14)
-                (0, c) if c < 15 && c % 2 == 0 => ("movi", modified_imm_arrangement(cmode, q, op), false),
+                (0, c) if c < 15 && c % 2 == 0 => {
+                    ("movi", modified_imm_arrangement(cmode, q, op), false)
+                }
                 // orr: op=0, cmode odd
-                (0, c) if c < 15 && c % 2 == 1 => ("orr", modified_imm_arrangement(cmode, q, op), false),
+                (0, c) if c < 15 && c % 2 == 1 => {
+                    ("orr", modified_imm_arrangement(cmode, q, op), false)
+                }
                 // fmov: op=0, cmode=15
                 (0, 15) => ("fmov", modified_imm_fp_arrangement(q, op), false),
                 // mvni: op=1, cmode even < 14
-                (1, c) if c < 14 && c % 2 == 0 => ("mvni", modified_imm_arrangement(cmode, q, op), false),
+                (1, c) if c < 14 && c % 2 == 0 => {
+                    ("mvni", modified_imm_arrangement(cmode, q, op), false)
+                }
                 // bic: op=1, cmode odd < 14
-                (1, c) if c < 14 && c % 2 == 1 => ("bic", modified_imm_arrangement(cmode, q, op), false),
+                (1, c) if c < 14 && c % 2 == 1 => {
+                    ("bic", modified_imm_arrangement(cmode, q, op), false)
+                }
                 // movi 64-bit: op=1, cmode=14
                 (1, 14) => ("movi", modified_imm_arrangement(cmode, q, op), q == 0),
                 // fmov D: op=1, cmode=15
@@ -765,6 +813,7 @@ fn arm_apply_aliases(decoded: &mut robustone_core::ir::DecodedInstruction) {
     }
 }
 
+/// Decode element size from the bottom 5 bits of an imm5 field.
 fn simd_element_size_from_imm5(imm5: u8) -> u8 {
     if imm5 & 1 != 0 {
         0
@@ -779,6 +828,7 @@ fn simd_element_size_from_imm5(imm5: u8) -> u8 {
     }
 }
 
+/// Return the element type character for a given size (b, h, s, d).
 fn element_type_suffix(size: u8) -> &'static str {
     match size {
         0 => "b",
@@ -789,6 +839,7 @@ fn element_type_suffix(size: u8) -> &'static str {
     }
 }
 
+/// True if the opcode is a floating-point vector (SIMD) operation.
 fn is_fp_vector_opcode(opcode_id: &str) -> bool {
     matches!(
         opcode_id,
@@ -836,22 +887,36 @@ fn is_fp_vector_opcode(opcode_id: &str) -> bool {
     )
 }
 
+/// True if the opcode is a SHA three-register cryptographic instruction.
 fn is_sha_three_reg_opcode(opcode_id: &str) -> bool {
     matches!(
         opcode_id,
-        "VEC_SHA1C" | "VEC_SHA1P" | "VEC_SHA1M" | "VEC_SHA1SU0" | "VEC_SHA256H" | "VEC_SHA256H2"
+        "VEC_SHA1C"
+            | "VEC_SHA1P"
+            | "VEC_SHA1M"
+            | "VEC_SHA1SU0"
+            | "VEC_SHA256H"
+            | "VEC_SHA256H2"
             | "VEC_SHA256SU1"
     )
 }
 
+/// True if the opcode is a table lookup instruction (TBL or TBX).
 fn is_table_lookup_opcode(opcode_id: &str) -> bool {
     matches!(
         opcode_id,
-        "VEC_TBL1" | "VEC_TBL2" | "VEC_TBL3" | "VEC_TBL4" | "VEC_TBX1" | "VEC_TBX2" | "VEC_TBX3"
+        "VEC_TBL1"
+            | "VEC_TBL2"
+            | "VEC_TBL3"
+            | "VEC_TBL4"
+            | "VEC_TBX1"
+            | "VEC_TBX2"
+            | "VEC_TBX3"
             | "VEC_TBX4"
     )
 }
 
+/// True if the opcode is a copy/extract instruction (DUP, INS, EXT, SMOV, UMOV).
 fn is_copy_extract_opcode(opcode_id: &str) -> bool {
     matches!(
         opcode_id,
@@ -865,6 +930,7 @@ fn is_copy_extract_opcode(opcode_id: &str) -> bool {
     )
 }
 
+/// True if the opcode uses an indexed vector element operand.
 fn is_indexed_element_opcode(opcode_id: &str) -> bool {
     matches!(
         opcode_id,
@@ -889,16 +955,15 @@ fn is_indexed_element_opcode(opcode_id: &str) -> bool {
     )
 }
 
+/// True if the opcode is a floating-point indexed element instruction.
 fn is_fp_indexed_opcode(opcode_id: &str) -> bool {
     matches!(
         opcode_id,
-        "VEC_FMLA_INDEXED"
-            | "VEC_FMLS_INDEXED"
-            | "VEC_FMUL_INDEXED"
-            | "VEC_FMULX_INDEXED"
+        "VEC_FMLA_INDEXED" | "VEC_FMLS_INDEXED" | "VEC_FMUL_INDEXED" | "VEC_FMULX_INDEXED"
     )
 }
 
+/// True if the opcode is a long (widening) indexed element instruction.
 fn is_long_indexed_opcode(opcode_id: &str) -> bool {
     matches!(
         opcode_id,
@@ -914,20 +979,20 @@ fn is_long_indexed_opcode(opcode_id: &str) -> bool {
     )
 }
 
+/// True if the opcode is a vector shift-by-immediate instruction.
 fn is_shift_imm_opcode(opcode_id: &str) -> bool {
     matches!(
         opcode_id,
-        "VEC_SHIFT_IMM_A"
-            | "VEC_SHIFT_IMM_A_U1"
-            | "VEC_SHIFT_IMM_B"
-            | "VEC_SHIFT_IMM_B_U1"
+        "VEC_SHIFT_IMM_A" | "VEC_SHIFT_IMM_A_U1" | "VEC_SHIFT_IMM_B" | "VEC_SHIFT_IMM_B_U1"
     )
 }
 
+/// True if the opcode is a vector modified-immediate instruction (MOVI, MVNI, ORR, BIC).
 fn is_modified_imm_opcode(opcode_id: &str) -> bool {
     matches!(opcode_id, "VEC_MODIFIED_IMM")
 }
 
+/// True if the opcode is a scalar floating-point instruction.
 fn is_scalar_fp_opcode(opcode_id: &str) -> bool {
     matches!(
         opcode_id,
@@ -960,6 +1025,7 @@ fn is_scalar_fp_opcode(opcode_id: &str) -> bool {
     )
 }
 
+/// Return the vector arrangement suffix for a modified-immediate instruction.
 fn modified_imm_arrangement(cmode: u8, q: u8, op: u8) -> &'static str {
     match cmode {
         0..=7 => match q {
@@ -989,6 +1055,7 @@ fn modified_imm_arrangement(cmode: u8, q: u8, op: u8) -> &'static str {
     }
 }
 
+/// Return the FP arrangement suffix for a modified-immediate FMOV.
 fn modified_imm_fp_arrangement(q: u8, op: u8) -> &'static str {
     match (op, q) {
         (0, 0) => ".2s",
@@ -998,6 +1065,7 @@ fn modified_imm_fp_arrangement(q: u8, op: u8) -> &'static str {
     }
 }
 
+/// Compute the left-shift amount for a modified-immediate cmode value.
 fn modified_imm_shift(cmode: u8) -> u8 {
     match cmode {
         0 | 1 | 8 | 9 => 0,
@@ -1010,6 +1078,7 @@ fn modified_imm_shift(cmode: u8) -> u8 {
     }
 }
 
+/// Expand an 8-bit FP immediate into a `f64` value per ARM ARM.
 fn fp_expand_imm(imm8: u8, op: u8, q: u8) -> f64 {
     let a = ((imm8 >> 7) & 1) as u32;
     let b = ((imm8 >> 6) & 1) as u32;
@@ -1024,19 +1093,32 @@ fn fp_expand_imm(imm8: u8, op: u8, q: u8) -> f64 {
 
     if op == 1 || q == 1 {
         // Double precision
-        let exp = ((1 - b) << 10) | (b << 9) | (c << 8) | (d << 7) | (b << 6) | (b << 5) | (b << 4) | (b << 3) | (b << 2) | (b << 1) | b;
-        let frac = ((e as u64) << 51) | ((f as u64) << 50) | ((g as u64) << 49) | ((h as u64) << 48);
+        let exp = ((1 - b) << 10)
+            | (b << 9)
+            | (c << 8)
+            | (d << 7)
+            | (b << 6)
+            | (b << 5)
+            | (b << 4)
+            | (b << 3)
+            | (b << 2)
+            | (b << 1)
+            | b;
+        let frac =
+            ((e as u64) << 51) | ((f as u64) << 50) | ((g as u64) << 49) | ((h as u64) << 48);
         let bits = ((sign as u64) << 63) | ((exp as u64) << 52) | frac;
         f64::from_bits(bits)
     } else {
         // Single precision
-        let exp = ((1 - b) << 7) | (b << 6) | (c << 5) | (d << 4) | (b << 3) | (b << 2) | (b << 1) | b;
+        let exp =
+            ((1 - b) << 7) | (b << 6) | (c << 5) | (d << 4) | (b << 3) | (b << 2) | (b << 1) | b;
         let frac = (e << 22) | (f << 21) | (g << 20) | (h << 19);
         let bits = (sign << 31) | (exp << 23) | frac;
         f32::from_bits(bits) as f64
     }
 }
 
+/// Return the vector arrangement suffix (e.g. `.8b`, `.4s`) for integer SIMD.
 fn vec_arrangement_suffix(size: u8, q: u8) -> &'static str {
     match (size, q) {
         (0, 0) => ".8b",
@@ -1050,6 +1132,7 @@ fn vec_arrangement_suffix(size: u8, q: u8) -> &'static str {
     }
 }
 
+/// Return the vector arrangement suffix for FP SIMD operations.
 fn fp_vec_arrangement_suffix(size: u8, q: u8) -> &'static str {
     // FP vector uses bit 22 (the lower bit of size) as element size:
     // bit 22 = 0 → S (single), bit 22 = 1 → D (double)
@@ -1062,6 +1145,7 @@ fn fp_vec_arrangement_suffix(size: u8, q: u8) -> &'static str {
     }
 }
 
+/// Return the vector arrangement suffix for FP indexed-element operations.
 fn fp_indexed_arrangement_suffix(size: u8, q: u8) -> &'static str {
     // FP indexed element uses size directly:
     // size=00 → FP16 (H), size=10 → S, size=11 → D
@@ -1075,6 +1159,7 @@ fn fp_indexed_arrangement_suffix(size: u8, q: u8) -> &'static str {
     }
 }
 
+/// Derive the element size (8, 16, 32, 64) from the `immh` field of a shift-immediate instruction.
 fn shift_imm_esize(immh: u8) -> u8 {
     match immh {
         0b0001 => 8,
@@ -1085,6 +1170,7 @@ fn shift_imm_esize(immh: u8) -> u8 {
     }
 }
 
+/// Return the vector arrangement suffix for a shift-immediate instruction.
 fn shift_imm_arrangement(esize: u8, q: u8) -> &'static str {
     match (esize, q) {
         (8, 0) => ".8b",
@@ -1318,7 +1404,9 @@ mod tests {
     fn test_decode_nop() {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
-        let insn = decoder.decode(&[0x1F, 0x20, 0x03, 0xD5], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x1F, 0x20, 0x03, 0xD5], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "nop");
     }
 
@@ -1326,7 +1414,9 @@ mod tests {
     fn test_decode_ret() {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
-        let insn = decoder.decode(&[0xC0, 0x03, 0x5F, 0xD6], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0xC0, 0x03, 0x5F, 0xD6], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "ret");
     }
 
@@ -1338,7 +1428,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // b #0  => 0x14000000
-        let insn = decoder.decode(&[0x00, 0x00, 0x00, 0x14], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x00, 0x00, 0x14], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "b");
     }
 
@@ -1347,7 +1439,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // bl #0  => 0x94000000
-        let insn = decoder.decode(&[0x00, 0x00, 0x00, 0x94], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x00, 0x00, 0x94], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "bl");
     }
 
@@ -1356,7 +1450,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // b.eq #0  => 0x54000000 (cond=0)
-        let insn = decoder.decode(&[0x00, 0x00, 0x00, 0x54], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x00, 0x00, 0x54], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "b.cond");
     }
 
@@ -1365,7 +1461,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // cbz x0, #0  => 0xB4000000 (sf=1)
-        let insn = decoder.decode(&[0x00, 0x00, 0x00, 0xB4], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x00, 0x00, 0xB4], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "cbz");
     }
 
@@ -1374,7 +1472,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // cbnz x0, #0  => 0xB5000000 (sf=1)
-        let insn = decoder.decode(&[0x00, 0x00, 0x00, 0xB5], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x00, 0x00, 0xB5], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "cbnz");
     }
 
@@ -1383,7 +1483,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // tbz x0, #0, #0  => 0x36000000
-        let insn = decoder.decode(&[0x00, 0x00, 0x00, 0x36], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x00, 0x00, 0x36], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "tbz");
     }
 
@@ -1392,7 +1494,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // tbnz x0, #0, #0  => 0x37000000
-        let insn = decoder.decode(&[0x00, 0x00, 0x00, 0x37], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x00, 0x00, 0x37], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "tbnz");
     }
 
@@ -1404,7 +1508,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // svc #0  => 0xD4000001
-        let insn = decoder.decode(&[0x01, 0x00, 0x00, 0xD4], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x01, 0x00, 0x00, 0xD4], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "svc");
     }
 
@@ -1413,7 +1519,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // brk #0  => 0xD4200000
-        let insn = decoder.decode(&[0x00, 0x00, 0x20, 0xD4], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x00, 0x20, 0xD4], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "brk");
     }
 
@@ -1422,7 +1530,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // dsb sy  => 0xD503309F
-        let insn = decoder.decode(&[0x9F, 0x30, 0x03, 0xD5], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x9F, 0x30, 0x03, 0xD5], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "dsb");
     }
 
@@ -1431,7 +1541,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // isb  => 0xD50330DF
-        let insn = decoder.decode(&[0xDF, 0x30, 0x03, 0xD5], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0xDF, 0x30, 0x03, 0xD5], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "isb");
     }
 
@@ -1440,7 +1552,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // eret  => 0xD69F03E0
-        let insn = decoder.decode(&[0xE0, 0x03, 0x9F, 0xD6], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0xE0, 0x03, 0x9F, 0xD6], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "eret");
     }
 
@@ -1449,7 +1563,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // wfi  => 0xD503207F
-        let insn = decoder.decode(&[0x7F, 0x20, 0x03, 0xD5], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x7F, 0x20, 0x03, 0xD5], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "wfi");
     }
 
@@ -1461,7 +1577,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // ldr x0, [x1]  => 0xF9400020
-        let insn = decoder.decode(&[0x20, 0x00, 0x40, 0xF9], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x00, 0x40, 0xF9], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "ldr");
     }
 
@@ -1470,7 +1588,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // str x0, [x1]  => 0xF9000020
-        let insn = decoder.decode(&[0x20, 0x00, 0x00, 0xF9], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x00, 0x00, 0xF9], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "str");
     }
 
@@ -1479,7 +1599,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // ldr w0, [x1]  => 0xB9400020
-        let insn = decoder.decode(&[0x20, 0x00, 0x40, 0xB9], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x00, 0x40, 0xB9], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "ldr");
     }
 
@@ -1488,7 +1610,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // ldrb w0, [x1]  => 0x39400020
-        let insn = decoder.decode(&[0x20, 0x00, 0x40, 0x39], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x00, 0x40, 0x39], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "ldrb");
     }
 
@@ -1497,7 +1621,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // ldr x0, #0  => 0x58000000
-        let insn = decoder.decode(&[0x00, 0x00, 0x00, 0x58], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x00, 0x00, 0x58], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "ldr");
     }
 
@@ -1506,7 +1632,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // ldp x0, x1, [x2]  => 0xA9400040
-        let insn = decoder.decode(&[0x40, 0x00, 0x40, 0xA9], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x40, 0x00, 0x40, 0xA9], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "ldp");
     }
 
@@ -1515,7 +1643,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // stp x0, x1, [x2]  => 0xA9000040
-        let insn = decoder.decode(&[0x40, 0x00, 0x00, 0xA9], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x40, 0x00, 0x00, 0xA9], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "stp");
     }
 
@@ -1527,7 +1657,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fadd s0, s0, s0  => 0x1E202800
-        let insn = decoder.decode(&[0x00, 0x28, 0x20, 0x1E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x28, 0x20, 0x1E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fadd");
     }
 
@@ -1536,7 +1668,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fsub d0, d0, d0  => 0x1E603800
-        let insn = decoder.decode(&[0x00, 0x38, 0x60, 0x1E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x38, 0x60, 0x1E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fsub");
     }
 
@@ -1545,7 +1679,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmul h0, h0, h0  => 0x1EE00800
-        let insn = decoder.decode(&[0x00, 0x08, 0xE0, 0x1E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x08, 0xE0, 0x1E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmul");
     }
 
@@ -1554,7 +1690,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fdiv s0, s0, s0  => 0x1E201800
-        let insn = decoder.decode(&[0x00, 0x18, 0x20, 0x1E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x18, 0x20, 0x1E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fdiv");
     }
 
@@ -1563,7 +1701,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fabs s0, s0  => 0x1E000400
-        let insn = decoder.decode(&[0x00, 0x04, 0x00, 0x1E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x04, 0x00, 0x1E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fabs");
     }
 
@@ -1572,7 +1712,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fneg d0, d0  => 0x1E400800
-        let insn = decoder.decode(&[0x00, 0x08, 0x40, 0x1E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x08, 0x40, 0x1E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fneg");
     }
 
@@ -1581,7 +1723,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fsqrt h0, h0  => 0x1EC00C00
-        let insn = decoder.decode(&[0x00, 0x0C, 0xC0, 0x1E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x0C, 0xC0, 0x1E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fsqrt");
     }
 
@@ -1590,7 +1734,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmov s0, s0  => 0x1E000000
-        let insn = decoder.decode(&[0x00, 0x00, 0x00, 0x1E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x00, 0x00, 0x1E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmov");
     }
 
@@ -1599,7 +1745,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // frintn s1, s0  => 0x1E002001 (rd=1 to avoid FCMP overlap at rd=0)
-        let insn = decoder.decode(&[0x01, 0x20, 0x00, 0x1E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x01, 0x20, 0x00, 0x1E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "frintn");
     }
 
@@ -1608,7 +1756,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // frintz d1, d0  => 0x1E402C01 (rd=1 to avoid FCMP overlap at rd=0)
-        let insn = decoder.decode(&[0x01, 0x2C, 0x40, 0x1E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x01, 0x2C, 0x40, 0x1E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "frintz");
     }
 
@@ -1617,7 +1767,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fcmp s0, s0  => 0x1E002000 (rd=0, rm=0, rn=0)
-        let insn = decoder.decode(&[0x00, 0x20, 0x00, 0x1E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x20, 0x00, 0x1E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fcmp");
     }
 
@@ -1626,7 +1778,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fcmpe s0, s0  => 0x1E002400 (rd=0, rm=0, rn=0)
-        let insn = decoder.decode(&[0x00, 0x24, 0x00, 0x1E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x24, 0x00, 0x1E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fcmpe");
     }
 
@@ -1635,7 +1789,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fcsel s0, s0, s1, ne  => 0x1E011C00
-        let insn = decoder.decode(&[0x00, 0x1C, 0x01, 0x1E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x1C, 0x01, 0x1E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fcsel");
     }
 
@@ -1644,7 +1800,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmadd s0, s0, s0, s0  => 0x1F000000
-        let insn = decoder.decode(&[0x00, 0x00, 0x00, 0x1F], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x00, 0x00, 0x1F], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmadd");
     }
 
@@ -1653,7 +1811,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmsub s0, s0, s0, s0  => 0x1F008000 (LE: [0x00, 0x80, 0x00, 0x1F])
-        let insn = decoder.decode(&[0x00, 0x80, 0x00, 0x1F], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x80, 0x00, 0x1F], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmsub");
     }
 
@@ -1662,7 +1822,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fcvt s0, d0  => 0x1E010000 (base FCVT_FP pattern)
-        let insn = decoder.decode(&[0x00, 0x00, 0x01, 0x1E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x00, 0x01, 0x1E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fcvt");
     }
 
@@ -1674,7 +1836,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // add v0.8b, v1.8b, v2.8b  => 0x0E228420
-        let insn = decoder.decode(&[0x20, 0x84, 0x22, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x84, 0x22, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "add");
     }
 
@@ -1683,7 +1847,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // sub v0.16b, v1.16b, v2.16b  => 0x6E228420
-        let insn = decoder.decode(&[0x20, 0x84, 0x22, 0x6E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x84, 0x22, 0x6E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "sub");
     }
 
@@ -1692,7 +1858,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // mul v0.4h, v1.4h, v2.4h  => 0x0E629C20
-        let insn = decoder.decode(&[0x20, 0x9C, 0x62, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x9C, 0x62, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "mul");
     }
 
@@ -1701,7 +1869,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // mla v0.2s, v1.2s, v2.2s  => 0x0EA29420
-        let insn = decoder.decode(&[0x20, 0x94, 0xA2, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x94, 0xA2, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "mla");
     }
 
@@ -1710,7 +1880,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // mls v0.4s, v1.4s, v2.4s  => 0x6EA29420
-        let insn = decoder.decode(&[0x20, 0x94, 0xA2, 0x6E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x94, 0xA2, 0x6E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "mls");
     }
 
@@ -1719,7 +1891,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // smax v0.8b, v1.8b, v2.8b  => 0x0E226420
-        let insn = decoder.decode(&[0x20, 0x64, 0x22, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x64, 0x22, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "smax");
     }
 
@@ -1728,7 +1902,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // umax v0.16b, v1.16b, v2.16b  => 0x6E226420
-        let insn = decoder.decode(&[0x20, 0x64, 0x22, 0x6E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x64, 0x22, 0x6E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "umax");
     }
 
@@ -1737,7 +1913,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // smin v0.4h, v1.4h, v2.4h  => 0x0E626C20
-        let insn = decoder.decode(&[0x20, 0x6C, 0x62, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x6C, 0x62, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "smin");
     }
 
@@ -1746,7 +1924,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // umin v0.8h, v1.8h, v2.8h  => 0x6E626C20
-        let insn = decoder.decode(&[0x20, 0x6C, 0x62, 0x6E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x6C, 0x62, 0x6E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "umin");
     }
 
@@ -1758,7 +1938,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // and v0.8b, v1.8b, v2.8b  => 0x0E221C20
-        let insn = decoder.decode(&[0x20, 0x1C, 0x22, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x1C, 0x22, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "and");
     }
 
@@ -1767,7 +1949,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // orr v0.16b, v1.16b, v2.16b  => 0x4EA21C20
-        let insn = decoder.decode(&[0x20, 0x1C, 0xA2, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x1C, 0xA2, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "orr");
     }
 
@@ -1776,7 +1960,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // eor v0.8b, v1.8b, v2.8b  => 0x2E221C20
-        let insn = decoder.decode(&[0x20, 0x1C, 0x22, 0x2E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x1C, 0x22, 0x2E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "eor");
     }
 
@@ -1785,7 +1971,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // bic v0.16b, v1.16b, v2.16b  => 0x4E621C20
-        let insn = decoder.decode(&[0x20, 0x1C, 0x62, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x1C, 0x62, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "bic");
     }
 
@@ -1794,7 +1982,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // bit v0.8b, v1.8b, v2.8b  => 0x2EA21C20
-        let insn = decoder.decode(&[0x20, 0x1C, 0xA2, 0x2E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x1C, 0xA2, 0x2E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "bit");
     }
 
@@ -1803,7 +1993,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // bsl v0.16b, v1.16b, v2.16b  => 0x6E621C20
-        let insn = decoder.decode(&[0x20, 0x1C, 0x62, 0x6E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x1C, 0x62, 0x6E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "bsl");
     }
 
@@ -1812,7 +2004,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // orn v0.8b, v1.8b, v2.8b  => 0x0EE21C20
-        let insn = decoder.decode(&[0x20, 0x1C, 0xE2, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x1C, 0xE2, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "orn");
     }
 
@@ -1821,7 +2015,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // bif v0.16b, v1.16b, v2.16b  => 0x6EE21C20
-        let insn = decoder.decode(&[0x20, 0x1C, 0xE2, 0x6E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x1C, 0xE2, 0x6E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "bif");
     }
 
@@ -1833,7 +2029,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fadd v0.2s, v1.2s, v2.2s  => 0x0E22D420
-        let insn = decoder.decode(&[0x20, 0xD4, 0x22, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xD4, 0x22, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fadd");
     }
 
@@ -1842,7 +2040,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fsub v0.4s, v1.4s, v2.4s  => 0x4EA2D420
-        let insn = decoder.decode(&[0x20, 0xD4, 0xA2, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xD4, 0xA2, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fsub");
     }
 
@@ -1851,7 +2051,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmul v0.2s, v1.2s, v2.2s  => 0x2E22DC20
-        let insn = decoder.decode(&[0x20, 0xDC, 0x22, 0x2E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xDC, 0x22, 0x2E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmul");
     }
 
@@ -1860,7 +2062,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fdiv v0.4s, v1.4s, v2.4s  => 0x6EA2FC20
-        let insn = decoder.decode(&[0x20, 0xFC, 0xA2, 0x6E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xFC, 0xA2, 0x6E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fdiv");
     }
 
@@ -1869,7 +2073,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmax v0.2s, v1.2s, v2.2s  => 0x0E22F420
-        let insn = decoder.decode(&[0x20, 0xF4, 0x22, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xF4, 0x22, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmax");
     }
 
@@ -1878,7 +2084,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmin v0.4s, v1.4s, v2.4s  => 0x4EA2F420
-        let insn = decoder.decode(&[0x20, 0xF4, 0xA2, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xF4, 0xA2, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmin");
     }
 
@@ -1887,7 +2095,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmla v0.2s, v1.2s, v2.2s  => 0x0E22CC20
-        let insn = decoder.decode(&[0x20, 0xCC, 0x22, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xCC, 0x22, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmla");
     }
 
@@ -1896,7 +2106,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmls v0.4s, v1.4s, v2.4s  => 0x4EA2CC20
-        let insn = decoder.decode(&[0x20, 0xCC, 0xA2, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xCC, 0xA2, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmls");
     }
 
@@ -1905,7 +2117,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmaxnm v0.2d, v1.2d, v2.2d  => 0x4E62C420
-        let insn = decoder.decode(&[0x20, 0xC4, 0x62, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xC4, 0x62, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmaxnm");
     }
 
@@ -1914,7 +2128,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fminnm v0.2d, v1.2d, v2.2d  => 0x4EE2C420
-        let insn = decoder.decode(&[0x20, 0xC4, 0xE2, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xC4, 0xE2, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fminnm");
     }
 
@@ -1926,7 +2142,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // rev64 v0.16b, v31.16b  => 0x4E200BE0
-        let insn = decoder.decode(&[0xE0, 0x0B, 0x20, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0xE0, 0x0B, 0x20, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "rev64");
     }
 
@@ -1935,7 +2153,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // rev32 v30.16b, v31.16b  => 0x6E200BFE
-        let insn = decoder.decode(&[0xFE, 0x0B, 0x20, 0x6E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0xFE, 0x0B, 0x20, 0x6E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "rev32");
     }
 
@@ -1944,7 +2164,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // rev16 v30.16b, v31.16b  => 0x4E201BFE
-        let insn = decoder.decode(&[0xFE, 0x1B, 0x20, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0xFE, 0x1B, 0x20, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "rev16");
     }
 
@@ -1953,7 +2175,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // saddlp v3.8h, v21.16b  => 0x4E202AA3
-        let insn = decoder.decode(&[0xA3, 0x2A, 0x20, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0xA3, 0x2A, 0x20, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "saddlp");
     }
 
@@ -1962,7 +2186,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // uaddlp v3.8h, v21.16b  => 0x6E202AA3
-        let insn = decoder.decode(&[0xA3, 0x2A, 0x20, 0x6E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0xA3, 0x2A, 0x20, 0x6E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "uaddlp");
     }
 
@@ -1971,7 +2197,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // cls v0.16b, v31.16b  => 0x4E2048E0
-        let insn = decoder.decode(&[0xE0, 0x48, 0x20, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0xE0, 0x48, 0x20, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "cls");
     }
 
@@ -1980,7 +2208,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // clz v0.16b, v31.16b  => 0x6E2048E0
-        let insn = decoder.decode(&[0xE0, 0x48, 0x20, 0x6E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0xE0, 0x48, 0x20, 0x6E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "clz");
     }
 
@@ -1989,7 +2219,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // cnt v0.16b, v31.16b  => 0x4E205BE0
-        let insn = decoder.decode(&[0xE0, 0x5B, 0x20, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0xE0, 0x5B, 0x20, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "cnt");
     }
 
@@ -1998,7 +2230,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // mvn v0.16b, v31.16b  => 0x6E205BE0
-        let insn = decoder.decode(&[0xE0, 0x5B, 0x20, 0x6E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0xE0, 0x5B, 0x20, 0x6E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "mvn");
     }
 
@@ -2007,7 +2241,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // abs v0.16b, v31.16b  => 0x4E20BBE0
-        let insn = decoder.decode(&[0xE0, 0xBB, 0x20, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0xE0, 0xBB, 0x20, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "abs");
     }
 
@@ -2016,7 +2252,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // neg v0.16b, v31.16b  => 0x6E20BBE0
-        let insn = decoder.decode(&[0xE0, 0xBB, 0x20, 0x6E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0xE0, 0xBB, 0x20, 0x6E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "neg");
     }
 
@@ -2046,7 +2284,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fadd s0, s0, s0  => 0x1E202800
-        let insn = decoder.decode(&[0x00, 0x28, 0x20, 0x1E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x28, 0x20, 0x1E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fadd");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["s0", "s0", "s0"]);
@@ -2057,7 +2297,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fsub d0, d0, d0  => 0x1E603800
-        let insn = decoder.decode(&[0x00, 0x38, 0x60, 0x1E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x38, 0x60, 0x1E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fsub");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["d0", "d0", "d0"]);
@@ -2068,7 +2310,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmul h0, h0, h0  => 0x1EE00800
-        let insn = decoder.decode(&[0x00, 0x08, 0xE0, 0x1E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0x08, 0xE0, 0x1E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmul");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["h0", "h0", "h0"]);
@@ -2079,7 +2323,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // add v0.8b, v1.8b, v2.8b  => 0x0E228420
-        let insn = decoder.decode(&[0x20, 0x84, 0x22, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x84, 0x22, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "add");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.8b", "v1.8b", "v2.8b"]);
@@ -2090,7 +2336,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // add v0.16b, v1.16b, v2.16b  => 0x4E228420
-        let insn = decoder.decode(&[0x20, 0x84, 0x22, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x84, 0x22, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "add");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.16b", "v1.16b", "v2.16b"]);
@@ -2101,7 +2349,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // mul v0.4h, v1.4h, v2.4h  => 0x0E629C20
-        let insn = decoder.decode(&[0x20, 0x9C, 0x62, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x9C, 0x62, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "mul");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.4h", "v1.4h", "v2.4h"]);
@@ -2112,7 +2362,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fadd v0.4s, v1.4s, v2.4s  => 0x4E22D420
-        let insn = decoder.decode(&[0x20, 0xD4, 0x22, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xD4, 0x22, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fadd");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.4s", "v1.4s", "v2.4s"]);
@@ -2123,7 +2375,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fadd v0.2d, v1.2d, v2.2d  => 0x4E62D420
-        let insn = decoder.decode(&[0x20, 0xD4, 0x62, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xD4, 0x62, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fadd");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.2d", "v1.2d", "v2.2d"]);
@@ -2134,7 +2388,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // rev64 v0.16b, v31.16b  => 0x4E200BE0
-        let insn = decoder.decode(&[0xE0, 0x0B, 0x20, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0xE0, 0x0B, 0x20, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "rev64");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.16b", "v31.16b"]);
@@ -2145,7 +2401,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // abs v2.8h, v4.8h  => 0x4E60B882
-        let insn = decoder.decode(&[0x82, 0xB8, 0x60, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x82, 0xB8, 0x60, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "abs");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v2.8h", "v4.8h"]);
@@ -2159,7 +2417,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // sabd v0.8b, v1.8b, v2.8b  => 0x0E227420
-        let insn = decoder.decode(&[0x20, 0x74, 0x22, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x74, 0x22, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "sabd");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.8b", "v1.8b", "v2.8b"]);
@@ -2170,7 +2430,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // shadd v0.4h, v1.4h, v2.4h  => 0x0E620420
-        let insn = decoder.decode(&[0x20, 0x04, 0x62, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x04, 0x62, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "shadd");
     }
 
@@ -2179,7 +2441,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // sqadd v0.2s, v1.2s, v2.2s  => 0x0EA20C20
-        let insn = decoder.decode(&[0x20, 0x0C, 0xA2, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x0C, 0xA2, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "sqadd");
     }
 
@@ -2188,7 +2452,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // sshl v0.16b, v1.16b, v2.16b  => 0x4E224420
-        let insn = decoder.decode(&[0x20, 0x44, 0x22, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x44, 0x22, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "sshl");
     }
 
@@ -2197,7 +2463,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // smaxp v0.4s, v1.4s, v2.4s  => 0x4EA2A420
-        let insn = decoder.decode(&[0x20, 0xA4, 0xA2, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xA4, 0xA2, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "smaxp");
     }
 
@@ -2206,7 +2474,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // sqdmulh v0.4h, v1.4h, v2.4h  => 0x0E62B420
-        let insn = decoder.decode(&[0x20, 0xB4, 0x62, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xB4, 0x62, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "sqdmulh");
     }
 
@@ -2215,7 +2485,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // cmgt v0.8b, v1.8b, v2.8b  => 0x0E223420
-        let insn = decoder.decode(&[0x20, 0x34, 0x22, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x34, 0x22, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "cmgt");
     }
 
@@ -2224,7 +2496,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // addp v0.2s, v1.2s, v2.2s  => 0x0EA2BC20
-        let insn = decoder.decode(&[0x20, 0xBC, 0xA2, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xBC, 0xA2, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "addp");
     }
 
@@ -2236,7 +2510,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // faddp v0.2s, v1.2s, v2.2s  => 0x2E22D420
-        let insn = decoder.decode(&[0x20, 0xD4, 0x22, 0x2E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xD4, 0x22, 0x2E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "faddp");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.2s", "v1.2s", "v2.2s"]);
@@ -2247,7 +2523,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmaxp v0.4s, v1.4s, v2.4s  => 0x6E22F420
-        let insn = decoder.decode(&[0x20, 0xF4, 0x22, 0x6E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xF4, 0x22, 0x6E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmaxp");
     }
 
@@ -2256,7 +2534,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmulx v0.2d, v1.2d, v2.2d  => 0x4E62DC20
-        let insn = decoder.decode(&[0x20, 0xDC, 0x62, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xDC, 0x62, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmulx");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.2d", "v1.2d", "v2.2d"]);
@@ -2267,7 +2547,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // facge v0.2s, v1.2s, v2.2s  => 0x2E22EC20
-        let insn = decoder.decode(&[0x20, 0xEC, 0x22, 0x2E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xEC, 0x22, 0x2E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "facge");
     }
 
@@ -2279,7 +2561,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fcvtn v0.4h, v1.4s  => 0x0E216820
-        let insn = decoder.decode(&[0x20, 0x68, 0x21, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x68, 0x21, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fcvtn");
         // NOTE: operand rendering uses FP vector suffixes for both operands;
         // the true arrangement is v0.4h, v1.4s but we render v0.2s, v1.2s
@@ -2293,7 +2577,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fsqrt v0.2d, v1.2d  => 0x6EE1F820
-        let insn = decoder.decode(&[0x20, 0xF8, 0xE1, 0x6E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xF8, 0xE1, 0x6E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fsqrt");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.2d", "v1.2d"]);
@@ -2304,7 +2590,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmaxv s0, v1.4s  => 0x6E30F820
-        let insn = decoder.decode(&[0x20, 0xF8, 0x30, 0x6E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xF8, 0x30, 0x6E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmaxv");
         // NOTE: destination renders as vector register due to spec design;
         // true output is s0 but we render v0.4s.
@@ -2320,7 +2608,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // saddlv h0, v1.8b  => 0x0E303820
-        let insn = decoder.decode(&[0x20, 0x38, 0x30, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x38, 0x30, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "saddlv");
     }
 
@@ -2329,7 +2619,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // uaddlv h0, v1.8b  => 0x2E303820
-        let insn = decoder.decode(&[0x20, 0x38, 0x30, 0x2E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x38, 0x30, 0x2E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "uaddlv");
     }
 
@@ -2338,7 +2630,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // smaxv b0, v1.8b  => 0x0E30A820
-        let insn = decoder.decode(&[0x20, 0xA8, 0x30, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xA8, 0x30, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "smaxv");
     }
 
@@ -2347,7 +2641,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // umaxv b0, v1.8b  => 0x2E30A820
-        let insn = decoder.decode(&[0x20, 0xA8, 0x30, 0x2E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xA8, 0x30, 0x2E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "umaxv");
     }
 
@@ -2356,7 +2652,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // sminv b0, v1.8b  => 0x0E31A820
-        let insn = decoder.decode(&[0x20, 0xA8, 0x31, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xA8, 0x31, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "sminv");
     }
 
@@ -2365,7 +2663,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // uminv b0, v1.8b  => 0x2E31A820
-        let insn = decoder.decode(&[0x20, 0xA8, 0x31, 0x2E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xA8, 0x31, 0x2E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "uminv");
     }
 
@@ -2374,7 +2674,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // addv b0, v1.8b  => 0x0E31B820
-        let insn = decoder.decode(&[0x20, 0xB8, 0x31, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xB8, 0x31, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "addv");
     }
 
@@ -2386,7 +2688,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmaxnmv s0, v1.4s  => 0x6E30C820
-        let insn = decoder.decode(&[0x20, 0xC8, 0x30, 0x6E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xC8, 0x30, 0x6E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmaxnmv");
     }
 
@@ -2395,7 +2699,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fminnmv s0, v1.4s  => 0x6EB0C820
-        let insn = decoder.decode(&[0x20, 0xC8, 0xB0, 0x6E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xC8, 0xB0, 0x6E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fminnmv");
     }
 
@@ -2407,7 +2713,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fabs v0.2s, v1.2s  => 0x0EA0F820 (derived from capstone pattern)
-        let insn = decoder.decode(&[0x20, 0xF8, 0xA0, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xF8, 0xA0, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fabs");
     }
 
@@ -2416,7 +2724,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fneg v0.4s, v1.4s  => 0x6EA0F820
-        let insn = decoder.decode(&[0x20, 0xF8, 0xA0, 0x6E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xF8, 0xA0, 0x6E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fneg");
     }
 
@@ -2425,7 +2735,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // frecpe v0.2s, v1.2s  => 0x0EA1D820
-        let insn = decoder.decode(&[0x20, 0xD8, 0xA1, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xD8, 0xA1, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "frecpe");
     }
 
@@ -2434,7 +2746,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fcmeq v0.2s, v1.2s, #0.0  => 0x0EA0D820
-        let insn = decoder.decode(&[0x20, 0xD8, 0xA0, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xD8, 0xA0, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fcmeq");
     }
 
@@ -2443,7 +2757,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fcmgt v0.2s, v1.2s, #0.0  => 0x0EA0C820
-        let insn = decoder.decode(&[0x20, 0xC8, 0xA0, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xC8, 0xA0, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fcmgt");
     }
 
@@ -2452,7 +2768,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fcmge v0.4s, v1.4s, #0.0  => 0x6EA0C820
-        let insn = decoder.decode(&[0x20, 0xC8, 0xA0, 0x6E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xC8, 0xA0, 0x6E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fcmge");
     }
 
@@ -2461,7 +2779,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fcmlt v0.2s, v1.2s, #0.0  => 0x0EA0E820
-        let insn = decoder.decode(&[0x20, 0xE8, 0xA0, 0x0E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xE8, 0xA0, 0x0E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fcmlt");
     }
 
@@ -2472,7 +2792,9 @@ mod tests {
     fn test_decode_vaese() {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
-        let insn = decoder.decode(&[0x20, 0x48, 0x28, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x48, 0x28, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "aese");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.16b", "v1.16b"]);
@@ -2482,7 +2804,9 @@ mod tests {
     fn test_decode_vaesd() {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
-        let insn = decoder.decode(&[0x20, 0x58, 0x28, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x58, 0x28, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "aesd");
     }
 
@@ -2490,7 +2814,9 @@ mod tests {
     fn test_decode_vaesmc() {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
-        let insn = decoder.decode(&[0x20, 0x68, 0x28, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x68, 0x28, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "aesmc");
     }
 
@@ -2498,7 +2824,9 @@ mod tests {
     fn test_decode_vaesimc() {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
-        let insn = decoder.decode(&[0x20, 0x78, 0x28, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x78, 0x28, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "aesimc");
     }
 
@@ -2509,7 +2837,9 @@ mod tests {
     fn test_decode_vsha1c() {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
-        let insn = decoder.decode(&[0x20, 0x00, 0x02, 0x5E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x00, 0x02, 0x5E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "sha1c");
     }
 
@@ -2517,7 +2847,9 @@ mod tests {
     fn test_decode_vsha1p() {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
-        let insn = decoder.decode(&[0x20, 0x10, 0x02, 0x5E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x10, 0x02, 0x5E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "sha1p");
     }
 
@@ -2525,7 +2857,9 @@ mod tests {
     fn test_decode_vsha1su0() {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
-        let insn = decoder.decode(&[0x20, 0x30, 0x02, 0x5E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x30, 0x02, 0x5E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "sha1su0");
     }
 
@@ -2533,7 +2867,9 @@ mod tests {
     fn test_decode_vsha256h() {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
-        let insn = decoder.decode(&[0x20, 0x40, 0x02, 0x5E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x40, 0x02, 0x5E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "sha256h");
     }
 
@@ -2541,7 +2877,9 @@ mod tests {
     fn test_decode_vsha1su1() {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
-        let insn = decoder.decode(&[0x20, 0x18, 0x28, 0x5E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x18, 0x28, 0x5E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "sha1su1");
     }
 
@@ -2549,7 +2887,9 @@ mod tests {
     fn test_decode_vsha256su0() {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
-        let insn = decoder.decode(&[0x20, 0x28, 0x28, 0x5E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x28, 0x28, 0x5E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "sha256su0");
     }
 
@@ -2558,7 +2898,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // sha1c q0, s1, v2.4s
-        let insn = decoder.decode(&[0x20, 0x00, 0x02, 0x5E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x00, 0x02, 0x5E], 0, &profile)
+            .unwrap();
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["q0", "s1", "v2.4s"]);
     }
@@ -2568,7 +2910,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // sha256h q0, q1, v2.4s
-        let insn = decoder.decode(&[0x20, 0x40, 0x02, 0x5E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x40, 0x02, 0x5E], 0, &profile)
+            .unwrap();
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["q0", "q1", "v2.4s"]);
     }
@@ -2580,7 +2924,9 @@ mod tests {
     fn test_decode_vtbl1() {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
-        let insn = decoder.decode(&[0x20, 0x00, 0x00, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x00, 0x00, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "tbl");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.16b", "{v1.16b}", "v0.16b"]);
@@ -2590,7 +2936,9 @@ mod tests {
     fn test_decode_vtbl2() {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
-        let insn = decoder.decode(&[0x20, 0x20, 0x00, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x20, 0x00, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "tbl");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.16b", "{v1.16b, v2.16b}", "v0.16b"]);
@@ -2600,17 +2948,24 @@ mod tests {
     fn test_decode_vtbl4() {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
-        let insn = decoder.decode(&[0x20, 0x60, 0x00, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x60, 0x00, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "tbl");
         let ops = operand_texts(&insn);
-        assert_eq!(ops, vec!["v0.16b", "{v1.16b, v2.16b, v3.16b, v4.16b}", "v0.16b"]);
+        assert_eq!(
+            ops,
+            vec!["v0.16b", "{v1.16b, v2.16b, v3.16b, v4.16b}", "v0.16b"]
+        );
     }
 
     #[test]
     fn test_decode_vtbx1() {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
-        let insn = decoder.decode(&[0x20, 0x10, 0x00, 0x4E], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x10, 0x00, 0x4E], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "tbx");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.16b", "{v1.16b}", "v0.16b"]);
@@ -2624,7 +2979,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // mla v0.2s, v1.2s, v2.s[2] => [0x20, 0x08, 0x82, 0x2f]
-        let insn = decoder.decode(&[0x20, 0x08, 0x82, 0x2f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x08, 0x82, 0x2f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "mla");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.2s", "v1.2s", "v2.s[2]"]);
@@ -2635,7 +2992,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // mla v0.8h, v1.8h, v2.h[7] => [0x20, 0x08, 0x72, 0x6f]
-        let insn = decoder.decode(&[0x20, 0x08, 0x72, 0x6f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x08, 0x72, 0x6f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "mla");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.8h", "v1.8h", "v2.h[7]"]);
@@ -2646,7 +3005,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // mls v0.2s, v1.2s, v22.s[2] => [0x20, 0x48, 0x96, 0x2f]
-        let insn = decoder.decode(&[0x20, 0x48, 0x96, 0x2f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x48, 0x96, 0x2f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "mls");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.2s", "v1.2s", "v22.s[2]"]);
@@ -2657,7 +3018,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmla v0.4h, v1.4h, v2.h[2] => [0x20, 0x10, 0x22, 0x0f]
-        let insn = decoder.decode(&[0x20, 0x10, 0x22, 0x0f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x10, 0x22, 0x0f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmla");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.4h", "v1.4h", "v2.h[2]"]);
@@ -2668,7 +3031,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmla v0.2d, v1.2d, v2.d[1] => [0x20, 0x18, 0xc2, 0x4f]
-        let insn = decoder.decode(&[0x20, 0x18, 0xc2, 0x4f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x18, 0xc2, 0x4f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmla");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.2d", "v1.2d", "v2.d[1]"]);
@@ -2679,7 +3044,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmls v3.4s, v8.4s, v2.s[1] => [0x03, 0x51, 0xa2, 0x4f]
-        let insn = decoder.decode(&[0x03, 0x51, 0xa2, 0x4f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x03, 0x51, 0xa2, 0x4f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmls");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v3.4s", "v8.4s", "v2.s[1]"]);
@@ -2690,7 +3057,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // smlal v0.4s, v1.4h, v2.h[2] => [0x20, 0x20, 0x62, 0x0f]
-        let insn = decoder.decode(&[0x20, 0x20, 0x62, 0x0f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x20, 0x62, 0x0f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "smlal");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.4s", "v1.4h", "v2.h[2]"]);
@@ -2701,7 +3070,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // smlal2 v0.4s, v1.8h, v1.h[2] => [0x20, 0x20, 0x61, 0x4f]
-        let insn = decoder.decode(&[0x20, 0x20, 0x61, 0x4f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x20, 0x61, 0x4f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "smlal");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.4s", "v1.8h", "v1.h[2]"]);
@@ -2712,7 +3083,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // mul v0.4s, v1.4s, v2.s[2] => [0x20, 0x88, 0x82, 0x4f]
-        let insn = decoder.decode(&[0x20, 0x88, 0x82, 0x4f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x88, 0x82, 0x4f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "mul");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.4s", "v1.4s", "v2.s[2]"]);
@@ -2723,7 +3096,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmul v0.8h, v1.8h, v2.h[2] => [0x20, 0x90, 0x22, 0x4f]
-        let insn = decoder.decode(&[0x20, 0x90, 0x22, 0x4f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x90, 0x22, 0x4f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmul");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.8h", "v1.8h", "v2.h[2]"]);
@@ -2734,7 +3109,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmulx v0.4s, v1.4s, v2.s[2] => [0x20, 0x98, 0x82, 0x6f]
-        let insn = decoder.decode(&[0x20, 0x98, 0x82, 0x6f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x98, 0x82, 0x6f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmulx");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.4s", "v1.4s", "v2.s[2]"]);
@@ -2745,7 +3122,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // sqdmull v0.2d, v1.2s, v2.s[2] => [0x20, 0xb8, 0x82, 0x0f]
-        let insn = decoder.decode(&[0x20, 0xb8, 0x82, 0x0f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xb8, 0x82, 0x0f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "sqdmull");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.2d", "v1.2s", "v2.s[2]"]);
@@ -2756,7 +3135,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // sqrdmulh v0.8h, v1.8h, v2.h[2] => [0x20, 0xd0, 0x62, 0x4f]
-        let insn = decoder.decode(&[0x20, 0xd0, 0x62, 0x4f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xd0, 0x62, 0x4f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "sqrdmulh");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.8h", "v1.8h", "v2.h[2]"]);
@@ -2771,7 +3152,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // movi v0.2s, #1 => [0x20, 0x04, 0x00, 0x0f]
-        let insn = decoder.decode(&[0x20, 0x04, 0x00, 0x0f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x04, 0x00, 0x0f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "movi");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.2s", "#1"]);
@@ -2782,7 +3165,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // movi v0.4s, #1 => [0x20, 0x04, 0x00, 0x4f]
-        let insn = decoder.decode(&[0x20, 0x04, 0x00, 0x4f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x04, 0x00, 0x4f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "movi");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.4s", "#1"]);
@@ -2793,7 +3178,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // movi v0.4h, #1 => [0x20, 0x84, 0x00, 0x0f]
-        let insn = decoder.decode(&[0x20, 0x84, 0x00, 0x0f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x84, 0x00, 0x0f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "movi");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.4h", "#1"]);
@@ -2804,7 +3191,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // movi v15.2s, #1, lsl #8 => [0x2f, 0x24, 0x00, 0x0f]
-        let insn = decoder.decode(&[0x2f, 0x24, 0x00, 0x0f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x2f, 0x24, 0x00, 0x0f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "movi");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v15.2s", "#1, lsl #8"]);
@@ -2815,7 +3204,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // movi v0.2s, #1, msl #8 => [0x20, 0xc4, 0x00, 0x0f]
-        let insn = decoder.decode(&[0x20, 0xc4, 0x00, 0x0f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0xc4, 0x00, 0x0f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "movi");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.2s", "#1, msl #8"]);
@@ -2826,7 +3217,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // movi v0.8b, #0 => [0x00, 0xe4, 0x00, 0x0f]
-        let insn = decoder.decode(&[0x00, 0xe4, 0x00, 0x0f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x00, 0xe4, 0x00, 0x0f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "movi");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.8b", "#0"]);
@@ -2837,7 +3230,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // movi v15.16b, #15 => [0xef, 0xe5, 0x00, 0x4f]
-        let insn = decoder.decode(&[0xef, 0xe5, 0x00, 0x4f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0xef, 0xe5, 0x00, 0x4f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "movi");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v15.16b", "#15"]);
@@ -2848,7 +3243,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // movi v0.2d, #0xff00ff00ff00ff00 => [0x40, 0xe5, 0x05, 0x6f]
-        let insn = decoder.decode(&[0x40, 0xe5, 0x05, 0x6f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x40, 0xe5, 0x05, 0x6f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "movi");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.2d", "#0xff00ff00ff00ff00"]);
@@ -2859,7 +3256,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // movi d0, #0xff00ff00ff00ff00 => [0x40, 0xe5, 0x05, 0x2f]
-        let insn = decoder.decode(&[0x40, 0xe5, 0x05, 0x2f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x40, 0xe5, 0x05, 0x2f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "movi");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["d0", "#0xff00ff00ff00ff00"]);
@@ -2870,7 +3269,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // mvni v0.2s, #1 => [0x20, 0x04, 0x00, 0x2f]
-        let insn = decoder.decode(&[0x20, 0x04, 0x00, 0x2f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x04, 0x00, 0x2f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "mvni");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.2s", "#1"]);
@@ -2881,7 +3282,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // mvni v0.4s, #1 => [0x20, 0x04, 0x00, 0x6f]
-        let insn = decoder.decode(&[0x20, 0x04, 0x00, 0x6f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x04, 0x00, 0x6f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "mvni");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.4s", "#1"]);
@@ -2892,7 +3295,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // orr v0.2s, #1 => [0x20, 0x14, 0x00, 0x0f]
-        let insn = decoder.decode(&[0x20, 0x14, 0x00, 0x0f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x14, 0x00, 0x0f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "orr");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.2s", "#1"]);
@@ -2903,7 +3308,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // orr v0.2s, #1, lsl #8 => [0x20, 0x34, 0x00, 0x0f]
-        let insn = decoder.decode(&[0x20, 0x34, 0x00, 0x0f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x34, 0x00, 0x0f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "orr");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.2s", "#1, lsl #8"]);
@@ -2914,7 +3321,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // bic v0.2s, #1 => [0x20, 0x14, 0x00, 0x2f]
-        let insn = decoder.decode(&[0x20, 0x14, 0x00, 0x2f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x14, 0x00, 0x2f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "bic");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.2s", "#1"]);
@@ -2925,7 +3334,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // bic v0.2s, #1, lsl #8 => [0x20, 0x34, 0x00, 0x2f]
-        let insn = decoder.decode(&[0x20, 0x34, 0x00, 0x2f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x20, 0x34, 0x00, 0x2f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "bic");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.2s", "#1, lsl #8"]);
@@ -2936,7 +3347,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmov v1.2s, #1.00000000 => [0x01, 0xf6, 0x03, 0x0f]
-        let insn = decoder.decode(&[0x01, 0xf6, 0x03, 0x0f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x01, 0xf6, 0x03, 0x0f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmov");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v1.2s", "#1.00000000"]);
@@ -2947,7 +3360,9 @@ mod tests {
         let decoder = Decoder::<ArmBackend>::new();
         let profile = make_profile();
         // fmov v31.2d, #1.00000000 => [0x1f, 0xf6, 0x03, 0x6f]
-        let insn = decoder.decode(&[0x1f, 0xf6, 0x03, 0x6f], 0, &profile).unwrap();
+        let insn = decoder
+            .decode(&[0x1f, 0xf6, 0x03, 0x6f], 0, &profile)
+            .unwrap();
         assert_eq!(insn.mnemonic, "fmov");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v31.2d", "#1.00000000"]);
