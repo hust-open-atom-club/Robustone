@@ -784,7 +784,8 @@ class OutputComparator:
         }
 
     def _normalize_robustone_register(self, register: Dict[str, Any]) -> int:
-        if register.get("architecture") != "riscv":
+        arch = register.get("architecture")
+        if arch not in ("riscv", "arm", "aarch64"):
             raise ValueError(f"unexpected register architecture `{register}`")
         return int(register["id"])
 

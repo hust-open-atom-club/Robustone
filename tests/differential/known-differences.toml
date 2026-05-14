@@ -9,3 +9,185 @@
 # - active = true|false
 # - owner
 # - expires_on
+
+# AArch64 Stage 1: Branch targets encoded as text operands for Capstone-compatible
+# rendering (e.g., "b 0x10" not "b #16"). Capstone's -r mode reports them as
+# immediate values, causing semantic_detail surface divergence while text matches.
+[[difference]]
+arch = "aarch64"
+hex = "04000014"
+surface = "semantic_detail"
+reason = "Branch target rendered as text (0x10) for Capstone text compatibility; semantic uses immediate type"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+[[difference]]
+arch = "aarch64"
+hex = "40040054"
+surface = "semantic_detail"
+reason = "Branch target rendered as text (0x88) for Capstone text compatibility; semantic uses immediate type"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+# AArch64 Stage 1: RET with default XZP/X30 omits the register operand for
+# Capstone-compatible rendering ("ret" not "ret x30"). Capstone's -r mode
+# includes x30 as an explicit operand.
+[[difference]]
+arch = "aarch64"
+hex = "c0035fd6"
+surface = "semantic_detail"
+reason = "RET omits default x30 operand for Capstone text compatibility; semantic differs in -r mode"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+# AArch64 Stage 1: NOP decoded directly as mnemonic "nop". Capstone's -r mode
+# reports underlying "hint" opcode with alias to "nop". Text output matches.
+[[difference]]
+arch = "aarch64"
+hex = "1f2003d5"
+surface = "semantic_detail"
+reason = "NOP decoded as direct mnemonic; Capstone -r mode reports underlying hint opcode"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+# AArch64 Stage 2: ADR/ADRP target encoded as text operand for Capstone-compatible
+# rendering. Capstone's -r mode reports it as immediate value.
+[[difference]]
+arch = "aarch64"
+hex = "04000010"
+surface = "semantic_detail"
+reason = "ADR target rendered as text for Capstone text compatibility; semantic uses immediate type"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+[[difference]]
+arch = "aarch64"
+hex = "01000090"
+surface = "semantic_detail"
+reason = "ADRP target rendered as text for Capstone text compatibility; semantic uses immediate type"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+# AArch64 Stage 2: BL target encoded as text operand; LR write tracked differently.
+[[difference]]
+arch = "aarch64"
+hex = "04000094"
+surface = "semantic_detail"
+reason = "BL target rendered as text for Capstone text compatibility; LR write tracking differs in semantic"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+# AArch64 Stage 2: Load literal target encoded as text operand.
+[[difference]]
+arch = "aarch64"
+hex = "20000098"
+surface = "semantic_detail"
+reason = "Load literal target rendered as text for Capstone text compatibility; semantic uses memory type"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+# AArch64 Stage 2: Load/store pair memory operand encoded as text for Capstone
+# compatibility. Capstone -r mode uses structured memory operand.
+[[difference]]
+arch = "aarch64"
+hex = "200000a9"
+surface = "semantic_detail"
+reason = "Pair memory operand rendered as text for Capstone text compatibility; semantic uses memory type"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+[[difference]]
+arch = "aarch64"
+hex = "408040a9"
+surface = "semantic_detail"
+reason = "Pair memory operand rendered as text for Capstone text compatibility; semantic uses memory type"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+[[difference]]
+arch = "aarch64"
+hex = "40804ca9"
+surface = "semantic_detail"
+reason = "Pair memory operand rendered as text for Capstone text compatibility; semantic uses memory type"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+[[difference]]
+arch = "aarch64"
+hex = "408000a9"
+surface = "semantic_detail"
+reason = "Pair memory operand rendered as text for Capstone text compatibility; semantic uses memory type"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+# AArch64 Stage 2: Capstone appends "; Illegal instruction" comment to certain
+# pair load encodings. Text disassembly is otherwise identical.
+[[difference]]
+arch = "aarch64"
+hex = "408040a9"
+surface = "text"
+reason = "Capstone appends ; Illegal instruction comment for this encoding; disassembly text otherwise identical"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+[[difference]]
+arch = "aarch64"
+hex = "40804ca9"
+surface = "text"
+reason = "Capstone appends ; Illegal instruction comment for this encoding; disassembly text otherwise identical"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+# AArch64 Stage 2: Register-offset memory operand encoded as text.
+[[difference]]
+arch = "aarch64"
+hex = "206822f8"
+surface = "semantic_detail"
+reason = "Register-offset memory operand rendered as text for Capstone text compatibility; semantic uses memory type"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+# AArch64 Stage 3: SIMD/FP registers rendered as text operands; Capstone semantic
+# uses structured register operands. Memory operands also text-based.
+[[difference]]
+arch = "aarch64"
+hex = "4000001c"
+surface = "semantic_detail"
+reason = "SIMD/FP register and literal target rendered as text for Capstone compatibility; semantic uses register/memory types"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+[[difference]]
+arch = "aarch64"
+hex = "e70700bd"
+surface = "semantic_detail"
+reason = "SIMD/FP register and memory operand rendered as text for Capstone compatibility; semantic uses register/memory types"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
+[[difference]]
+arch = "aarch64"
+hex = "4100402d"
+surface = "semantic_detail"
+reason = "SIMD/FP pair registers and memory operand rendered as text for Capstone compatibility; semantic uses register/memory types"
+active = true
+owner = "aarch64-team"
+expires_on = "2026-12-31"
+
