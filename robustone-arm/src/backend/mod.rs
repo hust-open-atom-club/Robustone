@@ -1131,7 +1131,7 @@ fn barrier_imm_name(imm: u32) -> String {
     }
 }
 
-/// Format a branch target address in Capstone-compatible style.
+/// Format a branch target address in the reference disassembler's style.
 fn format_branch_target(target: u64) -> String {
     if target == 0 {
         "0".to_string()
