@@ -28,9 +28,9 @@ fn format_aarch64_operand(operand: &robustone_core::ir::Operand) -> String {
         Operand::Register { register } => aarch64_register_name(register.id),
         Operand::Immediate { value, .. } => {
             if *value >= 0 && *value < 10 {
-                value.to_string()
+                format!("#{value}")
             } else {
-                format!("0x{value:x}")
+                format!("#0x{value:x}")
             }
         }
         Operand::Text { value } => value.clone(),

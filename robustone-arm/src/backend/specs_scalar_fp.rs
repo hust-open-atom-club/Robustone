@@ -421,4 +421,202 @@ robustone_isa_macros::define_instructions! {
         groups = &[robustone_isa::InstructionGroup::Float];
         manual = "ARM ARM";
     }
+
+    // -------------------------------------------------------------------------
+    // FP Load/Store Register (unsigned immediate)
+    // size[1:0] 1 1 1 V 0 0 L where V=1, size=00(S), 01(D), 10(Q)
+    // -------------------------------------------------------------------------
+    insn LDR_S {
+        mnemonic = "ldr";
+        opcode_id = "LDR_S";
+        pattern = robustone_isa::mask_value!(0xFFC0_0000, 0xBD40_0000);
+        format = &LDR_IMM;
+        operands = &[
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rt, robustone_isa::Access::Write),
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rn, robustone_isa::Access::Read),
+            robustone_isa::imm!(ArmField::Imm12, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::Unsigned),
+        ];
+        modes = ModeSet::All;
+        features = ArmFeature::FP;
+        groups = &[robustone_isa::InstructionGroup::Memory];
+        manual = "ARM ARM";
+    }
+    insn STR_S {
+        mnemonic = "str";
+        opcode_id = "STR_S";
+        pattern = robustone_isa::mask_value!(0xFFC0_0000, 0xBD00_0000);
+        format = &LDR_IMM;
+        operands = &[
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rt, robustone_isa::Access::Read),
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rn, robustone_isa::Access::Read),
+            robustone_isa::imm!(ArmField::Imm12, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::Unsigned),
+        ];
+        modes = ModeSet::All;
+        features = ArmFeature::FP;
+        groups = &[robustone_isa::InstructionGroup::Memory];
+        manual = "ARM ARM";
+    }
+    insn LDR_D {
+        mnemonic = "ldr";
+        opcode_id = "LDR_D";
+        pattern = robustone_isa::mask_value!(0xFFC0_0000, 0xFD40_0000);
+        format = &LDR_IMM;
+        operands = &[
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rt, robustone_isa::Access::Write),
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rn, robustone_isa::Access::Read),
+            robustone_isa::imm!(ArmField::Imm12, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::Unsigned),
+        ];
+        modes = ModeSet::All;
+        features = ArmFeature::FP;
+        groups = &[robustone_isa::InstructionGroup::Memory];
+        manual = "ARM ARM";
+    }
+    insn STR_D {
+        mnemonic = "str";
+        opcode_id = "STR_D";
+        pattern = robustone_isa::mask_value!(0xFFC0_0000, 0xFD00_0000);
+        format = &LDR_IMM;
+        operands = &[
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rt, robustone_isa::Access::Read),
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rn, robustone_isa::Access::Read),
+            robustone_isa::imm!(ArmField::Imm12, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::Unsigned),
+        ];
+        modes = ModeSet::All;
+        features = ArmFeature::FP;
+        groups = &[robustone_isa::InstructionGroup::Memory];
+        manual = "ARM ARM";
+    }
+
+    // -------------------------------------------------------------------------
+    // FP Load/Store Pair
+    // size[1:0] 1 0 1 0 0 1 L for pair, size=00(S), 01(D), 10(Q)
+    // -------------------------------------------------------------------------
+    insn LDP_S {
+        mnemonic = "ldp";
+        opcode_id = "LDP_S";
+        pattern = robustone_isa::mask_value!(0xFFC0_0000, 0x2D40_0000);
+        format = &LDP;
+        operands = &[
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rt, robustone_isa::Access::Write),
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rt2, robustone_isa::Access::Write),
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rn, robustone_isa::Access::Read),
+            robustone_isa::imm!(ArmField::Imm7, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::PcRelative),
+        ];
+        modes = ModeSet::All;
+        features = ArmFeature::FP;
+        groups = &[robustone_isa::InstructionGroup::Memory];
+        manual = "ARM ARM";
+    }
+    insn STP_S {
+        mnemonic = "stp";
+        opcode_id = "STP_S";
+        pattern = robustone_isa::mask_value!(0xFFC0_0000, 0x2D00_0000);
+        format = &LDP;
+        operands = &[
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rt, robustone_isa::Access::Read),
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rt2, robustone_isa::Access::Read),
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rn, robustone_isa::Access::Read),
+            robustone_isa::imm!(ArmField::Imm7, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::PcRelative),
+        ];
+        modes = ModeSet::All;
+        features = ArmFeature::FP;
+        groups = &[robustone_isa::InstructionGroup::Memory];
+        manual = "ARM ARM";
+    }
+    insn LDP_D {
+        mnemonic = "ldp";
+        opcode_id = "LDP_D";
+        pattern = robustone_isa::mask_value!(0xFFC0_0000, 0x6D40_0000);
+        format = &LDP;
+        operands = &[
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rt, robustone_isa::Access::Write),
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rt2, robustone_isa::Access::Write),
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rn, robustone_isa::Access::Read),
+            robustone_isa::imm!(ArmField::Imm7, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::PcRelative),
+        ];
+        modes = ModeSet::All;
+        features = ArmFeature::FP;
+        groups = &[robustone_isa::InstructionGroup::Memory];
+        manual = "ARM ARM";
+    }
+    insn STP_D {
+        mnemonic = "stp";
+        opcode_id = "STP_D";
+        pattern = robustone_isa::mask_value!(0xFFC0_0000, 0x6D00_0000);
+        format = &LDP;
+        operands = &[
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rt, robustone_isa::Access::Read),
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rt2, robustone_isa::Access::Read),
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rn, robustone_isa::Access::Read),
+            robustone_isa::imm!(ArmField::Imm7, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::PcRelative),
+        ];
+        modes = ModeSet::All;
+        features = ArmFeature::FP;
+        groups = &[robustone_isa::InstructionGroup::Memory];
+        manual = "ARM ARM";
+    }
+    insn LDP_Q {
+        mnemonic = "ldp";
+        opcode_id = "LDP_Q";
+        pattern = robustone_isa::mask_value!(0xFFC0_0000, 0xAD40_0000);
+        format = &LDP;
+        operands = &[
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rt, robustone_isa::Access::Write),
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rt2, robustone_isa::Access::Write),
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rn, robustone_isa::Access::Read),
+            robustone_isa::imm!(ArmField::Imm7, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::PcRelative),
+        ];
+        modes = ModeSet::All;
+        features = ArmFeature::FP;
+        groups = &[robustone_isa::InstructionGroup::Memory];
+        manual = "ARM ARM";
+    }
+    insn STP_Q {
+        mnemonic = "stp";
+        opcode_id = "STP_Q";
+        pattern = robustone_isa::mask_value!(0xFFC0_0000, 0xAD00_0000);
+        format = &LDP;
+        operands = &[
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rt, robustone_isa::Access::Read),
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rt2, robustone_isa::Access::Read),
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rn, robustone_isa::Access::Read),
+            robustone_isa::imm!(ArmField::Imm7, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::PcRelative),
+        ];
+        modes = ModeSet::All;
+        features = ArmFeature::FP;
+        groups = &[robustone_isa::InstructionGroup::Memory];
+        manual = "ARM ARM";
+    }
+
+    // -------------------------------------------------------------------------
+    // FP Load Literal
+    // -------------------------------------------------------------------------
+    insn LDR_S_LIT {
+        mnemonic = "ldr";
+        opcode_id = "LDR_S_LIT";
+        pattern = robustone_isa::mask_value!(0xFF00_0000, 0x1C00_0000);
+        format = &LDR_LIT;
+        operands = &[
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rt, robustone_isa::Access::Write),
+            robustone_isa::imm!(ArmField::Imm19, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::PcRelative),
+        ];
+        modes = ModeSet::All;
+        features = ArmFeature::FP;
+        groups = &[robustone_isa::InstructionGroup::Memory];
+        manual = "ARM ARM";
+    }
+    insn LDR_D_LIT {
+        mnemonic = "ldr";
+        opcode_id = "LDR_D_LIT";
+        pattern = robustone_isa::mask_value!(0xFF00_0000, 0x5C00_0000);
+        format = &LDR_LIT;
+        operands = &[
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rt, robustone_isa::Access::Write),
+            robustone_isa::imm!(ArmField::Imm19, robustone_isa::ImmediateTransform::None, robustone_isa::ImmediateKind::PcRelative),
+        ];
+        modes = ModeSet::All;
+        features = ArmFeature::FP;
+        groups = &[robustone_isa::InstructionGroup::Memory];
+        manual = "ARM ARM";
+    }
 }

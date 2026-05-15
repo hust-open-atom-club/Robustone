@@ -26,6 +26,7 @@ pub enum ArmField {
     Rt2,
     Rs,
     // Immediates
+    Imm9,
     Imm12,
     Imm16,
     Imm19,
@@ -113,11 +114,19 @@ pub mod specs_branch {
     use robustone_isa::ModeSet;
     include!("specs_branch.rs");
 }
-/// Load/store instruction specs (immediate, register offset, literal, pair, atomic).
+/// Load/store instruction specs (immediate, literal, pair, atomic).
 pub mod specs_loadstore {
     use super::*;
     use robustone_isa::ModeSet;
     include!("specs_loadstore.rs");
+}
+/// Load/store register offset instruction specs.
+/// Kept in a separate slice because their masks overlap with unsigned-immediate
+/// specs; priority-based resolution in `arm_lookup` handles selection at runtime.
+pub mod specs_loadstore_regoffset {
+    use super::*;
+    use robustone_isa::ModeSet;
+    include!("specs_loadstore_regoffset.rs");
 }
 /// Scalar floating-point data-processing specs (1-source, 2-source, 3-source, comparison, conversion).
 pub mod specs_scalar_fp {
@@ -143,6 +152,7 @@ pub static ALL_SPEC_SLICES: &[&[InstructionSpec<ArmBackend>]] = &[
     specs_base::SPECS,
     specs_branch::SPECS,
     specs_loadstore::SPECS,
+    specs_loadstore_regoffset::SPECS,
     specs_scalar_fp::SPECS,
     specs_system::SPECS,
     specs_vector::SPECS,
@@ -181,16 +191,18 @@ fn arm_lookup(
     let op0 = ((word >> 25) & 0xF) as u8;
 
     // Hierarchical dispatch: pre-filter by op0 range before linear match.
-    all_arm_specs().find(|spec| {
-        // Quick reject: check if spec's pattern value aligns with op0
-        let spec_op0 = ((spec.pattern().value >> 25) & 0xF) as u8;
-        let spec_mask = ((spec.pattern().mask >> 25) & 0xF) as u8;
-        let op0_matches = (op0 & spec_mask) == spec_op0;
+    // Higher-priority (more specific) specs are tried first.
+    all_arm_specs()
+        .filter(|spec| {
+            let spec_op0 = ((spec.pattern().value >> 25) & 0xF) as u8;
+            let spec_mask = ((spec.pattern().mask >> 25) & 0xF) as u8;
+            let op0_matches = (op0 & spec_mask) == spec_op0;
 
-        op0_matches
-            && (word & spec.pattern().mask) == spec.pattern().value
-            && profile.features.contains(spec.features())
-    })
+            op0_matches
+                && (word & spec.pattern().mask) == spec.pattern().value
+                && profile.features.contains(spec.features())
+        })
+        .max_by_key(|spec| spec.priority())
 }
 
 /// Lower a raw register number into a `RegisterId` for the given register class.
@@ -244,18 +256,24 @@ fn arm_apply_aliases(decoded: &mut robustone_core::ir::DecodedInstruction) {
         decoded.raw_bytes[3],
     ]);
 
-    let opcode_id = decoded.opcode_id.as_deref().unwrap_or("");
+    let opcode_id = decoded.opcode_id.clone().unwrap_or_default();
+
+    // Load/store: combine base register and offset into memory operand text.
+    if is_loadstore_opcode(&opcode_id) {
+        apply_loadstore_aliases(decoded, word, &opcode_id);
+        return;
+    }
 
     if opcode_id.starts_with("VEC_") {
         // Special-case SHA three-register: mixed scalar/vector operands.
-        if is_sha_three_reg_opcode(opcode_id) {
+        if is_sha_three_reg_opcode(&opcode_id) {
             for (i, op) in decoded.operands.iter_mut().enumerate() {
                 if let Operand::Register { register } = op
                     && register.architecture == ArchitectureId::Arm
                     && (64..96).contains(&register.id)
                 {
                     let reg_num = register.id - 64;
-                    match (opcode_id, i) {
+                    match (opcode_id.as_str(), i) {
                         ("VEC_SHA1C" | "VEC_SHA1P" | "VEC_SHA1M", 1) => {
                             *op = Operand::Text {
                                 value: format!("s{}", reg_num),
@@ -280,7 +298,7 @@ fn arm_apply_aliases(decoded: &mut robustone_core::ir::DecodedInstruction) {
         }
 
         // Table lookup: render register list for Rn and .16b for Rd/Rm.
-        if is_table_lookup_opcode(opcode_id) {
+        if is_table_lookup_opcode(&opcode_id) {
             let len = ((word >> 13) & 0x3) as usize;
             for (i, op) in decoded.operands.iter_mut().enumerate() {
                 if let Operand::Register { register } = op
@@ -314,7 +332,7 @@ fn arm_apply_aliases(decoded: &mut robustone_core::ir::DecodedInstruction) {
         }
 
         // Copy/Extract SIMD instructions: DUP, INS, EXT, SMOV, UMOV.
-        if is_copy_extract_opcode(opcode_id) {
+        if is_copy_extract_opcode(&opcode_id) {
             let q = ((word >> 30) & 0x1) as u8;
             let imm5 = ((word >> 16) & 0x1F) as u8;
             let size = simd_element_size_from_imm5(imm5);
@@ -322,7 +340,7 @@ fn arm_apply_aliases(decoded: &mut robustone_core::ir::DecodedInstruction) {
             let elem = element_type_suffix(size);
             let elem_index = imm5 >> (size + 1);
 
-            match opcode_id {
+            match opcode_id.as_str() {
                 "VEC_DUP_ELEMENT" => {
                     for (i, op) in decoded.operands.iter_mut().enumerate() {
                         if let Operand::Register { register } = op
@@ -504,7 +522,42 @@ fn arm_apply_aliases(decoded: &mut robustone_core::ir::DecodedInstruction) {
         }
 
         // Indexed Element SIMD instructions.
-        if is_indexed_element_opcode(opcode_id) {
+        // FMLAL2 indexed element: special handling because encoding uses size=2
+        // but operates on H (16-bit) elements.
+        if opcode_id == "VEC_FMLAL2_INDEXED" {
+            let q = ((word >> 30) & 0x1) as u8;
+            let h = ((word >> 11) & 0x1) as u8;
+            let l = ((word >> 21) & 0x1) as u8;
+            let bit20 = ((word >> 20) & 0x1) as u8;
+            let index = ((h as u32) << 2) | ((l as u32) << 1) | (bit20 as u32);
+            let rd_suffix = if q == 0 { ".2s" } else { ".4s" };
+            let rn_suffix = if q == 0 { ".2s" } else { ".4s" };
+
+            for (i, op) in decoded.operands.iter_mut().enumerate() {
+                if let Operand::Register { register } = op
+                    && register.architecture == ArchitectureId::Arm
+                    && (64..96).contains(&register.id)
+                {
+                    let reg_num = register.id - 64;
+                    let adjusted_reg = if i == 2 { reg_num & 0xF } else { reg_num };
+                    *op = match i {
+                        0 => Operand::Text {
+                            value: format!("v{}{}", adjusted_reg, rd_suffix),
+                        },
+                        1 => Operand::Text {
+                            value: format!("v{}{}", adjusted_reg, rn_suffix),
+                        },
+                        2 => Operand::Text {
+                            value: format!("v{}.h[{}]", adjusted_reg, index),
+                        },
+                        _ => continue,
+                    };
+                }
+            }
+            return;
+        }
+
+        if is_indexed_element_opcode(&opcode_id) {
             let size = ((word >> 22) & 0x3) as u8;
             let q = ((word >> 30) & 0x1) as u8;
             let h = ((word >> 11) & 0x1) as u8;
@@ -521,7 +574,7 @@ fn arm_apply_aliases(decoded: &mut robustone_core::ir::DecodedInstruction) {
             };
 
             // Compute arrangement suffix for Rd and Rn.
-            let is_fp = is_fp_indexed_opcode(opcode_id);
+            let is_fp = is_fp_indexed_opcode(&opcode_id);
             let rn_suffix = if is_fp {
                 fp_indexed_arrangement_suffix(size, q)
             } else {
@@ -529,7 +582,8 @@ fn arm_apply_aliases(decoded: &mut robustone_core::ir::DecodedInstruction) {
             };
 
             // For long operations, destination is wider.
-            let rd_suffix = if is_long_indexed_opcode(opcode_id) {
+            let is_long = is_long_indexed_opcode(&opcode_id);
+            let rd_suffix = if is_long {
                 match size {
                     1 => ".4s", // H -> S
                     2 => ".2d", // S -> D
@@ -538,6 +592,11 @@ fn arm_apply_aliases(decoded: &mut robustone_core::ir::DecodedInstruction) {
             } else {
                 rn_suffix
             };
+
+            // Widening instructions use a "2" suffix when Q=1.
+            if is_long && q == 1 {
+                decoded.mnemonic.push('2');
+            }
 
             // Element type suffix for indexed register.
             let elem = match size {
@@ -548,8 +607,10 @@ fn arm_apply_aliases(decoded: &mut robustone_core::ir::DecodedInstruction) {
                 _ => "",
             };
 
-            // Fix Rm for FP16/H Q=1 where bit20 is part of index.
-            let rm_fixup = (size <= 1 && q == 1) as u32;
+            // For H/FP16 elements (size < 2), Rm uses only 4 bits (bits 19:16)
+            // and bit 20 (M) is part of the element index. For S/D elements
+            // (size >= 2), Rm uses 5 bits {M, Rm[3:0]}.
+            let rm_4bit_only = size < 2;
 
             for (i, op) in decoded.operands.iter_mut().enumerate() {
                 if let Operand::Register { register } = op
@@ -557,8 +618,8 @@ fn arm_apply_aliases(decoded: &mut robustone_core::ir::DecodedInstruction) {
                     && (64..96).contains(&register.id)
                 {
                     let reg_num = register.id - 64;
-                    // Apply Rm fixup for operand 2 (Rm) when FP16/H Q=1.
-                    let adjusted_reg = if i == 2 && rm_fixup != 0 {
+                    // Mask Rm to 4 bits only for H/FP16 element sizes.
+                    let adjusted_reg = if i == 2 && rm_4bit_only {
                         reg_num & 0xF
                     } else {
                         reg_num
@@ -581,7 +642,7 @@ fn arm_apply_aliases(decoded: &mut robustone_core::ir::DecodedInstruction) {
         }
 
         // Advanced SIMD Modified Immediate.
-        if is_modified_imm_opcode(opcode_id) {
+        if is_modified_imm_opcode(&opcode_id) {
             let op = ((word >> 29) & 0x1) as u8;
             let q = ((word >> 30) & 0x1) as u8;
             let cmode = ((word >> 12) & 0xF) as u8;
@@ -668,7 +729,7 @@ fn arm_apply_aliases(decoded: &mut robustone_core::ir::DecodedInstruction) {
         }
 
         // Advanced SIMD Vector Shift Immediate.
-        if is_shift_imm_opcode(opcode_id) {
+        if is_shift_imm_opcode(&opcode_id) {
             let u = ((word >> 29) & 0x1) as u8;
             let q = ((word >> 30) & 0x1) as u8;
             let opcode = ((word >> 11) & 0x1F) as u8;
@@ -774,7 +835,7 @@ fn arm_apply_aliases(decoded: &mut robustone_core::ir::DecodedInstruction) {
         // Vector SIMD: rewrite Vec register operands to include arrangement suffix.
         let size = ((word >> 22) & 0x3) as u8;
         let q = ((word >> 30) & 0x1) as u8;
-        let suffix = if is_fp_vector_opcode(opcode_id) {
+        let suffix = if is_fp_vector_opcode(&opcode_id) {
             fp_vec_arrangement_suffix(size, q)
         } else {
             vec_arrangement_suffix(size, q)
@@ -790,7 +851,7 @@ fn arm_apply_aliases(decoded: &mut robustone_core::ir::DecodedInstruction) {
                 };
             }
         }
-    } else if is_scalar_fp_opcode(opcode_id) {
+    } else if is_scalar_fp_opcode(&opcode_id) {
         // Scalar FP: rewrite Vec register operands to s/d/h register names.
         let ftype = ((word >> 22) & 0x3) as u8;
         let prefix = match ftype {
@@ -810,6 +871,272 @@ fn arm_apply_aliases(decoded: &mut robustone_core::ir::DecodedInstruction) {
                 };
             }
         }
+    } else {
+        // General aliases for base integer, branch, and system instructions.
+        apply_general_aliases(decoded, word, &opcode_id);
+    }
+}
+
+/// Apply aliases and formatting for base integer, branch, and system instructions.
+fn apply_general_aliases(
+    decoded: &mut robustone_core::ir::DecodedInstruction,
+    word: u32,
+    opcode_id: &str,
+) {
+    use robustone_core::ir::Operand;
+
+    let address = decoded.address;
+
+    // Branch target computation for PC-relative instructions.
+    match opcode_id {
+        "B" | "BL" => {
+            let imm26 = (word & 0x03FFFFFF) as i32;
+            let offset = sign_extend(imm26, 26) << 2;
+            let target = (address as i64).wrapping_add(offset as i64) as u64;
+            decoded.operands.clear();
+            decoded.operands.push(Operand::Text {
+                value: format_branch_target(target),
+            });
+        }
+        "B_COND" => {
+            let imm19 = ((word >> 5) & 0x7FFFF) as i32;
+            let offset = sign_extend(imm19, 19) << 2;
+            let target = (address as i64).wrapping_add(offset as i64) as u64;
+            let cond = word & 0xF;
+            let cond_name = condition_name(cond);
+            decoded.mnemonic = format!("b.{}", cond_name);
+            decoded.operands.clear();
+            decoded.operands.push(Operand::Text {
+                value: format_branch_target(target),
+            });
+        }
+        "CBZ" | "CBNZ" => {
+            let imm19 = ((word >> 5) & 0x7FFFF) as i32;
+            let offset = sign_extend(imm19, 19) << 2;
+            let target = (address as i64).wrapping_add(offset as i64) as u64;
+            let sf = (word >> 31) & 1;
+            let reg_size = if sf == 1 { "x" } else { "w" };
+            let rt = word & 0x1F;
+            let mnemonic = if opcode_id == "CBZ" { "cbz" } else { "cbnz" };
+            decoded.mnemonic = mnemonic.to_string();
+            decoded.operands.clear();
+            decoded.operands.push(Operand::Text {
+                value: format!("{}{}", reg_size, rt),
+            });
+            decoded.operands.push(Operand::Text {
+                value: format_branch_target(target),
+            });
+        }
+        "TBZ" | "TBNZ" => {
+            let imm14 = ((word >> 5) & 0x3FFF) as i32;
+            let offset = sign_extend(imm14, 14) << 2;
+            let target = (address as i64).wrapping_add(offset as i64) as u64;
+            let bit_pos = (word >> 19) & 0x1F;
+            let reg_size = if bit_pos >= 32 { "x" } else { "w" };
+            let rt = word & 0x1F;
+            let mnemonic = if opcode_id == "TBZ" { "tbz" } else { "tbnz" };
+            decoded.mnemonic = mnemonic.to_string();
+            decoded.operands.clear();
+            decoded.operands.push(Operand::Text {
+                value: format!("{}{}", reg_size, rt),
+            });
+            decoded.operands.push(Operand::Text {
+                value: format!("#{}", bit_pos),
+            });
+            decoded.operands.push(Operand::Text {
+                value: format_branch_target(target),
+            });
+        }
+        "ADR" => {
+            let immlo = ((word >> 29) & 0x3) as i32;
+            let immhi = ((word >> 5) & 0x7FFFF) as i32;
+            let imm21 = sign_extend((immhi << 2) | immlo, 21);
+            let target = (address as i64).wrapping_add(imm21 as i64) as u64;
+            if let Some(Operand::Register { register }) = decoded.operands.first() {
+                let rd = register.id;
+                decoded.operands.clear();
+                decoded.operands.push(Operand::Text {
+                    value: format!("x{rd}"),
+                });
+            }
+            decoded.operands.push(Operand::Text {
+                value: format_branch_target(target),
+            });
+        }
+        "ADRP" => {
+            let immlo = ((word >> 29) & 0x3) as i64;
+            let immhi = ((word >> 5) & 0x7FFFF) as i64;
+            let imm21 = sign_extend64((immhi << 2) | immlo, 21);
+            let target = (address as i64 & !0xFFF).wrapping_add(imm21 << 12);
+            if let Some(Operand::Register { register }) = decoded.operands.first() {
+                let rd = register.id;
+                decoded.operands.clear();
+                decoded.operands.push(Operand::Text {
+                    value: format!("x{rd}"),
+                });
+            }
+            decoded.operands.push(Operand::Text {
+                value: format_branch_target(target as u64),
+            });
+        }
+        "LDR_LIT_W" | "LDR_LIT_X" | "LDRSW_LIT" => {
+            let imm19 = ((word >> 5) & 0x7FFFF) as i32;
+            let offset = sign_extend(imm19, 19) << 2;
+            let target = (address as i64).wrapping_add(offset as i64) as u64;
+            let rt = word & 0x1F;
+            let reg_size = match opcode_id {
+                "LDR_LIT_W" => "w",
+                "LDR_LIT_X" => "x",
+                "LDRSW_LIT" => "x",
+                _ => "x",
+            };
+            decoded.mnemonic = match opcode_id {
+                "LDRSW_LIT" => "ldrsw",
+                _ => "ldr",
+            }
+            .to_string();
+            decoded.operands.clear();
+            decoded.operands.push(Operand::Text {
+                value: format!("{}{}", reg_size, rt),
+            });
+            decoded.operands.push(Operand::Text {
+                value: format_branch_target(target),
+            });
+        }
+        _ => {}
+    }
+
+    // Integer aliases.
+    match opcode_id {
+        "SUBS_IMM" | "ADDS_IMM" => {
+            // CMP alias: when Rd is xzr/sp (register 31), omit it.
+            let rd = word & 0x1F;
+            if rd == 31 {
+                let base = if opcode_id.starts_with("SUBS") {
+                    "cmp"
+                } else {
+                    "cmn"
+                };
+                decoded.mnemonic = base.to_string();
+                if decoded.operands.len() >= 3 {
+                    decoded.operands.remove(0); // Remove Rd
+                }
+            }
+        }
+        "SUB_REG" | "SUB_IMM" => {
+            // NEG alias: when Rn is sp/xzr (register 31).
+            let rn = (word >> 5) & 0x1F;
+            if rn == 31 && decoded.operands.len() >= 3 {
+                decoded.mnemonic = "neg".to_string();
+                decoded.operands.remove(1); // Remove Rn
+            }
+        }
+        "MOVZ" => {
+            // MOV alias: movz with hw == 0.
+            let hw = (word >> 21) & 0x3;
+            if hw == 0 {
+                decoded.mnemonic = "mov".to_string();
+            }
+        }
+        "ORR_REG" => {
+            // MOV alias: orr with Rm=0 (shifted register).
+            let rm = (word >> 16) & 0x1F;
+            let imm6 = (word >> 10) & 0x3F;
+            if rm == 31 && imm6 == 0 {
+                decoded.mnemonic = "mov".to_string();
+                if decoded.operands.len() >= 3 {
+                    decoded.operands.remove(2); // Remove Rm
+                }
+            }
+        }
+        "RET" => {
+            // Omit x30 as the default return address register.
+            let rn = (word >> 5) & 0x1F;
+            if rn == 30 {
+                decoded.operands.clear();
+            }
+        }
+        "SVC" => {
+            // SVC #imm — immediate is already formatted with # prefix.
+        }
+        _ => {}
+    }
+
+    // System/barrier aliases.
+    match opcode_id {
+        "DSB" | "DMB" => {
+            // CRm field at bits 11:8 holds the barrier option.
+            let crm = (word >> 8) & 0xF;
+            let barrier_name = barrier_imm_name(crm);
+            decoded.operands.clear();
+            decoded.operands.push(Operand::Text {
+                value: barrier_name,
+            });
+        }
+        _ => {}
+    }
+}
+
+/// Sign-extend an n-bit signed integer.
+fn sign_extend(value: i32, bits: u32) -> i32 {
+    let shift = 32 - bits;
+    (value << shift) >> shift
+}
+
+/// Sign-extend an n-bit signed integer (64-bit).
+fn sign_extend64(value: i64, bits: u32) -> i64 {
+    let shift = 64 - bits;
+    (value << shift) >> shift
+}
+
+/// AArch64 condition code names.
+fn condition_name(cond: u32) -> &'static str {
+    match cond {
+        0x0 => "eq",
+        0x1 => "ne",
+        0x2 => "cs",
+        0x3 => "cc",
+        0x4 => "mi",
+        0x5 => "pl",
+        0x6 => "vs",
+        0x7 => "vc",
+        0x8 => "hi",
+        0x9 => "ls",
+        0xa => "ge",
+        0xb => "lt",
+        0xc => "gt",
+        0xd => "le",
+        0xe => "al",
+        0xf => "nv",
+        _ => "al",
+    }
+}
+
+/// Barrier immediate value to name mapping.
+fn barrier_imm_name(imm: u32) -> String {
+    match imm {
+        0xf => "sy".to_string(),
+        0xe => "st".to_string(),
+        0xb => "ish".to_string(),
+        0xa => "ishst".to_string(),
+        0x9 => "ishld".to_string(),
+        0x7 => "nsh".to_string(),
+        0x6 => "nshst".to_string(),
+        0x5 => "nshld".to_string(),
+        0x3 => "osh".to_string(),
+        0x2 => "oshst".to_string(),
+        0x1 => "oshld".to_string(),
+        0 => "#0".to_string(),
+        _ => format!("#{}", imm),
+    }
+}
+
+/// Format a branch target address in Capstone-compatible style.
+fn format_branch_target(target: u64) -> String {
+    if target == 0 {
+        "0".to_string()
+    } else {
+        format!("0x{target:x}")
     }
 }
 
@@ -952,6 +1279,7 @@ fn is_indexed_element_opcode(opcode_id: &str) -> bool {
             | "VEC_SQDMULL_INDEXED"
             | "VEC_SQDMULH_INDEXED"
             | "VEC_SQRDMULH_INDEXED"
+            | "VEC_FMLAL2_INDEXED"
     )
 }
 
@@ -976,6 +1304,7 @@ fn is_long_indexed_opcode(opcode_id: &str) -> bool {
             | "VEC_SMULL_INDEXED"
             | "VEC_UMULL_INDEXED"
             | "VEC_SQDMULL_INDEXED"
+            | "VEC_FMLAL2_INDEXED"
     )
 }
 
@@ -1023,6 +1352,428 @@ fn is_scalar_fp_opcode(opcode_id: &str) -> bool {
             | "FMSUB"
             | "FCVT_FP"
     )
+}
+
+/// True if the opcode is a load/store instruction.
+fn is_loadstore_opcode(opcode_id: &str) -> bool {
+    opcode_id.starts_with("LDR")
+        || opcode_id.starts_with("STR")
+        || opcode_id.starts_with("LDUR")
+        || opcode_id.starts_with("STUR")
+        || opcode_id.starts_with("LDP")
+        || opcode_id.starts_with("STP")
+        || opcode_id.starts_with("STXR")
+        || opcode_id.starts_with("LDXR")
+        || opcode_id.starts_with("STXP")
+        || opcode_id.starts_with("LDXP")
+        || opcode_id == "SIMD_LS_LOAD"
+        || opcode_id == "SIMD_LS_STORE"
+}
+
+/// Apply load/store aliases: combine base+offset into memory operand text.
+fn apply_loadstore_aliases(
+    decoded: &mut robustone_core::ir::DecodedInstruction,
+    word: u32,
+    opcode_id: &str,
+) {
+    use robustone_core::ir::Operand;
+
+    let ops = &mut decoded.operands;
+    if ops.len() < 2 {
+        return;
+    }
+
+    // Determine register size prefix from opcode for data registers (Rt).
+    let is_32bit = opcode_id.ends_with("_W")
+        || opcode_id.ends_with("_B")
+        || opcode_id.ends_with("_H")
+        || opcode_id == "LDRSB_W"
+        || opcode_id == "LDRSH_W";
+    let data_prefix = if is_32bit { "w" } else { "x" };
+
+    // FP/SIMD load/store: determine register prefix (s/d/q) from opcode.
+    let fp_prefix = if opcode_id.ends_with("_S") {
+        Some("s")
+    } else if opcode_id.ends_with("_D") {
+        Some("d")
+    } else if opcode_id.ends_with("_Q") {
+        Some("q")
+    } else {
+        None
+    };
+
+    // Helper: format a GPR with explicit prefix.
+    let fmt_reg = |id: u32, prefix: &str| -> String {
+        match id {
+            0..=30 => format!("{}{}", prefix, id),
+            31 if prefix == "w" => "wsp".to_string(),
+            31 => "sp".to_string(),
+            _ => format!("r{}", id),
+        }
+    };
+
+    // Helper to extract register name. Base registers are always xN.
+    let reg_name = |op: &Operand| -> String {
+        match op {
+            Operand::Register { register } => {
+                if register.architecture == ArchitectureId::Arm && (64..96).contains(&register.id) {
+                    format!("v{}", register.id - 64)
+                } else if register.architecture == ArchitectureId::Arm {
+                    fmt_reg(register.id, "x")
+                } else {
+                    format!("r{}", register.id)
+                }
+            }
+            _ => String::new(),
+        }
+    };
+
+    // Helper to format a data register with the correct size.
+    let data_reg_name = |op: &Operand| -> String {
+        match op {
+            Operand::Register { register } => {
+                if register.architecture == ArchitectureId::Arm && (64..96).contains(&register.id) {
+                    if let Some(prefix) = fp_prefix {
+                        format!("{}{}", prefix, register.id - 64)
+                    } else {
+                        format!("v{}", register.id - 64)
+                    }
+                } else if register.architecture == ArchitectureId::Arm {
+                    fmt_reg(register.id, data_prefix)
+                } else {
+                    format!("r{}", register.id)
+                }
+            }
+            _ => String::new(),
+        }
+    };
+
+    // Helper to extract immediate value.
+    let imm_val = |op: &Operand| -> i64 {
+        match op {
+            Operand::Immediate { value, .. } => *value,
+            _ => 0,
+        }
+    };
+
+    // Determine operand structure based on opcode.
+    let is_pair = opcode_id.starts_with("LDP") || opcode_id.starts_with("STP");
+    let is_literal = opcode_id.starts_with("LDR_LIT") || opcode_id == "LDRSW_LIT";
+    let is_post = opcode_id.contains("POST");
+    let is_pre = opcode_id.contains("PRE");
+    let is_unscaled = opcode_id.starts_with("LDUR") || opcode_id.starts_with("STUR");
+    let is_reg = opcode_id.contains("REG");
+    let is_excl = opcode_id.starts_with("STXR") || opcode_id.starts_with("LDXR");
+    let is_excl_pair = opcode_id.starts_with("STXP") || opcode_id.starts_with("LDXP");
+
+    // Advanced SIMD load/store: register list + memory operand.
+    if opcode_id == "SIMD_LS_LOAD" || opcode_id == "SIMD_LS_STORE" {
+        let q = ((word >> 30) & 0x1) as u8;
+        let size = ((word >> 10) & 0x3) as u8;
+        let opcode = ((word >> 12) & 0xF) as u8;
+        let rt = (word & 0x1F) as u8;
+        let rn = ((word >> 5) & 0x1F) as u8;
+        let l = ((word >> 22) & 0x1) as u8;
+
+        let arr = vec_arrangement_suffix(size, q);
+        let (mnemonic, num_regs) = match opcode {
+            0x0 => (if l == 1 { "ld4" } else { "st4" }, 4),
+            0x2 => (if l == 1 { "ld1" } else { "st1" }, 4),
+            0x4 => (if l == 1 { "ld3" } else { "st3" }, 3),
+            0x6 => (if l == 1 { "ld1" } else { "st1" }, 3),
+            0x7 => (if l == 1 { "ld1" } else { "st1" }, 1),
+            0x8 => (if l == 1 { "ld2" } else { "st2" }, 2),
+            0xA => (if l == 1 { "ld1" } else { "st1" }, 2),
+            _ => (if l == 1 { "ld1" } else { "st1" }, 1),
+        };
+        decoded.mnemonic = mnemonic.to_string();
+
+        let mut list = String::new();
+        list.push('{');
+        for i in 0..num_regs {
+            if i > 0 {
+                list.push_str(", ");
+            }
+            list.push_str(&format!("v{}{}", rt + i as u8, arr));
+        }
+        list.push('}');
+
+        let base = match rn {
+            0..=30 => format!("x{}", rn),
+            31 => "sp".to_string(),
+            _ => format!("r{}", rn),
+        };
+
+        ops.clear();
+        ops.push(Operand::Text { value: list });
+        ops.push(Operand::Text {
+            value: format!("[{}]", base),
+        });
+        return;
+    }
+
+    if is_literal {
+        // Literal: ldr x0, <label> — operands are [Rt, imm19]
+        // Compute PC-relative target.
+        let imm19 = ((word >> 5) & 0x7FFFF) as i32;
+        let offset = sign_extend(imm19, 19) << 2;
+        let target = (decoded.address as i64).wrapping_add(offset as i64) as u64;
+        if !ops.is_empty() {
+            ops[0] = Operand::Text {
+                value: data_reg_name(&ops[0]),
+            };
+        }
+        if ops.len() >= 2 {
+            ops[1] = Operand::Text {
+                value: format_branch_target(target),
+            };
+        }
+        return;
+    }
+
+    if is_excl_pair {
+        // stxp ws, wt1, wt2, [xn]
+        // Status register (Rs) is always 32-bit (wN).
+        if !ops.is_empty()
+            && let Operand::Register { register } = &ops[0]
+        {
+            ops[0] = Operand::Text {
+                value: fmt_reg(register.id, "w"),
+            };
+        }
+        if ops.len() > 1 {
+            ops[1] = Operand::Text {
+                value: data_reg_name(&ops[1]),
+            };
+        }
+        if ops.len() > 2 {
+            ops[2] = Operand::Text {
+                value: data_reg_name(&ops[2]),
+            };
+        }
+        if ops.len() >= 4 {
+            let base = reg_name(&ops[3]);
+            ops[3] = Operand::Text {
+                value: format!("[{}]", base),
+            };
+        }
+        return;
+    }
+
+    if is_excl {
+        // stxr ws, wt, [xn]
+        // Status register (Rs) is always 32-bit (wN).
+        if !ops.is_empty()
+            && let Operand::Register { register } = &ops[0]
+        {
+            ops[0] = Operand::Text {
+                value: fmt_reg(register.id, "w"),
+            };
+        }
+        if ops.len() > 1 {
+            ops[1] = Operand::Text {
+                value: data_reg_name(&ops[1]),
+            };
+        }
+        if ops.len() >= 3 {
+            let base = reg_name(&ops[2]);
+            ops[2] = Operand::Text {
+                value: format!("[{}]", base),
+            };
+        }
+        return;
+    }
+
+    // Format data registers with correct size before memory operand handling.
+    if is_pair {
+        if !ops.is_empty() {
+            ops[0] = Operand::Text {
+                value: data_reg_name(&ops[0]),
+            };
+        }
+        if ops.len() > 1 {
+            ops[1] = Operand::Text {
+                value: data_reg_name(&ops[1]),
+            };
+        }
+    } else {
+        if !ops.is_empty() {
+            ops[0] = Operand::Text {
+                value: data_reg_name(&ops[0]),
+            };
+        }
+    }
+
+    // For pair, normal, post, pre, unscaled, reg: memory operand is the last one or last two.
+    // The format has [Rt, Rn, offset/Rm] or [Rt, Rt2, Rn, offset].
+    let mem_idx = if is_pair {
+        2 // Rn is at index 2 for LDP format
+    } else {
+        1 // Rn is at index 1 for single-register formats
+    };
+
+    if ops.len() <= mem_idx {
+        return;
+    }
+
+    let base = reg_name(&ops[mem_idx]);
+
+    if is_reg {
+        // Register offset: [xn, xm]
+        if ops.len() > mem_idx + 1 {
+            let rm = reg_name(&ops[mem_idx + 1]);
+            if !rm.is_empty() {
+                ops[mem_idx] = Operand::Text {
+                    value: format!("[{}, {}]", base, rm),
+                };
+                ops.remove(mem_idx + 1);
+            }
+        }
+        return;
+    }
+
+    if is_post {
+        // Post-indexed: [xn], #offset
+        if ops.len() > mem_idx + 1 {
+            let offset = imm_val(&ops[mem_idx + 1]);
+            let off_str = if offset >= 0 {
+                format!("{}", offset)
+            } else {
+                format!("-{}", -offset)
+            };
+            ops[mem_idx] = Operand::Text {
+                value: format!("[{}], #{}", base, off_str),
+            };
+            ops.remove(mem_idx + 1);
+        } else {
+            ops[mem_idx] = Operand::Text {
+                value: format!("[{}]", base),
+            };
+        }
+        return;
+    }
+
+    if is_pre {
+        // Pre-indexed: [xn, #offset]!
+        if ops.len() > mem_idx + 1 {
+            let offset = imm_val(&ops[mem_idx + 1]);
+            let off_str = if offset >= 0 {
+                format!("{}", offset)
+            } else {
+                format!("-{}", -offset)
+            };
+            ops[mem_idx] = Operand::Text {
+                value: format!("[{}, #{}]!", base, off_str),
+            };
+            ops.remove(mem_idx + 1);
+        } else {
+            ops[mem_idx] = Operand::Text {
+                value: format!("[{}]!", base),
+            };
+        }
+        return;
+    }
+
+    if is_unscaled {
+        // Unscaled: [xn, #offset] or [xn] if offset=0
+        if ops.len() > mem_idx + 1 {
+            let offset = imm_val(&ops[mem_idx + 1]);
+            if offset == 0 {
+                ops[mem_idx] = Operand::Text {
+                    value: format!("[{}]", base),
+                };
+            } else {
+                let off_str = if offset >= 0 {
+                    format!("{}", offset)
+                } else {
+                    format!("-{}", -offset)
+                };
+                ops[mem_idx] = Operand::Text {
+                    value: format!("[{}, #{}]", base, off_str),
+                };
+            }
+            ops.remove(mem_idx + 1);
+        } else {
+            ops[mem_idx] = Operand::Text {
+                value: format!("[{}]", base),
+            };
+        }
+        return;
+    }
+
+    if is_pair {
+        // Pair: [xn, #offset] or [xn] if offset=0
+        if ops.len() > mem_idx + 1 {
+            let offset = imm_val(&ops[mem_idx + 1]);
+            // Pair offset is scaled: imm7 * scale
+            let scale = if opcode_id.contains("_X") || opcode_id.contains("_D") {
+                8
+            } else {
+                4
+            };
+            let scaled = offset * scale;
+            if scaled == 0 {
+                ops[mem_idx] = Operand::Text {
+                    value: format!("[{}]", base),
+                };
+            } else {
+                ops[mem_idx] = Operand::Text {
+                    value: format!("[{}, #{}]", base, scaled),
+                };
+            }
+            ops.remove(mem_idx + 1);
+        } else {
+            ops[mem_idx] = Operand::Text {
+                value: format!("[{}]", base),
+            };
+        }
+        return;
+    }
+
+    // Unsigned immediate: [xn, #offset] or [xn] if offset=0
+    // Offset is scaled: imm12 * scale
+    let scale = if opcode_id.ends_with("_X")
+        || opcode_id.ends_with("H")
+        || opcode_id == "LDRSH_X"
+        || opcode_id == "LDRSB_X"
+    {
+        if opcode_id.ends_with("H") && !opcode_id.starts_with("LDRS") {
+            2
+        } else {
+            8
+        }
+    } else if opcode_id.ends_with("W")
+        || opcode_id.ends_with("B")
+        || opcode_id == "LDRSB_W"
+        || opcode_id == "LDRSH_W"
+    {
+        if opcode_id.ends_with("B") && !opcode_id.starts_with("LDRS") {
+            1
+        } else {
+            4
+        }
+    } else {
+        1
+    };
+
+    if ops.len() > mem_idx + 1 {
+        let offset = imm_val(&ops[mem_idx + 1]);
+        let scaled = offset * scale;
+        if scaled == 0 {
+            ops[mem_idx] = Operand::Text {
+                value: format!("[{}]", base),
+            };
+        } else {
+            ops[mem_idx] = Operand::Text {
+                value: format!("[{}, #{}]", base, scaled),
+            };
+        }
+        ops.remove(mem_idx + 1);
+    } else {
+        ops[mem_idx] = Operand::Text {
+            value: format!("[{}]", base),
+        };
+    }
 }
 
 /// Return the vector arrangement suffix for a modified-immediate instruction.
@@ -1191,7 +1942,7 @@ fn shift_imm_arrangement(esize: u8, q: u8) -> &'static str {
 robustone_isa_macros::define_formats! {
     arch = Arm;
     extern_fields;
-    fields { Rd; Rn; Rm; Ra; Rt; Rt2; Imm12; Imm16; Imm19; Imm26; Immhi; Immlo; Imm7; Cond; Shift; Imm6; Hw; N; Immr; Imms; Ftype; Opcode; Size; Q; U; L; M; H; };
+    fields { Rd; Rn; Rm; Ra; Rt; Rt2; Rs; Imm9; Imm12; Imm16; Imm19; Imm26; Immhi; Immlo; Imm7; Cond; Shift; Imm6; Hw; N; Immr; Imms; Ftype; Opcode; Size; Q; U; L; M; H; };
 
     format R_TYPE {
         rd: bits(0, 5) as Rd,
@@ -1305,6 +2056,32 @@ robustone_isa_macros::define_formats! {
         rt: bits(0, 5) as Rt,
         imm19: bits(5, 19) as Imm19,
     };
+    format LDR_POST {
+        rt: bits(0, 5) as Rt,
+        rn: bits(5, 5) as Rn,
+        imm9: bits(12, 9) as Imm9,
+    };
+    format LDR_PRE {
+        rt: bits(0, 5) as Rt,
+        rn: bits(5, 5) as Rn,
+        imm9: bits(12, 9) as Imm9,
+    };
+    format LDR_UNSCALED {
+        rt: bits(0, 5) as Rt,
+        rn: bits(5, 5) as Rn,
+        imm9: bits(12, 9) as Imm9,
+    };
+    format LDR_EXCL {
+        rt: bits(0, 5) as Rt,
+        rn: bits(5, 5) as Rn,
+        rs: bits(16, 5) as Rs,
+    };
+    format LDR_EXCL_PAIR {
+        rt: bits(0, 5) as Rt,
+        rn: bits(5, 5) as Rn,
+        rt2: bits(10, 5) as Rt2,
+        rs: bits(16, 5) as Rs,
+    };
     format FP_1SOURCE {
         rd: bits(0, 5) as Rd,
         rn: bits(5, 5) as Rn,
@@ -1380,6 +2157,13 @@ robustone_isa_macros::define_formats! {
         rd: bits(0, 5) as Rd,
         q: bits(30, 1) as Q,
     };
+    format SIMD_LS {
+        rt: bits(0, 5) as Rt,
+        rn: bits(5, 5) as Rn,
+        size: bits(10, 2) as Size,
+        opcode: bits(12, 4) as Opcode,
+        q: bits(30, 1) as Q,
+    };
 }
 
 // ---------------------------------------------------------------------------
@@ -1453,7 +2237,7 @@ mod tests {
         let insn = decoder
             .decode(&[0x00, 0x00, 0x00, 0x54], 0, &profile)
             .unwrap();
-        assert_eq!(insn.mnemonic, "b.cond");
+        assert_eq!(insn.mnemonic, "b.eq");
     }
 
     #[test]
@@ -3073,7 +3857,7 @@ mod tests {
         let insn = decoder
             .decode(&[0x20, 0x20, 0x61, 0x4f], 0, &profile)
             .unwrap();
-        assert_eq!(insn.mnemonic, "smlal");
+        assert_eq!(insn.mnemonic, "smlal2");
         let ops = operand_texts(&insn);
         assert_eq!(ops, vec!["v0.4s", "v1.8h", "v1.h[2]"]);
     }

@@ -49,7 +49,9 @@ impl ArchitectureHandler for ArmHandler {
         }
         let profile = DecodeProfile {
             mode: crate::backend::ArmMode::AArch64,
-            features: crate::backend::ArmFeature::BASE,
+            features: crate::backend::ArmFeature::BASE
+                | crate::backend::ArmFeature::SIMD
+                | crate::backend::ArmFeature::FP,
             render_dialect: robustone_isa::RenderDialect::Canonical,
             alias_policy: robustone_isa::AliasPolicy::None,
         };
@@ -105,9 +107,6 @@ impl ArchitectureHandler for ArmHandler {
     }
 }
 
-// Placeholder for any future decoder sub-modules.
-pub mod decoder {}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -153,7 +152,7 @@ mod tests {
             .unwrap();
         assert_eq!(size, 4);
         assert_eq!(instr.mnemonic, "add");
-        assert_eq!(instr.operands, "x0, x1, 2");
+        assert_eq!(instr.operands, "x0, x1, #2");
     }
 
     #[test]
@@ -164,8 +163,8 @@ mod tests {
             .disassemble(&[0x80, 0x46, 0x82, 0xD2], "aarch64", 0)
             .unwrap();
         assert_eq!(size, 4);
-        assert_eq!(instr.mnemonic, "movz");
-        assert_eq!(instr.operands, "x0, 0x1234");
+        assert_eq!(instr.mnemonic, "mov");
+        assert_eq!(instr.operands, "x0, #0x1234");
     }
 
     #[test]
@@ -251,7 +250,7 @@ mod tests {
         // ext v0.8b, v1.8b, v2.8b, #3 => bytes [0x20, 0x18, 0x02, 0x2e]
         let (mnemonic, operands) = disasm_simd(&[0x20, 0x18, 0x02, 0x2e]);
         assert_eq!(mnemonic, "ext");
-        assert_eq!(operands, "v0.8b, v1.8b, v2.8b, 3");
+        assert_eq!(operands, "v0.8b, v1.8b, v2.8b, #3");
     }
 
     #[test]
@@ -259,7 +258,7 @@ mod tests {
         // ext v0.16b, v1.16b, v2.16b, #3 => bytes [0x20, 0x18, 0x02, 0x6e]
         let (mnemonic, operands) = disasm_simd(&[0x20, 0x18, 0x02, 0x6e]);
         assert_eq!(mnemonic, "ext");
-        assert_eq!(operands, "v0.16b, v1.16b, v2.16b, 3");
+        assert_eq!(operands, "v0.16b, v1.16b, v2.16b, #3");
     }
 
     // -------------------------------------------------------------------------

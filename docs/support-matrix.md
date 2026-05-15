@@ -53,8 +53,9 @@ Canonical tokens below are the normalized architecture names emitted by the shar
 | Surface | Status | Notes |
 |---------|--------|-------|
 | `riscv32`, `riscv64` decode | Implemented | Backed by `robustone-core` plus `robustone-riscv` and exercised by the parity harness. |
-| `riscv32e` | Parser-only | Accepted as a canonical token so capability and help surfaces can be honest about the missing backend. | | ParserOnly |
-| All non-RISC-V canonical tokens above | Parser-only placeholders | Accepted for CLI parsing and version/help reporting only; no decode backend is registered in `ArchitectureDispatcher` for them today. |
+| `aarch64` decode | Implemented | Backed by `robustone-core` plus `robustone-arm` declarative spec-driven backend. Parity-tested against Capstone. |
+| `riscv32e` | Parser-only | Accepted as a canonical token so capability and help surfaces can be honest about the missing backend. |
+| All other non-RISC-V canonical tokens above | Parser-only placeholders | Accepted for CLI parsing and version/help reporting only; no decode backend is registered in `ArchitectureDispatcher` for them today. |
 
 ## RISC-V Feature Status
 

@@ -2444,4 +2444,57 @@ insn VEC_UADDW {
         groups = &[robustone_isa::InstructionGroup::Vector];
         manual = "ARM ARM";
     }
+
+    // -------------------------------------------------------------------------
+    // Advanced SIMD Load/Store
+    // bits 30:24 = 0001100 (AdvSIMD load/store category)
+    // -------------------------------------------------------------------------
+    insn SIMD_LS_LOAD {
+        mnemonic = "ld1";
+        opcode_id = "SIMD_LS_LOAD";
+        pattern = robustone_isa::mask_value!(0xBFE0_0000, 0x0C40_0000);
+        format = &SIMD_LS;
+        operands = &[
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rt, robustone_isa::Access::Write),
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rn, robustone_isa::Access::Read),
+        ];
+        modes = ModeSet::All;
+        features = ArmFeature::SIMD;
+        groups = &[robustone_isa::InstructionGroup::Vector];
+        manual = "ARM ARM";
+    }
+    insn SIMD_LS_STORE {
+        mnemonic = "st1";
+        opcode_id = "SIMD_LS_STORE";
+        pattern = robustone_isa::mask_value!(0xBFE0_0000, 0x0C00_0000);
+        format = &SIMD_LS;
+        operands = &[
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rt, robustone_isa::Access::Read),
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rn, robustone_isa::Access::Read),
+        ];
+        modes = ModeSet::All;
+        features = ArmFeature::SIMD;
+        groups = &[robustone_isa::InstructionGroup::Vector];
+        manual = "ARM ARM";
+    }
+
+    // -------------------------------------------------------------------------
+    // FMLAL2 (vector, indexed element) — FP16 widening multiply-add long
+    // bits 31:24 = 0 Q 1 0 1 1 1 1, bits 23:21 = 1 0 0, bits 15:12 = 1 0 0 0
+    // -------------------------------------------------------------------------
+    insn VEC_FMLAL2_INDEXED {
+        mnemonic = "fmlal2";
+        opcode_id = "VEC_FMLAL2_INDEXED";
+        pattern = robustone_isa::mask_value!(0xBFE0_FC00, 0x2F80_8800);
+        format = &VEC_THREE_SAME;
+        operands = &[
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rd, robustone_isa::Access::Write),
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rn, robustone_isa::Access::Read),
+            robustone_isa::reg!(ArmRegisterClass::Vec, ArmField::Rm, robustone_isa::Access::Read),
+        ];
+        modes = ModeSet::All;
+        features = ArmFeature::SIMD;
+        groups = &[robustone_isa::InstructionGroup::Vector];
+        manual = "ARM ARM";
+    }
 }

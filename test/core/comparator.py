@@ -305,6 +305,38 @@ _MNEMONIC_EQUIVALENTS: Dict[str, str] = {
 }
 
 
+# AArch64 register name → ID mapping for cstool -r mode compatibility.
+_AARCH64_GPR_IDS: Dict[str, int] = {}
+# x0-x30, w0-w30
+for _i in range(32):
+    _AARCH64_GPR_IDS[f"x{_i}"] = _i
+    _AARCH64_GPR_IDS[f"w{_i}"] = _i
+# Aliases
+_AARCH64_GPR_IDS["sp"] = 31
+_AARCH64_GPR_IDS["wsp"] = 31
+_AARCH64_GPR_IDS["xzr"] = 31
+_AARCH64_GPR_IDS["wzr"] = 31
+_AARCH64_GPR_IDS["lr"] = 30
+_AARCH64_GPR_IDS["fp"] = 29
+
+_AARCH64_SIMD_IDS: Dict[str, int] = {}
+for _i in range(32):
+    _AARCH64_SIMD_IDS[f"v{_i}"] = _i
+    _AARCH64_SIMD_IDS[f"b{_i}"] = _i
+    _AARCH64_SIMD_IDS[f"h{_i}"] = _i
+    _AARCH64_SIMD_IDS[f"s{_i}"] = _i
+    _AARCH64_SIMD_IDS[f"d{_i}"] = _i
+    _AARCH64_SIMD_IDS[f"q{_i}"] = _i
+
+
+def _aarch64_register_id(name: str) -> Optional[int]:
+    if name in _AARCH64_GPR_IDS:
+        return _AARCH64_GPR_IDS[name]
+    if name in _AARCH64_SIMD_IDS:
+        return 64 + _AARCH64_SIMD_IDS[name]  # offset SIMD IDs from GPRs
+    return None
+
+
 class OutputComparator:
     """Handles comparison of robustone and cstool outputs."""
 
@@ -636,12 +668,25 @@ class OutputComparator:
             if normalized is not None:
                 operands.append(normalized)
 
-        return {
-            "opcode_id": self._normalize_opcode_name(
+        # For AArch64, cstool reports plain mnemonics (e.g. "add") while
+        # robustone uses suffixed opcode_ids (e.g. "ADD_REG"). Prefer the
+        # mnemonic so opcode comparison matches.
+        arch = decoded.get("architecture", "")
+        if arch in ("arm", "aarch64"):
+            opcode_key = (
+                decoded.get("mnemonic")
+                or decoded.get("opcode_id")
+                or instruction.get("mnemonic")
+            )
+        else:
+            opcode_key = (
                 decoded.get("opcode_id")
                 or decoded.get("mnemonic")
                 or instruction.get("mnemonic")
-            ),
+            )
+
+        return {
+            "opcode_id": self._normalize_opcode_name(opcode_key),
             "operands": operands,
             "registers_read": [
                 self._normalize_robustone_register(register)
@@ -860,9 +905,15 @@ class OutputComparator:
 
     def _riscv_register_id(self, register_name: str) -> int:
         name = register_name.strip().lower()
-        if name not in _RISCV_REGISTER_IDS:
-            raise ValueError(f"unknown RISC-V register `{register_name}`")
-        return _RISCV_REGISTER_IDS[name]
+        # Strip cstool register-class suffixes like "(vreg)" or "(fpreg)"
+        name = re.sub(r"\s*\([^)]+\)$", "", name)
+        if name in _RISCV_REGISTER_IDS:
+            return _RISCV_REGISTER_IDS[name]
+        # Fallback: AArch64 register names (cstool -r mode for arm64)
+        aarch64_id = _aarch64_register_id(name)
+        if aarch64_id is not None:
+            return aarch64_id
+        raise ValueError(f"unknown register `{register_name}`")
 
     def _riscv_csr_id(self, csr_name: str) -> int:
         name = csr_name.strip().lower()
