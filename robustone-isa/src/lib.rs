@@ -405,10 +405,10 @@ pub enum ImmExpr<F: Copy + Eq + 'static> {
     /// Compose an immediate from multiple non-contiguous bit fields.
     ///
     /// Used for:
-    /// - RISC-V B-type: imm[12|10:5|4:1|11] from bits [31],[30:25],[11:8],[7]
-    /// - RISC-V J-type: imm[20|10:1|11|19:12] from bits [31],[30:21],[20],[19:12]
-    /// - RISC-V S-type: imm[11:5|4:0] from bits [31:25],[11:7]
-    /// - LoongArch I26: disp[15:0|25:16] from bits [25:10],[9:0]
+    /// - RISC-V B-type: `imm[12|10:5|4:1|11]` from bits `[31]`, `[30:25]`, `[11:8]`, `[7]`
+    /// - RISC-V J-type: `imm[20|10:1|11|19:12]` from bits `[31]`, `[30:21]`, `[20]`, `[19:12]`
+    /// - RISC-V S-type: `imm[11:5|4:0]` from bits `[31:25]`, `[11:7]`
+    /// - LoongArch I26: `disp[15:0|25:16]` from bits `[25:10]`, `[9:0]`
     Compose {
         parts: &'static [ImmComposePart],
         transform: ImmediateTransform,

@@ -439,7 +439,7 @@ impl Display for Architecture {
 impl From<&str> for Architecture {
     /// Performs the conversion from a string slice (`&str`) into `Architecture`.
     ///
-    /// This uses the same logic as [`Architecture::parse`].
+    /// This uses the same logic as `Architecture::parse`.
     ///
     /// # Examples
     ///
@@ -456,7 +456,7 @@ impl From<&str> for Architecture {
 impl From<String> for Architecture {
     /// Performs the conversion from a owned string (`String`) into `Architecture`.
     ///
-    /// This uses the same logic as [`Architecture::parse`].
+    /// This uses the same logic as `Architecture::parse`.
     fn from(name: String) -> Self {
         Architecture::parse(&name)
     }

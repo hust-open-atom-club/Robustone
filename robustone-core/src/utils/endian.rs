@@ -61,7 +61,7 @@ impl Endianness {
     ///
     /// # Returns
     ///
-    /// Returns a new Vec<u8> with the appropriate byte order applied.
+    /// Returns a new `Vec<u8>` with the appropriate byte order applied.
     pub fn apply_to_bytes(&self, bytes: &[u8]) -> Vec<u8> {
         match self {
             Endianness::Little => bytes.to_vec(),
