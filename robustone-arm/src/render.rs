@@ -1,6 +1,8 @@
 //! AArch64 instruction text rendering.
 
 use robustone_core::ir::{DecodedInstruction, TextRenderProfile};
+use robustone_core::render::RenderOptions;
+use robustone_core::renderer::Renderer;
 
 /// Render an AArch64 decoded instruction into mnemonic and operand text.
 pub fn render_aarch64_text_parts(
@@ -24,13 +26,7 @@ fn format_aarch64_operand(operand: &robustone_core::ir::Operand) -> String {
     use robustone_core::ir::Operand;
     match operand {
         Operand::Register { register } => aarch64_register_name(register.id),
-        Operand::Immediate { value, .. } => {
-            if *value >= 0 && *value < 10 {
-                value.to_string()
-            } else {
-                format!("0x{value:x}")
-            }
-        }
+        Operand::Immediate { value, .. } => format_aarch64_immediate(*value),
         Operand::Text { value } => value.clone(),
         Operand::Memory { base, displacement } => {
             if let Some(base) = base {
@@ -42,16 +38,30 @@ fn format_aarch64_operand(operand: &robustone_core::ir::Operand) -> String {
     }
 }
 
+fn format_aarch64_immediate(value: i64) -> String {
+    if value < 0 {
+        if value > -10 {
+            format!("#{value}")
+        } else {
+            format!("#-0x{:x}", -value)
+        }
+    } else if value < 10 {
+        format!("#{value}")
+    } else {
+        format!("#0x{value:x}")
+    }
+}
+
 fn aarch64_register_name(id: u32) -> String {
     match id {
         0..=30 => format!("x{id}"),
         31 => "sp".to_string(),
+        64..=95 => format!("v{}", id - 64),
+        128..=143 => format!("p{}", id - 128),
+        160..=191 => format!("z{}", id - 160),
         _ => format!("r{id}"),
     }
 }
-
-use robustone_core::render::RenderOptions;
-use robustone_core::renderer::Renderer;
 
 /// AArch64-specific instruction renderer.
 pub struct AArch64Renderer;
