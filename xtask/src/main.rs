@@ -8,15 +8,19 @@
 //! - `cargo xtask audit-no-hardcode` – detect mnemonic-based hardcode
 //! - `cargo xtask audit-no-capstone-generated-specs` – detect Capstone-generated spec artifacts
 //! - `cargo xtask new-arch <name>` – scaffold a new architecture crate
+//! - `cargo xtask aarch64-gen [--llvm-project <path>] [--out-dir <path>] [--artifact-dir <path>]`
+//! - `cargo xtask aarch64-gen-check [--llvm-project <path>] [--out-dir <path>] [--artifact-dir <path>]`
 
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+mod aarch64_gen;
+
 fn main() -> ExitCode {
     let args: Vec<String> = env::args().skip(1).collect();
-    if args.is_empty() {
+    if args.is_empty() || args[0] == "--help" || args[0] == "-h" {
         eprintln!("Usage: cargo xtask <command> [args...]");
         eprintln!("Commands:");
         eprintln!("  verify-boundary       Check workspace boundary constraints");
@@ -25,7 +29,17 @@ fn main() -> ExitCode {
         eprintln!("  compat-report [--deny-xfail-increase]  Generate compatibility report");
         eprintln!("  audit-no-hardcode     Detect mnemonic-based hardcode in production");
         eprintln!("  new-arch <name>       Scaffold a new architecture crate");
-        return ExitCode::FAILURE;
+        eprintln!(
+            "  aarch64-gen [--llvm-project <path>] [--out-dir <path>] [--artifact-dir <path>]  Generate AArch64 specs"
+        );
+        eprintln!(
+            "  aarch64-gen-check [--llvm-project <path>] [--out-dir <path>] [--artifact-dir <path>]  Check AArch64 specs"
+        );
+        return if args.is_empty() {
+            ExitCode::FAILURE
+        } else {
+            ExitCode::SUCCESS
+        };
     }
 
     match args[0].as_str() {
@@ -36,6 +50,8 @@ fn main() -> ExitCode {
         "audit-no-hardcode" => audit_no_hardcode(&args[1..]),
         "audit-no-capstone-generated-specs" => audit_no_capstone_generated_specs(),
         "new-arch" => new_arch(&args[1..]),
+        "aarch64-gen" => aarch64_gen::generate(&args[1..]),
+        "aarch64-gen-check" => aarch64_gen::check(&args[1..]),
         other => {
             eprintln!("Unknown command: {}", other);
             ExitCode::FAILURE

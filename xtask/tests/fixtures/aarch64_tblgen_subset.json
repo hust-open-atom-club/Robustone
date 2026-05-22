@@ -1,0 +1,104 @@
+{
+  "!instanceof": {
+    "Instruction": ["ADDWri", "Bcc", "BICWr", "BRK", "ABSWr", "PseudoRET", "AliasADD", "MysteryOp", "BadNamespace"]
+  },
+  "ADDWri": {
+    "AsmString": "add\t$Rd, $Rn, #$imm",
+    "Namespace": "AArch64",
+    "OutOperandList": "(outs GPR32:$Rd)",
+    "InOperandList": "(ins GPR32:$Rn, imm0_4095:$imm)",
+    "bits": "0001000100??????????????????????",
+    "Predicates": ["HasV8_0a"],
+    "isPseudo": false,
+    "isCodeGenOnly": false,
+    "isAsmParserOnly": false
+  },
+  "Bcc": {
+    "AsmString": "b.$cond\t$label",
+    "Namespace": "AArch64",
+    "OutOperandList": "(outs)",
+    "InOperandList": "(ins ccode:$cond, am_brcond:$label)",
+    "bits": "01010100???????????????????0????",
+    "Predicates": [],
+    "isPseudo": false,
+    "isCodeGenOnly": false,
+    "isAsmParserOnly": false
+  },
+  "BICWr": {
+    "AsmString": "bic\t$Rd, $Rn, $Rm",
+    "Namespace": "AArch64",
+    "OutOperandList": "(outs GPR32:$Rd)",
+    "InOperandList": "(ins GPR32:$Rn, GPR32:$Rm)",
+    "bits": "00001010001000000000000000000000",
+    "Predicates": ["HasV8_0a"],
+    "isPseudo": false,
+    "isCodeGenOnly": false,
+    "isAsmParserOnly": false
+  },
+  "BRK": {
+    "AsmString": "brk\t#$imm",
+    "Namespace": "AArch64",
+    "OutOperandList": "(outs)",
+    "InOperandList": "(ins imm0_65535:$imm)",
+    "bits": "11010100001000000000000000000000",
+    "Predicates": ["HasV8_0a"],
+    "isPseudo": false,
+    "isCodeGenOnly": false,
+    "isAsmParserOnly": false
+  },
+  "ABSWr": {
+    "AsmString": "abs\t$Rd, $Rn",
+    "Namespace": "AArch64",
+    "OutOperandList": "(outs FPR32:$Rd)",
+    "InOperandList": "(ins FPR32:$Rn)",
+    "bits": "01011010110000000010000000000000",
+    "Predicates": ["HasNEON", "HasFullFP16"],
+    "isPseudo": false,
+    "isCodeGenOnly": false,
+    "isAsmParserOnly": false
+  },
+  "PseudoRET": {
+    "AsmString": "ret",
+    "Namespace": "AArch64",
+    "OutOperandList": "(outs)",
+    "InOperandList": "(ins)",
+    "bits": "????????????????????????????????",
+    "Predicates": [],
+    "isPseudo": true,
+    "isCodeGenOnly": false,
+    "isAsmParserOnly": false
+  },
+  "AliasADD": {
+    "AsmString": "mov\t$Rd, $Rn",
+    "Namespace": "AArch64",
+    "OutOperandList": "(outs GPR32:$Rd)",
+    "InOperandList": "(ins GPR32:$Rn)",
+    "bits": "00101010000000000000001111100000",
+    "Predicates": [],
+    "isPseudo": false,
+    "isCodeGenOnly": false,
+    "isAsmParserOnly": true
+  },
+  "MysteryOp": {
+    "AsmString": "mystery\t$foo",
+    "Namespace": "AArch64",
+    "OutOperandList": "(outs MysteryOperand:$foo)",
+    "InOperandList": "(ins)",
+    "bits": "00000000000000000000000000000000",
+    "Predicates": [],
+    "isPseudo": false,
+    "isCodeGenOnly": false,
+    "isAsmParserOnly": false
+  },
+  "BadNamespace": {
+    "AsmString": "bad",
+    "Namespace": "ARM",
+    "OutOperandList": "(outs)",
+    "InOperandList": "(ins)",
+    "bits": "00000000000000000000000000000000",
+    "Predicates": [],
+    "isPseudo": false,
+    "isCodeGenOnly": false,
+    "isAsmParserOnly": false
+  }
+}
