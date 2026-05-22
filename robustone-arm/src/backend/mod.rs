@@ -34,6 +34,8 @@ pub enum ArmField {
     Immhi,
     Immlo,
     Imm7,
+    Imm3,
+    Option,
     Cond,
     Shift,
     Imm6,
@@ -5119,6 +5121,246 @@ fn apply_asimd_fdot_lane_aliases(
     }
 }
 
+fn is_scalar_add_sub_opcode(opcode_id: &str) -> bool {
+    matches!(
+        opcode_id,
+        "ADD_IMM"
+            | "SUB_IMM"
+            | "ADDS_IMM"
+            | "SUBS_IMM"
+            | "ADD_REG"
+            | "SUB_REG"
+            | "ADDS_REG"
+            | "SUBS_REG"
+            | "ADD_EXT"
+            | "SUB_EXT"
+            | "ADDS_EXT"
+            | "SUBS_EXT"
+            | "ADDWRI"
+            | "ADDXRI"
+            | "SUBWRI"
+            | "SUBXRI"
+            | "ADDWRS"
+            | "ADDXRS"
+            | "SUBWRS"
+            | "SUBXRS"
+            | "ADDWRX"
+            | "ADDXRX"
+            | "SUBWRX"
+            | "SUBXRX"
+    )
+}
+
+fn aarch64_gpr_name(reg: u32, is_32: bool, sp: bool) -> String {
+    match (reg, is_32, sp) {
+        (31, true, true) => "wsp".to_string(),
+        (31, false, true) => "sp".to_string(),
+        (31, true, false) => "wzr".to_string(),
+        (31, false, false) => "xzr".to_string(),
+        (_, true, _) => format!("w{reg}"),
+        (_, false, _) => format!("x{reg}"),
+    }
+}
+
+fn aarch64_add_sub_mnemonic(op: u32, set_flags: u32) -> &'static str {
+    match (op, set_flags) {
+        (0, 0) => "add",
+        (0, 1) => "adds",
+        (1, 0) => "sub",
+        _ => "subs",
+    }
+}
+
+fn aarch64_add_sub_shift_name(shift: u32) -> &'static str {
+    match shift {
+        0 => "lsl",
+        1 => "lsr",
+        2 => "asr",
+        _ => "ror",
+    }
+}
+
+fn aarch64_add_sub_extend_name(option: u32) -> &'static str {
+    match option {
+        0 => "uxtb",
+        1 => "uxth",
+        2 => "uxtw",
+        3 => "uxtx",
+        4 => "sxtb",
+        5 => "sxth",
+        6 => "sxtw",
+        _ => "sxtx",
+    }
+}
+
+fn apply_scalar_add_sub_aliases(
+    decoded: &mut robustone_core::ir::DecodedInstruction,
+    word: u32,
+    opcode_id: &str,
+) -> bool {
+    if !is_scalar_add_sub_opcode(opcode_id) {
+        return false;
+    }
+
+    let sf = (word >> 31) & 1;
+    let op = (word >> 30) & 1;
+    let set_flags = (word >> 29) & 1;
+    let is_32 = sf == 0;
+    let rd = word & 0x1f;
+    let rn = (word >> 5) & 0x1f;
+    let rm = (word >> 16) & 0x1f;
+    let base_mnemonic = aarch64_add_sub_mnemonic(op, set_flags);
+
+    let class = if (word & 0x1f00_0000) == 0x1100_0000 {
+        "imm"
+    } else if (word & 0x1fe0_0000) == 0x0b20_0000 {
+        "ext"
+    } else if (word & 0x1f20_0000) == 0x0b00_0000 {
+        "shift"
+    } else {
+        return false;
+    };
+
+    let mut operands = Vec::new();
+    let mut mnemonic = base_mnemonic.to_string();
+
+    match class {
+        "imm" => {
+            let imm12 = (word >> 10) & 0xfff;
+            let shift = (word >> 22) & 1;
+            let imm_text = if shift == 0 {
+                format!("#{imm12}")
+            } else {
+                format!("#{imm12}, lsl #12")
+            };
+
+            if set_flags == 1 && rd == 31 {
+                mnemonic = if op == 0 { "cmn" } else { "cmp" }.to_string();
+                operands.push(Operand::Text {
+                    value: aarch64_gpr_name(rn, is_32, true),
+                });
+                operands.push(Operand::Text { value: imm_text });
+            } else if op == 0
+                && set_flags == 0
+                && imm12 == 0
+                && shift == 0
+                && (rd == 31 || rn == 31)
+            {
+                mnemonic = "mov".to_string();
+                operands.push(Operand::Text {
+                    value: aarch64_gpr_name(rd, is_32, true),
+                });
+                operands.push(Operand::Text {
+                    value: aarch64_gpr_name(rn, is_32, true),
+                });
+            } else {
+                operands.push(Operand::Text {
+                    value: aarch64_gpr_name(rd, is_32, true),
+                });
+                operands.push(Operand::Text {
+                    value: aarch64_gpr_name(rn, is_32, true),
+                });
+                operands.push(Operand::Text { value: imm_text });
+            }
+        }
+        "shift" => {
+            let shift = (word >> 22) & 0x3;
+            let imm6 = (word >> 10) & 0x3f;
+            let rm_text = aarch64_gpr_name(rm, is_32, false);
+            let shifted_rm = if shift == 0 && imm6 == 0 {
+                rm_text
+            } else {
+                format!("{rm_text}, {} #{imm6}", aarch64_add_sub_shift_name(shift))
+            };
+
+            if set_flags == 1 && rd == 31 {
+                mnemonic = if op == 0 { "cmn" } else { "cmp" }.to_string();
+                operands.push(Operand::Text {
+                    value: aarch64_gpr_name(rn, is_32, false),
+                });
+                operands.push(Operand::Text { value: shifted_rm });
+            } else if op == 1 && rn == 31 {
+                mnemonic = if set_flags == 1 { "negs" } else { "neg" }.to_string();
+                operands.push(Operand::Text {
+                    value: aarch64_gpr_name(rd, is_32, false),
+                });
+                operands.push(Operand::Text { value: shifted_rm });
+            } else {
+                operands.push(Operand::Text {
+                    value: aarch64_gpr_name(rd, is_32, false),
+                });
+                operands.push(Operand::Text {
+                    value: aarch64_gpr_name(rn, is_32, false),
+                });
+                operands.push(Operand::Text { value: shifted_rm });
+            }
+        }
+        "ext" => {
+            let option = (word >> 13) & 0x7;
+            let imm3 = (word >> 10) & 0x7;
+            let extend = aarch64_add_sub_extend_name(option);
+            let rm_is_32 = is_32 || (option != 3 && option != 7);
+            let rm_text = aarch64_gpr_name(rm, rm_is_32, false);
+            let lsl_alias = (rn == 31 || (rd == 31 && set_flags == 0))
+                && ((is_32 && option == 2) || (!is_32 && option == 3));
+            let extended_rm = if lsl_alias {
+                if imm3 == 0 {
+                    rm_text
+                } else {
+                    format!("{rm_text}, lsl #{imm3}")
+                }
+            } else if imm3 == 0 {
+                format!("{rm_text}, {extend}")
+            } else {
+                format!("{rm_text}, {extend} #{imm3}")
+            };
+
+            if set_flags == 1 && rd == 31 {
+                mnemonic = if op == 0 { "cmn" } else { "cmp" }.to_string();
+                operands.push(Operand::Text {
+                    value: aarch64_gpr_name(rn, is_32, true),
+                });
+                operands.push(Operand::Text { value: extended_rm });
+            } else {
+                operands.push(Operand::Text {
+                    value: aarch64_gpr_name(rd, is_32, true),
+                });
+                operands.push(Operand::Text {
+                    value: aarch64_gpr_name(rn, is_32, true),
+                });
+                operands.push(Operand::Text { value: extended_rm });
+            }
+        }
+        _ => return false,
+    }
+
+    decoded.mnemonic = mnemonic;
+    decoded.operands = operands;
+    decoded.registers_read = Vec::new();
+    decoded.registers_written = Vec::new();
+
+    match class {
+        "imm" => {
+            decoded.registers_read.push(RegisterId::aarch64(rn));
+            if !(set_flags == 1 && rd == 31) {
+                decoded.registers_written.push(RegisterId::aarch64(rd));
+            }
+        }
+        "shift" | "ext" => {
+            if !(op == 1 && rn == 31 && !(set_flags == 1 && rd == 31)) {
+                decoded.registers_read.push(RegisterId::aarch64(rn));
+            }
+            decoded.registers_read.push(RegisterId::aarch64(rm));
+            if !(set_flags == 1 && rd == 31) {
+                decoded.registers_written.push(RegisterId::aarch64(rd));
+            }
+        }
+        _ => {}
+    }
+
+    true
+}
+
 /// Apply aliases and formatting for base integer, branch, and system instructions.
 fn apply_general_aliases(
     decoded: &mut robustone_core::ir::DecodedInstruction,
@@ -5128,6 +5370,10 @@ fn apply_general_aliases(
     use robustone_core::ir::Operand;
 
     let address = decoded.address;
+
+    if apply_scalar_add_sub_aliases(decoded, word, opcode_id) {
+        return;
+    }
 
     // Branch target computation for PC-relative instructions.
     match opcode_id {
@@ -6549,7 +6795,7 @@ fn shift_imm_arrangement(esize: u8, q: u8) -> &'static str {
 robustone_isa_macros::define_formats! {
     arch = Arm;
     extern_fields;
-    fields { Rd; Rn; Rm; Ra; Rt; Rt2; Rs; Imm9; Imm12; Imm16; Imm19; Imm26; Immhi; Immlo; Imm7; Cond; Shift; Imm6; Hw; N; Immr; Imms; Ftype; Opcode; Size; Q; U; L; M; H; };
+    fields { Rd; Rn; Rm; Ra; Rt; Rt2; Rs; Imm9; Imm12; Imm16; Imm19; Imm26; Immhi; Immlo; Imm7; Imm3; Option; Cond; Shift; Imm6; Hw; N; Immr; Imms; Ftype; Opcode; Size; Q; U; L; M; H; };
 
     format SVE_PREFETCH {
         rn: bits(5, 5) as Rn,
@@ -6695,6 +6941,13 @@ robustone_isa_macros::define_formats! {
         imm6: bits(10, 6) as Imm6,
         rm: bits(16, 5) as Rm,
         shift: bits(22, 2) as Shift,
+    };
+    format R_DP_EXT {
+        rd: bits(0, 5) as Rd,
+        rn: bits(5, 5) as Rn,
+        imm3: bits(10, 3) as Imm3,
+        option: bits(13, 3) as Option,
+        rm: bits(16, 5) as Rm,
     };
     format R_LOGICAL {
         rd: bits(0, 5) as Rd,
