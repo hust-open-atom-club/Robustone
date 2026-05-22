@@ -1,0 +1,682 @@
+{
+  "!instanceof": {
+    "Instruction": [
+      "ADD_ZPmZ_B",
+      "ADD_ZPmZ_H",
+      "ADD_ZPmZ_S",
+      "ADD_ZPmZ_D"
+    ]
+  },
+  "ADD_ZPmZ_B": {
+    "AsmString": "add\t$Zdn, $Pg/m, $_Zdn, $Zm",
+    "Namespace": "AArch64",
+    "OutOperandList": {
+      "args": [
+        [
+          {
+            "def": "ZPR8",
+            "kind": "def",
+            "printable": "ZPR8"
+          },
+          "Zdn"
+        ]
+      ],
+      "kind": "dag",
+      "operator": {
+        "def": "outs",
+        "kind": "def",
+        "printable": "outs"
+      },
+      "printable": "(outs ZPR8:$Zdn)"
+    },
+    "InOperandList": {
+      "args": [
+        [
+          {
+            "def": "PPR3bAny",
+            "kind": "def",
+            "printable": "PPR3bAny"
+          },
+          "Pg"
+        ],
+        [
+          {
+            "def": "ZPR8",
+            "kind": "def",
+            "printable": "ZPR8"
+          },
+          "_Zdn"
+        ],
+        [
+          {
+            "def": "ZPR8",
+            "kind": "def",
+            "printable": "ZPR8"
+          },
+          "Zm"
+        ]
+      ],
+      "kind": "dag",
+      "operator": {
+        "def": "ins",
+        "kind": "def",
+        "printable": "ins"
+      },
+      "printable": "(ins PPR3bAny:$Pg, ZPR8:$_Zdn, ZPR8:$Zm)"
+    },
+    "Constraints": "$Zdn = $_Zdn",
+    "Inst": [
+      {
+        "index": 0,
+        "kind": "varbit",
+        "printable": "Zdn{0}",
+        "var": "Zdn"
+      },
+      {
+        "index": 1,
+        "kind": "varbit",
+        "printable": "Zdn{1}",
+        "var": "Zdn"
+      },
+      {
+        "index": 2,
+        "kind": "varbit",
+        "printable": "Zdn{2}",
+        "var": "Zdn"
+      },
+      {
+        "index": 3,
+        "kind": "varbit",
+        "printable": "Zdn{3}",
+        "var": "Zdn"
+      },
+      {
+        "index": 4,
+        "kind": "varbit",
+        "printable": "Zdn{4}",
+        "var": "Zdn"
+      },
+      {
+        "index": 0,
+        "kind": "varbit",
+        "printable": "Zm{0}",
+        "var": "Zm"
+      },
+      {
+        "index": 1,
+        "kind": "varbit",
+        "printable": "Zm{1}",
+        "var": "Zm"
+      },
+      {
+        "index": 2,
+        "kind": "varbit",
+        "printable": "Zm{2}",
+        "var": "Zm"
+      },
+      {
+        "index": 3,
+        "kind": "varbit",
+        "printable": "Zm{3}",
+        "var": "Zm"
+      },
+      {
+        "index": 4,
+        "kind": "varbit",
+        "printable": "Zm{4}",
+        "var": "Zm"
+      },
+      {
+        "index": 0,
+        "kind": "varbit",
+        "printable": "Pg{0}",
+        "var": "Pg"
+      },
+      {
+        "index": 1,
+        "kind": "varbit",
+        "printable": "Pg{1}",
+        "var": "Pg"
+      },
+      {
+        "index": 2,
+        "kind": "varbit",
+        "printable": "Pg{2}",
+        "var": "Pg"
+      },
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "Predicates": [
+      {
+        "def": "HasSVE_or_SME",
+        "kind": "def",
+        "printable": "HasSVE_or_SME"
+      }
+    ],
+    "isPseudo": 0,
+    "isCodeGenOnly": 0,
+    "isAsmParserOnly": 0
+  },
+  "ADD_ZPmZ_H": {
+    "AsmString": "add\t$Zdn, $Pg/m, $_Zdn, $Zm",
+    "Namespace": "AArch64",
+    "OutOperandList": {
+      "args": [
+        [
+          {
+            "def": "ZPR16",
+            "kind": "def",
+            "printable": "ZPR16"
+          },
+          "Zdn"
+        ]
+      ],
+      "kind": "dag",
+      "operator": {
+        "def": "outs",
+        "kind": "def",
+        "printable": "outs"
+      },
+      "printable": "(outs ZPR16:$Zdn)"
+    },
+    "InOperandList": {
+      "args": [
+        [
+          {
+            "def": "PPR3bAny",
+            "kind": "def",
+            "printable": "PPR3bAny"
+          },
+          "Pg"
+        ],
+        [
+          {
+            "def": "ZPR16",
+            "kind": "def",
+            "printable": "ZPR16"
+          },
+          "_Zdn"
+        ],
+        [
+          {
+            "def": "ZPR16",
+            "kind": "def",
+            "printable": "ZPR16"
+          },
+          "Zm"
+        ]
+      ],
+      "kind": "dag",
+      "operator": {
+        "def": "ins",
+        "kind": "def",
+        "printable": "ins"
+      },
+      "printable": "(ins PPR3bAny:$Pg, ZPR16:$_Zdn, ZPR16:$Zm)"
+    },
+    "Constraints": "$Zdn = $_Zdn",
+    "Inst": [
+      {
+        "index": 0,
+        "kind": "varbit",
+        "printable": "Zdn{0}",
+        "var": "Zdn"
+      },
+      {
+        "index": 1,
+        "kind": "varbit",
+        "printable": "Zdn{1}",
+        "var": "Zdn"
+      },
+      {
+        "index": 2,
+        "kind": "varbit",
+        "printable": "Zdn{2}",
+        "var": "Zdn"
+      },
+      {
+        "index": 3,
+        "kind": "varbit",
+        "printable": "Zdn{3}",
+        "var": "Zdn"
+      },
+      {
+        "index": 4,
+        "kind": "varbit",
+        "printable": "Zdn{4}",
+        "var": "Zdn"
+      },
+      {
+        "index": 0,
+        "kind": "varbit",
+        "printable": "Zm{0}",
+        "var": "Zm"
+      },
+      {
+        "index": 1,
+        "kind": "varbit",
+        "printable": "Zm{1}",
+        "var": "Zm"
+      },
+      {
+        "index": 2,
+        "kind": "varbit",
+        "printable": "Zm{2}",
+        "var": "Zm"
+      },
+      {
+        "index": 3,
+        "kind": "varbit",
+        "printable": "Zm{3}",
+        "var": "Zm"
+      },
+      {
+        "index": 4,
+        "kind": "varbit",
+        "printable": "Zm{4}",
+        "var": "Zm"
+      },
+      {
+        "index": 0,
+        "kind": "varbit",
+        "printable": "Pg{0}",
+        "var": "Pg"
+      },
+      {
+        "index": 1,
+        "kind": "varbit",
+        "printable": "Pg{1}",
+        "var": "Pg"
+      },
+      {
+        "index": 2,
+        "kind": "varbit",
+        "printable": "Pg{2}",
+        "var": "Pg"
+      },
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "Predicates": [
+      {
+        "def": "HasSVE_or_SME",
+        "kind": "def",
+        "printable": "HasSVE_or_SME"
+      }
+    ],
+    "isPseudo": 0,
+    "isCodeGenOnly": 0,
+    "isAsmParserOnly": 0
+  },
+  "ADD_ZPmZ_S": {
+    "AsmString": "add\t$Zdn, $Pg/m, $_Zdn, $Zm",
+    "Namespace": "AArch64",
+    "OutOperandList": {
+      "args": [
+        [
+          {
+            "def": "ZPR32",
+            "kind": "def",
+            "printable": "ZPR32"
+          },
+          "Zdn"
+        ]
+      ],
+      "kind": "dag",
+      "operator": {
+        "def": "outs",
+        "kind": "def",
+        "printable": "outs"
+      },
+      "printable": "(outs ZPR32:$Zdn)"
+    },
+    "InOperandList": {
+      "args": [
+        [
+          {
+            "def": "PPR3bAny",
+            "kind": "def",
+            "printable": "PPR3bAny"
+          },
+          "Pg"
+        ],
+        [
+          {
+            "def": "ZPR32",
+            "kind": "def",
+            "printable": "ZPR32"
+          },
+          "_Zdn"
+        ],
+        [
+          {
+            "def": "ZPR32",
+            "kind": "def",
+            "printable": "ZPR32"
+          },
+          "Zm"
+        ]
+      ],
+      "kind": "dag",
+      "operator": {
+        "def": "ins",
+        "kind": "def",
+        "printable": "ins"
+      },
+      "printable": "(ins PPR3bAny:$Pg, ZPR32:$_Zdn, ZPR32:$Zm)"
+    },
+    "Constraints": "$Zdn = $_Zdn",
+    "Inst": [
+      {
+        "index": 0,
+        "kind": "varbit",
+        "printable": "Zdn{0}",
+        "var": "Zdn"
+      },
+      {
+        "index": 1,
+        "kind": "varbit",
+        "printable": "Zdn{1}",
+        "var": "Zdn"
+      },
+      {
+        "index": 2,
+        "kind": "varbit",
+        "printable": "Zdn{2}",
+        "var": "Zdn"
+      },
+      {
+        "index": 3,
+        "kind": "varbit",
+        "printable": "Zdn{3}",
+        "var": "Zdn"
+      },
+      {
+        "index": 4,
+        "kind": "varbit",
+        "printable": "Zdn{4}",
+        "var": "Zdn"
+      },
+      {
+        "index": 0,
+        "kind": "varbit",
+        "printable": "Zm{0}",
+        "var": "Zm"
+      },
+      {
+        "index": 1,
+        "kind": "varbit",
+        "printable": "Zm{1}",
+        "var": "Zm"
+      },
+      {
+        "index": 2,
+        "kind": "varbit",
+        "printable": "Zm{2}",
+        "var": "Zm"
+      },
+      {
+        "index": 3,
+        "kind": "varbit",
+        "printable": "Zm{3}",
+        "var": "Zm"
+      },
+      {
+        "index": 4,
+        "kind": "varbit",
+        "printable": "Zm{4}",
+        "var": "Zm"
+      },
+      {
+        "index": 0,
+        "kind": "varbit",
+        "printable": "Pg{0}",
+        "var": "Pg"
+      },
+      {
+        "index": 1,
+        "kind": "varbit",
+        "printable": "Pg{1}",
+        "var": "Pg"
+      },
+      {
+        "index": 2,
+        "kind": "varbit",
+        "printable": "Pg{2}",
+        "var": "Pg"
+      },
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "Predicates": [
+      {
+        "def": "HasSVE_or_SME",
+        "kind": "def",
+        "printable": "HasSVE_or_SME"
+      }
+    ],
+    "isPseudo": 0,
+    "isCodeGenOnly": 0,
+    "isAsmParserOnly": 0
+  },
+  "ADD_ZPmZ_D": {
+    "AsmString": "add\t$Zdn, $Pg/m, $_Zdn, $Zm",
+    "Namespace": "AArch64",
+    "OutOperandList": {
+      "args": [
+        [
+          {
+            "def": "ZPR64",
+            "kind": "def",
+            "printable": "ZPR64"
+          },
+          "Zdn"
+        ]
+      ],
+      "kind": "dag",
+      "operator": {
+        "def": "outs",
+        "kind": "def",
+        "printable": "outs"
+      },
+      "printable": "(outs ZPR64:$Zdn)"
+    },
+    "InOperandList": {
+      "args": [
+        [
+          {
+            "def": "PPR3bAny",
+            "kind": "def",
+            "printable": "PPR3bAny"
+          },
+          "Pg"
+        ],
+        [
+          {
+            "def": "ZPR64",
+            "kind": "def",
+            "printable": "ZPR64"
+          },
+          "_Zdn"
+        ],
+        [
+          {
+            "def": "ZPR64",
+            "kind": "def",
+            "printable": "ZPR64"
+          },
+          "Zm"
+        ]
+      ],
+      "kind": "dag",
+      "operator": {
+        "def": "ins",
+        "kind": "def",
+        "printable": "ins"
+      },
+      "printable": "(ins PPR3bAny:$Pg, ZPR64:$_Zdn, ZPR64:$Zm)"
+    },
+    "Constraints": "$Zdn = $_Zdn",
+    "Inst": [
+      {
+        "index": 0,
+        "kind": "varbit",
+        "printable": "Zdn{0}",
+        "var": "Zdn"
+      },
+      {
+        "index": 1,
+        "kind": "varbit",
+        "printable": "Zdn{1}",
+        "var": "Zdn"
+      },
+      {
+        "index": 2,
+        "kind": "varbit",
+        "printable": "Zdn{2}",
+        "var": "Zdn"
+      },
+      {
+        "index": 3,
+        "kind": "varbit",
+        "printable": "Zdn{3}",
+        "var": "Zdn"
+      },
+      {
+        "index": 4,
+        "kind": "varbit",
+        "printable": "Zdn{4}",
+        "var": "Zdn"
+      },
+      {
+        "index": 0,
+        "kind": "varbit",
+        "printable": "Zm{0}",
+        "var": "Zm"
+      },
+      {
+        "index": 1,
+        "kind": "varbit",
+        "printable": "Zm{1}",
+        "var": "Zm"
+      },
+      {
+        "index": 2,
+        "kind": "varbit",
+        "printable": "Zm{2}",
+        "var": "Zm"
+      },
+      {
+        "index": 3,
+        "kind": "varbit",
+        "printable": "Zm{3}",
+        "var": "Zm"
+      },
+      {
+        "index": 4,
+        "kind": "varbit",
+        "printable": "Zm{4}",
+        "var": "Zm"
+      },
+      {
+        "index": 0,
+        "kind": "varbit",
+        "printable": "Pg{0}",
+        "var": "Pg"
+      },
+      {
+        "index": 1,
+        "kind": "varbit",
+        "printable": "Pg{1}",
+        "var": "Pg"
+      },
+      {
+        "index": 2,
+        "kind": "varbit",
+        "printable": "Pg{2}",
+        "var": "Pg"
+      },
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "Predicates": [
+      {
+        "def": "HasSVE_or_SME",
+        "kind": "def",
+        "printable": "HasSVE_or_SME"
+      }
+    ],
+    "isPseudo": 0,
+    "isCodeGenOnly": 0,
+    "isAsmParserOnly": 0
+  }
+}
