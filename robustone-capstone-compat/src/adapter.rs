@@ -2,7 +2,8 @@
 
 use std::path::Path;
 
-use robustone_isa::{ArchitectureBackend, DecodeProfile};
+use robustone_arm::backend::ArmBackend;
+use robustone_isa::{AliasPolicy, ArchitectureBackend, DecodeProfile, FeatureSet, RenderDialect};
 use robustone_loongarch::backend::LoongArchBackend;
 
 use crate::yaml::{CapstoneYaml, TestCase};
@@ -70,6 +71,65 @@ pub trait CapstoneArchAdapter<B: ArchitectureBackend> {
 
     /// Normalize actual text before comparison.
     fn normalize_actual(text: &str) -> String;
+}
+
+/// Concrete adapter for Capstone YAML test files targeting AArch64.
+pub struct CapstoneAArch64Yaml;
+
+impl CapstoneArchAdapter<ArmBackend> for CapstoneAArch64Yaml {
+    type Fixture = TestCase;
+
+    fn arch_name() -> &'static str {
+        "aarch64"
+    }
+
+    fn map_arch_mode(arch: &str, _options: &[String]) -> Option<&'static str> {
+        match arch {
+            "CS_ARCH_AARCH64" => Some("aarch64"),
+            _ => None,
+        }
+    }
+
+    fn yaml_test_dir() -> &'static str {
+        "AArch64"
+    }
+
+    fn load_fixtures(path: &Path) -> Result<Vec<Self::Fixture>, CompatError> {
+        let content = std::fs::read_to_string(path)
+            .map_err(|e| CompatError::Io(format!("failed to read {:?}: {}", path, e)))?;
+        let yaml: CapstoneYaml = serde_yaml::from_str(&content)
+            .map_err(|e| CompatError::Parse(format!("failed to parse {:?}: {}", path, e)))?;
+        Ok(yaml.test_cases)
+    }
+
+    fn input_bytes(fixture: &Self::Fixture) -> &[u8] {
+        &fixture.input.bytes
+    }
+
+    fn expected_text(fixture: &Self::Fixture) -> Option<&str> {
+        fixture.expected.insns.first().map(|i| i.asm_text.trim())
+    }
+
+    fn expected_detail(_fixture: &Self::Fixture) -> Option<ExpectedDetail> {
+        None
+    }
+
+    fn profile_for_fixture(_fixture: &Self::Fixture) -> DecodeProfile<ArmBackend> {
+        DecodeProfile {
+            mode: robustone_arm::backend::ArmMode::AArch64,
+            features: robustone_arm::backend::ArmFeature::all_supported_for_tests(),
+            render_dialect: RenderDialect::Canonical,
+            alias_policy: AliasPolicy::None,
+        }
+    }
+
+    fn normalize_expected(text: &str) -> String {
+        text.to_string()
+    }
+
+    fn normalize_actual(text: &str) -> String {
+        text.to_string()
+    }
 }
 
 /// Concrete adapter for Capstone YAML test files targeting LoongArch.

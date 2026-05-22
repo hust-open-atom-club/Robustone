@@ -7,6 +7,7 @@ license = "BSD-3-Clause"
 repository = "https://github.com/robustone/robustone"
 
 [dependencies]
+robustone-arm = { path = "../robustone-arm" }
 robustone-core = { path = "../robustone-core" }
 robustone-isa = { path = "../robustone-isa" }
 robustone-loongarch = { path = "../robustone-loongarch" }
