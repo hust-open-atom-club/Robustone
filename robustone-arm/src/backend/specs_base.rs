@@ -23,7 +23,7 @@ robustone_isa_macros::define_instructions! {
     insn ADD_IMM {
         mnemonic = "add";
         opcode_id = "ADD_IMM";
-        pattern = robustone_isa::mask_value!(0xFF00_0000, 0x9100_0000);
+        pattern = robustone_isa::mask_value!(0x7F80_0000, 0x1100_0000);
         format = &I_ADD;
         operands = &[
             robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rd, robustone_isa::Access::Write),
@@ -38,7 +38,7 @@ robustone_isa_macros::define_instructions! {
     insn SUB_IMM {
         mnemonic = "sub";
         opcode_id = "SUB_IMM";
-        pattern = robustone_isa::mask_value!(0xFF00_0000, 0xD100_0000);
+        pattern = robustone_isa::mask_value!(0x7F80_0000, 0x5100_0000);
         format = &I_ADD;
         operands = &[
             robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rd, robustone_isa::Access::Write),
@@ -53,7 +53,7 @@ robustone_isa_macros::define_instructions! {
     insn ADDS_IMM {
         mnemonic = "adds";
         opcode_id = "ADDS_IMM";
-        pattern = robustone_isa::mask_value!(0xFF00_0000, 0xB100_0000);
+        pattern = robustone_isa::mask_value!(0x7F80_0000, 0x3100_0000);
         format = &I_ADD;
         operands = &[
             robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rd, robustone_isa::Access::Write),
@@ -68,7 +68,7 @@ robustone_isa_macros::define_instructions! {
     insn SUBS_IMM {
         mnemonic = "subs";
         opcode_id = "SUBS_IMM";
-        pattern = robustone_isa::mask_value!(0xFF00_0000, 0xF100_0000);
+        pattern = robustone_isa::mask_value!(0x7F80_0000, 0x7100_0000);
         format = &I_ADD;
         operands = &[
             robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rd, robustone_isa::Access::Write),
@@ -295,7 +295,7 @@ robustone_isa_macros::define_instructions! {
     insn ADD_REG {
         mnemonic = "add";
         opcode_id = "ADD_REG";
-        pattern = robustone_isa::mask_value!(0xFFE0_0000, 0x8B00_0000);
+        pattern = robustone_isa::mask_value!(0x7F20_0000, 0x0B00_0000);
         format = &R_DP_REG;
         operands = &[
             robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rd, robustone_isa::Access::Write),
@@ -310,7 +310,7 @@ robustone_isa_macros::define_instructions! {
     insn SUB_REG {
         mnemonic = "sub";
         opcode_id = "SUB_REG";
-        pattern = robustone_isa::mask_value!(0xFFE0_0000, 0xCB00_0000);
+        pattern = robustone_isa::mask_value!(0x7F20_0000, 0x4B00_0000);
         format = &R_DP_REG;
         operands = &[
             robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rd, robustone_isa::Access::Write),
@@ -325,7 +325,7 @@ robustone_isa_macros::define_instructions! {
     insn ADDS_REG {
         mnemonic = "adds";
         opcode_id = "ADDS_REG";
-        pattern = robustone_isa::mask_value!(0xFFE0_0000, 0xAB00_0000);
+        pattern = robustone_isa::mask_value!(0x7F20_0000, 0x2B00_0000);
         format = &R_DP_REG;
         operands = &[
             robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rd, robustone_isa::Access::Write),
@@ -340,8 +340,72 @@ robustone_isa_macros::define_instructions! {
     insn SUBS_REG {
         mnemonic = "subs";
         opcode_id = "SUBS_REG";
-        pattern = robustone_isa::mask_value!(0xFFE0_0000, 0xEB00_0000);
+        pattern = robustone_isa::mask_value!(0x7F20_0000, 0x6B00_0000);
         format = &R_DP_REG;
+        operands = &[
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rd, robustone_isa::Access::Write),
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rn, robustone_isa::Access::Read),
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rm, robustone_isa::Access::Read),
+        ];
+        modes = ModeSet::All;
+        features = ArmFeature::BASE;
+        groups = &[robustone_isa::InstructionGroup::Arithmetic];
+        manual = "ARM ARM";
+    }
+
+    // -------------------------------------------------------------------------
+    // Data Processing — Register: Add/Subtract (extended register)
+    // -------------------------------------------------------------------------
+    insn ADD_EXT {
+        mnemonic = "add";
+        opcode_id = "ADD_EXT";
+        pattern = robustone_isa::mask_value!(0x7FE0_0000, 0x0B20_0000);
+        format = &R_DP_EXT;
+        operands = &[
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rd, robustone_isa::Access::Write),
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rn, robustone_isa::Access::Read),
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rm, robustone_isa::Access::Read),
+        ];
+        modes = ModeSet::All;
+        features = ArmFeature::BASE;
+        groups = &[robustone_isa::InstructionGroup::Arithmetic];
+        manual = "ARM ARM";
+    }
+    insn SUB_EXT {
+        mnemonic = "sub";
+        opcode_id = "SUB_EXT";
+        pattern = robustone_isa::mask_value!(0x7FE0_0000, 0x4B20_0000);
+        format = &R_DP_EXT;
+        operands = &[
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rd, robustone_isa::Access::Write),
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rn, robustone_isa::Access::Read),
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rm, robustone_isa::Access::Read),
+        ];
+        modes = ModeSet::All;
+        features = ArmFeature::BASE;
+        groups = &[robustone_isa::InstructionGroup::Arithmetic];
+        manual = "ARM ARM";
+    }
+    insn ADDS_EXT {
+        mnemonic = "adds";
+        opcode_id = "ADDS_EXT";
+        pattern = robustone_isa::mask_value!(0x7FE0_0000, 0x2B20_0000);
+        format = &R_DP_EXT;
+        operands = &[
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rd, robustone_isa::Access::Write),
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rn, robustone_isa::Access::Read),
+            robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rm, robustone_isa::Access::Read),
+        ];
+        modes = ModeSet::All;
+        features = ArmFeature::BASE;
+        groups = &[robustone_isa::InstructionGroup::Arithmetic];
+        manual = "ARM ARM";
+    }
+    insn SUBS_EXT {
+        mnemonic = "subs";
+        opcode_id = "SUBS_EXT";
+        pattern = robustone_isa::mask_value!(0x7FE0_0000, 0x6B20_0000);
+        format = &R_DP_EXT;
         operands = &[
             robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rd, robustone_isa::Access::Write),
             robustone_isa::reg!(ArmRegisterClass::Gpr, ArmField::Rn, robustone_isa::Access::Read),
