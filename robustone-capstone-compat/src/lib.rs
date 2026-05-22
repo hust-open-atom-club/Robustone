@@ -16,7 +16,13 @@ fn capstone_yaml_enabled() -> bool {
 #[cfg(test)]
 fn capstone_yaml_dir() -> std::path::PathBuf {
     if let Some(dir) = std::env::var_os("CAPSTONE_TEST_DIR") {
-        return std::path::PathBuf::from(dir);
+        let path = std::path::PathBuf::from(dir);
+        if path.is_absolute() {
+            return path;
+        }
+        return std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join(path);
     }
     std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../third_party/capstone/tests/MC/LoongArch")
@@ -378,6 +384,97 @@ mod tests {
             pass, fail, known_diff, unsupported
         );
         assert_eq!(fail, 0, "unexpected mismatches");
+    }
+}
+
+#[cfg(test)]
+mod aarch64_tests {
+    use super::harness::{self, TestResult};
+    use super::require_capstone_yaml;
+    use super::xfail::XfailRegistry;
+    use crate::adapter::CapstoneArchAdapter;
+    use robustone_arm::ArmHandler;
+    use robustone_core::ArchitectureDispatcher;
+
+    fn aarch64_dispatcher() -> ArchitectureDispatcher {
+        let mut dispatcher = ArchitectureDispatcher::new();
+        dispatcher.register(Box::new(ArmHandler::new()));
+        dispatcher
+    }
+
+    fn word_from_case(case: &crate::yaml::TestCase) -> Option<u32> {
+        let bytes: [u8; 4] = case.input.bytes.as_slice().try_into().ok()?;
+        Some(u32::from_le_bytes(bytes))
+    }
+
+    fn is_aarch64_add_sub(word: u32) -> bool {
+        let is_immediate = (word & 0x1f00_0000) == 0x1100_0000;
+        let is_shifted_register = (word & 0x1f20_0000) == 0x0b00_0000;
+        let is_extended_register = (word & 0x1fe0_0000) == 0x0b20_0000;
+        is_immediate || is_shifted_register || is_extended_register
+    }
+
+    #[test]
+    fn aarch64_basic_add_sub_yaml_subset() {
+        let yaml_file = "basic-a64-instructions.s.yaml";
+        if !require_capstone_yaml(yaml_file) {
+            return;
+        }
+
+        let path = super::capstone_yaml_dir().join(yaml_file);
+        let cases = <crate::adapter::CapstoneAArch64Yaml as CapstoneArchAdapter<
+            robustone_arm::backend::ArmBackend,
+        >>::load_fixtures(&path)
+        .expect("AArch64 Capstone YAML should parse");
+        let dispatcher = aarch64_dispatcher();
+        let xfail = XfailRegistry::new();
+        let mut matched = 0usize;
+        let mut pass = 0usize;
+        let mut fail = 0usize;
+        let mut unsupported = 0usize;
+        let mut known_diff = 0usize;
+
+        for case in cases.iter().filter(|case| {
+            case.expected.insns.len() == 1 && word_from_case(case).is_some_and(is_aarch64_add_sub)
+        }) {
+            matched += 1;
+            match harness::run_test_case::<
+                crate::adapter::CapstoneAArch64Yaml,
+                robustone_arm::backend::ArmBackend,
+            >(&dispatcher, case, &xfail)
+            {
+                TestResult::Pass => pass += 1,
+                TestResult::Fail(msg) => {
+                    fail += 1;
+                    if fail <= 20 {
+                        eprintln!("AArch64 ADD/SUB mismatch: {msg}");
+                    }
+                }
+                TestResult::Unsupported(msg) => {
+                    unsupported += 1;
+                    if unsupported <= 20 {
+                        eprintln!("AArch64 ADD/SUB unsupported: {msg}");
+                    }
+                }
+                TestResult::Xfail(reason, detail) => {
+                    known_diff += 1;
+                    if known_diff <= 20 {
+                        eprintln!("AArch64 ADD/SUB xfail ({reason}): {detail}");
+                    }
+                }
+            }
+        }
+
+        eprintln!(
+            "AArch64 ADD/SUB YAML subset summary: {matched} matched, {pass} pass, {fail} fail, {known_diff} known_diff, {unsupported} unsupported"
+        );
+        assert!(
+            matched > 0,
+            "expected ADD/SUB cases in upstream AArch64 YAML"
+        );
+        assert_eq!(fail, 0, "unexpected ADD/SUB mismatches");
+        assert_eq!(unsupported, 0, "unexpected unsupported ADD/SUB cases");
+        assert_eq!(known_diff, 0, "ADD/SUB subset must not use xfail");
     }
 }
 

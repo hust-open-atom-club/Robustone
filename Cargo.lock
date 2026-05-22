@@ -767,6 +767,7 @@ dependencies = [
 name = "robustone-capstone-compat"
 version = "0.1.0"
 dependencies = [
+ "robustone-arm",
  "robustone-core",
  "robustone-isa",
  "robustone-loongarch",
