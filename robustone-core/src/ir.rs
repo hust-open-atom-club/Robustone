@@ -10,6 +10,7 @@ use serde::Serialize;
 pub enum ArchitectureId {
     Riscv,
     Arm,
+    AArch64,
     X86,
     LoongArch,
     /// Architecture identifier for dynamically added or experimental backends.
@@ -17,10 +18,11 @@ pub enum ArchitectureId {
 }
 
 impl ArchitectureId {
-    pub fn as_str(&self) -> &str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             ArchitectureId::Riscv => "riscv",
             ArchitectureId::Arm => "arm",
+            ArchitectureId::AArch64 => "aarch64",
             ArchitectureId::X86 => "x86",
             ArchitectureId::LoongArch => "loongarch",
             ArchitectureId::Other(name) => name,
@@ -89,6 +91,14 @@ impl RegisterId {
     pub const fn arm(id: u32) -> Self {
         Self {
             architecture: ArchitectureId::Arm,
+            id,
+        }
+    }
+
+    /// Create a register identifier for the AArch64 backend.
+    pub const fn aarch64(id: u32) -> Self {
+        Self {
+            architecture: ArchitectureId::AArch64,
             id,
         }
     }
@@ -345,13 +355,7 @@ impl DecodedInstruction {
 }
 
 fn format_generic_operand(operand: &Operand) -> String {
-    let arch_str = |arch: ArchitectureId| match arch {
-        ArchitectureId::Riscv => "riscv",
-        ArchitectureId::Arm => "arm",
-        ArchitectureId::X86 => "x86",
-        ArchitectureId::LoongArch => "loongarch",
-        ArchitectureId::Other(name) => name,
-    };
+    let arch_str = |arch: ArchitectureId| arch.as_str();
     match operand {
         Operand::Register { register } => {
             format!("{}:{}", arch_str(register.architecture), register.id)
@@ -399,6 +403,11 @@ mod tests {
             status: DecodeStatus::Success,
             render_hints: RenderHints::default(),
         }
+    }
+
+    #[test]
+    fn aarch64_architecture_id_reports_stable_name() {
+        assert_eq!(ArchitectureId::AArch64.as_str(), "aarch64");
     }
 
     #[test]
