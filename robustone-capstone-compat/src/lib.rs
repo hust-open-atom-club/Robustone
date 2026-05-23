@@ -390,11 +390,30 @@ mod tests {
 #[cfg(test)]
 mod aarch64_tests {
     use super::harness::{self, TestResult};
-    use super::require_capstone_yaml;
     use super::xfail::XfailRegistry;
     use crate::adapter::CapstoneArchAdapter;
     use robustone_arm::ArmHandler;
     use robustone_core::ArchitectureDispatcher;
+
+    fn aarch64_yaml_dir() -> std::path::PathBuf {
+        if let Some(dir) = std::env::var_os("CAPSTONE_TEST_DIR") {
+            let path = std::path::PathBuf::from(dir);
+            let path = if path.is_absolute() {
+                path
+            } else {
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("..")
+                    .join(path)
+            };
+            let nested = path.join("AArch64");
+            if nested.exists() {
+                return nested;
+            }
+            return path;
+        }
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../third_party/capstone/tests/MC/AArch64")
+    }
 
     fn aarch64_dispatcher() -> ArchitectureDispatcher {
         let mut dispatcher = ArchitectureDispatcher::new();
@@ -416,12 +435,17 @@ mod aarch64_tests {
 
     #[test]
     fn aarch64_basic_add_sub_yaml_subset() {
-        let yaml_file = "basic-a64-instructions.s.yaml";
-        if !require_capstone_yaml(yaml_file) {
+        if !super::capstone_yaml_enabled() {
+            eprintln!(
+                "skip: ROBUSTONE_ENABLE_CAPSTONE_TESTS not set — aarch64_basic_add_sub_yaml_subset"
+            );
             return;
         }
-
-        let path = super::capstone_yaml_dir().join(yaml_file);
+        let yaml_file = "basic-a64-instructions.s.yaml";
+        let path = aarch64_yaml_dir().join(yaml_file);
+        if !path.exists() {
+            panic!("Capstone AArch64 YAML fixture missing: {}", path.display());
+        }
         let cases = <crate::adapter::CapstoneAArch64Yaml as CapstoneArchAdapter<
             robustone_arm::backend::ArmBackend,
         >>::load_fixtures(&path)
