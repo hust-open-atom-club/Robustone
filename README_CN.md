@@ -12,9 +12,12 @@ Robustone 将与 Capstone 的兼容目标拆分为三层：
 
 当前仓库状态：
 
-- 已实现的解码后端：`riscv`、`riscv32`、`riscv64`
-- 当前支持矩阵：[`docs/support-matrix.md`](docs/support-matrix.md)
-- 当前 `0.0.0` 范围：面向 RISC-V 主线的实验版，而不是多 ISA 的 Capstone 替代品
+- 公开支持矩阵：[`docs/support-matrix.md`](docs/support-matrix.md)
+- 后端稳定性分级：
+  - **Beta**：`riscv32`、`riscv64` — 已通过一致性测试，有模糊测试覆盖，适合受控的内部使用。
+  - **ExperimentalDecode**：`aarch64`、`x32`、`x64`、`loongarch64` — `x32`、`x64` 的解码覆盖有限；`loongarch64` 依赖语料库精确字匹配，尚未推广到任意的有效编码。`aarch64` 后端为 spec-driven，覆盖基础整数、分支、存取、标量浮点、向量（SIMD/SVE/SME）、加密和系统指令；尚未实现 detail 输出。
+  - **ParserOnly**：其余所有 token — CLI 接受解析以进行能力发现，但未注册解码后端。
+- 这是一个处于活跃开发中的多 ISA 框架，尚未成为 Capstone 的直接替代品。
 
 ## 系统要求
 
@@ -28,7 +31,9 @@ Robustone 将与 Capstone 的兼容目标拆分为三层：
 robustone/         # 顶层 crate（同时提供库和二进制入口）
 robustone-core/    # 架构相关的解码与格式化核心
 robustone-cli/     # CLI 参数解析、输入校验与展示逻辑
+robustone-arm/     # AArch64 spec-driven 解码后端
 docs/              # 支持矩阵和项目文档
+xtask/             # 基于 TableGen 的架构 spec 代码生成管线
 tests/             # golden/property/differential 测试资源
 fuzz/              # 解码器与 JSON 格式化的 fuzz 目标
 Makefile           # build/check/run/test 入口
@@ -91,6 +96,12 @@ cargo run --manifest-path robustone/Cargo.toml -- --json --capabilities
 cargo run --manifest-path robustone/Cargo.toml -- --json riscv32 93001000
 ```
 
+如需解码 AArch64 指令，可通过 spec-driven 后端：
+
+```bash
+cargo run --manifest-path robustone/Cargo.toml -- --json aarch64 d503201f
+```
+
 ## 测试
 
 从仓库根目录运行完整的回归测试套件：
@@ -115,7 +126,7 @@ cargo test --workspace --all-features
 cargo run --manifest-path robustone/Cargo.toml -- --json riscv32 93001000
 ```
 
-以上命令已于 2026-03-20 在本地验证通过。
+以上命令已于 2026-05-29 在本地验证通过。
 
 ## CI 与项目文档
 
