@@ -15,7 +15,7 @@ Current repository status:
 - Public support matrix: [docs/support-matrix.md](docs/support-matrix.md)
 - Backend stability levels:
   - **Beta**: `riscv32`, `riscv64` — parity-tested, fuzz-covered, suitable for controlled internal use.
-  - **ExperimentalDecode**: `aarch64`, `x32`, `x64`, `loongarch64` — decode backends exist but coverage is limited; `loongarch64` relies on corpus exact-word matching and does not yet generalize to arbitrary valid encodings.
+  - **ExperimentalDecode**: `aarch64`, `x32`, `x64`, `loongarch64` — decode backends exist but `x32`, `x64` coverage is limited; `loongarch64` relies on corpus exact-word matching and does not yet generalize to arbitrary valid encodings. The `aarch64` backend is spec-driven, covering base integer, branch, load/store, scalar FP, vector (SIMD/SVE/SME), crypto, and system instructions; detail output is not yet implemented.
   - **ParserOnly**: all remaining tokens — accepted by the CLI for capability discovery, but no decode backend is registered.
 - This is a multi-ISA framework in active development, not yet a drop-in Capstone replacement.
 
@@ -31,7 +31,9 @@ Current repository status:
 robustone/         # Metadata crate including both library and binary
 robustone-core/    # Architecture-specific decoding and formatting (Rust port of Capstone)
 robustone-cli/     # Command-line parsing, input validation, and presentation logic
+robustone-arm/     # AArch64 spec-driven decode backend
 docs/              # Support matrix and project documentation
+xtask/             # TableGen-based code generator pipeline for architecture specs
 tests/             # Golden/property/differential test assets
 fuzz/              # Fuzz targets for decoder and JSON formatting smoke runs
 Makefile           # Repository entrypoints for build, check, run, and test
@@ -94,6 +96,12 @@ To emit structured JSON from the shared decode IR:
 cargo run --manifest-path robustone/Cargo.toml -- --json riscv32 93001000
 ```
 
+To decode an AArch64 instruction via the spec-driven backend:
+
+```bash
+cargo run --manifest-path robustone/Cargo.toml -- --json aarch64 d503201f
+```
+
 ## Testing
 
 Run the full regression suite from the repository root:
@@ -118,7 +126,7 @@ cargo test --workspace --all-features
 cargo run --manifest-path robustone/Cargo.toml -- --json riscv32 93001000
 ```
 
-The commands above were verified locally on 2026-03-20.
+The commands above were verified locally on 2026-05-29.
 
 ## CI and Project Docs
 
