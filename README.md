@@ -102,52 +102,6 @@ To decode an AArch64 instruction via the spec-driven backend:
 cargo run --manifest-path robustone/Cargo.toml -- --json aarch64 d503201f
 ```
 
-## Docker image
-
-Build and run the production CLI image locally:
-
-```bash
-docker build -t robustone:local .
-docker run --rm robustone:local --help
-docker run --rm robustone:local riscv32 93001000
-```
-
-The multi-stage `Dockerfile` builds the `robustone` binary with Rust 1.99.0 and
-the checked-in `Cargo.lock`, then runs it as a non-root user on Debian Bookworm.
-The separate `Dockerfile.dev` is not used by the production-image workflow.
-
-### Manually build and publish to GHCR
-
-The [Docker Image workflow](.github/workflows/docker.yml) runs only through
-`workflow_dispatch`; pushes and pull requests do not trigger it.
-
-1. Merge the workflow into **your repository's default branch** first. GitHub
-   requires it there before the **Run workflow** button is available; adding it
-   only to a feature branch does not expose that button.
-2. Enable GitHub Actions in your fork if GitHub prompts you, then open
-   **Actions → Docker Image → Run workflow**.
-3. Select the branch to build and run the workflow. It checks out the selected
-   revision, builds a `linux/amd64` image, tests the CLI, and only then pushes the
-   tested image to GHCR.
-
-The image name is `ghcr.io/<owner>/<repository>` in lowercase (for example,
-`ghcr.io/paulkm2006/robustone` in that fork). Every run publishes
-`sha-<full-commit-SHA>` for the checked-out revision. Only a run targeting the
-default branch also updates `latest`; feature-branch and tag runs leave it alone.
-The run summary lists the published image tags.
-
-The workflow uses the built-in `GITHUB_TOKEN` with `contents: read` and
-`packages: write`; no additional registry secret is required. If a package with
-the same name already exists, grant this repository Actions write access to that
-package. New GHCR packages are private by default, so pulling them requires
-appropriate registry access unless you make the package public.
-
-```bash
-# Replace the owner and SHA with the values from the workflow run summary.
-docker pull ghcr.io/<owner>/robustone:sha-<full-commit-SHA>
-docker run --rm ghcr.io/<owner>/robustone:sha-<full-commit-SHA> riscv32 93001000
-```
-
 ## Testing
 
 Run the full regression suite from the repository root:
