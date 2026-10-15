@@ -102,6 +102,48 @@ cargo run --manifest-path robustone/Cargo.toml -- --json riscv32 93001000
 cargo run --manifest-path robustone/Cargo.toml -- --json aarch64 d503201f
 ```
 
+## Docker 镜像
+
+在本地构建并运行生产 CLI 镜像：
+
+```bash
+docker build -t robustone:local .
+docker run --rm robustone:local --help
+docker run --rm robustone:local riscv32 93001000
+```
+
+多阶段 `Dockerfile` 使用 Rust 1.99.0 和仓库中的 `Cargo.lock` 构建
+`robustone` 二进制程序，再以非 root 用户在 Debian Bookworm 中运行。
+单独的 `Dockerfile.dev` 不参与生产镜像工作流。
+
+### 手动构建并推送至 GHCR
+
+[Docker Image 工作流](.github/workflows/docker.yml) 仅通过
+`workflow_dispatch` 手动触发；推送代码或创建 PR 都不会触发它。
+
+1. 先将工作流合并到**你自己仓库的默认分支**。GitHub 要求该文件存在于默认分支，
+   才会显示 **Run workflow** 按钮；仅添加到功能分支不会显示该按钮。
+2. 如果 GitHub 提示，在 fork 中启用 Actions，然后打开
+   **Actions → Docker Image → Run workflow**。
+3. 选择要构建的分支并运行。工作流会检出选定的提交，构建 `linux/amd64` 镜像，
+   测试 CLI，再将经过测试的镜像推送到 GHCR。
+
+镜像名称为全小写的 `ghcr.io/<owner>/<repository>`，例如该 fork 中的
+`ghcr.io/paulkm2006/robustone`。每次运行都会发布对应检出提交的
+`sha-<完整提交 SHA>` 标签。仅针对默认分支的运行会同时更新 `latest`；
+功能分支或 Git 标签的运行不会覆盖它。发布的镜像标签会列在运行摘要中。
+
+工作流使用内置 `GITHUB_TOKEN`，权限仅为 `contents: read` 和
+`packages: write`，无需额外的镜像仓库密钥。如果同名 package 已存在，需要为当前
+仓库授予该 package 的 Actions 写入权限。新建的 GHCR package 默认是私有的；
+除非将其设为公开，否则拉取镜像需要相应的仓库访问权限。
+
+```bash
+# 将 owner 和 SHA 替换为工作流运行摘要中的值。
+docker pull ghcr.io/<owner>/robustone:sha-<完整提交SHA>
+docker run --rm ghcr.io/<owner>/robustone:sha-<完整提交SHA> riscv32 93001000
+```
+
 ## 测试
 
 从仓库根目录运行完整的回归测试套件：

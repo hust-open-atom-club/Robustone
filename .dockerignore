@@ -7,9 +7,9 @@ Dockerfile
 .dockerignore
 
 # Rust
-target/
+**/target/
 **/*.rs.bk
-Cargo.lock
+# Cargo.lock is required by the production image's --locked build.
 
 # Python
 __pycache__/
@@ -22,6 +22,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+virt-py/
 
 # IDE
 .vscode/
@@ -48,3 +49,8 @@ coverage/
 # Temporary files
 *.tmp
 *.temp
+
+# Local secrets and optional parity-test checkout
+.env
+.env.*
+third_party/
