@@ -475,14 +475,8 @@ mod tests {
         let (lowered_catalog, lowering_report) =
             lowering::LoweringRegistry::default().lower_catalog(&normalized_catalog);
         let report = report::CoverageReport::from_records(&records);
-        let artifact_dir = std::env::temp_dir().join(format!(
-            "robustone-aarch64-gen-artifacts-{}-{}",
-            std::process::id(),
-            std::thread::current().name().unwrap_or("unnamed")
-        ));
-        if artifact_dir.exists() {
-            fs::remove_dir_all(&artifact_dir).expect("stale temp artifact dir should be removable");
-        }
+        let temp = tempfile::tempdir().expect("tempdir should be created");
+        let artifact_dir = temp.path();
 
         let metadata = emit::HeaderMetadata {
             source: STABLE_AARCH64_TABLEGEN_SOURCE.to_string(),
@@ -498,7 +492,7 @@ mod tests {
             lowered_catalog: &lowered_catalog,
             lowering_report: &lowering_report,
         };
-        write_artifacts(&artifact_dir, inputs).expect("artifacts should write");
+        write_artifacts(artifact_dir, inputs).expect("artifacts should write");
 
         let catalog =
             fs::read_to_string(artifact_dir.join("catalog.json")).expect("catalog exists");
@@ -516,7 +510,6 @@ mod tests {
             .expect("lowering report exists");
         let provenance_json = fs::read_to_string(artifact_dir.join("provenance.json"))
             .expect("provenance sidecar exists");
-        fs::remove_dir_all(&artifact_dir).expect("temp artifact dir should be removable");
 
         let normalized_value: serde_json::Value = serde_json::from_str(&normalized_json)
             .expect("normalized catalog should be valid JSON");
